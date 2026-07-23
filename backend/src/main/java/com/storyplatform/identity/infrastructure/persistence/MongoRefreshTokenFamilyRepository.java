@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.util.Objects;
+import java.util.List;
 
 @Repository
 public class MongoRefreshTokenFamilyRepository
@@ -104,5 +105,87 @@ public class MongoRefreshTokenFamilyRepository
                         .set("updatedAt", revokedAt),
                 MongoRefreshTokenFamilyDocument.class
         );
+    }
+
+    @Override
+    public boolean revokeOwned(
+            String familyId,
+            String userId,
+            Instant revokedAt,
+            String reason
+    ) {
+        return mongoTemplate.updateFirst(
+                Query.query(new Criteria().andOperator(
+                        Criteria.where("_id").is(familyId),
+                        Criteria.where("userId").is(userId),
+                        Criteria.where("revokedAt").is(null)
+                )),
+                revokeUpdate(revokedAt, reason),
+                MongoRefreshTokenFamilyDocument.class
+        ).getModifiedCount() == 1;
+    }
+
+    @Override
+    public long revokeAllOwned(
+            String userId,
+            Instant revokedAt,
+            String reason
+    ) {
+        return mongoTemplate.updateMulti(
+                Query.query(new Criteria().andOperator(
+                        Criteria.where("userId").is(userId),
+                        Criteria.where("revokedAt").is(null)
+                )),
+                revokeUpdate(revokedAt, reason),
+                MongoRefreshTokenFamilyDocument.class
+        ).getModifiedCount();
+    }
+
+    @Override
+    public List<SessionRecord> findActiveByUser(
+            String userId,
+            Instant now
+    ) {
+        Query active = Query.query(new Criteria().andOperator(
+                Criteria.where("userId").is(userId),
+                Criteria.where("revokedAt").is(null),
+                Criteria.where("expiresAt").gt(now)
+        ));
+        return mongoTemplate.find(
+                active,
+                MongoRefreshTokenFamilyDocument.class
+        ).stream().map(document -> new SessionRecord(
+                document.id(),
+                document.createdAt(),
+                document.updatedAt(),
+                document.expiresAt()
+        )).toList();
+    }
+
+    @Override
+    public boolean isActiveOwned(
+            String familyId,
+            String userId,
+            Instant now
+    ) {
+        return mongoTemplate.exists(
+                Query.query(new Criteria().andOperator(
+                        Criteria.where("_id").is(familyId),
+                        Criteria.where("userId").is(userId),
+                        Criteria.where("revokedAt").is(null),
+                        Criteria.where("expiresAt").gt(now)
+                )),
+                MongoRefreshTokenFamilyDocument.class
+        );
+    }
+
+    private static Update revokeUpdate(
+            Instant revokedAt,
+            String reason
+    ) {
+        return new Update()
+                .set("revokedAt", revokedAt)
+                .set("revokeReason", reason)
+                .set("updatedAt", revokedAt);
     }
 }

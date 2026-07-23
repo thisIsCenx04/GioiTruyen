@@ -32,8 +32,12 @@ public final class JwtAccessTokenIssuer implements AccessTokenIssuer {
     }
 
     @Override
-    public IssuedAccessToken issue(UserAccount account) {
+    public IssuedAccessToken issue(
+            UserAccount account,
+            String sessionId
+    ) {
         Objects.requireNonNull(account, "account");
+        Objects.requireNonNull(sessionId, "sessionId");
         Instant issuedAt = clock.instant();
         Instant expiresAt = issuedAt.plus(properties.ttl());
         List<String> roles = account.globalRoles().stream()
@@ -48,6 +52,7 @@ public final class JwtAccessTokenIssuer implements AccessTokenIssuer {
                 .expiresAt(expiresAt)
                 .claim("roles", roles)
                 .claim("security_version", account.securityVersion())
+                .claim("sid", sessionId)
                 .build();
         JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
         String value = encoder.encode(

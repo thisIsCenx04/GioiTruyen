@@ -88,7 +88,10 @@ public final class RefreshSessionUseCase {
             return RefreshSessionOutcome.invalid();
         }
         AccessTokenIssuer.IssuedAccessToken access =
-                accessTokens.issue(account.orElseThrow());
+                accessTokens.issue(
+                        account.orElseThrow(),
+                        rotation.familyId()
+                );
         return RefreshSessionOutcome.rotated(
                 access.value(),
                 access.expiresInSeconds(),

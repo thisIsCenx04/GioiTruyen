@@ -55,8 +55,9 @@ public final class PersistentSessionTokenIssuer
         Instant now = clock.instant();
         RefreshTokenCodec.IssuedRefreshToken refresh =
                 refreshTokens.issue();
+        String familyId = idGenerator.get().toString();
         families.create(RefreshTokenFamily.active(
-                idGenerator.get().toString(),
+                familyId,
                 account.id(),
                 account.securityVersion(),
                 refresh.hash(),
@@ -64,7 +65,7 @@ public final class PersistentSessionTokenIssuer
                 now
         ));
         AccessTokenIssuer.IssuedAccessToken access =
-                accessTokens.issue(account);
+                accessTokens.issue(account, familyId);
         return new IssuedSession(
                 access.value(),
                 access.expiresInSeconds(),

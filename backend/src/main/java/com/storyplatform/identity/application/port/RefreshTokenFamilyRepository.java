@@ -3,6 +3,7 @@ package com.storyplatform.identity.application.port;
 import com.storyplatform.identity.domain.RefreshTokenFamily;
 
 import java.time.Instant;
+import java.util.List;
 
 public interface RefreshTokenFamilyRepository {
 
@@ -16,6 +17,27 @@ public interface RefreshTokenFamilyRepository {
     );
 
     void revoke(String familyId, Instant revokedAt, String reason);
+
+    boolean revokeOwned(
+            String familyId,
+            String userId,
+            Instant revokedAt,
+            String reason
+    );
+
+    long revokeAllOwned(
+            String userId,
+            Instant revokedAt,
+            String reason
+    );
+
+    List<SessionRecord> findActiveByUser(String userId, Instant now);
+
+    boolean isActiveOwned(
+            String familyId,
+            String userId,
+            Instant now
+    );
 
     enum RotationStatus {
         ROTATED,
@@ -59,5 +81,13 @@ public interface RefreshTokenFamilyRepository {
                     0
             );
         }
+    }
+
+    record SessionRecord(
+            String id,
+            Instant createdAt,
+            Instant lastUsedAt,
+            Instant expiresAt
+    ) {
     }
 }

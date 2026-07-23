@@ -4,6 +4,7 @@ import com.storyplatform.identity.application.IdentityService;
 import com.storyplatform.identity.application.LoginUseCase;
 import com.storyplatform.identity.application.RegisterUserUseCase;
 import com.storyplatform.identity.application.RefreshSessionUseCase;
+import com.storyplatform.identity.application.SessionManagementUseCase;
 import com.storyplatform.identity.application.VerifyEmailUseCase;
 import com.storyplatform.identity.application.port.EmailVerificationIssuer;
 import com.storyplatform.identity.application.port.EmailVerificationRepository;
@@ -28,6 +29,8 @@ import com.storyplatform.identity.infrastructure.security
         .PersistentSessionTokenIssuer;
 import com.storyplatform.identity.infrastructure.security
         .SecureRefreshTokenCodec;
+import com.storyplatform.identity.infrastructure.security
+        .SessionJwtValidator;
 import com.storyplatform.shared.cache.RedisKeyFactory;
 import com.storyplatform.shared.events.persistence.OutboxAppender;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -35,7 +38,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.core
+        .DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 
 import javax.crypto.spec.SecretKeySpec;
 import java.time.Clock;
@@ -149,13 +158,15 @@ public class IdentityConfiguration {
             RegisterUserUseCase registerUser,
             VerifyEmailUseCase verifyEmail,
             LoginUseCase login,
-            RefreshSessionUseCase refreshSession
+            RefreshSessionUseCase refreshSession,
+            SessionManagementUseCase sessions
     ) {
         return new TransactionalIdentityService(
                 registerUser,
                 verifyEmail,
                 login,
-                refreshSession
+                refreshSession,
+                sessions
         );
     }
 
@@ -183,6 +194,35 @@ public class IdentityConfiguration {
                 "HmacSHA256"
         );
         return NimbusJwtEncoder.withSecretKey(key).build();
+    }
+
+    @Bean
+    JwtDecoder jwtDecoder(
+            AccessTokenProperties properties,
+            RefreshTokenFamilyRepository families
+    ) {
+        SecretKeySpec key = new SecretKeySpec(
+                decodeKey(
+                        properties.signingKey(),
+                        "JWT_SIGNING_KEY"
+                ),
+                "HmacSHA256"
+        );
+        NimbusJwtDecoder decoder = NimbusJwtDecoder
+                .withSecretKey(key)
+                .macAlgorithm(MacAlgorithm.HS256)
+                .build();
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                JwtValidators.createDefaultWithIssuer(
+                        properties.issuer()
+                ),
+                new SessionJwtValidator(
+                        properties.audience(),
+                        families,
+                        Clock.systemUTC()
+                )
+        ));
+        return decoder;
     }
 
     @Bean
@@ -251,6 +291,16 @@ public class IdentityConfiguration {
                 users,
                 accessTokens,
                 properties.maximumGenerations(),
+                Clock.systemUTC()
+        );
+    }
+
+    @Bean
+    SessionManagementUseCase sessionManagementUseCase(
+            RefreshTokenFamilyRepository families
+    ) {
+        return new SessionManagementUseCase(
+                families,
                 Clock.systemUTC()
         );
     }

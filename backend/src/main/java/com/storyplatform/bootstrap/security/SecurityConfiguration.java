@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration(proxyBeanMethods = false)
@@ -24,8 +25,14 @@ public class SecurityConfiguration {
                         "/auth/register",
                         "/auth/email/verify",
                         "/auth/login",
-                        "/auth/refresh"
+                        "/auth/refresh",
+                        "/auth/logout",
+                        "/auth/sessions",
+                        "/auth/sessions/*"
                 ))
+                .oauth2ResourceServer(resourceServer -> resourceServer
+                        .jwt(Customizer.withDefaults())
+                        .authenticationEntryPoint(problemHandler))
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(problemHandler)
                         .accessDeniedHandler(problemHandler))
@@ -45,6 +52,11 @@ public class SecurityConfiguration {
                                 "/auth/login",
                                 "/auth/refresh"
                         ).permitAll()
+                        .requestMatchers(
+                                "/auth/logout",
+                                "/auth/sessions",
+                                "/auth/sessions/*"
+                        ).authenticated()
                         .anyRequest().denyAll())
                 .build();
     }

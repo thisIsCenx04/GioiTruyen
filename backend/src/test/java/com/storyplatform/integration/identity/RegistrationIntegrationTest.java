@@ -32,6 +32,8 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mongodb.MongoDBContainer;
@@ -44,12 +46,15 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.matchesPattern;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -97,6 +102,9 @@ class RegistrationIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private JwtDecoder jwtDecoder;
 
     @BeforeEach
     void resetUsers() {
@@ -210,6 +218,70 @@ class RegistrationIntegrationTest {
                 .isEqualTo(
                         MongoRefreshTokenFamilyRepository.REUSE_REASON
                 );
+    }
+
+    @Test
+    void userCanListRevokeRemoteAllAndCurrentSessions()
+            throws Exception {
+        insertActiveUser();
+        mockMvc.perform(loginRequest()).andExpect(status().isOk());
+        var secondLogin = mockMvc.perform(loginRequest())
+                .andExpect(status().isOk())
+                .andReturn();
+        String access = objectMapper.readTree(
+                secondLogin.getResponse().getContentAsString()
+        ).get("accessToken").asText();
+        Jwt decodedAccess = jwtDecoder.decode(access);
+        String currentSessionId = decodedAccess.getClaimAsString("sid");
+        String remoteSessionId = refreshFamilies.findActiveByUser(
+                        "active-user",
+                        decodedAccess.getIssuedAt().minusSeconds(1)
+                ).stream()
+                .map(RefreshTokenFamilyRepository.SessionRecord::id)
+                .filter(id -> !id.equals(currentSessionId))
+                .findFirst()
+                .orElseThrow();
+
+        mockMvc.perform(get("/auth/sessions")
+                        .header("Authorization", "Bearer " + access))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sessions.length()").value(2))
+                .andExpect(jsonPath("$.sessions[*].current").value(
+                        containsInAnyOrder(true, false)
+                ));
+
+        mockMvc.perform(delete("/auth/sessions/{id}", remoteSessionId)
+                        .header("Authorization", "Bearer " + access))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(get("/auth/sessions")
+                        .header("Authorization", "Bearer " + access))
+                .andExpect(jsonPath("$.sessions.length()").value(1));
+
+        mockMvc.perform(delete("/auth/sessions")
+                        .header("Authorization", "Bearer " + access))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(get("/auth/sessions")
+                        .header("Authorization", "Bearer " + access))
+                .andExpect(status().isUnauthorized());
+
+        var thirdLogin = mockMvc.perform(loginRequest())
+                .andExpect(status().isOk())
+                .andReturn();
+        String thirdAccess = objectMapper.readTree(
+                thirdLogin.getResponse().getContentAsString()
+        ).get("accessToken").asText();
+        mockMvc.perform(post("/auth/logout")
+                        .header(
+                                "Authorization",
+                                "Bearer " + thirdAccess
+                        ))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(get("/auth/sessions")
+                        .header(
+                                "Authorization",
+                                "Bearer " + thirdAccess
+                        ))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -370,5 +442,34 @@ class RegistrationIntegrationTest {
                     500
             );
         });
+    }
+
+    private void insertActiveUser() {
+        Instant now = Instant.parse("2026-07-24T00:00:00Z");
+        mongoTemplate.insert(new MongoUserAccountDocument(
+                "active-user",
+                "reader@example.com",
+                passwordHasher.hash("correct horse battery staple"),
+                Set.of(GlobalRole.USER),
+                UserState.ACTIVE,
+                1,
+                "2026-07-24",
+                now,
+                now,
+                now,
+                0L
+        ));
+    }
+
+    private static org.springframework.test.web.servlet
+            .request.MockHttpServletRequestBuilder loginRequest() {
+        return post("/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                          "email": "reader@example.com",
+                          "password": "correct horse battery staple"
+                        }
+                        """);
     }
 }

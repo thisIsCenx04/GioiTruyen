@@ -32,7 +32,8 @@ class RefreshSessionUseCaseTest {
                     tokens,
                     families,
                     users,
-                    account -> new AccessTokenIssuer.IssuedAccessToken(
+                    (account, sessionId) ->
+                            new AccessTokenIssuer.IssuedAccessToken(
                             "new.access.token",
                             600
                     ),
@@ -164,6 +165,42 @@ class RefreshSessionUseCaseTest {
         ) {
             revokedFamily = familyId;
             revokeReason = reason;
+        }
+
+        @Override
+        public boolean revokeOwned(
+                String familyId,
+                String userId,
+                Instant revokedAt,
+                String reason
+        ) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public long revokeAllOwned(
+                String userId,
+                Instant revokedAt,
+                String reason
+        ) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public java.util.List<SessionRecord> findActiveByUser(
+                String userId,
+                Instant now
+        ) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public boolean isActiveOwned(
+                String familyId,
+                String userId,
+                Instant now
+        ) {
+            return false;
         }
     }
 

@@ -272,6 +272,82 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /auth/logout:
+    post:
+      operationId: logout
+      summary: Revoke the current session
+      tags:
+        - Identity
+      responses:
+        "204":
+          description: The current session is revoked or already inactive.
+        "401":
+          description: The access token or session is invalid.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /auth/sessions:
+    get:
+      operationId: listSessions
+      summary: List active sessions with minimal masked metadata
+      tags:
+        - Identity
+      responses:
+        "200":
+          description: Active sessions ordered by recent activity.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionListResponse"
+        "401":
+          description: The access token or session is invalid.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    delete:
+      operationId: revokeAllSessions
+      summary: Revoke all active sessions
+      tags:
+        - Identity
+      responses:
+        "204":
+          description: All owned sessions are revoked.
+        "401":
+          description: The access token or session is invalid.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /auth/sessions/{sessionId}:
+    delete:
+      operationId: revokeSession
+      summary: Revoke one owned session
+      tags:
+        - Identity
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: The owned session is revoked or already inactive.
+        "400":
+          description: The session identifier is malformed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "401":
+          description: The access token or session is invalid.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
 components:
   securitySchemes:
     bearerAuth:
@@ -383,6 +459,41 @@ components:
           minLength: 43
           maxLength: 128
           pattern: '^[A-Za-z0-9_-]+$'
+    SessionListResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - sessions
+      properties:
+        sessions:
+          type: array
+          maxItems: 500
+          items:
+            $ref: "#/components/schemas/Session"
+    Session:
+      type: object
+      additionalProperties: false
+      required:
+        - sessionId
+        - createdAt
+        - lastUsedAt
+        - expiresAt
+        - current
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        lastUsedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        current:
+          type: boolean
     ApplicationInfo:
       type: object
       description: Allowlisted non-sensitive build and application metadata.

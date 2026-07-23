@@ -9,4 +9,15 @@ public interface IdentityService {
     LoginOutcome login(LoginCommand command);
 
     RefreshSessionOutcome refreshSession(String refreshToken);
+
+    java.util.List<SessionView> listSessions(
+            String userId,
+            String currentSessionId
+    );
+
+    void logout(String userId, String currentSessionId);
+
+    void revokeSession(String userId, String sessionId);
+
+    void revokeAllSessions(String userId);
 }
