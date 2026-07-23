@@ -23,7 +23,14 @@ public class SecurityConfiguration {
                         .authenticationEntryPoint(problemHandler)
                         .accessDeniedHandler(problemHandler))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers(
+                                "/actuator/health",
+                                "/actuator/health/liveness",
+                                "/actuator/health/readiness",
+                                "/livez",
+                                "/readyz",
+                                "/actuator/info"
+                        ).permitAll()
                         .anyRequest().denyAll())
                 .build();
     }

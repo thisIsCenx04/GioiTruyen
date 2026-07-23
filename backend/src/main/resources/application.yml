@@ -42,8 +42,15 @@ management:
   endpoint:
     health:
       show-details: never
+      show-components: never
       probes:
         enabled: true
+        add-additional-paths: true
+      group:
+        liveness:
+          include: "livenessState"
+        readiness:
+          include: "readinessState,mongo,redis"
   tracing:
     sampling:
       probability: ${OTEL_TRACES_SAMPLING_PROBABILITY:0.1}

@@ -95,6 +95,16 @@ collector. `OTEL_EXPORTER_OTLP_ENDPOINT` is the collector base URL; configure
 collector authentication through the runtime secret manager, never `.env`
 committed to Git.
 
+## Health probes
+
+`/actuator/health/liveness` (also `/livez`) checks only the process lifecycle;
+it intentionally ignores external systems. `/actuator/health/readiness` (also
+`/readyz`) requires the application state, MongoDB and Redis to be ready.
+Dependency failure returns `503` so the instance stops receiving traffic.
+
+All public health responses hide component names, topology, exception messages
+and details. Do not change `show-details` or `show-components` to `always`.
+
 The application starts deny-by-default. Only Actuator health/info are public
 until Identity and explicit API authorization policies are implemented.
 
