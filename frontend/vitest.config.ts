@@ -6,9 +6,20 @@ export default defineConfig({
     environment: "jsdom",
     globals: false,
     hookTimeout: 5_000,
-    include: ["{apps,packages}/**/*.test.{ts,tsx}"],
+    include: [
+      "{apps,packages}/**/*.test.{ts,tsx}",
+      "test/policy/**/*.test.{ts,tsx}",
+    ],
     mockReset: true,
+    reporters: [
+      "default",
+      ["junit", { outputFile: "test-results/frontend-unit.xml" }],
+    ],
     restoreMocks: true,
+    retry: 0,
+    sequence: {
+      shuffle: false,
+    },
     setupFiles: ["./test/setup.ts"],
     testTimeout: 5_000,
     coverage: {

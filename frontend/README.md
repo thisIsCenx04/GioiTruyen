@@ -17,8 +17,17 @@ Install and verify:
 pnpm install --frozen-lockfile
 pnpm typecheck
 pnpm lint
+pnpm test:policy
+pnpm test:unit
+pnpm test:coverage
 pnpm build
 ```
+
+Test runs are fixed to UTC, never retried, and fail on any unhandled network
+request. `pnpm test:policy:self-test` proves that the policy gate rejects a
+seeded flaky test fixture. After backend and frontend tests have run, use
+`pnpm test:report:merge` to create one JUnit report at
+`test-results/merged-junit.xml`.
 
 Run an application:
 
