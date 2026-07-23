@@ -10,6 +10,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -47,5 +48,22 @@ class SecurityProblemHandlingIntegrationTest {
                 ))
                 .andExpect(jsonPath("$.code").value("ACCESS_DENIED"))
                 .andExpect(jsonPath("$.traceId").value("security-43"));
+    }
+
+    @Test
+    void oversizedJsonIsRejectedBeforeAuthenticationOrControllerDispatch()
+            throws Exception {
+        String body = "\"" + "x".repeat(
+                com.storyplatform.shared.api.ApiRequestLimits
+                        .MAX_REQUEST_BODY_BYTES
+        ) + "\"";
+
+        mockMvc.perform(post("/private-resource")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header(CorrelationId.HEADER_NAME, "security-44")
+                        .content(body))
+                .andExpect(status().isPayloadTooLarge())
+                .andExpect(jsonPath("$.code").value("PAYLOAD_TOO_LARGE"))
+                .andExpect(jsonPath("$.traceId").value("security-44"));
     }
 }

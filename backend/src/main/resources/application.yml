@@ -1,6 +1,9 @@
 spring:
   application:
     name: ${APP_NAME:story-platform}
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
   lifecycle:
     timeout-per-shutdown-phase: 20s
   data:
@@ -9,6 +12,13 @@ spring:
       database: ${MONGODB_DATABASE:story_platform}
     redis:
       url: ${REDIS_URL:redis://127.0.0.1:6379}
+  mvc:
+    problemdetails:
+      enabled: true
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 2MB
 
 server:
   address: ${API_HOST:127.0.0.1}
@@ -20,6 +30,9 @@ server:
     include-message: never
     include-binding-errors: never
     include-stacktrace: never
+  tomcat:
+    max-http-form-post-size: 1MB
+    max-swallow-size: 2MB
 
 management:
   endpoints:
