@@ -1,0 +1,22 @@
+{
+  "name": "@gioitruyen/workspace",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.12.0",
+  "engines": {
+    "node": ">=20.9.0 <27",
+    "pnpm": ">=11.12.0 <12"
+  },
+  "scripts": {
+    "build": "pnpm --filter \"./apps/*\" build",
+    "dev:web": "pnpm --filter @gioitruyen/web dev",
+    "dev:admin": "pnpm --filter @gioitruyen/admin dev",
+    "lint": "pnpm -r --if-present lint",
+    "typecheck": "pnpm -r --if-present typecheck"
+  },
+  "devDependencies": {
+    "eslint": "9.39.2",
+    "eslint-config-next": "16.2.11",
+    "typescript": "5.9.3"
+  }
+}

@@ -1,0 +1,419 @@
+:root {
+  --ink: #111a3a;
+  --ink-soft: #1b2855;
+  --blue: #4e72ff;
+  --coral: #e94b4b;
+  --paper: #f4f7ff;
+  --surface: #ffffff;
+  --text: #161927;
+  --muted: #6c7288;
+  --line: #dce1ef;
+  --serif: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --sans: "Aptos", "Segoe UI Variable", "Segoe UI", sans-serif;
+  --utility: "Aptos Narrow", "Arial Narrow", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--paper);
+  color: var(--text);
+}
+
+body {
+  margin: 0;
+  min-width: 20rem;
+}
+
+body,
+button,
+a {
+  font-family: var(--sans);
+}
+
+a {
+  color: inherit;
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: 0.18rem solid var(--coral);
+  outline-offset: 0.2rem;
+}
+
+.adminShell {
+  display: grid;
+  grid-template-columns: 15.5rem minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.sidebar {
+  background: var(--ink);
+  color: #dce4ff;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 1.7rem 1.2rem;
+  position: sticky;
+  top: 0;
+}
+
+.adminBrand {
+  padding: 0 0.55rem;
+  text-decoration: none;
+}
+
+.mobileBrand {
+  display: none;
+}
+
+.sidebar nav {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 3.8rem;
+}
+
+.sidebar nav p {
+  color: #7785b5;
+  font: 800 0.62rem/1 var(--utility);
+  letter-spacing: 0.12em;
+  margin: 1.5rem 0 0.7rem 0.7rem;
+  text-transform: uppercase;
+}
+
+.sidebar nav a {
+  align-items: center;
+  border-radius: 0.35rem 0.9rem 0.35rem 0.35rem;
+  color: #aeb9db;
+  display: grid;
+  font-size: 0.79rem;
+  font-weight: 650;
+  gap: 0.8rem;
+  grid-template-columns: 1.2rem 1fr;
+  padding: 0.75rem 0.7rem;
+  text-decoration: none;
+}
+
+.sidebar nav a span {
+  color: #7e91d3;
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  text-align: center;
+}
+
+.sidebar nav a:hover,
+.sidebar nav a.active {
+  background: var(--ink-soft);
+  color: white;
+}
+
+.sidebar nav a.active {
+  box-shadow: inset 0.18rem 0 var(--coral);
+}
+
+.operator {
+  align-items: center;
+  border-top: 0.06rem solid rgb(255 255 255 / 12%);
+  display: flex;
+  gap: 0.7rem;
+  margin-top: auto;
+  padding: 1.2rem 0.55rem 0;
+}
+
+.operator > span {
+  align-items: center;
+  background: #31427a;
+  border-radius: 50%;
+  display: flex;
+  font: 800 0.65rem/1 var(--utility);
+  height: 2rem;
+  justify-content: center;
+  width: 2rem;
+}
+
+.operator strong,
+.operator small {
+  display: block;
+}
+
+.operator strong {
+  color: white;
+  font-size: 0.75rem;
+}
+
+.operator small {
+  color: #8695c7;
+  font-size: 0.65rem;
+  margin-top: 0.2rem;
+}
+
+.workspace {
+  margin: 0 auto;
+  max-width: 90rem;
+  padding: 2rem clamp(1.25rem, 4vw, 4rem) 5rem;
+  width: 100%;
+}
+
+.adminHeader {
+  align-items: end;
+  display: flex;
+  justify-content: space-between;
+}
+
+.adminHeader p,
+.sectionLabel {
+  color: var(--muted);
+  font: 800 0.65rem/1 var(--utility);
+  letter-spacing: 0.1em;
+  margin: 0 0 0.55rem;
+  text-transform: uppercase;
+}
+
+.adminHeader h1 {
+  font: 650 clamp(2.2rem, 5vw, 3.7rem)/1 var(--serif);
+  letter-spacing: -0.045em;
+  margin: 0;
+}
+
+.headerActions {
+  display: flex;
+  gap: 0.7rem;
+}
+
+.headerActions button,
+.headerActions a {
+  border: 0;
+  border-radius: 0.35rem 0.8rem 0.35rem 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 750;
+  padding: 0.8rem 1rem;
+  text-decoration: none;
+}
+
+.headerActions button {
+  background: white;
+  color: var(--muted);
+}
+
+.headerActions a {
+  background: var(--ink);
+  color: white;
+}
+
+kbd {
+  background: #eef1f8;
+  border-radius: 0.25rem;
+  font: inherit;
+  margin-left: 1.4rem;
+  padding: 0.2rem 0.35rem;
+}
+
+.signalStrip {
+  align-items: center;
+  background: #e3f7ef;
+  border-left: 0.2rem solid #198b67;
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2.5rem;
+  padding: 0.9rem 1rem;
+}
+
+.signalStrip > div {
+  align-items: center;
+  display: flex;
+  gap: 0.8rem;
+}
+
+.signalStrip p {
+  color: #3f6d5d;
+  font-size: 0.72rem;
+  margin: 0;
+}
+
+.signalStrip strong {
+  color: #165943;
+  display: block;
+  font-size: 0.76rem;
+  margin-bottom: 0.12rem;
+}
+
+.signalMark {
+  background: #198b67;
+  border: 0.25rem solid #bcebd9;
+  border-radius: 50%;
+  height: 0.9rem;
+  width: 0.9rem;
+}
+
+.signalStrip a {
+  color: #165943;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-underline-offset: 0.2rem;
+}
+
+.metrics {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 1rem;
+}
+
+.metrics article {
+  background: white;
+  border-top: 0.18rem solid var(--blue);
+  padding: 1.25rem;
+}
+
+.metrics article:nth-child(2) {
+  border-color: var(--coral);
+}
+
+.metrics article:nth-child(3) {
+  border-color: #198b79;
+}
+
+.metrics p {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.metrics strong {
+  display: block;
+  font: 650 2.5rem/1 var(--serif);
+  margin: 1.2rem 0 0.5rem;
+}
+
+.metrics small {
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+
+.queue {
+  background: white;
+  margin-top: 1rem;
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+.queueHeading {
+  align-items: end;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1.7rem;
+}
+
+.queueHeading h2 {
+  font: 650 1.75rem/1 var(--serif);
+  margin: 0;
+}
+
+.queueHeading > a {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 750;
+  text-underline-offset: 0.2rem;
+}
+
+.queueTable {
+  border-top: 0.06rem solid var(--line);
+}
+
+.tableHeader,
+.tableRow {
+  align-items: center;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(14rem, 1.8fr) minmax(8rem, 1fr) 5rem 7.5rem;
+  min-width: 43rem;
+}
+
+.tableHeader {
+  color: var(--muted);
+  font: 800 0.6rem/1 var(--utility);
+  letter-spacing: 0.08em;
+  padding: 0.8rem;
+  text-transform: uppercase;
+}
+
+.tableRow {
+  border-top: 0.06rem solid var(--line);
+  font-size: 0.74rem;
+  padding: 1rem 0.8rem;
+  text-decoration: none;
+}
+
+.tableRow:hover {
+  background: #f8f9fd;
+}
+
+.tableRow strong {
+  font-size: 0.76rem;
+}
+
+.tableRow > span,
+.tableRow time {
+  color: var(--muted);
+}
+
+@media (max-width: 64rem) {
+  .adminShell {
+    grid-template-columns: 4.5rem minmax(0, 1fr);
+  }
+
+  .sidebar {
+    align-items: center;
+    padding-inline: 0.55rem;
+  }
+
+  .desktopBrand,
+  .sidebar nav p,
+  .sidebar nav a:not(.active)::after,
+  .sidebar nav a {
+    font-size: 0;
+  }
+
+  .mobileBrand {
+    display: block;
+  }
+
+  .sidebar nav a {
+    display: flex;
+    justify-content: center;
+    padding: 0.75rem;
+  }
+
+  .sidebar nav a span {
+    font-size: 1.05rem;
+  }
+
+  .operator div {
+    display: none;
+  }
+
+  .queueTable {
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 44rem) {
+  .adminHeader {
+    align-items: start;
+    gap: 1.5rem;
+  }
+
+  .headerActions button {
+    display: none;
+  }
+
+  .signalStrip a {
+    display: none;
+  }
+
+  .metrics {
+    grid-template-columns: 1fr;
+  }
+}

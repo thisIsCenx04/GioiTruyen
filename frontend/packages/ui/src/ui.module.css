@@ -1,0 +1,144 @@
+.brand {
+  align-items: center;
+  color: #161927;
+  display: inline-flex;
+  font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  gap: 0.65rem;
+  letter-spacing: -0.02em;
+}
+
+.brand[data-inverse] {
+  color: #f4f7ff;
+}
+
+.brandSeal {
+  align-items: center;
+  background: #e94b4b;
+  border-radius: 0.15rem 0.55rem 0.15rem 0.15rem;
+  color: #fff;
+  display: inline-flex;
+  font-family: "Aptos Narrow", "Arial Narrow", sans-serif;
+  font-size: 0.78rem;
+  font-weight: 800;
+  height: 1.8rem;
+  justify-content: center;
+  letter-spacing: 0;
+  transform: rotate(-3deg);
+  width: 1.8rem;
+}
+
+.status {
+  align-items: center;
+  background: #edf0f8;
+  border-radius: 999px;
+  color: #4e5368;
+  display: inline-flex;
+  font: 700 0.7rem/1 "Aptos", "Segoe UI", sans-serif;
+  gap: 0.42rem;
+  letter-spacing: 0.06em;
+  padding: 0.48rem 0.66rem;
+  text-transform: uppercase;
+}
+
+.statusDot {
+  background: currentColor;
+  border-radius: 50%;
+  height: 0.42rem;
+  width: 0.42rem;
+}
+
+.status[data-tone="active"] {
+  background: #dff8ed;
+  color: #167651;
+}
+
+.status[data-tone="attention"] {
+  background: #fff0e3;
+  color: #aa4f1e;
+}
+
+.storyCard {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(6.4rem, 0.72fr) minmax(0, 1fr);
+}
+
+.storyCover {
+  align-items: flex-end;
+  aspect-ratio: 4 / 5;
+  background: #4e72ff;
+  border-radius: 0.45rem 1.4rem 0.45rem 0.45rem;
+  box-shadow: 0 1.15rem 2rem rgb(32 45 91 / 18%);
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  overflow: hidden;
+  padding: 0.8rem;
+  position: relative;
+  text-decoration: none;
+}
+
+.storyCover::before {
+  background: linear-gradient(120deg, transparent 0 44%, rgb(255 255 255 / 24%) 45% 47%, transparent 48%);
+  content: "";
+  inset: 0;
+  position: absolute;
+}
+
+.storyCover[data-tone="coral"] {
+  background: #e94b4b;
+}
+
+.storyCover[data-tone="jade"] {
+  background: #198b79;
+}
+
+.coverMonogram {
+  font: 700 clamp(2.6rem, 6vw, 5rem)/0.8 "Iowan Old Style", Georgia, serif;
+  opacity: 0.88;
+}
+
+.coverChapter {
+  font: 800 0.65rem/1 "Aptos Narrow", "Arial Narrow", sans-serif;
+  letter-spacing: 0.08em;
+  position: relative;
+  text-transform: uppercase;
+}
+
+.storyBody {
+  align-self: end;
+  padding-bottom: 0.35rem;
+}
+
+.storyBody h3 {
+  font: 700 clamp(1.25rem, 2.2vw, 1.7rem)/1.08 "Iowan Old Style", Georgia, serif;
+  margin: 0.35rem 0 0.5rem;
+}
+
+.storyBody a {
+  color: inherit;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.18em;
+}
+
+.storyBody p {
+  color: #686d82;
+  font-size: 0.86rem;
+  margin: 0;
+}
+
+.storyEyebrow {
+  color: #4e72ff !important;
+  font-size: 0.66rem !important;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 34rem) {
+  .storyCard {
+    grid-template-columns: 7.5rem minmax(0, 1fr);
+  }
+}
