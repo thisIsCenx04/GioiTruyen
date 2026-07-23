@@ -1,0 +1,15 @@
+# Default owner
+* @thisIsCenx04
+
+# Security and repository governance
+/.github/ @thisIsCenx04
+/.gitignore @thisIsCenx04
+/SECURITY.md @thisIsCenx04
+/.env.example @thisIsCenx04
+/scripts/ @thisIsCenx04
+
+# Sensitive application and infrastructure areas
+/backend/src/**/security/ @thisIsCenx04
+/backend/src/**/monetization/ @thisIsCenx04
+/backend/src/**/identity/ @thisIsCenx04
+/deploy/ @thisIsCenx04
