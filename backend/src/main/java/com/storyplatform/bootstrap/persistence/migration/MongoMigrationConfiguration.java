@@ -67,6 +67,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    TeamInvitationIndexes teamInvitationIndexes() {
+        return new TeamInvitationIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

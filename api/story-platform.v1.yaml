@@ -683,6 +683,114 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /teams/{teamId}/members:
+    get:
+      operationId: listTeamMembers
+      summary: List memberships as an active Team owner
+      tags: [Teams]
+      parameters:
+        - $ref: "#/components/parameters/TeamId"
+      responses:
+        "200":
+          description: Team memberships
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TeamMembership"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: inviteTeamMember
+      summary: Idempotently invite an active user as a Team member
+      tags: [Teams]
+      parameters:
+        - $ref: "#/components/parameters/TeamId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddTeamMemberRequest"
+      responses:
+        "201":
+          description: Invited membership created or replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamMembership"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Duplicate membership or invalid request replay
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /teams/{teamId}/members/{userId}:
+    delete:
+      operationId: removeTeamMember
+      summary: Revoke a member while preserving the final owner
+      tags: [Teams]
+      parameters:
+        - $ref: "#/components/parameters/TeamId"
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: version
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 0
+      responses:
+        "204":
+          description: Membership revoked
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The final owner cannot be removed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /team-invitations/{token}/accept:
+    post:
+      operationId: acceptTeamInvitation
+      summary: Idempotently activate an invitation for its target user
+      tags: [Teams]
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 43
+            maxLength: 128
+            pattern: "^[A-Za-z0-9._-]+$"
+      responses:
+        "200":
+          description: Active membership
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamMembership"
+        "404":
+          $ref: "#/components/responses/NotFound"
 components:
   securitySchemes:
     bearerAuth:
@@ -698,6 +806,15 @@ components:
       schema:
         type: string
         format: uuid
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 128
+        pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]+$"
   schemas:
     RegistrationRequest:
       type: object
@@ -1115,6 +1232,63 @@ components:
         version:
           type: integer
           format: int64
+    AddTeamMemberRequest:
+      type: object
+      additionalProperties: false
+      required: [userId, permissions]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        permissions:
+          type: array
+          minItems: 1
+          maxItems: 6
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+              - story:create
+              - story:edit
+              - story:submit
+              - story:publish
+              - analytics:read
+              - finance:request
+    TeamMembership:
+      type: object
+      additionalProperties: false
+      required:
+        - teamId
+        - userId
+        - role
+        - permissions
+        - state
+        - joinedAt
+        - version
+      properties:
+        teamId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [OWNER, MEMBER]
+        permissions:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        state:
+          type: string
+          enum: [INVITED, ACTIVE, REVOKED]
+        joinedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
     ApplicationInfo:
       type: object
       description: Allowlisted non-sensitive build and application metadata.
@@ -1166,6 +1340,12 @@ components:
             $ref: "#/components/schemas/Problem"
     Unauthorized:
       description: The access token, session, or MFA proof is invalid.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    Forbidden:
+      description: The authenticated actor lacks the required Team ownership.
       content:
         application/problem+json:
           schema:

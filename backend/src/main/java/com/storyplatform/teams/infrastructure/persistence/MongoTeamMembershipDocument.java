@@ -32,4 +32,17 @@ public record MongoTeamMembershipDocument(
                 membership.version()
         );
     }
+
+    TeamMembership toDomain() {
+        return new TeamMembership(
+                id,
+                teamId,
+                userId,
+                role,
+                permissions,
+                state,
+                joinedAt,
+                version
+        );
+    }
 }

@@ -85,6 +85,11 @@ public class SecurityConfiguration {
                                 HttpMethod.PATCH,
                                 "/teams/*"
                         ).authenticated()
+                        .requestMatchers(
+                                "/teams/*/members",
+                                "/teams/*/members/*",
+                                "/team-invitations/*/accept"
+                        ).authenticated()
                         .anyRequest().denyAll())
                 .build();
     }
