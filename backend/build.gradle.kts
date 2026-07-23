@@ -36,6 +36,7 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-security")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
+	implementation("org.bouncycastle:bcprov-jdk18on:1.84")
 	runtimeOnly("io.micrometer:micrometer-registry-otlp")
 	testImplementation("com.tngtech.archunit:archunit:1.4.2")
 	testImplementation("org.springframework.boot:spring-boot-starter-actuator-test")

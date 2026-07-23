@@ -75,6 +75,12 @@ management:
         step: ${OTEL_METRICS_EXPORT_INTERVAL:30s}
 
 app:
+  identity:
+    registration:
+      current-consent-version: ${REGISTRATION_CONSENT_VERSION:2026-07-24}
+      argon2-memory-kb: ${ARGON2_MEMORY_KB:19456}
+      argon2-iterations: ${ARGON2_ITERATIONS:2}
+      argon2-parallelism: ${ARGON2_PARALLELISM:1}
   redis:
     application-prefix: ${REDIS_KEY_PREFIX:gioitruyen}
     key-version: ${REDIS_KEY_VERSION:v1}

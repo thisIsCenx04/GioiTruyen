@@ -32,6 +32,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    UserIndexes userIndexes() {
+        return new UserIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

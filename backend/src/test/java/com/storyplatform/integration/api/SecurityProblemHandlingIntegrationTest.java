@@ -66,4 +66,28 @@ class SecurityProblemHandlingIntegrationTest {
                 .andExpect(jsonPath("$.code").value("PAYLOAD_TOO_LARGE"))
                 .andExpect(jsonPath("$.traceId").value("security-44"));
     }
+
+    @Test
+    void anonymousRegistrationReachesValidationWithoutCsrfToken()
+            throws Exception {
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header(
+                                CorrelationId.HEADER_NAME,
+                                "security-registration"
+                        )
+                        .content("""
+                                {
+                                  "email": "reader@example.com",
+                                  "password": "correct horse battery staple",
+                                  "acceptedTerms": false,
+                                  "consentVersion": "2026-07-24"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code")
+                        .value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.traceId")
+                        .value("security-registration"));
+    }
 }
