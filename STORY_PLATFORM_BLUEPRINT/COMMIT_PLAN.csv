@@ -1,0 +1,131 @@
+Sequence,Phase,Branch,Planned commit,Work items,Depends on,Status
+C001,Discovery,docs/ARC-001-module-boundaries,docs(architecture): define modular monolith boundaries,ARC-001,,Planned
+C002,Discovery,docs/ARC-002-auth-contract,docs(auth): define web and mobile token lifecycle,ARC-002,C001,Planned
+C003,Discovery,docs/ARC-003-content-media,docs(media): define content and Cloudinary policy,ARC-003,C001,Planned
+C004,Discovery,docs/ARC-004-view-pipeline,docs(analytics): define valid-view pipeline,ARC-004,C001,Planned
+C005,Discovery,docs/ARC-005-ledger,docs(ledger): define double-entry invariants,ARC-005,C001,Planned
+C006,Discovery,docs/ARC-006-team-permissions,docs(teams): define team-only publishing permissions,ARC-006,C001,Planned
+C007,Discovery,docs/QA-001-openapi-baseline,docs(api): baseline versioned OpenAPI contract,QA-001,C001;C002;C006,Planned
+C008,Discovery,chore/repository-baseline,chore(repo): add workspace governance baseline,PLT-008,C001,Planned
+C009,Base-A,feat/PLT-001-spring-bootstrap,feat(platform): bootstrap Spring Boot modular monolith,PLT-001,C008,Planned
+C010,Base-A,test/PLT-001-architecture-rules,test(architecture): enforce clean layer dependencies,PLT-001,C009,Planned
+C010A,Base-A,test/base-java-unit-stack,test(base): configure Java unit-test stack and coverage,BASE-001,C009,Planned
+C010B,Base-A,test/base-java-fixtures,test(base): add deterministic domain test fixtures,BASE-002,C010A,Planned
+C011,Base-A,feat/frontend-next-workspace,feat(web): bootstrap Next.js web and admin apps,PLT-001,C008,Planned
+C011A,Base-A,test/base-web-unit-stack,test(web): configure Vitest Testing Library and MSW,BASE-003,C011,Planned
+C011B,Base-A,test/base-test-conventions,test(base): enforce deterministic test conventions,BASE-004,C010A;C011A,Planned
+C012,Base-A,feat/PLT-002-problem-details,feat(api): add problem details and correlation ids,PLT-002,C009,Planned
+C013,Base-A,feat/PLT-003-validation,feat(api): enforce request validation and limits,PLT-003,C012,Planned
+C014,Base-A,feat/PLT-004-mongodb,feat(persistence): configure MongoDB replica-set access,PLT-004,C009,Planned
+C015,Base-A,feat/PLT-004-migrations,feat(persistence): add document and index migrations,PLT-004,C014,Planned
+C016,Base-A,feat/PLT-005-outbox-model,feat(events): persist transactional outbox messages,PLT-005,C014,Planned
+C017,Base-A,feat/PLT-005-outbox-worker,feat(events): process outbox with lease retry and dlq,PLT-005,C016,Planned
+C018,Base-A,feat/PLT-006-observability,feat(observability): add OpenTelemetry logs metrics traces,PLT-006,C009;C014,Planned
+C019,Base-A,feat/PLT-007-health,feat(platform): add safe health and readiness probes,PLT-007,C014,Planned
+C020,Base-A,ci/PLT-008-quality-gates,ci: enforce build test lint and OpenAPI gates,PLT-008;QA-001,C007;C010;C011B,Planned
+C021,Base-A,ci/PLT-008-security-gates,ci(security): add secret SAST SCA IaC and image scans,PLT-008,C020,Planned
+C022,Base-A,feat/redis-building-blocks,feat(cache): add Redis namespaces and resilience policy,INF-004,C009,Planned
+C023,Base-B,infra/INF-001-environments,feat(infra): provision isolated dev and staging,INF-001,C021,Planned
+C024,Base-B,infra/INF-003-mongodb,feat(infra): provision managed MongoDB with PITR,INF-003,C023,Planned
+C025,Base-B,infra/INF-004-redis,feat(infra): provision private managed Redis,INF-004,C023,Planned
+C026,Base-B,infra/INF-005-cloudinary,feat(infra): configure restricted Cloudinary environments,INF-005,C023,Planned
+C027,Base-B,infra/INF-002-cloudflare,feat(edge): configure Cloudflare TLS WAF and rate limits,INF-002,C023,Planned
+C028,Base-B,ci/deploy-staging,ci(cd): deploy signed immutable artifacts to staging,INF-001;PLT-008,C023;C024;C025;C026;C027,Planned
+C029,Identity,feat/AUTH-001-registration,feat(auth): register pending users,AUTH-001,C013;C014;C010B,Planned
+C030,Identity,feat/AUTH-001-email-verification,feat(auth): verify email with single-use tokens,AUTH-001,C017;C029,Planned
+C031,Identity,feat/AUTH-002-login,feat(auth): authenticate with Argon2id and risk limits,AUTH-002,C022;C029,Planned
+C032,Identity,feat/AUTH-003-refresh-rotation,feat(auth): rotate refresh token families,AUTH-003,C031,Planned
+C033,Identity,feat/AUTH-004-session-management,feat(auth): revoke current and remote sessions,AUTH-004,C032,Planned
+C034,Identity,feat/AUTH-005-password-reset,feat(auth): implement safe password reset,AUTH-005,C030;C033,Planned
+C035,Identity,feat/AUTH-006-mfa,feat(auth): enforce MFA for privileged users,AUTH-006,C033,Planned
+C036,Identity,feat/auth-reauth,feat(auth): issue scoped reauthentication grants,AUTH-006,C035,Planned
+C037,Identity,feat/web-auth-ui,feat(web): add accessible authentication journeys,AUTH-001;AUTH-002;AUTH-003;AUTH-004;AUTH-005;AUTH-006,C030;C031;C032;C033;C034;C035;C011A,Planned
+C038,Teams,feat/TEAM-001-profile,feat(profile): add private and public user profiles,TEAM-001,C033,Planned
+C039,Teams,feat/TEAM-001-team-crud,feat(teams): create and manage teams,TEAM-001,C038,Planned
+C040,Teams,feat/TEAM-002-membership,feat(teams): let owners add and invite members,TEAM-002,C017;C039,Planned
+C041,Teams,feat/TEAM-002-permissions,feat(teams): manage versioned member permissions,TEAM-002,C022;C040,Planned
+C042,Teams,feat/TEAM-003-follow,feat(teams): follow teams idempotently,TEAM-003,C039,Planned
+C043,Teams,feat/admin-authorization-policy,feat(security): centralize moderator and admin policies,QA-002;AUTH-006,C035;C041,Planned
+C044,Teams,feat/web-team-workspace,feat(web): add team and membership workspace,TEAM-001;TEAM-002;TEAM-003,C039;C040;C041;C042,Planned
+C045,Catalog,feat/CAT-001-taxonomy,feat(catalog): add grouped taxonomy,CAT-001,C015,Planned
+C046,Catalog,feat/CAT-002-story-model,feat(catalog): add story metadata and indexes,CAT-002,C015;C045,Planned
+C047,Catalog,feat/CAT-002-story-api,feat(catalog): expose public story catalog,CAT-002,C046,Planned
+C048,Catalog,feat/CAT-003-chapter-list,feat(catalog): expose published chapter lists,CAT-003,C046,Planned
+C049,Catalog,feat/CAT-004-home-model,feat(discovery): build versioned home read models,CAT-004,C017;C047,Planned
+C050,Catalog,feat/CAT-005-atlas-search,feat(search): add Atlas Search and facets,CAT-005,C046,Planned
+C051,Catalog,feat/CAT-005-suggestions,feat(search): add bounded autocomplete suggestions,CAT-005,C050,Planned
+C052,Catalog,feat/web-public-catalog,feat(web): render home catalog search and story pages,CAT-002;CAT-003;CAT-004;CAT-005,C047;C048;C049;C050;C051,Planned
+C053,Catalog,feat/edge-public-cache,feat(edge): cache versioned public catalog safely,INF-002;CAT-004,C027;C049;C052,Planned
+C054,Publishing,feat/MED-001-upload-signature,feat(media): issue restricted Cloudinary upload signatures,MED-001,C026;C036;C041,Planned
+C055,Publishing,feat/MED-002-webhook,feat(media): verify Cloudinary webhook events,MED-002,C054,Planned
+C056,Publishing,feat/MED-002-processing,feat(media): moderate transform and publish assets,MED-002,C017;C055,Planned
+C057,Publishing,feat/PUB-001-story-draft,feat(publishing): create team-owned story drafts,PUB-001,C041;C045;C046,Planned
+C058,Publishing,feat/PUB-001-story-update,feat(publishing): update drafts with optimistic locking,PUB-001,C057,Planned
+C059,Publishing,feat/PUB-002-chapter-draft,feat(publishing): create immutable chapter revisions,PUB-002,C056;C058,Planned
+C060,Publishing,feat/PUB-003-submit,feat(publishing): submit frozen revisions for review,PUB-003,C059,Planned
+C061,Publishing,feat/PUB-003-automated-checks,feat(publishing): run automated content prechecks,PUB-003,C056;C060,Planned
+C062,Publishing,feat/MOD-002-review-queue,feat(moderation): claim publishing reviews safely,MOD-002,C060,Planned
+C063,Publishing,feat/MOD-002-review-decision,feat(moderation): decide publishing reviews with audit,MOD-002;PUB-003,C043;C062,Planned
+C064,Publishing,feat/PUB-004-scheduling,feat(publishing): schedule approved revisions,PUB-004,C063,Planned
+C065,Publishing,feat/PUB-004-publish-worker,feat(publishing): publish due revisions exactly once,PUB-004;PLT-005,C017;C064,Planned
+C066,Publishing,feat/PUB-004-unpublish,feat(publishing): hide suspend and reinstate content,PUB-004;MOD-002,C063;C065,Planned
+C067,Publishing,feat/publishing-propagation,feat(publishing): propagate search cache and notifications,PUB-004;CAT-004,C049;C050;C053;C065,Planned
+C068,Publishing,feat/web-publishing-workspace,feat(web): add story and chapter editor workflow,PUB-001;PUB-002;PUB-003;PUB-004,C057;C058;C059;C060;C064;C065,Planned
+C069,Publishing,feat/admin-review-ui,feat(admin): add moderation review console,MOD-002,C062;C063,Planned
+C070,Reading,feat/READ-001-chapter-detail,feat(reading): serve revisioned published chapters,READ-001,C048;C065,Planned
+C071,Reading,feat/READ-002-progress,feat(reading): synchronize reading progress,READ-002,C070,Planned
+C072,Reading,feat/READ-002-history,feat(reading): add cursor-based history controls,READ-002,C071,Planned
+C073,Reading,feat/READ-003-session,feat(reading): start privacy-bounded reading sessions,READ-003,C070,Planned
+C074,Reading,feat/READ-004-heartbeat,feat(reading): ingest sequenced heartbeat batches,READ-004,C073,Planned
+C075,Reading,feat/READ-004-complete,feat(reading): complete sessions asynchronously,READ-004,C017;C074,Planned
+C076,Reading,feat/web-reader,feat(web): add accessible reader and progress sync,READ-001;READ-002;READ-003;READ-004,C070;C071;C072;C073;C074;C075,Planned
+C077,Community,feat/COM-001-favorites,feat(community): add idempotent favorites and follows,COM-001,C033;C047,Planned
+C078,Community,feat/COM-002-comments,feat(community): add safe comment lifecycle,COM-002,C033;C070,Planned
+C079,Community,feat/COM-003-reactions,feat(community): add idempotent reactions,COM-003,C033;C078,Planned
+C080,Community,feat/MOD-001-reports,feat(moderation): create deduplicated reports,MOD-001,C054;C078,Planned
+C081,Community,feat/MOD-003-appeals,feat(moderation): add appeal workflow,MOD-003,C063;C080,Planned
+C082,Community,feat/MOD-004-copyright,feat(moderation): add copyright takedown cases,MOD-004,C056;C063,Planned
+C083,Analytics,feat/NOT-001-inbox,feat(notifications): add cursor-based notification inbox,NOT-001,C017;C033,Planned
+C084,Analytics,feat/NOT-002-delivery,feat(notifications): deliver consent-aware email and push,NOT-002,C083,Planned
+C085,Analytics,feat/VIEW-001-events,feat(analytics): store bucketed reading events,VIEW-001,C075,Planned
+C086,Analytics,feat/VIEW-002-validation,feat(analytics): classify valid reading views,VIEW-002,C085,Planned
+C087,Analytics,feat/VIEW-003-fraud,feat(analytics): score suspicious traffic for review,VIEW-003,C080;C086,Planned
+C088,Analytics,feat/VIEW-004-aggregates,feat(analytics): build hourly and daily aggregates,VIEW-004,C086,Planned
+C089,Analytics,feat/CAT-006-rankings,feat(discovery): serve precomputed story and team rankings,CAT-006,C088,Planned
+C090,Analytics,feat/web-team-analytics,feat(web): add team view and quality analytics,VIEW-004,C041;C088,Planned
+C091,Monetization,feat/MON-001-ledger-model,feat(ledger): add immutable balanced transactions,MON-001,C005;C014;C016,Planned
+C092,Monetization,feat/MON-001-balance,feat(wallet): project available and reserved xu balances,MON-001,C091,Planned
+C093,Monetization,feat/MON-002-discount-config,feat(topup): add versioned discount configuration,MON-002,C035;C036;C043;C092,Planned
+C094,Monetization,feat/MON-002-topup-request,feat(topup): create QR top-up requests,MON-002,C093,Planned
+C095,Monetization,feat/MON-003-topup-webhook,feat(topup): ingest signed payment events,MON-003,C094,Planned
+C096,Monetization,feat/MON-003-topup-match,feat(topup): match and credit automated top-ups,MON-003,C091;C095,Planned
+C097,Monetization,feat/MON-004-manual-topup,feat(topup): approve failed automation manually,MON-004,C036;C096,Planned
+C098,Monetization,feat/MON-004-topup-reject,feat(topup): reject and audit unmatched top-ups,MON-004,C097,Planned
+C099,Monetization,feat/MON-005-donation,feat(donation): transfer xu atomically to teams,MON-005,C041;C091;C092,Planned
+C100,Monetization,feat/MON-005-donation-policy,feat(moderation): block external donation QR content,MON-005;MOD-001,C061;C080;C099,Planned
+C101,Monetization,feat/MON-006-rewards,feat(rewards): settle versioned reward periods,MON-006,C088;C091,Planned
+C102,Monetization,feat/MON-007-referrals,feat(referrals): attribute referrals with fraud controls,MON-007,C087;C101,Planned
+C103,Monetization,feat/MON-008-withdrawal-request,feat(withdrawal): reserve xu for team withdrawals,MON-008,C036;C041;C092,Planned
+C104,Monetization,feat/MON-008-withdrawal-fee,feat(withdrawal): enforce fee boundaries,MON-008,C103,Planned
+C105,Monetization,feat/MON-009-withdrawal-review,feat(withdrawal): let admins approve or reject safely,MON-009,C036;C043;C104,Planned
+C106,Monetization,feat/MON-009-withdrawal-provider,feat(withdrawal): process idempotent external payouts,MON-009,C105,Planned
+C107,Monetization,feat/MON-010-reconciliation,feat(monetization): reconcile top-ups and withdrawals,MON-010,C096;C097;C098;C106,Planned
+C108,Monetization,feat/MON-010-kill-switch,feat(monetization): add audited transaction kill switches,MON-010,C107,Planned
+C109,Monetization,feat/web-wallet-topup,feat(web): add wallet and QR top-up journeys,MON-001;MON-002;MON-003;MON-004,C094;C096;C097;C098,Planned
+C110,Monetization,feat/web-donation,feat(web): add xu-only donation journey,MON-005,C099,Planned
+C111,Monetization,feat/web-team-withdrawal,feat(web): add team withdrawal workspace,MON-008;MON-009,C103;C104;C105;C106,Planned
+C112,Monetization,feat/admin-monetization,feat(admin): add top-up and withdrawal review console,MON-004;MON-009;MON-010,C097;C098;C105;C107;C108,Planned
+C113,Hardening,feat/OPS-001-dashboards,feat(operations): add SLO and domain dashboards,OPS-001,C018;C088;C107,Planned
+C114,Hardening,docs/OPS-002-runbooks,docs(operations): add alert and incident runbooks,OPS-002,C108;C113,Planned
+C115,Hardening,test/OPS-003-restore,test(recovery): automate MongoDB restore verification,OPS-003,C024;C107,Planned
+C116,Hardening,test/QA-002-authorization,test(security): complete cross-role authorization matrix,QA-002,C043;C066;C105,Planned
+C117,Hardening,test/QA-003-load,test(performance): add ramp spike soak and cold-cache suites,QA-003,C067;C075;C088;C107,Planned
+C118,Hardening,test/QA-004-security,test(security): add DAST fuzz and malicious upload suites,QA-004,C056;C066;C108,Planned
+C119,Hardening,test/QA-005-monetization,test(monetization): prove ledger and payment invariants,QA-005,C091;C097;C099;C104;C105;C107,Planned
+C120,Hardening,fix/hardening-findings,fix(security): resolve release-blocking findings,QA-004;QA-005,C116;C117;C118;C119,Planned
+C121,Launch,docs/LAUNCH-001-readiness,docs(release): record production readiness evidence,LAUNCH-001,C114;C115;C120,Planned
+C122,Launch,release/1.0.0-rc1,chore(release): prepare 1.0.0 release candidate,LAUNCH-001,C121,Planned
+C123,Launch,release/1.0.0,chore(release): publish signed 1.0.0 artifacts,LAUNCH-002,C122,Planned
+C124,Launch,ops/LAUNCH-002-canary,feat(release): enable production canary,LAUNCH-002,C123,Planned
+C125,Launch,ops/LAUNCH-002-rollout,feat(release): complete progressive production rollout,LAUNCH-002,C124,Planned
+C126,Launch,docs/post-launch-review,docs(operations): record launch review and follow-ups,LAUNCH-002,C125,Planned

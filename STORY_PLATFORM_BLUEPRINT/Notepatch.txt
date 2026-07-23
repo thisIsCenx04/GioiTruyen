@@ -1,0 +1,12 @@
+Phân quyền:
+Creator và Team: Team Owner sẽ có quyền add member vào team, member được add vào sẽ có quyền đăng bài,... Không hỗ trợ creator hoạt động độc lập, logic chuyển đổi thành team member mới có quyền đăng truyện
+Moderator vẫn giữ nguyên nhưng hiện tại scale bé nên sẽ cho admin được có cả quyền này
+loại bỏ 2 role Finance Operator và Support, chuyển quyền của 2 role này sang admin
+
+
+================
+- Topup: nạp tiền sẽ tự động sinh mã QR và nội dung mã hóa để nhận diện, cho phép duyệt tiền manual khi automation bị trục trặc. Yêu cầu nạp tiền sẽ có chiết khấu 10% (nạp vào 100k thực nhận 90k xu trên websites), admin có thể cấu hình chiết khấu.
+- Donation: CHỈ SỬ DỤNG DONATION BẰNG XU, không hỗ trợ donate qua QR hoặc nhóm dịch đăng QR của nhóm lên
+- Withdraw: min 100k xu, khi amount < 1000k, phí sẽ là 20k xu, amount >= 1000k sẽ miễn phí
+======================
+Cấu trúc hệ thống: sử dung java spring boot(cấu trúc clean layered architecture) làm backend và next.js làm frontend cho hệ thống, database sử dung MongoDb, Redis, Cloudflare, Cloudinary, 

@@ -1,0 +1,1632 @@
+openapi: 3.1.0
+info:
+  title: Story Platform API
+  version: 1.1.0-draft
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+  description: >-
+    Contract khởi đầu cho nền tảng đọc và xuất bản truyện theo Team.
+    Donation chỉ dùng xu; topup QR và withdrawal tuân theo policy versioned.
+    Danh mục endpoint đầy đủ nằm trong 05_API_CONVENTIONS_AND_CATALOG.md.
+servers:
+  - url: /api/v1
+    description: Base path tương đối; hostname được cấu hình theo môi trường
+tags:
+  - name: Auth
+    description: Đăng ký, đăng nhập, session và MFA
+  - name: Teams
+    description: Team, membership và permission
+  - name: Catalog
+    description: Catalog, home và tìm kiếm
+  - name: Publishing
+    description: Draft, revision, review và xuất bản theo Team
+  - name: Reading
+    description: Phiên đọc và tiến độ
+  - name: Community
+    description: Bình luận, tương tác và report
+  - name: Moderation
+    description: Queue, quyết định và appeal
+  - name: Monetization
+    description: Ví xu, topup, donation và withdrawal
+  - name: Media
+    description: Cloudinary signed upload và webhook
+  - name: Notifications
+    description: Notification inbox
+  - name: Admin
+    description: Cấu hình và thao tác quản trị có audit
+security:
+  - bearerAuth: []
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      operationId: register
+      security: []
+      summary: Tạo tài khoản chờ xác minh email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '202':
+          description: Đã nhận yêu cầu; response không chứa token đăng nhập
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /auth/email/verify:
+    post:
+      tags: [Auth]
+      operationId: verifyEmail
+      security: []
+      summary: Xác minh email bằng token một lần
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [token]
+              properties:
+                token:
+                  type: string
+                  minLength: 32
+                  maxLength: 2048
+      responses:
+        '204':
+          description: Đã xác minh
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '409':
+          $ref: '#/components/responses/ConflictProblem'
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      security: []
+      summary: Đăng nhập
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedProblem'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      operationId: refreshSession
+      security: []
+      summary: Rotate refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+                  minLength: 32
+                  maxLength: 4096
+      responses:
+        '200':
+          description: Token family đã rotate
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedProblem'
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: Thu hồi phiên hiện tại
+      responses:
+        '204':
+          description: Đã thu hồi hoặc phiên đã hết hiệu lực
+        '401':
+          $ref: '#/components/responses/UnauthorizedProblem'
+  /home:
+    get:
+      tags: [Catalog]
+      operationId: getHome
+      security: []
+      summary: Lấy các section trang chủ
+      parameters:
+        - in: query
+          name: locale
+          schema:
+            type: string
+            default: vi-VN
+            maxLength: 16
+      responses:
+        '200':
+          description: Cacheable public response
+          headers:
+            ETag:
+              schema: { type: string }
+            Cache-Control:
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HomeResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /stories:
+    get:
+      tags: [Catalog]
+      operationId: listStories
+      security: []
+      summary: Danh sách truyện có filter và keyset pagination
+      parameters:
+        - in: query
+          name: query
+          schema: { type: string, maxLength: 200 }
+        - in: query
+          name: category
+          description: Danh sách slug phân tách bằng dấu phẩy, tối đa 10
+          schema: { type: string, maxLength: 300 }
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [ongoing, completed, hiatus]
+        - in: query
+          name: origin
+          schema:
+            type: string
+            enum: [original, translated]
+        - in: query
+          name: sort
+          schema:
+            type: string
+            enum: [updated_desc, published_desc, views_desc, title_asc]
+            default: updated_desc
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoryPage'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /stories/{storyId}:
+    get:
+      tags: [Catalog]
+      operationId: getStory
+      security: []
+      summary: Chi tiết truyện đã publish
+      parameters:
+        - $ref: '#/components/parameters/StoryId'
+      responses:
+        '200':
+          description: Thành công
+          headers:
+            ETag:
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoryDetail'
+        '404':
+          $ref: '#/components/responses/NotFoundProblem'
+  /stories/{storyId}/chapters:
+    get:
+      tags: [Catalog]
+      operationId: listPublishedChapters
+      security: []
+      summary: Danh sách chương đã publish
+      parameters:
+        - $ref: '#/components/parameters/StoryId'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChapterPage'
+        '404':
+          $ref: '#/components/responses/NotFoundProblem'
+  /chapters/{chapterId}:
+    get:
+      tags: [Reading]
+      operationId: getChapter
+      security: []
+      summary: Nội dung một revision chương đã publish
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+      responses:
+        '200':
+          description: Nội dung đã sanitize, cacheable theo revision
+          headers:
+            ETag:
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChapterDetail'
+        '404':
+          $ref: '#/components/responses/NotFoundProblem'
+  /search:
+    get:
+      tags: [Catalog]
+      operationId: searchStories
+      security: []
+      summary: Tìm kiếm truyện và facet
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema: { type: string, minLength: 2, maxLength: 200 }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /teams/{teamId}/members:
+    get:
+      tags: [Teams]
+      operationId: listTeamMembers
+      summary: Team Owner xem danh sách thành viên
+      parameters:
+        - $ref: '#/components/parameters/TeamId'
+      responses:
+        '200':
+          description: Danh sách membership
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/TeamMembership' }
+        '403':
+          $ref: '#/components/responses/ForbiddenProblem'
+    post:
+      tags: [Teams]
+      operationId: addTeamMember
+      summary: Team Owner thêm/mời thành viên và cấp permission ban đầu
+      parameters:
+        - $ref: '#/components/parameters/TeamId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddTeamMemberRequest'
+      responses:
+        '201':
+          description: Membership hoặc invitation đã tạo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamMembership'
+        '403':
+          $ref: '#/components/responses/ForbiddenProblem'
+        '409':
+          $ref: '#/components/responses/ConflictProblem'
+  /teams/{teamId}/stories:
+    get:
+      tags: [Publishing]
+      operationId: listTeamStories
+      summary: Danh sách truyện quản trị của Team; yêu cầu membership active
+      parameters:
+        - $ref: '#/components/parameters/TeamId'
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [draft, in_review, changes_requested, approved, published, suspended, archived]
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoryPage'
+        '403':
+          $ref: '#/components/responses/ForbiddenProblem'
+    post:
+      tags: [Publishing]
+      operationId: createStoryDraft
+      summary: Tạo truyện draft
+      parameters:
+        - $ref: '#/components/parameters/TeamId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateStoryRequest'
+      responses:
+        '201':
+          description: Đã tạo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamStory'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '403':
+          $ref: '#/components/responses/ForbiddenProblem'
+  /teams/{teamId}/stories/{storyId}:
+    patch:
+      tags: [Publishing]
+      operationId: updateStoryDraft
+      summary: Cập nhật metadata bằng optimistic concurrency
+      parameters:
+        - $ref: '#/components/parameters/TeamId'
+        - $ref: '#/components/parameters/StoryId'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStoryRequest'
+      responses:
+        '200':
+          description: Đã cập nhật
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamStory'
+        '403':
+          $ref: '#/components/responses/ForbiddenProblem'
+        '404':
+          $ref: '#/components/responses/NotFoundProblem'
+        '412':
+          $ref: '#/components/responses/PreconditionProblem'
+  /teams/{teamId}/stories/{storyId}/submit:
+    post:
+      tags: [Publishing]
+      operationId: submitStoryForReview
+      summary: Submit story review
+      parameters:
+        - $ref: '#/components/parameters/TeamId'
+        - $ref: '#/components/parameters/StoryId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: Đã chuyển vào review queue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandAccepted'
+        '403':
+          $ref: '#/components/responses/ForbiddenProblem'
+        '409':
+          $ref: '#/components/responses/ConflictProblem'
+        '422':
+          $ref: '#/components/responses/BusinessProblem'
+  /teams/{teamId}/stories/{storyId}/chapters:
+    post:
+      tags: [Publishing]
+      operationId: createChapterDraft
+      summary: Tạo chapter draft
+      parameters:
+        - $ref: '#/components/parameters/TeamId'
+        - $ref: '#/components/parameters/StoryId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateChapterRequest'
+      responses:
+        '201':
+          description: Đã tạo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamChapter'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '403':
+          $ref: '#/components/responses/ForbiddenProblem'
+  /reading-sessions:
+    post:
+      tags: [Reading]
+      operationId: startReadingSession
+      security:
+        - bearerAuth: []
+        - {}
+      summary: Bắt đầu phiên đọc; chưa tạo valid view
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [chapterId]
+              properties:
+                chapterId: { type: string, format: uuid }
+                anonymousId: { type: string, minLength: 16, maxLength: 128 }
+      responses:
+        '201':
+          description: Phiên đã tạo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadingSession'
+        '404':
+          $ref: '#/components/responses/NotFoundProblem'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /reading-sessions/{sessionId}/heartbeats:
+    post:
+      tags: [Reading]
+      operationId: recordReadingHeartbeat
+      security:
+        - bearerAuth: []
+        - {}
+      summary: Ghi heartbeat có sequence
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [sequence, clientOccurredAt, visible]
+              properties:
+                sequence: { type: integer, minimum: 1 }
+                clientOccurredAt: { type: string, format: date-time }
+                visible: { type: boolean }
+                progressPercent: { type: number, minimum: 0, maximum: 100 }
+      responses:
+        '204':
+          description: Đã ghi hoặc replay idempotent
+        '404':
+          $ref: '#/components/responses/NotFoundProblem'
+        '409':
+          $ref: '#/components/responses/ConflictProblem'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /reading-sessions/{sessionId}/complete:
+    post:
+      tags: [Reading]
+      operationId: completeReadingSession
+      security:
+        - bearerAuth: []
+        - {}
+      summary: Đóng phiên; validation view diễn ra bất đồng bộ
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: Đã nhận để validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandAccepted'
+        '404':
+          $ref: '#/components/responses/NotFoundProblem'
+  /me/reading-progress/{storyId}:
+    get:
+      tags: [Reading]
+      operationId: getReadingProgress
+      summary: Lấy tiến độ đọc của truyện
+      parameters:
+        - $ref: '#/components/parameters/StoryId'
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadingProgress'
+        '404':
+          $ref: '#/components/responses/NotFoundProblem'
+    put:
+      tags: [Reading]
+      operationId: upsertReadingProgress
+      summary: Tạo hoặc cập nhật tiến độ đọc
+      parameters:
+        - $ref: '#/components/parameters/StoryId'
+        - $ref: '#/components/parameters/IfMatchOptional'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [chapterId, position, deviceUpdatedAt]
+              properties:
+                chapterId: { type: string, format: uuid }
+                position: { type: number, minimum: 0, maximum: 100 }
+                deviceUpdatedAt: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Đã đồng bộ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadingProgress'
+        '409':
+          $ref: '#/components/responses/ConflictProblem'
+  /comments:
+    get:
+      tags: [Community]
+      operationId: listComments
+      summary: Danh sách bình luận theo tài nguyên
+      security: []
+      parameters:
+        - in: query
+          name: targetType
+          required: true
+          schema: { type: string, enum: [story, chapter] }
+        - in: query
+          name: targetId
+          required: true
+          schema: { type: string, format: uuid }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentPage'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+    post:
+      tags: [Community]
+      operationId: createComment
+      summary: Tạo bình luận
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCommentRequest'
+      responses:
+        '201':
+          description: Đã tạo hoặc đang chờ moderation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /reports:
+    post:
+      tags: [Moderation]
+      operationId: createReport
+      summary: Tạo report, server deduplicate theo reporter/target/reason window
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReportRequest'
+      responses:
+        '201':
+          description: Đã tạo hoặc trả report trùng hiện có
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Report'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /wallets/me:
+    get:
+      tags: [Monetization]
+      operationId: getMyWallet
+      summary: Lấy balance xu projection; ledger vẫn là source of truth
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletSummary'
+        '403':
+          $ref: '#/components/responses/ForbiddenProblem'
+  /wallets/me/topups:
+    post:
+      tags: [Monetization]
+      operationId: createTopup
+      summary: Tạo yêu cầu nạp; server snapshot chiết khấu và sinh QR/reference
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTopupRequest'
+      responses:
+        '201':
+          description: Yêu cầu topup đã tạo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Topup'
+        '409':
+          $ref: '#/components/responses/ConflictProblem'
+        '422':
+          $ref: '#/components/responses/BusinessProblem'
+    get:
+      tags: [Monetization]
+      operationId: listMyTopups
+      summary: Danh sách topup của người dùng
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Danh sách topup của người dùng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopupPage'
+        '401':
+          $ref: '#/components/responses/UnauthorizedProblem'
+  /webhooks/topups/{provider}:
+    post:
+      tags: [Monetization]
+      operationId: receiveTopupWebhook
+      security: []
+      summary: Xác minh giao dịch, dedupe và match amount + transfer reference
+      parameters:
+        - in: path
+          name: provider
+          required: true
+          schema: { type: string, pattern: '^[a-z0-9_-]{1,40}$' }
+        - in: header
+          name: X-Provider-Signature
+          required: true
+          schema: { type: string, maxLength: 2048 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '204':
+          description: Đã xử lý hoặc replay của event đã xử lý
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '401':
+          $ref: '#/components/responses/UnauthorizedProblem'
+  /admin/topups/{topupId}/approve-manual:
+    post:
+      tags: [Monetization]
+      operationId: approveTopupManually
+      summary: Admin duyệt topup khi automation lỗi; yêu cầu MFA/re-auth và audit
+      parameters:
+        - in: path
+          name: topupId
+          required: true
+          schema: { type: string, format: uuid }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ManualTopupApprovalRequest'
+      responses:
+        '200':
+          description: Đã credit hoặc trả lại kết quả idempotent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Topup'
+        '409':
+          $ref: '#/components/responses/ConflictProblem'
+        '422':
+          $ref: '#/components/responses/BusinessProblem'
+  /admin/topups/{topupId}/reject:
+    post:
+      tags: [Monetization]
+      operationId: rejectTopup
+      summary: Admin từ chối topup pending review có lý do và audit
+      parameters:
+        - in: path
+          name: topupId
+          required: true
+          schema: { type: string, format: uuid }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 10, maxLength: 1000 }
+      responses:
+        '200':
+          description: Đã từ chối hoặc trả kết quả idempotent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Topup'
+        '409':
+          $ref: '#/components/responses/ConflictProblem'
+  /donations:
+    post:
+      tags: [Monetization]
+      operationId: donateXu
+      summary: Chuyển xu từ ví người dùng sang ví Team; không dùng QR/provider
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDonationRequest'
+      responses:
+        '201':
+          description: Donation đã ghi sổ nguyên tử
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Donation'
+        '409':
+          $ref: '#/components/responses/ConflictProblem'
+        '422':
+          $ref: '#/components/responses/BusinessProblem'
+  /teams/{teamId}/withdrawals:
+    post:
+      tags: [Monetization]
+      operationId: createWithdrawal
+      summary: Tạo withdrawal và reserve gross amount trong ví Team
+      parameters:
+        - $ref: '#/components/parameters/TeamId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWithdrawalRequest'
+      responses:
+        '201':
+          description: Withdrawal chờ Admin duyệt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Withdrawal'
+        '422':
+          $ref: '#/components/responses/BusinessProblem'
+    get:
+      tags: [Monetization]
+      operationId: listTeamWithdrawals
+      summary: Danh sách withdrawal của Team
+      parameters:
+        - $ref: '#/components/parameters/TeamId'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Danh sách withdrawal của Team
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [items, hasMore]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Withdrawal' }
+                  nextCursor: { type: [string, 'null'] }
+                  hasMore: { type: boolean }
+        '403':
+          $ref: '#/components/responses/ForbiddenProblem'
+  /admin/withdrawals/{withdrawalId}/approve:
+    post:
+      tags: [Monetization]
+      operationId: approveWithdrawal
+      summary: Admin duyệt withdrawal sau risk check
+      parameters:
+        - in: path
+          name: withdrawalId
+          required: true
+          schema: { type: string, format: uuid }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 10, maxLength: 1000 }
+      responses:
+        '202':
+          description: Đã duyệt và chuyển sang xử lý chi trả
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Withdrawal'
+        '409':
+          $ref: '#/components/responses/ConflictProblem'
+  /admin/withdrawals/{withdrawalId}/reject:
+    post:
+      tags: [Monetization]
+      operationId: rejectWithdrawal
+      summary: Admin từ chối và hoàn reserved xu đúng một lần
+      parameters:
+        - in: path
+          name: withdrawalId
+          required: true
+          schema: { type: string, format: uuid }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 10, maxLength: 1000 }
+      responses:
+        '200':
+          description: Đã từ chối
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Withdrawal'
+        '409':
+          $ref: '#/components/responses/ConflictProblem'
+  /admin/configuration/topup-discount:
+    get:
+      tags: [Admin]
+      operationId: getTopupDiscountConfig
+      summary: Đọc cấu hình chiết khấu topup hiện hành
+      responses:
+        '200':
+          description: Cấu hình versioned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopupDiscountConfig'
+        '403':
+          $ref: '#/components/responses/ForbiddenProblem'
+    patch:
+      tags: [Admin]
+      operationId: updateTopupDiscountConfig
+      summary: Admin cập nhật chiết khấu; yêu cầu MFA/re-auth, reason và audit
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [discountPercent, reason]
+              properties:
+                discountPercent: { type: number, minimum: 0, maximum: 100 }
+                reason: { type: string, minLength: 10, maxLength: 1000 }
+      responses:
+        '200':
+          description: Cấu hình mới
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopupDiscountConfig'
+        '412':
+          $ref: '#/components/responses/PreconditionProblem'
+  /media/upload-signatures:
+    post:
+      tags: [Media]
+      operationId: createCloudinaryUploadSignature
+      summary: Cấp Cloudinary signed upload params thời hạn ngắn
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [purpose, fileName, contentType, sizeBytes, sha256]
+              properties:
+                purpose: { type: string, enum: [avatar, cover, chapter_image, copyright_evidence] }
+                fileName: { type: string, minLength: 1, maxLength: 180 }
+                contentType: { type: string, enum: [image/jpeg, image/png, image/webp, image/avif, application/pdf] }
+                sizeBytes: { type: integer, format: int64, minimum: 1, maximum: 20971520 }
+                sha256: { type: string, pattern: '^[a-fA-F0-9]{64}$' }
+      responses:
+        '201':
+          description: Upload signature ngắn hạn
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudinaryUploadSignature'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /webhooks/cloudinary:
+    post:
+      tags: [Media]
+      operationId: receiveCloudinaryWebhook
+      security: []
+      summary: Xác minh/dedupe webhook và cập nhật trạng thái media
+      parameters:
+        - in: header
+          name: X-Cld-Signature
+          required: true
+          schema: { type: string, minLength: 16, maxLength: 512 }
+        - in: header
+          name: X-Cld-Timestamp
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 32 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '204':
+          description: Event hợp lệ đã xử lý hoặc đã được dedupe
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '401':
+          $ref: '#/components/responses/UnauthorizedProblem'
+  /notifications:
+    get:
+      tags: [Notifications]
+      operationId: listNotifications
+      summary: Danh sách thông báo của người dùng
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPage'
+        '401':
+          $ref: '#/components/responses/UnauthorizedProblem'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Cursor:
+      in: query
+      name: cursor
+      schema: { type: string, maxLength: 2048 }
+    Limit:
+      in: query
+      name: limit
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    StoryId:
+      in: path
+      name: storyId
+      required: true
+      schema: { type: string, format: uuid }
+    TeamId:
+      in: path
+      name: teamId
+      required: true
+      schema: { type: string, format: uuid }
+    ChapterId:
+      in: path
+      name: chapterId
+      required: true
+      schema: { type: string, format: uuid }
+    SessionId:
+      in: path
+      name: sessionId
+      required: true
+      schema: { type: string, format: uuid }
+    IfMatch:
+      in: header
+      name: If-Match
+      required: true
+      schema: { type: string, maxLength: 200 }
+    IfMatchOptional:
+      in: header
+      name: If-Match
+      required: false
+      schema: { type: string, maxLength: 200 }
+    IdempotencyKey:
+      in: header
+      name: Idempotency-Key
+      required: true
+      schema: { type: string, minLength: 16, maxLength: 128 }
+  responses:
+    ValidationProblem:
+      description: Dữ liệu không hợp lệ
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    UnauthorizedProblem:
+      description: Chưa xác thực hoặc credential không hợp lệ
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    ForbiddenProblem:
+      description: Không có quyền
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    NotFoundProblem:
+      description: Không tìm thấy hoặc tài nguyên bị che theo policy
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    ConflictProblem:
+      description: Xung đột trạng thái hoặc idempotency
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    PreconditionProblem:
+      description: ETag/version không còn hợp lệ
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    BusinessProblem:
+      description: Vi phạm quy tắc nghiệp vụ
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    RateLimited:
+      description: Quá giới hạn
+      headers:
+        Retry-After:
+          schema: { type: integer, minimum: 1 }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    Problem:
+      type: object
+      additionalProperties: false
+      required: [title, status, code, traceId]
+      properties:
+        type: { type: string, format: uri-reference }
+        title: { type: string }
+        status: { type: integer, minimum: 400, maximum: 599 }
+        code: { type: string, pattern: '^[A-Z0-9_]+$' }
+        detail: { type: string }
+        traceId: { type: string }
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items: { type: string }
+    MessageResponse:
+      type: object
+      additionalProperties: false
+      required: [message]
+      properties:
+        message: { type: string }
+    CommandAccepted:
+      type: object
+      additionalProperties: false
+      required: [operationId, status]
+      properties:
+        operationId: { type: string, format: uuid }
+        status: { type: string, enum: [accepted, processing] }
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required: [email, displayName, password, acceptTermsVersion]
+      properties:
+        email: { type: string, format: email, maxLength: 320 }
+        displayName: { type: string, minLength: 2, maxLength: 80 }
+        password: { type: string, minLength: 15, maxLength: 128 }
+        referralCode: { type: string, minLength: 6, maxLength: 40 }
+        acceptTermsVersion: { type: string, maxLength: 40 }
+        marketingConsent: { type: boolean, default: false }
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email: { type: string, format: email, maxLength: 320 }
+        password: { type: string, minLength: 1, maxLength: 128 }
+        deviceName: { type: string, maxLength: 100 }
+    TokenResponse:
+      type: object
+      additionalProperties: false
+      required: [accessToken, expiresIn, refreshToken, sessionId]
+      properties:
+        accessToken: { type: string }
+        expiresIn: { type: integer, minimum: 60, maximum: 3600 }
+        refreshToken: { type: string }
+        sessionId: { type: string, format: uuid }
+    ImageRef:
+      type: object
+      additionalProperties: false
+      required: [url, width, height]
+      properties:
+        url: { type: string, format: uri }
+        width: { type: integer, minimum: 1 }
+        height: { type: integer, minimum: 1 }
+        blurHash: { type: string, maxLength: 200 }
+    StorySummary:
+      type: object
+      additionalProperties: false
+      required: [id, slug, title, completionStatus, stats, version]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        title: { type: string }
+        cover: { $ref: '#/components/schemas/ImageRef' }
+        completionStatus: { type: string, enum: [ongoing, completed, hiatus] }
+        latestChapter: { $ref: '#/components/schemas/ChapterSummary' }
+        stats: { $ref: '#/components/schemas/StoryStats' }
+        version: { type: integer, format: int64, minimum: 1 }
+    StoryDetail:
+      allOf:
+        - $ref: '#/components/schemas/StorySummary'
+        - type: object
+          required: [synopsis, categories, team]
+          properties:
+            synopsis: { type: string }
+            categories:
+              type: array
+              maxItems: 30
+              items: { $ref: '#/components/schemas/Category' }
+            team: { $ref: '#/components/schemas/TeamSummary' }
+            publishedAt: { type: string, format: date-time }
+    StoryStats:
+      type: object
+      additionalProperties: false
+      required: [views, favorites, followers, chapters]
+      properties:
+        views: { type: integer, format: int64, minimum: 0 }
+        favorites: { type: integer, format: int64, minimum: 0 }
+        followers: { type: integer, format: int64, minimum: 0 }
+        chapters: { type: integer, minimum: 0 }
+        asOf: { type: string, format: date-time }
+    Category:
+      type: object
+      additionalProperties: false
+      required: [id, slug, name, group]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        group: { type: string, enum: [genre, setting, tone, ending, relationship, format] }
+    TeamSummary:
+      type: object
+      additionalProperties: false
+      required: [id, slug, name, verified]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        verified: { type: boolean }
+    AddTeamMemberRequest:
+      type: object
+      additionalProperties: false
+      required: [userId, permissions]
+      properties:
+        userId: { type: string, format: uuid }
+        permissions:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            enum: [story:create, story:edit, story:submit, story:publish, analytics:read, finance:request]
+    TeamMembership:
+      type: object
+      additionalProperties: false
+      required: [teamId, userId, role, permissions, state, joinedAt]
+      properties:
+        teamId: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        role: { type: string, enum: [owner, member] }
+        permissions:
+          type: array
+          uniqueItems: true
+          items: { type: string }
+        state: { type: string, enum: [invited, active, suspended, removed] }
+        joinedAt: { type: string, format: date-time }
+    ChapterSummary:
+      type: object
+      additionalProperties: false
+      required: [id, number, slug, title]
+      properties:
+        id: { type: string, format: uuid }
+        number: { type: number, minimum: 0 }
+        slug: { type: string }
+        title: { type: string }
+        publishedAt: { type: string, format: date-time }
+    ChapterDetail:
+      allOf:
+        - $ref: '#/components/schemas/ChapterSummary'
+        - type: object
+          required: [storyId, revision, contentHtml]
+          properties:
+            storyId: { type: string, format: uuid }
+            revision: { type: integer, minimum: 1 }
+            contentHtml:
+              type: string
+              description: HTML đã sanitize server-side
+            previousChapterId: { type: [string, 'null'], format: uuid }
+            nextChapterId: { type: [string, 'null'], format: uuid }
+    StoryPage:
+      type: object
+      additionalProperties: false
+      required: [items, hasMore]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/StorySummary' }
+        nextCursor: { type: [string, 'null'] }
+        hasMore: { type: boolean }
+    ChapterPage:
+      type: object
+      additionalProperties: false
+      required: [items, hasMore]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/ChapterSummary' }
+        nextCursor: { type: [string, 'null'] }
+        hasMore: { type: boolean }
+    HomeResponse:
+      type: object
+      additionalProperties: false
+      required: [version, sections]
+      properties:
+        version: { type: string }
+        sections:
+          type: array
+          items:
+            type: object
+            required: [id, type, title, stories]
+            properties:
+              id: { type: string }
+              type: { type: string, enum: [continue_reading, recommended, trending, latest, completed, original] }
+              title: { type: string }
+              stories:
+                type: array
+                maxItems: 30
+                items: { $ref: '#/components/schemas/StorySummary' }
+    SearchResponse:
+      allOf:
+        - $ref: '#/components/schemas/StoryPage'
+        - type: object
+          properties:
+            tookMs: { type: integer, minimum: 0 }
+            facets: { type: object, additionalProperties: true }
+    CreateStoryRequest:
+      type: object
+      additionalProperties: false
+      required: [title, synopsis, type, language, categoryIds]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 250 }
+        synopsis: { type: string, maxLength: 10000 }
+        type: { type: string, enum: [original, translated] }
+        language: { type: string, minLength: 2, maxLength: 16 }
+        categoryIds:
+          type: array
+          minItems: 1
+          maxItems: 30
+          uniqueItems: true
+          items: { type: string, format: uuid }
+        coverMediaId: { type: string, format: uuid }
+    UpdateStoryRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 250 }
+        synopsis: { type: string, maxLength: 10000 }
+        completionStatus: { type: string, enum: [ongoing, completed, hiatus] }
+        categoryIds:
+          type: array
+          maxItems: 30
+          uniqueItems: true
+          items: { type: string, format: uuid }
+        coverMediaId: { type: string, format: uuid }
+    TeamStory:
+      allOf:
+        - $ref: '#/components/schemas/StoryDetail'
+        - type: object
+          required: [workflowStatus]
+          properties:
+            workflowStatus:
+              type: string
+              enum: [draft, in_review, changes_requested, approved, published, suspended, archived]
+            reviewNote: { type: [string, 'null'] }
+    CreateChapterRequest:
+      type: object
+      additionalProperties: false
+      required: [number, title, contentHtml]
+      properties:
+        number: { type: number, minimum: 0 }
+        title: { type: string, minLength: 1, maxLength: 250 }
+        contentHtml: { type: string, minLength: 1, maxLength: 1000000 }
+    TeamChapter:
+      allOf:
+        - $ref: '#/components/schemas/ChapterDetail'
+        - type: object
+          required: [workflowStatus, version]
+          properties:
+            workflowStatus:
+              type: string
+              enum: [draft, in_review, scheduled, published, hidden, archived]
+            version: { type: integer, format: int64, minimum: 1 }
+    ReadingSession:
+      type: object
+      additionalProperties: false
+      required: [id, sessionToken, expiresAt, heartbeatAfterSeconds]
+      properties:
+        id: { type: string, format: uuid }
+        sessionToken: { type: string }
+        expiresAt: { type: string, format: date-time }
+        heartbeatAfterSeconds: { type: integer, minimum: 10, maximum: 120 }
+    ReadingProgress:
+      type: object
+      additionalProperties: false
+      required: [storyId, chapterId, position, version, updatedAt]
+      properties:
+        storyId: { type: string, format: uuid }
+        chapterId: { type: string, format: uuid }
+        position: { type: number, minimum: 0, maximum: 100 }
+        version: { type: integer, format: int64, minimum: 1 }
+        updatedAt: { type: string, format: date-time }
+    CreateCommentRequest:
+      type: object
+      additionalProperties: false
+      required: [targetType, targetId, body]
+      properties:
+        targetType: { type: string, enum: [story, chapter] }
+        targetId: { type: string, format: uuid }
+        parentId: { type: string, format: uuid }
+        body: { type: string, minLength: 1, maxLength: 5000 }
+    Comment:
+      type: object
+      additionalProperties: false
+      required: [id, author, body, status, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        author: { $ref: '#/components/schemas/PublicUser' }
+        body: { type: string }
+        status: { type: string, enum: [visible, pending, hidden] }
+        createdAt: { type: string, format: date-time }
+    CommentPage:
+      type: object
+      additionalProperties: false
+      required: [items, hasMore]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Comment' }
+        nextCursor: { type: [string, 'null'] }
+        hasMore: { type: boolean }
+    PublicUser:
+      type: object
+      additionalProperties: false
+      required: [id, displayName]
+      properties:
+        id: { type: string, format: uuid }
+        displayName: { type: string }
+        avatar: { $ref: '#/components/schemas/ImageRef' }
+    CreateReportRequest:
+      type: object
+      additionalProperties: false
+      required: [targetType, targetId, reasonCode]
+      properties:
+        targetType: { type: string, enum: [story, chapter, comment, team, user] }
+        targetId: { type: string, format: uuid }
+        reasonCode:
+          type: string
+          enum: [copyright, impersonation, harassment, sexual_content, illegal_content, spam, broken_content, other]
+        detail: { type: string, maxLength: 5000 }
+        evidenceMediaIds:
+          type: array
+          maxItems: 10
+          uniqueItems: true
+          items: { type: string, format: uuid }
+    Report:
+      type: object
+      additionalProperties: false
+      required: [id, status, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [received, triaged, investigating, resolved, rejected, appealed] }
+        createdAt: { type: string, format: date-time }
+        resolutionCode: { type: [string, 'null'] }
+    WalletSummary:
+      type: object
+      additionalProperties: false
+      required: [currency, availableXu, reservedXu, asOf]
+      properties:
+        currency: { type: string, enum: [XU] }
+        availableXu: { type: integer, format: int64, minimum: 0 }
+        reservedXu: { type: integer, format: int64, minimum: 0 }
+        asOf: { type: string, format: date-time }
+    CreateTopupRequest:
+      type: object
+      additionalProperties: false
+      required: [amountVnd]
+      properties:
+        amountVnd: { type: integer, format: int64, minimum: 10000, maximum: 1000000000 }
+    TopupDiscountConfig:
+      type: object
+      additionalProperties: false
+      required: [discountPercent, version, effectiveAt]
+      properties:
+        discountPercent: { type: number, minimum: 0, maximum: 100, default: 10 }
+        version: { type: integer, format: int64, minimum: 1 }
+        effectiveAt: { type: string, format: date-time }
+    Topup:
+      type: object
+      additionalProperties: false
+      required: [id, amountVnd, discountPercent, discountConfigVersion, creditedXu, transferReference, qrPayload, qrImageUrl, state, expiresAt]
+      properties:
+        id: { type: string, format: uuid }
+        amountVnd: { type: integer, format: int64 }
+        discountPercent: { type: number, minimum: 0, maximum: 100 }
+        discountConfigVersion: { type: integer, format: int64, minimum: 1 }
+        creditedXu: { type: integer, format: int64, minimum: 0 }
+        transferReference: { type: string, minLength: 6, maxLength: 64 }
+        qrPayload: { type: string, minLength: 1, maxLength: 4096 }
+        qrImageUrl: { type: string, format: uri }
+        state:
+          type: string
+          enum: [awaiting_payment, payment_detected, pending_review, credited, expired, rejected, cancelled]
+        expiresAt: { type: string, format: date-time }
+        creditedAt: { type: [string, 'null'], format: date-time }
+    TopupPage:
+      type: object
+      additionalProperties: false
+      required: [items, hasMore]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Topup' }
+        nextCursor: { type: [string, 'null'] }
+        hasMore: { type: boolean }
+    ManualTopupApprovalRequest:
+      type: object
+      additionalProperties: false
+      required: [bankTransactionRef, paidAmountVnd, evidenceMediaId, reason]
+      properties:
+        bankTransactionRef: { type: string, minLength: 6, maxLength: 120 }
+        paidAmountVnd: { type: integer, format: int64, minimum: 1 }
+        evidenceMediaId: { type: string, format: uuid }
+        reason: { type: string, minLength: 10, maxLength: 1000 }
+    CreateDonationRequest:
+      type: object
+      additionalProperties: false
+      required: [recipientTeamId, amountXu]
+      properties:
+        recipientTeamId: { type: string, format: uuid }
+        amountXu: { type: integer, format: int64, minimum: 1, maximum: 1000000000 }
+        message: { type: string, maxLength: 300 }
+    Donation:
+      type: object
+      additionalProperties: false
+      required: [id, recipientTeamId, amountXu, state, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        recipientTeamId: { type: string, format: uuid }
+        amountXu: { type: integer, format: int64, minimum: 1 }
+        state: { type: string, enum: [posted, reversed] }
+        createdAt: { type: string, format: date-time }
+    CreateWithdrawalRequest:
+      type: object
+      additionalProperties: false
+      required: [grossAmountXu, destinationId]
+      properties:
+        grossAmountXu: { type: integer, format: int64, minimum: 100000 }
+        destinationId: { type: string, format: uuid }
+    Withdrawal:
+      type: object
+      additionalProperties: false
+      required: [id, teamId, grossAmountXu, feeXu, netAmountXu, state, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        teamId: { type: string, format: uuid }
+        grossAmountXu: { type: integer, format: int64, minimum: 100000 }
+        feeXu: { type: integer, format: int64, enum: [0, 20000] }
+        netAmountXu: { type: integer, format: int64, minimum: 1 }
+        destinationMasked: { type: string }
+        state:
+          type: string
+          enum: [pending_review, approved, processing, paid, rejected, failed, cancelled]
+        createdAt: { type: string, format: date-time }
+    CloudinaryUploadSignature:
+      type: object
+      additionalProperties: false
+      required: [mediaId, cloudName, apiKey, timestamp, signature, folder, expiresAt]
+      properties:
+        mediaId: { type: string, format: uuid }
+        cloudName: { type: string }
+        apiKey: { type: string }
+        timestamp: { type: integer, format: int64 }
+        signature: { type: string }
+        folder: { type: string }
+        allowedFormats:
+          type: array
+          items: { type: string }
+        expiresAt: { type: string, format: date-time }
+    Notification:
+      type: object
+      additionalProperties: false
+      required: [id, type, title, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string }
+        title: { type: string }
+        body: { type: string }
+        data: { type: object, additionalProperties: true }
+        readAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+    NotificationPage:
+      type: object
+      additionalProperties: false
+      required: [items, hasMore]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Notification' }
+        nextCursor: { type: [string, 'null'] }
+        hasMore: { type: boolean }
