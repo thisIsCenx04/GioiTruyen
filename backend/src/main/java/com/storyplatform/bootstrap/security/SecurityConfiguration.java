@@ -34,7 +34,9 @@ public class SecurityConfiguration {
                         "/auth/mfa/challenge",
                         "/auth/mfa/verify",
                         "/auth/reauth/grants",
-                        "/me"
+                        "/me",
+                        "/teams",
+                        "/teams/*"
                 ))
                 .oauth2ResourceServer(resourceServer -> resourceServer
                         .jwt(Customizer.withDefaults())
@@ -53,7 +55,9 @@ public class SecurityConfiguration {
                         ).permitAll()
                         .requestMatchers(
                                 HttpMethod.GET,
-                                "/users/*"
+                                "/users/*",
+                                "/teams",
+                                "/teams/*"
                         ).permitAll()
                         .requestMatchers(
                                 HttpMethod.POST,
@@ -73,6 +77,14 @@ public class SecurityConfiguration {
                                 "/auth/reauth/grants"
                         ).authenticated()
                         .requestMatchers("/me").authenticated()
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/teams"
+                        ).authenticated()
+                        .requestMatchers(
+                                HttpMethod.PATCH,
+                                "/teams/*"
+                        ).authenticated()
                         .anyRequest().denyAll())
                 .build();
     }

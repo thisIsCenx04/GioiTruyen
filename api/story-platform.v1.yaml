@@ -18,6 +18,8 @@ tags:
     description: Public account registration and identity lifecycle operations.
   - name: Profiles
     description: Private account details and allowlisted public profile fields.
+  - name: Teams
+    description: Public team profiles and owner-managed settings.
 security:
   - bearerAuth: []
 paths:
@@ -580,6 +582,107 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
+  /teams:
+    get:
+      operationId: listTeams
+      summary: List active public teams
+      security: []
+      tags: [Teams]
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        "200":
+          description: Active teams ordered by latest update
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 50
+                items:
+                  $ref: "#/components/schemas/Team"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+    post:
+      operationId: createTeam
+      summary: Create a team and atomically make the creator its owner
+      tags: [Teams]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTeamRequest"
+      responses:
+        "201":
+          description: Team and owner membership created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Team slug is already used
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /teams/{teamId}:
+    get:
+      operationId: getTeam
+      summary: Get an active public team
+      security: []
+      tags: [Teams]
+      parameters:
+        - $ref: "#/components/parameters/TeamId"
+      responses:
+        "200":
+          description: Public team
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateTeam
+      summary: Update a team as its owner with optimistic concurrency
+      tags: [Teams]
+      parameters:
+        - $ref: "#/components/parameters/TeamId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTeamRequest"
+      responses:
+        "200":
+          description: Updated team
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Team version is stale
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
 components:
   securitySchemes:
     bearerAuth:
@@ -587,6 +690,14 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: Access token issued by the GioiTruyen identity service.
+  parameters:
+    TeamId:
+      name: teamId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
   schemas:
     RegistrationRequest:
       type: object
@@ -951,6 +1062,59 @@ components:
         createdAt:
           type: string
           format: date-time
+    CreateTeamRequest:
+      type: object
+      additionalProperties: false
+      required: [slug, name]
+      properties:
+        slug:
+          type: string
+          pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          minLength: 3
+          maxLength: 50
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 1000
+    UpdateTeamRequest:
+      type: object
+      additionalProperties: false
+      required: [name, version]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 1000
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+    Team:
+      type: object
+      additionalProperties: false
+      required: [id, slug, name, description, state, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        state:
+          type: string
+          enum: [ACTIVE, SUSPENDED, ARCHIVED]
+        version:
+          type: integer
+          format: int64
     ApplicationInfo:
       type: object
       description: Allowlisted non-sensitive build and application metadata.

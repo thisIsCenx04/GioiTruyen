@@ -62,6 +62,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    TeamIndexes teamIndexes() {
+        return new TeamIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }
