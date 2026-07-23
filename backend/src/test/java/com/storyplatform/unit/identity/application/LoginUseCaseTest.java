@@ -3,7 +3,7 @@ package com.storyplatform.unit.identity.application;
 import com.storyplatform.identity.application.LoginCommand;
 import com.storyplatform.identity.application.LoginOutcome;
 import com.storyplatform.identity.application.LoginUseCase;
-import com.storyplatform.identity.application.port.AccessTokenIssuer;
+import com.storyplatform.identity.application.port.SessionTokenIssuer;
 import com.storyplatform.identity.application.port.LoginRiskLimiter;
 import com.storyplatform.identity.application.port.PasswordHasher;
 import com.storyplatform.identity.application.port.UserAccountRepository;
@@ -28,9 +28,10 @@ class LoginUseCaseTest {
             users,
             passwords,
             risk,
-            account -> new AccessTokenIssuer.IssuedAccessToken(
+            account -> new SessionTokenIssuer.IssuedSession(
                     "signed.jwt.token",
-                    600
+                    600,
+                    "refresh-token-value"
             ),
             new EmailNormalizer(),
             "$argon2id$dummy"
@@ -47,6 +48,8 @@ class LoginUseCaseTest {
                 .isEqualTo(LoginOutcome.Status.AUTHENTICATED);
         assertThat(outcome.accessToken()).isEqualTo("signed.jwt.token");
         assertThat(outcome.expiresInSeconds()).isEqualTo(600);
+        assertThat(outcome.refreshToken())
+                .isEqualTo("refresh-token-value");
         assertThat(risk.successes).isEqualTo(1);
         assertThat(risk.failures).isZero();
     }

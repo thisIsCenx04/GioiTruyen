@@ -94,6 +94,9 @@ app:
       max-address-failures: ${LOGIN_MAX_ADDRESS_FAILURES:20}
       window: ${LOGIN_RISK_WINDOW:15m}
       hmac-key: ${LOGIN_RISK_HMAC_KEY}
+    refresh-session:
+      ttl: ${REFRESH_SESSION_TTL:30d}
+      maximum-generations: ${REFRESH_SESSION_MAX_GENERATIONS:500}
   redis:
     application-prefix: ${REDIS_KEY_PREFIX:gioitruyen}
     key-version: ${REDIS_KEY_VERSION:v1}

@@ -23,7 +23,8 @@ public class SecurityConfiguration {
                 .csrf(csrf -> csrf.ignoringRequestMatchers(
                         "/auth/register",
                         "/auth/email/verify",
-                        "/auth/login"
+                        "/auth/login",
+                        "/auth/refresh"
                 ))
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(problemHandler)
@@ -41,7 +42,8 @@ public class SecurityConfiguration {
                                 HttpMethod.POST,
                                 "/auth/register",
                                 "/auth/email/verify",
-                                "/auth/login"
+                                "/auth/login",
+                                "/auth/refresh"
                         ).permitAll()
                         .anyRequest().denyAll())
                 .build();

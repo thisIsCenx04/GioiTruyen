@@ -236,6 +236,42 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /auth/refresh:
+    post:
+      operationId: refreshSession
+      summary: Rotate a refresh token family
+      description: |
+        Consumes the current refresh token and returns a new access and
+        refresh token pair. Replaying a previously consumed token revokes
+        the entire token family.
+      tags:
+        - Identity
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshSessionRequest"
+      responses:
+        "200":
+          description: The refresh token was rotated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          description: The request is malformed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "401":
+          description: The token is invalid, expired, revoked, or replayed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
 components:
   securitySchemes:
     bearerAuth:
@@ -318,6 +354,7 @@ components:
         - accessToken
         - tokenType
         - expiresIn
+        - refreshToken
       properties:
         accessToken:
           type: string
@@ -330,6 +367,22 @@ components:
           type: integer
           minimum: 60
           maximum: 1800
+        refreshToken:
+          type: string
+          minLength: 43
+          maxLength: 128
+    RefreshSessionRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+          writeOnly: true
+          minLength: 43
+          maxLength: 128
+          pattern: '^[A-Za-z0-9_-]+$'
     ApplicationInfo:
       type: object
       description: Allowlisted non-sensitive build and application metadata.

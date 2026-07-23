@@ -42,6 +42,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    RefreshSessionIndexes refreshSessionIndexes() {
+        return new RefreshSessionIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

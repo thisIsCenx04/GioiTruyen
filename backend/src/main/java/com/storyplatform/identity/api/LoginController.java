@@ -55,7 +55,8 @@ public class LoginController {
             case AUTHENTICATED -> ResponseEntity.ok(
                     LoginResponse.bearer(
                             outcome.accessToken(),
-                            outcome.expiresInSeconds()
+                            outcome.expiresInSeconds(),
+                            outcome.refreshToken()
                     )
             );
             case INVALID_CREDENTIALS -> throw rejected(

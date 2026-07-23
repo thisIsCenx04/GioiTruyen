@@ -3,6 +3,10 @@ package com.storyplatform.integration.identity;
 import com.storyplatform.bootstrap.persistence.migration.UserIndexes;
 import com.storyplatform.bootstrap.persistence.migration
         .EmailVerificationIndexes;
+import com.storyplatform.bootstrap.persistence.migration
+        .RefreshSessionIndexes;
+import com.storyplatform.identity.application.port
+        .RefreshTokenFamilyRepository;
 import com.storyplatform.identity.application.port.VerificationTokenCodec;
 import com.storyplatform.identity.application.port.LoginRiskLimiter;
 import com.storyplatform.identity.application.port.PasswordHasher;
@@ -11,6 +15,11 @@ import com.storyplatform.identity.domain.UserState;
 import com.storyplatform.identity.infrastructure.persistence.MongoUserAccountDocument;
 import com.storyplatform.identity.infrastructure.persistence
         .MongoEmailVerificationDocument;
+import com.storyplatform.identity.infrastructure.persistence
+        .MongoRefreshTokenFamilyDocument;
+import com.storyplatform.identity.infrastructure.persistence
+        .MongoRefreshTokenFamilyRepository;
+import com.storyplatform.identity.domain.RefreshTokenFamily;
 import com.storyplatform.shared.events.persistence.OutboxMessage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,10 +35,13 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mongodb.MongoDBContainer;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 import java.time.Instant;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.not;
@@ -80,6 +92,12 @@ class RegistrationIntegrationTest {
     @MockitoBean
     private LoginRiskLimiter loginRiskLimiter;
 
+    @Autowired
+    private MongoRefreshTokenFamilyRepository refreshFamilies;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
     @BeforeEach
     void resetUsers() {
         when(loginRiskLimiter.allow(anyString(), anyString()))
@@ -93,10 +111,14 @@ class RegistrationIntegrationTest {
         );
         mongoTemplate.dropCollection(OutboxMessage.COLLECTION);
         new EmailVerificationIndexes().apply(mongoTemplate);
+        mongoTemplate.dropCollection(
+                MongoRefreshTokenFamilyDocument.COLLECTION
+        );
+        new RefreshSessionIndexes().apply(mongoTemplate);
     }
 
     @Test
-    void activeAccountCanLoginAndReceivesSignedAccessToken()
+    void activeAccountCanLoginRotateAndRejectRefreshReplay()
             throws Exception {
         Instant now = Instant.parse("2026-07-24T00:00:00Z");
         mongoTemplate.insert(new MongoUserAccountDocument(
@@ -113,7 +135,7 @@ class RegistrationIntegrationTest {
                 0L
         ));
 
-        mockMvc.perform(post("/auth/login")
+        var login = mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -130,7 +152,64 @@ class RegistrationIntegrationTest {
                                         + "[A-Za-z0-9_-]+\\."
                                         + "[A-Za-z0-9_-]+$"
                         )
-                ));
+                ))
+                .andExpect(jsonPath("$.refreshToken")
+                        .value(matchesPattern("^[A-Za-z0-9_-]{43}$")))
+                .andReturn();
+        String originalRefresh = objectMapper.readTree(
+                login.getResponse().getContentAsString()
+        ).get("refreshToken").asText();
+
+        var refresh = mockMvc.perform(refreshRequest(originalRefresh))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.refreshToken")
+                        .value(not(originalRefresh)))
+                .andReturn();
+        String rotatedRefresh = objectMapper.readTree(
+                refresh.getResponse().getContentAsString()
+        ).get("refreshToken").asText();
+        assertThat(rotatedRefresh).isNotEqualTo(originalRefresh);
+
+        mockMvc.perform(refreshRequest(originalRefresh))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code")
+                        .value("REFRESH_TOKEN_INVALID"));
+    }
+
+    @Test
+    void concurrentRefreshReplayRevokesEntireFamily() throws Exception {
+        Instant now = Instant.parse("2026-07-24T00:00:00Z");
+        refreshFamilies.create(RefreshTokenFamily.active(
+                "family-1",
+                "user-1",
+                1,
+                "current-hash",
+                now.plusSeconds(3600),
+                now
+        ));
+        CountDownLatch start = new CountDownLatch(1);
+        CompletableFuture<RefreshTokenFamilyRepository.RotationResult>
+                first = rotateAsync(start, "next-hash-1", now);
+        CompletableFuture<RefreshTokenFamilyRepository.RotationResult>
+                second = rotateAsync(start, "next-hash-2", now);
+
+        start.countDown();
+        List<RefreshTokenFamilyRepository.RotationStatus> statuses =
+                List.of(first.get().status(), second.get().status());
+
+        assertThat(statuses).containsExactlyInAnyOrder(
+                RefreshTokenFamilyRepository.RotationStatus.ROTATED,
+                RefreshTokenFamilyRepository.RotationStatus.REUSE_DETECTED
+        );
+        MongoRefreshTokenFamilyDocument family = mongoTemplate.findById(
+                "family-1",
+                MongoRefreshTokenFamilyDocument.class
+        );
+        assertThat(family.revokedAt()).isNotNull();
+        assertThat(family.revokeReason())
+                .isEqualTo(
+                        MongoRefreshTokenFamilyRepository.REUSE_REASON
+                );
     }
 
     @Test
@@ -254,11 +333,42 @@ class RegistrationIntegrationTest {
     }
 
     private static org.springframework.test.web.servlet
+            .request.MockHttpServletRequestBuilder refreshRequest(
+                    String token
+            ) {
+        return post("/auth/refresh")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"refreshToken\":\"" + token + "\"}");
+    }
+
+    private static org.springframework.test.web.servlet
             .request.MockHttpServletRequestBuilder verificationRequest(
                     String token
             ) {
         return post("/auth/email/verify")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"token\":\"" + token + "\"}");
+    }
+
+    private CompletableFuture<
+            RefreshTokenFamilyRepository.RotationResult> rotateAsync(
+                    CountDownLatch start,
+                    String nextHash,
+                    Instant now
+            ) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                start.await();
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException(exception);
+            }
+            return refreshFamilies.rotate(
+                    "current-hash",
+                    nextHash,
+                    now.plusSeconds(1),
+                    500
+            );
+        });
     }
 }

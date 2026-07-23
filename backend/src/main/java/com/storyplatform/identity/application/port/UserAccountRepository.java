@@ -14,4 +14,8 @@ public interface UserAccountRepository {
     default Optional<UserAccount> findByEmail(String emailNormalized) {
         return Optional.empty();
     }
+
+    default Optional<UserAccount> findById(String userId) {
+        return Optional.empty();
+    }
 }

@@ -1,8 +1,8 @@
 package com.storyplatform.identity.application;
 
-import com.storyplatform.identity.application.port.AccessTokenIssuer;
 import com.storyplatform.identity.application.port.LoginRiskLimiter;
 import com.storyplatform.identity.application.port.PasswordHasher;
+import com.storyplatform.identity.application.port.SessionTokenIssuer;
 import com.storyplatform.identity.application.port.UserAccountRepository;
 import com.storyplatform.identity.domain.EmailNormalizer;
 import com.storyplatform.identity.domain.UserAccount;
@@ -15,7 +15,7 @@ public final class LoginUseCase {
     private final UserAccountRepository users;
     private final PasswordHasher passwords;
     private final LoginRiskLimiter riskLimiter;
-    private final AccessTokenIssuer tokenIssuer;
+    private final SessionTokenIssuer tokenIssuer;
     private final EmailNormalizer emailNormalizer;
     private final String dummyPasswordHash;
 
@@ -23,7 +23,7 @@ public final class LoginUseCase {
             UserAccountRepository users,
             PasswordHasher passwords,
             LoginRiskLimiter riskLimiter,
-            AccessTokenIssuer tokenIssuer,
+            SessionTokenIssuer tokenIssuer,
             EmailNormalizer emailNormalizer,
             String dummyPasswordHash
     ) {
@@ -75,11 +75,12 @@ public final class LoginUseCase {
 
         UserAccount authenticated = account.orElseThrow();
         riskLimiter.recordSuccess(email, command.clientAddress());
-        AccessTokenIssuer.IssuedAccessToken token =
+        SessionTokenIssuer.IssuedSession token =
                 tokenIssuer.issue(authenticated);
         return LoginOutcome.authenticated(
-                token.value(),
-                token.expiresInSeconds()
+                token.accessToken(),
+                token.accessTokenExpiresInSeconds(),
+                token.refreshToken()
         );
     }
 

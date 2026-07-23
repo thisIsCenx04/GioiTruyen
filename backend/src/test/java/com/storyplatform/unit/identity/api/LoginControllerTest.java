@@ -47,7 +47,11 @@ class LoginControllerTest {
     @Test
     void returnsBearerAccessTokenAfterAuthentication() throws Exception {
         when(identityService.login(any())).thenReturn(
-                LoginOutcome.authenticated("signed.jwt.token", 600)
+                LoginOutcome.authenticated(
+                        "signed.jwt.token",
+                        600,
+                        "refresh-token-value"
+                )
         );
 
         mockMvc.perform(validRequest())
@@ -55,7 +59,9 @@ class LoginControllerTest {
                 .andExpect(jsonPath("$.accessToken")
                         .value("signed.jwt.token"))
                 .andExpect(jsonPath("$.tokenType").value("Bearer"))
-                .andExpect(jsonPath("$.expiresIn").value(600));
+                .andExpect(jsonPath("$.expiresIn").value(600))
+                .andExpect(jsonPath("$.refreshToken")
+                        .value("refresh-token-value"));
     }
 
     @Test

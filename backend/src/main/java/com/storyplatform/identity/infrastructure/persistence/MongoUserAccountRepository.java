@@ -56,6 +56,14 @@ public class MongoUserAccountRepository implements UserAccountRepository {
     }
 
     @Override
+    public Optional<UserAccount> findById(String userId) {
+        return Optional.ofNullable(mongoTemplate.findById(
+                userId,
+                MongoUserAccountDocument.class
+        )).map(MongoUserAccountDocument::toDomain);
+    }
+
+    @Override
     public boolean saveIfEmailAvailable(UserAccount account) {
         Objects.requireNonNull(account, "account");
         Query email = Query.query(Criteria.where("emailNormalized")

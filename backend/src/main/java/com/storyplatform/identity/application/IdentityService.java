@@ -7,4 +7,6 @@ public interface IdentityService {
     EmailVerificationOutcome verifyEmail(String token);
 
     LoginOutcome login(LoginCommand command);
+
+    RefreshSessionOutcome refreshSession(String refreshToken);
 }

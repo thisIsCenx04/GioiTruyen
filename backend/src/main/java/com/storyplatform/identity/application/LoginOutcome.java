@@ -4,6 +4,7 @@ public record LoginOutcome(
         Status status,
         String accessToken,
         long expiresInSeconds,
+        String refreshToken,
         long retryAfterSeconds
 ) {
 
@@ -15,12 +16,14 @@ public record LoginOutcome(
 
     public static LoginOutcome authenticated(
             String accessToken,
-            long expiresInSeconds
+            long expiresInSeconds,
+            String refreshToken
     ) {
         return new LoginOutcome(
                 Status.AUTHENTICATED,
                 accessToken,
                 expiresInSeconds,
+                refreshToken,
                 0
         );
     }
@@ -30,6 +33,7 @@ public record LoginOutcome(
                 Status.INVALID_CREDENTIALS,
                 null,
                 0,
+                null,
                 0
         );
     }
@@ -39,6 +43,7 @@ public record LoginOutcome(
                 Status.RATE_LIMITED,
                 null,
                 0,
+                null,
                 retryAfterSeconds
         );
     }

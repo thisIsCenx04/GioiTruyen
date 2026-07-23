@@ -3,12 +3,17 @@ package com.storyplatform.identity.infrastructure;
 import com.storyplatform.identity.application.IdentityService;
 import com.storyplatform.identity.application.LoginUseCase;
 import com.storyplatform.identity.application.RegisterUserUseCase;
+import com.storyplatform.identity.application.RefreshSessionUseCase;
 import com.storyplatform.identity.application.VerifyEmailUseCase;
 import com.storyplatform.identity.application.port.EmailVerificationIssuer;
 import com.storyplatform.identity.application.port.EmailVerificationRepository;
 import com.storyplatform.identity.application.port.AccessTokenIssuer;
 import com.storyplatform.identity.application.port.LoginRiskLimiter;
 import com.storyplatform.identity.application.port.PasswordHasher;
+import com.storyplatform.identity.application.port.RefreshTokenCodec;
+import com.storyplatform.identity.application.port
+        .RefreshTokenFamilyRepository;
+import com.storyplatform.identity.application.port.SessionTokenIssuer;
 import com.storyplatform.identity.application.port.UserAccountRepository;
 import com.storyplatform.identity.application.port.UserIdGenerator;
 import com.storyplatform.identity.application.port.VerificationTokenCodec;
@@ -19,6 +24,10 @@ import com.storyplatform.identity.infrastructure.security.Argon2PasswordHasher;
 import com.storyplatform.identity.infrastructure.security.HmacVerificationTokenCodec;
 import com.storyplatform.identity.infrastructure.security.JwtAccessTokenIssuer;
 import com.storyplatform.identity.infrastructure.security.RedisLoginRiskLimiter;
+import com.storyplatform.identity.infrastructure.security
+        .PersistentSessionTokenIssuer;
+import com.storyplatform.identity.infrastructure.security
+        .SecureRefreshTokenCodec;
 import com.storyplatform.shared.cache.RedisKeyFactory;
 import com.storyplatform.shared.events.persistence.OutboxAppender;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -30,6 +39,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 
 import javax.crypto.spec.SecretKeySpec;
 import java.time.Clock;
+import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.UUID;
 
@@ -38,7 +48,8 @@ import java.util.UUID;
         RegistrationProperties.class,
         VerificationProperties.class,
         AccessTokenProperties.class,
-        LoginRiskProperties.class
+        LoginRiskProperties.class,
+        RefreshSessionProperties.class
 })
 public class IdentityConfiguration {
 
@@ -137,12 +148,14 @@ public class IdentityConfiguration {
     IdentityService identityService(
             RegisterUserUseCase registerUser,
             VerifyEmailUseCase verifyEmail,
-            LoginUseCase login
+            LoginUseCase login,
+            RefreshSessionUseCase refreshSession
     ) {
         return new TransactionalIdentityService(
                 registerUser,
                 verifyEmail,
-                login
+                login,
+                refreshSession
         );
     }
 
@@ -185,11 +198,33 @@ public class IdentityConfiguration {
     }
 
     @Bean
+    RefreshTokenCodec refreshTokenCodec() {
+        return new SecureRefreshTokenCodec(new SecureRandom());
+    }
+
+    @Bean
+    SessionTokenIssuer sessionTokenIssuer(
+            AccessTokenIssuer accessTokens,
+            RefreshTokenCodec refreshTokens,
+            RefreshTokenFamilyRepository families,
+            RefreshSessionProperties properties
+    ) {
+        return new PersistentSessionTokenIssuer(
+                accessTokens,
+                refreshTokens,
+                families,
+                properties,
+                UUID::randomUUID,
+                Clock.systemUTC()
+        );
+    }
+
+    @Bean
     LoginUseCase loginUseCase(
             UserAccountRepository users,
             PasswordHasher passwords,
             LoginRiskLimiter riskLimiter,
-            AccessTokenIssuer tokenIssuer,
+            SessionTokenIssuer tokenIssuer,
             EmailNormalizer emailNormalizer
     ) {
         return new LoginUseCase(
@@ -199,6 +234,24 @@ public class IdentityConfiguration {
                 tokenIssuer,
                 emailNormalizer,
                 passwords.hash("dummy login timing password")
+        );
+    }
+
+    @Bean
+    RefreshSessionUseCase refreshSessionUseCase(
+            RefreshTokenCodec tokens,
+            RefreshTokenFamilyRepository families,
+            UserAccountRepository users,
+            AccessTokenIssuer accessTokens,
+            RefreshSessionProperties properties
+    ) {
+        return new RefreshSessionUseCase(
+                tokens,
+                families,
+                users,
+                accessTokens,
+                properties.maximumGenerations(),
+                Clock.systemUTC()
         );
     }
 
