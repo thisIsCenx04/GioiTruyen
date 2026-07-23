@@ -29,7 +29,7 @@ Không có deadline nào tự động cho phép bỏ qua security, test, audit h
 | `hotfix/<incident>-<slug>` | production incident | ngắn nhất có thể |
 | `release/<version>` | stabilization có thời hạn | tối đa 5 ngày |
 
-Không tạo thêm `develop`, nhánh cá nhân dài hạn hoặc environment branch. Feature/fix/test branch tách từ `dev` và mở PR về `dev`. Release branch tách từ `dev` và mở PR vào `main`. Môi trường vẫn được xác định bằng artifact digest, tag, config và deployment record.
+Không tạo thêm `develop`, nhánh cá nhân dài hạn hoặc environment branch. Feature/fix/test branch MUST tách trực tiếp từ `origin/dev` sau `git fetch origin --prune`, không tách từ local `dev` có thể đã stale. Nhánh hoàn tất phải được push lên `origin` trước khi tích hợp về `dev`. Release branch tách từ `origin/dev` và mở PR vào `main`. Môi trường vẫn được xác định bằng artifact digest, tag, config và deployment record.
 
 ### 2.2. Tên nhánh
 
@@ -46,7 +46,10 @@ hotfix/INC-2026-014-disable-topup-credit
 
 ### 2.3. Đồng bộ
 
-- Branch thường MUST bắt đầu từ `dev` mới nhất; `hotfix` bắt đầu từ production tag/`main`.
+- Branch thường MUST bắt đầu từ `origin/dev` mới nhất sau fetch; `hotfix` bắt đầu từ production tag/`origin/main`.
+- Trình tự bắt buộc: fetch → tạo/checkout branch từ `origin/dev` → code/test/review → commit → push branch lên `origin` → tích hợp branch remote vào `dev` → push `dev` → fetch lại trước branch kế tiếp.
+- Trước khi tích hợp, `git merge-base --is-ancestor origin/dev <branch>` MUST thành công; nếu không, rebase branch lên `origin/dev` và chạy lại gate.
+- Tích hợp local được maintainer/automation cho phép MUST dùng `git merge --ff-only`; không tạo merge commit ngoài kế hoạch.
 - Rebase lên target branch trước final approval khi branch bị lệch đáng kể.
 - Không force-push sau khi review bắt đầu nếu không thông báo; khi cần chỉ dùng `--force-with-lease`.
 - Không merge target branch vào feature branch để “giải conflict” trừ trường hợp được maintainer duyệt.
@@ -68,7 +71,7 @@ hotfix/INC-2026-014-disable-topup-credit
 - chặn secret và high/critical security finding;
 - hạn chế bypass cho tối đa nhóm incident/repository admin, mọi bypass có audit.
 
-`dev` áp dụng cùng protection, required checks và linear history. Approval thông thường tối thiểu một CODEOWNER; khu vực sensitive vẫn theo bảng approval ở mục 5.4. Không push trực tiếp vào `dev`.
+`dev` áp dụng required checks và linear history. Approval thông thường tối thiểu một CODEOWNER; khu vực sensitive vẫn theo bảng approval ở mục 5.4. Không code/commit trực tiếp trên `dev`. Tích hợp vào remote `dev` chỉ được thực hiện từ nhánh đã push và đã qua gate, bằng squash merge trên GitHub hoặc fast-forward bởi maintainer/automation được ủy quyền; cấm force-push.
 
 Repository admin không dùng quyền bypass cho công việc bình thường.
 
@@ -76,7 +79,7 @@ Repository admin không dùng quyền bypass cho công việc bình thường.
 
 ### 4.1. Merge strategy
 
-- Mặc định **squash merge**: một PR tạo một planned merge commit trên `main`.
+- Mặc định **squash merge**: một PR tạo một planned merge commit trên `dev`.
 - PR title trở thành commit subject và MUST theo Conventional Commits.
 - WIP/fixup commits được squash trước merge.
 - Không dùng merge commit; rebase merge chỉ dùng cho chuỗi commit migration đã được duyệt cần bảo toàn.

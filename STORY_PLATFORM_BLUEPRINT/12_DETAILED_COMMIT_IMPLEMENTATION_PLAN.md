@@ -2,7 +2,7 @@
 
 ## 1. Cách sử dụng
 
-Mỗi dòng `Cxxx` là **một merge commit trên `dev`**, được tạo bằng squash merge từ một pull request ngắn hạn. `main` chỉ nhận release/hotfix đã qua gate từ `dev`. Commit phải độc lập, build được và không làm hỏng contract đang chạy. WIP commit trên feature branch được squash thành đúng message đã định trước khi merge.
+Mỗi dòng `Cxxx` là **một merge commit trên `dev`**, được tạo từ một short-lived branch bắt đầu trực tiếp tại `origin/dev`. Nhánh hoàn tất phải commit, push lên `origin`, qua gate/review, rồi mới được squash merge hoặc fast-forward có ủy quyền vào `origin/dev`. Branch kế tiếp chỉ được tạo sau khi fetch lại `origin/dev`. `main` chỉ nhận release/hotfix đã qua gate từ `dev`. Commit phải độc lập, build được và không làm hỏng contract đang chạy. WIP commit trên feature branch được squash thành đúng message đã định trước khi merge.
 
 Quy ước:
 
