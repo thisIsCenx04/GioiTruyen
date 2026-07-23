@@ -1,7 +1,7 @@
 package com.storyplatform.unit.identity.api;
 
 import com.storyplatform.identity.api.RegistrationController;
-import com.storyplatform.identity.application.RegisterUserUseCase;
+import com.storyplatform.identity.application.IdentityService;
 import com.storyplatform.identity.application.RegistrationOutcome;
 import com.storyplatform.shared.api.ApiExceptionHandler;
 import com.storyplatform.shared.api.ApiProblemFactory;
@@ -25,12 +25,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class RegistrationControllerTest {
 
-    private RegisterUserUseCase useCase;
+    private IdentityService useCase;
     private MockMvc mockMvc;
 
     @BeforeEach
     void configureController() {
-        useCase = mock(RegisterUserUseCase.class);
+        useCase = mock(IdentityService.class);
         mockMvc = MockMvcBuilders
                 .standaloneSetup(new RegistrationController(useCase))
                 .setControllerAdvice(new ApiExceptionHandler(

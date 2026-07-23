@@ -1,20 +1,20 @@
 package com.storyplatform.unit.identity.infrastructure;
 
+import com.mongodb.client.result.UpdateResult;
 import com.storyplatform.identity.domain.UserAccount;
 import com.storyplatform.identity.infrastructure.persistence.MongoUserAccountDocument;
 import com.storyplatform.identity.infrastructure.persistence.MongoUserAccountRepository;
+import org.bson.BsonString;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 
 import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -30,43 +30,33 @@ class MongoUserAccountRepositoryTest {
     }
 
     @Test
-    void successfulInsertReportsNewAccount() {
-        when(mongoTemplate.insert(
-                any(MongoUserAccountDocument.class)
-        )).thenAnswer(invocation -> invocation.getArgument(0));
+    void successfulAtomicUpsertReportsNewAccount() {
+        when(mongoTemplate.upsert(
+                any(Query.class),
+                any(Update.class),
+                org.mockito.ArgumentMatchers.eq(
+                        MongoUserAccountDocument.class
+                )
+        )).thenReturn(UpdateResult.acknowledged(
+                1L,
+                0L,
+                new BsonString("user-1")
+        ));
 
         assertThat(repository.saveIfEmailAvailable(account())).isTrue();
     }
 
     @Test
-    void duplicateEmailIsHandledAsExistingAccount() {
-        when(mongoTemplate.insert(
-                any(MongoUserAccountDocument.class)
-        )).thenThrow(new DuplicateKeyException("duplicate"));
-        when(mongoTemplate.exists(
+    void existingEmailDoesNotOverwriteAccountOrAbortTransaction() {
+        when(mongoTemplate.upsert(
                 any(Query.class),
-                eq(MongoUserAccountDocument.COLLECTION)
-        )).thenReturn(true);
+                any(Update.class),
+                org.mockito.ArgumentMatchers.eq(
+                        MongoUserAccountDocument.class
+                )
+        )).thenReturn(UpdateResult.acknowledged(1L, 0L, null));
 
         assertThat(repository.saveIfEmailAvailable(account())).isFalse();
-    }
-
-    @Test
-    void unrelatedDuplicateKeyIsNotHidden() {
-        DuplicateKeyException duplicate = new DuplicateKeyException(
-                "id collision"
-        );
-        when(mongoTemplate.insert(
-                any(MongoUserAccountDocument.class)
-        )).thenThrow(duplicate);
-        when(mongoTemplate.exists(
-                any(Query.class),
-                eq(MongoUserAccountDocument.COLLECTION)
-        )).thenReturn(false);
-
-        assertThatThrownBy(() ->
-                repository.saveIfEmailAvailable(account())
-        ).isSameAs(duplicate);
     }
 
     private static UserAccount account() {

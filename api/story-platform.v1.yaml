@@ -149,6 +149,38 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /auth/email/verify:
+    post:
+      operationId: verifyEmail
+      summary: Verify an email address with a single-use token
+      description: |
+        Consumes a valid, unexpired verification token and activates the
+        pending account. Invalid, expired, and replayed tokens receive the
+        same response.
+      tags:
+        - Identity
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmailVerificationRequest"
+      responses:
+        "204":
+          description: The email address was verified.
+        "400":
+          description: The token is malformed, invalid, expired, or consumed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "413":
+          description: The request exceeds the configured body limit.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
 components:
   securitySchemes:
     bearerAuth:
@@ -196,6 +228,18 @@ components:
         message:
           type: string
           description: Generic response that does not reveal account existence.
+    EmailVerificationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - token
+      properties:
+        token:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: '^[A-Za-z0-9._-]+$'
+          writeOnly: true
     ApplicationInfo:
       type: object
       description: Allowlisted non-sensitive build and application metadata.

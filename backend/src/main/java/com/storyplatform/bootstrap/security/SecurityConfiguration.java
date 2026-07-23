@@ -20,7 +20,10 @@ public class SecurityConfiguration {
         return http
                 .formLogin(form -> form.disable())
                 .httpBasic(basic -> basic.disable())
-                .csrf(csrf -> csrf.ignoringRequestMatchers("/auth/register"))
+                .csrf(csrf -> csrf.ignoringRequestMatchers(
+                        "/auth/register",
+                        "/auth/email/verify"
+                ))
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(problemHandler)
                         .accessDeniedHandler(problemHandler))
@@ -35,7 +38,8 @@ public class SecurityConfiguration {
                         ).permitAll()
                         .requestMatchers(
                                 HttpMethod.POST,
-                                "/auth/register"
+                                "/auth/register",
+                                "/auth/email/verify"
                         ).permitAll()
                         .anyRequest().denyAll())
                 .build();

@@ -1,9 +1,11 @@
 package com.storyplatform.identity.api;
 
 import com.storyplatform.identity.application.RegisterUserCommand;
-import com.storyplatform.identity.application.RegisterUserUseCase;
+import com.storyplatform.identity.application.IdentityService;
 import com.storyplatform.identity.application.RegistrationOutcome;
 import com.storyplatform.shared.api.ApiException;
+import com.storyplatform.shared.api.CorrelationId;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,24 +20,26 @@ import java.util.Objects;
 @RequestMapping("/auth")
 public class RegistrationController {
 
-    private final RegisterUserUseCase registerUser;
+    private final IdentityService identityService;
 
-    public RegistrationController(RegisterUserUseCase registerUser) {
-        this.registerUser = Objects.requireNonNull(
-                registerUser,
-                "registerUser"
+    public RegistrationController(IdentityService identityService) {
+        this.identityService = Objects.requireNonNull(
+                identityService,
+                "identityService"
         );
     }
 
     @PostMapping("/register")
     public ResponseEntity<RegistrationResponse> register(
-            @Valid @RequestBody RegistrationRequest request
+            @Valid @RequestBody RegistrationRequest request,
+            HttpServletRequest servletRequest
     ) {
-        RegistrationOutcome outcome = registerUser.register(
+        RegistrationOutcome outcome = identityService.register(
                 new RegisterUserCommand(
                         request.email(),
                         request.password(),
-                        request.consentVersion()
+                        request.consentVersion(),
+                        CorrelationId.from(servletRequest)
                 )
         );
 

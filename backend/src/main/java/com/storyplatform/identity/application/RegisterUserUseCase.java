@@ -1,6 +1,7 @@
 package com.storyplatform.identity.application;
 
 import com.storyplatform.identity.application.port.PasswordHasher;
+import com.storyplatform.identity.application.port.EmailVerificationIssuer;
 import com.storyplatform.identity.application.port.UserAccountRepository;
 import com.storyplatform.identity.application.port.UserIdGenerator;
 import com.storyplatform.identity.domain.EmailNormalizer;
@@ -15,6 +16,7 @@ public final class RegisterUserUseCase {
 
     private final UserAccountRepository repository;
     private final PasswordHasher passwordHasher;
+    private final EmailVerificationIssuer verificationIssuer;
     private final UserIdGenerator idGenerator;
     private final EmailNormalizer emailNormalizer;
     private final PasswordPolicy passwordPolicy;
@@ -24,6 +26,7 @@ public final class RegisterUserUseCase {
     public RegisterUserUseCase(
             UserAccountRepository repository,
             PasswordHasher passwordHasher,
+            EmailVerificationIssuer verificationIssuer,
             UserIdGenerator idGenerator,
             EmailNormalizer emailNormalizer,
             PasswordPolicy passwordPolicy,
@@ -34,6 +37,10 @@ public final class RegisterUserUseCase {
         this.passwordHasher = Objects.requireNonNull(
                 passwordHasher,
                 "passwordHasher"
+        );
+        this.verificationIssuer = Objects.requireNonNull(
+                verificationIssuer,
+                "verificationIssuer"
         );
         this.idGenerator = Objects.requireNonNull(
                 idGenerator,
@@ -80,7 +87,13 @@ public final class RegisterUserUseCase {
                 currentConsentVersion,
                 now
         );
-        repository.saveIfEmailAvailable(account);
+        if (repository.saveIfEmailAvailable(account)) {
+            verificationIssuer.issue(
+                    account.id(),
+                    command.correlationId(),
+                    now
+            );
+        }
         return RegistrationOutcome.ACCEPTED;
     }
 }

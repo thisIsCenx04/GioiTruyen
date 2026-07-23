@@ -82,6 +82,10 @@ tasks.withType<Test>().configureEach {
 	systemProperty("user.language", "en")
 	systemProperty("user.country", "US")
 	systemProperty("user.timezone", "UTC")
+	systemProperty(
+		"app.identity.verification.hmac-key",
+		"A".repeat(43) + "="
+	)
 }
 
 val unitTest by tasks.registering(Test::class) {

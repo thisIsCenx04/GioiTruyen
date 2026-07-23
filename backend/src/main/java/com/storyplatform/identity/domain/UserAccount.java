@@ -85,6 +85,10 @@ public record UserAccount(
         );
     }
 
+    public boolean isPendingVerification() {
+        return state == UserState.PENDING_EMAIL_VERIFICATION;
+    }
+
     private static String requireText(String value, String field) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(

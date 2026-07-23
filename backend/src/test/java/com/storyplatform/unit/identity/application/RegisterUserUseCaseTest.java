@@ -4,6 +4,7 @@ import com.storyplatform.identity.application.RegisterUserCommand;
 import com.storyplatform.identity.application.RegisterUserUseCase;
 import com.storyplatform.identity.application.RegistrationOutcome;
 import com.storyplatform.identity.application.port.PasswordHasher;
+import com.storyplatform.identity.application.port.EmailVerificationIssuer;
 import com.storyplatform.identity.application.port.UserAccountRepository;
 import com.storyplatform.identity.domain.EmailNormalizer;
 import com.storyplatform.identity.domain.PasswordPolicy;
@@ -28,9 +29,11 @@ class RegisterUserUseCaseTest {
     private static final String CONSENT_VERSION = "2026-07-24";
     private final CapturingRepository repository = new CapturingRepository();
     private final CountingHasher hasher = new CountingHasher();
+    private final CapturingIssuer issuer = new CapturingIssuer();
     private final RegisterUserUseCase useCase = new RegisterUserUseCase(
             repository,
             hasher,
+            issuer,
             () -> "user-1",
             new EmailNormalizer(),
             new PasswordPolicy(),
@@ -61,6 +64,7 @@ class RegisterUserUseCaseTest {
                     .isEqualTo(CONSENT_VERSION);
             assertThat(account.createdAt()).isEqualTo(NOW);
         });
+        assertThat(issuer.userIds).containsExactly("user-1");
     }
 
     @Test
@@ -74,6 +78,7 @@ class RegisterUserUseCaseTest {
         assertThat(second).isEqualTo(first);
         assertThat(hasher.invocations).isEqualTo(2);
         assertThat(repository.accounts).hasSize(2);
+        assertThat(issuer.userIds).isEmpty();
     }
 
     @Test
@@ -123,13 +128,19 @@ class RegisterUserUseCaseTest {
             String password,
             String consentVersion
     ) {
-        return new RegisterUserCommand(email, password, consentVersion);
+        return new RegisterUserCommand(
+                email,
+                password,
+                consentVersion,
+                "request-1"
+        );
     }
 
     private RegisterUserUseCase configuredWithConsent(String consentVersion) {
         return new RegisterUserUseCase(
                 repository,
                 hasher,
+                issuer,
                 () -> "user-1",
                 new EmailNormalizer(),
                 new PasswordPolicy(),
@@ -149,6 +160,11 @@ class RegisterUserUseCaseTest {
             accounts.add(account);
             return available;
         }
+
+        @Override
+        public boolean activatePending(String userId, Instant activatedAt) {
+            return false;
+        }
     }
 
     private static final class CountingHasher implements PasswordHasher {
@@ -159,6 +175,21 @@ class RegisterUserUseCaseTest {
         public String hash(String rawPassword) {
             invocations++;
             return "$argon2id$test-hash";
+        }
+    }
+
+    private static final class CapturingIssuer
+            implements EmailVerificationIssuer {
+
+        private final List<String> userIds = new ArrayList<>();
+
+        @Override
+        public void issue(
+                String userId,
+                String correlationId,
+                Instant issuedAt
+        ) {
+            userIds.add(userId);
         }
     }
 }

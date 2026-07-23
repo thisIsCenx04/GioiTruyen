@@ -1,9 +1,15 @@
 package com.storyplatform.integration.identity;
 
 import com.storyplatform.bootstrap.persistence.migration.UserIndexes;
+import com.storyplatform.bootstrap.persistence.migration
+        .EmailVerificationIndexes;
+import com.storyplatform.identity.application.port.VerificationTokenCodec;
 import com.storyplatform.identity.domain.GlobalRole;
 import com.storyplatform.identity.domain.UserState;
 import com.storyplatform.identity.infrastructure.persistence.MongoUserAccountDocument;
+import com.storyplatform.identity.infrastructure.persistence
+        .MongoEmailVerificationDocument;
+import com.storyplatform.shared.events.persistence.OutboxMessage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,12 +63,56 @@ class RegistrationIntegrationTest {
     @Autowired
     private MongoTemplate mongoTemplate;
 
+    @Autowired
+    private VerificationTokenCodec tokenCodec;
+
     @BeforeEach
     void resetUsers() {
         mongoTemplate.dropCollection(
                 MongoUserAccountDocument.COLLECTION
         );
         new UserIndexes().apply(mongoTemplate);
+        mongoTemplate.dropCollection(
+                MongoEmailVerificationDocument.COLLECTION
+        );
+        mongoTemplate.dropCollection(OutboxMessage.COLLECTION);
+        new EmailVerificationIndexes().apply(mongoTemplate);
+    }
+
+    @Test
+    void verificationTokenIsSingleUseAndActivatesAccount()
+            throws Exception {
+        mockMvc.perform(request(
+                        "reader@example.com",
+                        "correct horse battery staple"
+                ))
+                .andExpect(status().isAccepted());
+
+        MongoEmailVerificationDocument verification =
+                mongoTemplate.findAll(
+                        MongoEmailVerificationDocument.class
+                ).getFirst();
+        String token = tokenCodec.tokenForDelivery(
+                verification.id(),
+                verification.userId(),
+                verification.expiresAt()
+        );
+
+        mockMvc.perform(verificationRequest(token))
+                .andExpect(status().isNoContent());
+        assertThat(mongoTemplate.findById(
+                verification.userId(),
+                MongoUserAccountDocument.class
+        ).state()).isEqualTo(UserState.ACTIVE);
+        assertThat(mongoTemplate.findById(
+                verification.id(),
+                MongoEmailVerificationDocument.class
+        ).consumedAt()).isNotNull();
+
+        mockMvc.perform(verificationRequest(token))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code")
+                        .value("VERIFICATION_TOKEN_INVALID"));
     }
 
     @Test
@@ -147,5 +197,14 @@ class RegistrationIntegrationTest {
                           "consentVersion": "2026-07-24"
                         }
                         """.formatted(email, password));
+    }
+
+    private static org.springframework.test.web.servlet
+            .request.MockHttpServletRequestBuilder verificationRequest(
+                    String token
+            ) {
+        return post("/auth/email/verify")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"token\":\"" + token + "\"}");
     }
 }

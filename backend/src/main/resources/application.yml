@@ -81,6 +81,9 @@ app:
       argon2-memory-kb: ${ARGON2_MEMORY_KB:19456}
       argon2-iterations: ${ARGON2_ITERATIONS:2}
       argon2-parallelism: ${ARGON2_PARALLELISM:1}
+    verification:
+      token-ttl: ${EMAIL_VERIFICATION_TOKEN_TTL:24h}
+      hmac-key: ${EMAIL_VERIFICATION_HMAC_KEY}
   redis:
     application-prefix: ${REDIS_KEY_PREFIX:gioitruyen}
     key-version: ${REDIS_KEY_VERSION:v1}

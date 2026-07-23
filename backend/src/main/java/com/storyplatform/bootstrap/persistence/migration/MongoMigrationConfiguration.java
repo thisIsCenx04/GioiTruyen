@@ -37,6 +37,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    EmailVerificationIndexes emailVerificationIndexes() {
+        return new EmailVerificationIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }
