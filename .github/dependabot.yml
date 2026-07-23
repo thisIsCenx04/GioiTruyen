@@ -47,3 +47,35 @@ updates:
       frontend-dependencies:
         patterns:
           - "*"
+
+  - package-ecosystem: terraform
+    directory: /infra/modules/environment
+    target-branch: dev
+    schedule:
+      interval: weekly
+      day: monday
+      time: "02:45"
+      timezone: Asia/Ho_Chi_Minh
+    labels:
+      - dependencies
+      - infrastructure
+    groups:
+      infrastructure-providers:
+        patterns:
+          - "*"
+
+  - package-ecosystem: terraform
+    directory: /infra/bootstrap/state
+    target-branch: dev
+    schedule:
+      interval: weekly
+      day: monday
+      time: "03:00"
+      timezone: Asia/Ho_Chi_Minh
+    labels:
+      - dependencies
+      - infrastructure
+    groups:
+      state-bootstrap-providers:
+        patterns:
+          - "*"

@@ -1,0 +1,6 @@
+# Use a dedicated staging account; never reuse the dev or production account.
+account_id = "222222222222"
+region     = "ap-southeast-1"
+
+# Promotion keeps the exact digest already verified in dev.
+container_image = "222222222222.dkr.ecr.ap-southeast-1.amazonaws.com/gioitruyen-staging/api@sha256:0000000000000000000000000000000000000000000000000000000000000000"

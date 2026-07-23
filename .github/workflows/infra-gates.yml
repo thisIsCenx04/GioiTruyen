@@ -1,0 +1,89 @@
+name: Infrastructure gates
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - main
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: infra-gates-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  OPENTOFU_VERSION: "1.11.7"
+  OPENTOFU_LINUX_X64_SHA256: "2ae4434e08da9a17372c11509d11b07f1cb3730dea0bf7ff658bdb4b83b1cbab"
+  TRIVY_VERSION: "0.72.0"
+  TRIVY_LINUX_X64_SHA256: "bbb64b9695866ce4a7a8f5c9592002c5961cab378577fa3f8a040df362b9b2ea"
+
+jobs:
+  validate-plan-policy:
+    name: OpenTofu validate, mock plans, and IaC policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository without persisted credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install checksum-verified OpenTofu
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="tofu_${OPENTOFU_VERSION}_linux_amd64.zip"
+          url="https://github.com/opentofu/opentofu/releases/download/v${OPENTOFU_VERSION}/${archive}"
+          mkdir -p "${RUNNER_TEMP}/infra-bin"
+          curl --fail --silent --show-error --location "${url}" --output "${RUNNER_TEMP}/${archive}"
+          echo "${OPENTOFU_LINUX_X64_SHA256}  ${RUNNER_TEMP}/${archive}" | sha256sum --check --strict
+          unzip -q "${RUNNER_TEMP}/${archive}" -d "${RUNNER_TEMP}/infra-bin"
+          chmod 0755 "${RUNNER_TEMP}/infra-bin/tofu"
+          echo "${RUNNER_TEMP}/infra-bin" >> "${GITHUB_PATH}"
+
+      - name: Enforce canonical OpenTofu formatting
+        run: tofu fmt -check -recursive infra
+
+      - name: Initialize and validate isolated roots
+        shell: bash
+        run: |
+          set -euo pipefail
+          roots=(
+            "infra/bootstrap/state"
+            "infra/modules/environment"
+            "infra/environments/dev"
+            "infra/environments/staging"
+          )
+          for root in "${roots[@]}"; do
+            tofu -chdir="${root}" init -backend=false -input=false
+            tofu -chdir="${root}" validate
+          done
+
+      - name: Plan security and parity contracts with mocked providers
+        shell: bash
+        run: |
+          set -euo pipefail
+          tofu -chdir=infra/bootstrap/state test
+          tofu -chdir=infra/modules/environment test
+
+      - name: Install checksum-verified Trivy
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          url="https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/${archive}"
+          curl --fail --silent --show-error --location "${url}" --output "${RUNNER_TEMP}/${archive}"
+          echo "${TRIVY_LINUX_X64_SHA256}  ${RUNNER_TEMP}/${archive}" | sha256sum --check --strict
+          tar --extract --gzip --file "${RUNNER_TEMP}/${archive}" --directory "${RUNNER_TEMP}/infra-bin" trivy
+          chmod 0755 "${RUNNER_TEMP}/infra-bin/trivy"
+
+      - name: Reject high or critical infrastructure findings
+        run: >-
+          trivy config
+          --exit-code 1
+          --severity HIGH,CRITICAL
+          infra

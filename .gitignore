@@ -147,6 +147,12 @@ backups/
 *.tfstate
 *.tfstate.*
 *.tfplan
+**/backend.hcl
+**/terraform.tfvars
+**/*.auto.tfvars
+!**/backend.hcl.example
+!**/terraform.tfvars.example
+!**/*.auto.tfvars.example
 crash.log
 crash.*.log
 override.tf

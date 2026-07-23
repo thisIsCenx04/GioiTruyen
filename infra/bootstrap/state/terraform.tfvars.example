@@ -1,0 +1,5 @@
+# Run once in each dedicated environment account, using distinct values.
+account_id        = "111111111111"
+region            = "ap-southeast-1"
+environment       = "dev"
+state_bucket_name = "replace-with-globally-unique-state-bucket"
