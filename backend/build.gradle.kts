@@ -1,6 +1,7 @@
 plugins {
 	java
 	jacoco
+	checkstyle
 	id("org.springframework.boot") version "4.1.0"
 	id("io.spring.dependency-management") version "1.1.7"
 }
@@ -58,6 +59,19 @@ dependencies {
 
 jacoco {
 	toolVersion = "0.8.14"
+}
+
+checkstyle {
+	toolVersion = "13.8.0"
+	maxErrors = 0
+	maxWarnings = 0
+}
+
+tasks.withType<Checkstyle>().configureEach {
+	reports {
+		xml.required = true
+		html.required = true
+	}
 }
 
 tasks.withType<Test>().configureEach {

@@ -1,0 +1,177 @@
+name: Quality gates
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - main
+  push:
+    branches:
+      - dev
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-gates-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-quality:
+    name: Backend build, tests, coverage, and static analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x backend/gradlew
+
+      - name: Run backend quality gate
+        run: ./backend/gradlew --project-dir backend clean check bootJar
+
+      - name: Upload backend quality reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-quality-reports
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            backend/build/reports/checkstyle/
+            backend/build/reports/jacoco/
+            backend/build/reports/tests/
+            backend/build/test-results/
+
+      - name: Upload immutable backend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: story-platform-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 14
+          path: backend/build/libs/*.jar
+
+  frontend-quality:
+    name: Frontend lint, types, tests, coverage, and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.12.0
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install dependencies from lockfile
+        run: pnpm --dir frontend install --frozen-lockfile
+
+      - name: Run frontend lint
+        run: pnpm --dir frontend lint
+
+      - name: Run frontend type checks
+        run: pnpm --dir frontend typecheck
+
+      - name: Enforce deterministic test policy
+        run: pnpm --dir frontend test:policy
+
+      - name: Prove the test policy rejects seeded violations
+        run: pnpm --dir frontend test:policy:self-test
+
+      - name: Run frontend tests and coverage thresholds
+        run: pnpm --dir frontend test:coverage
+
+      - name: Build frontend applications
+        run: pnpm --dir frontend build
+
+      - name: Upload frontend quality reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-quality-reports
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            frontend/coverage/
+            frontend/test-results/
+
+  api-contract:
+    name: OpenAPI lint, negative control, and bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.12.0
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install dependencies from lockfile
+        run: pnpm --dir frontend install --frozen-lockfile
+
+      - name: Lint OpenAPI contract
+        run: pnpm --dir frontend api:lint
+
+      - name: Prove OpenAPI gate rejects a seeded violation
+        run: pnpm --dir frontend api:gate:self-test
+
+      - name: Bundle deployable OpenAPI contract
+        run: pnpm --dir frontend api:bundle
+
+      - name: Upload immutable OpenAPI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 14
+          path: build/openapi/story-platform.v1.yaml
+
+  api-breaking-change:
+    name: Reject breaking OpenAPI changes
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository with base history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compare OpenAPI contract with pull request base
+        uses: oasdiff/oasdiff-action/breaking@v0
+        with:
+          base: origin/${{ github.base_ref }}:api/story-platform.v1.yaml
+          revision: HEAD:api/story-platform.v1.yaml
+          fail-on: WARN
+          review: false

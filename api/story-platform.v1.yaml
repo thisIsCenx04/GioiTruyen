@@ -1,0 +1,186 @@
+openapi: 3.1.0
+info:
+  title: GioiTruyen Story Platform API
+  version: 1.0.0
+  description: |
+    Public HTTP contract for the GioiTruyen platform. This contract grows
+    incrementally with each implemented vertical slice.
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+servers:
+  - url: /api/v1
+    description: Application context path
+tags:
+  - name: Operations
+    description: Safe operational probes exposed to load balancers and orchestrators.
+security:
+  - bearerAuth: []
+paths:
+  /actuator/health:
+    get:
+      operationId: getAggregateHealth
+      summary: Get aggregate application health
+      description: Returns only the aggregate status and never dependency details.
+      tags:
+        - Operations
+      security: []
+      responses:
+        "200":
+          $ref: "#/components/responses/HealthUp"
+        "503":
+          $ref: "#/components/responses/HealthUnavailable"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /actuator/health/liveness:
+    get:
+      operationId: getLiveness
+      summary: Get application liveness
+      description: Reports whether the process is internally able to continue running.
+      tags:
+        - Operations
+      security: []
+      responses:
+        "200":
+          $ref: "#/components/responses/HealthUp"
+        "503":
+          $ref: "#/components/responses/HealthUnavailable"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /actuator/health/readiness:
+    get:
+      operationId: getReadiness
+      summary: Get application readiness
+      description: Reports whether the application and required data stores can serve traffic.
+      tags:
+        - Operations
+      security: []
+      responses:
+        "200":
+          $ref: "#/components/responses/HealthUp"
+        "503":
+          $ref: "#/components/responses/HealthUnavailable"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /actuator/info:
+    get:
+      operationId: getApplicationInfo
+      summary: Get safe application information
+      description: Returns explicitly configured non-sensitive application metadata.
+      tags:
+        - Operations
+      security: []
+      responses:
+        "200":
+          description: Safe application information.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationInfo"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /livez:
+    get:
+      operationId: getAdditionalLiveness
+      summary: Get short-form application liveness
+      description: Alias used by infrastructure that expects a conventional liveness path.
+      tags:
+        - Operations
+      security: []
+      responses:
+        "200":
+          $ref: "#/components/responses/HealthUp"
+        "503":
+          $ref: "#/components/responses/HealthUnavailable"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /readyz:
+    get:
+      operationId: getAdditionalReadiness
+      summary: Get short-form application readiness
+      description: Alias used by infrastructure that expects a conventional readiness path.
+      tags:
+        - Operations
+      security: []
+      responses:
+        "200":
+          $ref: "#/components/responses/HealthUp"
+        "503":
+          $ref: "#/components/responses/HealthUnavailable"
+        "404":
+          $ref: "#/components/responses/NotFound"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token issued by the GioiTruyen identity service.
+  schemas:
+    ApplicationInfo:
+      type: object
+      description: Allowlisted non-sensitive build and application metadata.
+      additionalProperties: true
+    Health:
+      type: object
+      description: Aggregate health response without component or topology details.
+      additionalProperties: false
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          description: Aggregate application status.
+          enum:
+            - UP
+            - DOWN
+            - OUT_OF_SERVICE
+            - UNKNOWN
+    Problem:
+      type: object
+      description: RFC 9457 problem detail response.
+      additionalProperties: true
+      required:
+        - type
+        - title
+        - status
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference
+  responses:
+    HealthUp:
+      description: The requested health group is available.
+      content:
+        application/vnd.spring-boot.actuator.v3+json:
+          schema:
+            $ref: "#/components/schemas/Health"
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Health"
+    HealthUnavailable:
+      description: The requested health group is unavailable.
+      content:
+        application/vnd.spring-boot.actuator.v3+json:
+          schema:
+            $ref: "#/components/schemas/Health"
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Health"
+    NotFound:
+      description: The requested endpoint is not exposed by this deployment.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"

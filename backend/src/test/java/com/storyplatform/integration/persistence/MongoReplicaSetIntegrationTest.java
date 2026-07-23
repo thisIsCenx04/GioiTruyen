@@ -36,6 +36,7 @@ import org.testcontainers.mongodb.MongoDBContainer;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -49,6 +50,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class MongoReplicaSetIntegrationTest {
 
     private static final String COLLECTION = "transaction_probe";
+    private static final Instant FIXED_INSTANT = Instant.parse(
+            "2026-01-01T00:00:00Z"
+    );
+    private static final Clock FIXED_CLOCK = Clock.fixed(
+            FIXED_INSTANT,
+            ZoneOffset.UTC
+    );
 
     @Container
     static final MongoDBContainer MONGO =
@@ -213,13 +221,13 @@ class MongoReplicaSetIntegrationTest {
         MongoMigrationStore store = new MongoMigrationStore(mongoTemplate);
         MigrationLock lock = store.acquire(
                 "first-owner",
-                Clock.systemUTC().instant(),
+                FIXED_INSTANT,
                 Duration.ofMinutes(15)
         );
 
         assertThatThrownBy(() -> store.acquire(
                 "competing-owner",
-                Clock.systemUTC().instant(),
+                FIXED_INSTANT,
                 Duration.ofMinutes(15)
         )).isInstanceOf(IllegalStateException.class)
                 .hasMessage(
@@ -299,7 +307,7 @@ class MongoReplicaSetIntegrationTest {
                 outboxAppender.append(integrationEvent())
         );
         OutboxMessageStore store = new OutboxMessageStore(mongoTemplate);
-        Instant claimTime = Instant.now().plusSeconds(1);
+        Instant claimTime = FIXED_INSTANT.plusSeconds(1);
 
         assertThat(store.claim(
                 "worker-1",
@@ -347,7 +355,7 @@ class MongoReplicaSetIntegrationTest {
         InboxDispatcher dispatcher = new InboxDispatcher(
                 mongoTemplate,
                 List.of(handler),
-                Clock.systemUTC()
+                FIXED_CLOCK
         );
         OutboxMessage message = outboxMessage();
         TransactionTemplate transaction = new TransactionTemplate(
@@ -376,7 +384,7 @@ class MongoReplicaSetIntegrationTest {
                 migrations,
                 new MongoMigrationStore(mongoTemplate),
                 mongoTemplate,
-                Clock.systemUTC()
+                FIXED_CLOCK
         );
     }
 

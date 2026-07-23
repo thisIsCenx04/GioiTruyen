@@ -35,7 +35,11 @@ class InboxReceiptTest {
     @Test
     void unsafeConsumerNameIsRejected() {
         assertThatIllegalArgumentException().isThrownBy(() ->
-                InboxReceipt.from("Search Indexer", event(), Instant.now())
+                InboxReceipt.from(
+                        "Search Indexer",
+                        event(),
+                        Instant.parse("2026-01-01T00:01:00Z")
+                )
         ).withMessage("consumer has an invalid format");
     }
 

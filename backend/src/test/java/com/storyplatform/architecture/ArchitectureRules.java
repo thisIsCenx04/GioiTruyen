@@ -82,7 +82,10 @@ final class ArchitectureRules {
 	}
 
 	private static ArchCondition<JavaClass> respectBusinessModuleBoundaries() {
-		return new ArchCondition<>("depend only on the same module, shared code, or another module's application contracts") {
+		return new ArchCondition<>(
+				"depend only on the same module, shared code, "
+						+ "or another module's application contracts"
+		) {
 			@Override
 			public void check(JavaClass sourceClass, ConditionEvents events) {
 				sourceClass.getDirectDependenciesFromSelf().stream()

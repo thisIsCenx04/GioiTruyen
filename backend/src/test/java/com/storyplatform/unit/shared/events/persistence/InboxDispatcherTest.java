@@ -109,7 +109,7 @@ class InboxDispatcherTest {
                 new InboxDispatcher(
                         mongoTemplate,
                         List.of(handler, handler()),
-                        Clock.systemUTC()
+                        Clock.fixed(NOW, ZoneOffset.UTC)
                 )
         ).withMessage(
                 "Duplicate handler registration "
