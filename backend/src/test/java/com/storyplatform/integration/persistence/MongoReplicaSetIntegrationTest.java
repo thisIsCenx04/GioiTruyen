@@ -69,7 +69,8 @@ class MongoReplicaSetIntegrationTest {
         registry.add(
                 "spring.mongodb.uri",
                 () -> MONGO.getReplicaSetUrl(DATABASE)
-                        + "?replicaSet=" + REPLICA_SET
+                        + "?directConnection=true"
+                        + "&replicaSet=" + REPLICA_SET
         );
         registry.add(
                 "spring.mongodb.database",
