@@ -154,3 +154,5 @@ override.tf.json
 *_override.tf.json
 .terraformrc
 terraform.rc
+
+STORY_PLATFORM_BLUEPRINT/
