@@ -2,7 +2,7 @@
 
 ## Local quality gates
 
-Use Java 21, Node.js 24, and pnpm 11.12.0. CI runs the same commands and
+Use Java 21, Node.js 24, and pnpm 11.17.0. CI runs the same commands and
 rejects changes that fail formatting/static analysis, tests, coverage, builds,
 or the OpenAPI contract.
 
