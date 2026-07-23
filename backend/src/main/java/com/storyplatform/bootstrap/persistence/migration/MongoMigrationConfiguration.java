@@ -27,6 +27,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    OutboxInboxIndexes outboxInboxIndexes() {
+        return new OutboxInboxIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

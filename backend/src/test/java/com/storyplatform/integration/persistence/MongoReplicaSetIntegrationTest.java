@@ -7,6 +7,12 @@ import com.storyplatform.bootstrap.persistence.migration.MigrationMetadataIndexe
 import com.storyplatform.bootstrap.persistence.migration.MongoMigration;
 import com.storyplatform.bootstrap.persistence.migration.MongoMigrationRunner;
 import com.storyplatform.bootstrap.persistence.migration.MongoMigrationStore;
+import com.storyplatform.bootstrap.persistence.migration.OutboxInboxIndexes;
+import com.storyplatform.shared.events.IntegrationEvent;
+import com.storyplatform.shared.events.persistence.InboxReceipt;
+import com.storyplatform.shared.events.persistence.OutboxAppender;
+import com.storyplatform.shared.events.persistence.OutboxMessage;
+import com.storyplatform.shared.events.persistence.OutboxStatus;
 import org.bson.Document;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,7 +31,10 @@ import org.testcontainers.mongodb.MongoDBContainer;
 
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -59,6 +68,9 @@ class MongoReplicaSetIntegrationTest {
     @Autowired
     private PlatformTransactionManager transactionManager;
 
+    @Autowired
+    private OutboxAppender outboxAppender;
+
     @BeforeEach
     void clearProbeCollection() {
         mongoTemplate.dropCollection(COLLECTION);
@@ -66,6 +78,8 @@ class MongoReplicaSetIntegrationTest {
                 MongoMigrationStore.MIGRATIONS_COLLECTION
         );
         mongoTemplate.dropCollection(MongoMigrationStore.LOCKS_COLLECTION);
+        mongoTemplate.dropCollection(OutboxMessage.COLLECTION);
+        mongoTemplate.dropCollection(InboxReceipt.COLLECTION);
     }
 
     @Test
@@ -211,6 +225,67 @@ class MongoReplicaSetIntegrationTest {
         store.release(lock);
     }
 
+    @Test
+    void aggregateAndOutboxMessageCommitOrRollbackTogether() {
+        TransactionTemplate transaction = new TransactionTemplate(
+                transactionManager
+        );
+        IntegrationEvent event = integrationEvent();
+
+        assertThatThrownBy(() -> transaction.executeWithoutResult(status -> {
+            mongoTemplate.insert(
+                    new Document("_id", "aggregate-rollback"),
+                    COLLECTION
+            );
+            outboxAppender.append(event);
+            throw new RollbackProbeException();
+        })).isInstanceOf(RollbackProbeException.class);
+
+        assertThat(mongoTemplate.getCollection(COLLECTION).countDocuments())
+                .isZero();
+        assertThat(mongoTemplate.getCollection(
+                OutboxMessage.COLLECTION
+        ).countDocuments()).isZero();
+
+        transaction.executeWithoutResult(status -> {
+            mongoTemplate.insert(
+                    new Document("_id", "aggregate-commit"),
+                    COLLECTION
+            );
+            outboxAppender.append(event);
+        });
+
+        assertThat(mongoTemplate.getCollection(COLLECTION).countDocuments())
+                .isEqualTo(1);
+        OutboxMessage stored = mongoTemplate.findById(
+                event.eventId().toString(),
+                OutboxMessage.class
+        );
+        assertThat(stored).isNotNull();
+        assertThat(stored.status()).isEqualTo(OutboxStatus.PENDING);
+    }
+
+    @Test
+    void outboxAndInboxIndexesSupportClaimAndConsumerDedupe() {
+        migrationRunner(List.of(
+                new MigrationMetadataIndexes(),
+                new OutboxInboxIndexes()
+        )).run(false, "integration-owner", Duration.ofMinutes(15));
+
+        assertThat(mongoTemplate.indexOps(
+                OutboxMessage.COLLECTION
+        ).getIndexInfo()).anySatisfy(index ->
+                assertThat(index.getName()).isEqualTo("outbox_claim_v1")
+        );
+        assertThat(mongoTemplate.indexOps(
+                InboxReceipt.COLLECTION
+        ).getIndexInfo()).anySatisfy(index -> {
+            assertThat(index.getName())
+                    .isEqualTo("inbox_consumer_event_unique");
+            assertThat(index.isUnique()).isTrue();
+        });
+    }
+
     private MongoMigrationRunner migrationRunner(
             List<MongoMigration> migrations
     ) {
@@ -219,6 +294,21 @@ class MongoReplicaSetIntegrationTest {
                 new MongoMigrationStore(mongoTemplate),
                 mongoTemplate,
                 Clock.systemUTC()
+        );
+    }
+
+    private static IntegrationEvent integrationEvent() {
+        return new IntegrationEvent(
+                UUID.fromString("581c36b2-52a0-4a18-8035-5478ec1c3270"),
+                "publishing.story.published",
+                1,
+                Instant.parse("2026-01-01T00:00:00Z"),
+                "request-1",
+                "story",
+                "story-1",
+                "user-1",
+                "team-1",
+                Map.of("revision", 3)
         );
     }
 

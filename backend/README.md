@@ -58,6 +58,19 @@ Never edit an applied migration. Add a higher version that is idempotent and
 backward-compatible with the previous application version. Destructive changes
 follow expand, backfill, switch and contract as separate releases.
 
+## Transactional outbox
+
+Cross-module events use a versioned envelope with event, aggregate, correlation
+and optional actor/Team metadata. Event payloads are JSON with a 64 KiB default
+limit and must contain only the minimum consumer data—never credentials, tokens,
+raw payment data or unnecessary PII.
+
+Call `OutboxAppender.append(...)` from an existing MongoDB transaction that also
+writes the business aggregate. The appender deliberately uses mandatory
+transaction propagation and rejects standalone calls. Outbox delivery,
+lease/retry and dead-letter processing are implemented by the following worker
+commit; this foundation only defines durable outbox/inbox data and indexes.
+
 The application starts deny-by-default. Only Actuator health/info are public
 until Identity and explicit API authorization policies are implemented.
 
