@@ -1,10 +1,13 @@
 package com.storyplatform.identity.infrastructure;
 
 import com.storyplatform.identity.application.IdentityService;
+import com.storyplatform.identity.application.LoginUseCase;
 import com.storyplatform.identity.application.RegisterUserUseCase;
 import com.storyplatform.identity.application.VerifyEmailUseCase;
 import com.storyplatform.identity.application.port.EmailVerificationIssuer;
 import com.storyplatform.identity.application.port.EmailVerificationRepository;
+import com.storyplatform.identity.application.port.AccessTokenIssuer;
+import com.storyplatform.identity.application.port.LoginRiskLimiter;
 import com.storyplatform.identity.application.port.PasswordHasher;
 import com.storyplatform.identity.application.port.UserAccountRepository;
 import com.storyplatform.identity.application.port.UserIdGenerator;
@@ -14,11 +17,18 @@ import com.storyplatform.identity.domain.PasswordPolicy;
 import com.storyplatform.identity.infrastructure.persistence.MongoEmailVerificationIssuer;
 import com.storyplatform.identity.infrastructure.security.Argon2PasswordHasher;
 import com.storyplatform.identity.infrastructure.security.HmacVerificationTokenCodec;
+import com.storyplatform.identity.infrastructure.security.JwtAccessTokenIssuer;
+import com.storyplatform.identity.infrastructure.security.RedisLoginRiskLimiter;
+import com.storyplatform.shared.cache.RedisKeyFactory;
 import com.storyplatform.shared.events.persistence.OutboxAppender;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 
+import javax.crypto.spec.SecretKeySpec;
 import java.time.Clock;
 import java.util.Base64;
 import java.util.UUID;
@@ -26,7 +36,9 @@ import java.util.UUID;
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties({
         RegistrationProperties.class,
-        VerificationProperties.class
+        VerificationProperties.class,
+        AccessTokenProperties.class,
+        LoginRiskProperties.class
 })
 public class IdentityConfiguration {
 
@@ -124,11 +136,86 @@ public class IdentityConfiguration {
     @Bean
     IdentityService identityService(
             RegisterUserUseCase registerUser,
-            VerifyEmailUseCase verifyEmail
+            VerifyEmailUseCase verifyEmail,
+            LoginUseCase login
     ) {
         return new TransactionalIdentityService(
                 registerUser,
-                verifyEmail
+                verifyEmail,
+                login
         );
+    }
+
+    @Bean
+    LoginRiskLimiter loginRiskLimiter(
+            StringRedisTemplate redis,
+            RedisKeyFactory keys,
+            LoginRiskProperties properties
+    ) {
+        return new RedisLoginRiskLimiter(
+                redis,
+                keys,
+                properties,
+                decodeKey(properties.hmacKey(), "LOGIN_RISK_HMAC_KEY")
+        );
+    }
+
+    @Bean
+    JwtEncoder jwtEncoder(AccessTokenProperties properties) {
+        SecretKeySpec key = new SecretKeySpec(
+                decodeKey(
+                        properties.signingKey(),
+                        "JWT_SIGNING_KEY"
+                ),
+                "HmacSHA256"
+        );
+        return NimbusJwtEncoder.withSecretKey(key).build();
+    }
+
+    @Bean
+    AccessTokenIssuer accessTokenIssuer(
+            JwtEncoder encoder,
+            AccessTokenProperties properties
+    ) {
+        return new JwtAccessTokenIssuer(
+                encoder,
+                properties,
+                Clock.systemUTC()
+        );
+    }
+
+    @Bean
+    LoginUseCase loginUseCase(
+            UserAccountRepository users,
+            PasswordHasher passwords,
+            LoginRiskLimiter riskLimiter,
+            AccessTokenIssuer tokenIssuer,
+            EmailNormalizer emailNormalizer
+    ) {
+        return new LoginUseCase(
+                users,
+                passwords,
+                riskLimiter,
+                tokenIssuer,
+                emailNormalizer,
+                passwords.hash("dummy login timing password")
+        );
+    }
+
+    private static byte[] decodeKey(String value, String name) {
+        try {
+            byte[] decoded = Base64.getDecoder().decode(value);
+            if (decoded.length < 32) {
+                throw new IllegalArgumentException(
+                        name + " must contain at least 32 bytes"
+                );
+            }
+            return decoded;
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException(
+                    name + " must be Base64 encoded with at least 32 bytes",
+                    exception
+            );
+        }
     }
 }

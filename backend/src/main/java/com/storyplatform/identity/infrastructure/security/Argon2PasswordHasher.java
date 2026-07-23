@@ -31,4 +31,14 @@ public final class Argon2PasswordHasher implements PasswordHasher {
         Objects.requireNonNull(rawPassword, "rawPassword");
         return encoder.encode(rawPassword);
     }
+
+    @Override
+    public boolean matches(
+            String rawPassword,
+            String encodedPassword
+    ) {
+        Objects.requireNonNull(rawPassword, "rawPassword");
+        Objects.requireNonNull(encodedPassword, "encodedPassword");
+        return encoder.matches(rawPassword, encodedPassword);
+    }
 }

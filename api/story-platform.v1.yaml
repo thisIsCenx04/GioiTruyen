@@ -181,6 +181,61 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /auth/login:
+    post:
+      operationId: login
+      summary: Authenticate an active account
+      description: |
+        Verifies the password with Argon2id and applies email and network
+        risk limits. Unknown accounts, invalid passwords, and inactive
+        accounts use the same generic authentication failure.
+      tags:
+        - Identity
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Authentication succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          description: The request is malformed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "401":
+          description: The credentials or account state are invalid.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "429":
+          description: Login risk limits were exceeded.
+          headers:
+            Retry-After:
+              description: Seconds before the client should retry.
+              schema:
+                type: integer
+                minimum: 1
+                maximum: 86400
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "503":
+          description: Risk controls are temporarily unavailable.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
 components:
   securitySchemes:
     bearerAuth:
@@ -240,6 +295,41 @@ components:
           maxLength: 128
           pattern: '^[A-Za-z0-9._-]+$'
           writeOnly: true
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          maxLength: 254
+        password:
+          type: string
+          format: password
+          writeOnly: true
+          minLength: 1
+          maxLength: 128
+    LoginResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - accessToken
+        - tokenType
+        - expiresIn
+      properties:
+        accessToken:
+          type: string
+          format: jwt
+          minLength: 32
+        tokenType:
+          type: string
+          const: Bearer
+        expiresIn:
+          type: integer
+          minimum: 60
+          maximum: 1800
     ApplicationInfo:
       type: object
       description: Allowlisted non-sensitive build and application metadata.

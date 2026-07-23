@@ -84,6 +84,16 @@ app:
     verification:
       token-ttl: ${EMAIL_VERIFICATION_TOKEN_TTL:24h}
       hmac-key: ${EMAIL_VERIFICATION_HMAC_KEY}
+    access-token:
+      issuer: ${JWT_ISSUER}
+      audience: ${JWT_AUDIENCE}
+      ttl: ${JWT_ACCESS_TOKEN_TTL:10m}
+      signing-key: ${JWT_SIGNING_KEY}
+    login-risk:
+      max-email-failures: ${LOGIN_MAX_EMAIL_FAILURES:5}
+      max-address-failures: ${LOGIN_MAX_ADDRESS_FAILURES:20}
+      window: ${LOGIN_RISK_WINDOW:15m}
+      hmac-key: ${LOGIN_RISK_HMAC_KEY}
   redis:
     application-prefix: ${REDIS_KEY_PREFIX:gioitruyen}
     key-version: ${REDIS_KEY_VERSION:v1}

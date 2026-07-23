@@ -30,5 +30,7 @@ class Argon2PasswordHasherTest {
                 19_456,
                 2
         ).matches(rawPassword, first)).isTrue();
+        assertThat(hasher.matches(rawPassword, first)).isTrue();
+        assertThat(hasher.matches("wrong password", first)).isFalse();
     }
 }

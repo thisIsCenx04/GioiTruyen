@@ -5,4 +5,6 @@ public interface IdentityService {
     RegistrationOutcome register(RegisterUserCommand command);
 
     EmailVerificationOutcome verifyEmail(String token);
+
+    LoginOutcome login(LoginCommand command);
 }

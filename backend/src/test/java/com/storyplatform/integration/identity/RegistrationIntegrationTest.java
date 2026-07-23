@@ -4,6 +4,8 @@ import com.storyplatform.bootstrap.persistence.migration.UserIndexes;
 import com.storyplatform.bootstrap.persistence.migration
         .EmailVerificationIndexes;
 import com.storyplatform.identity.application.port.VerificationTokenCodec;
+import com.storyplatform.identity.application.port.LoginRiskLimiter;
+import com.storyplatform.identity.application.port.PasswordHasher;
 import com.storyplatform.identity.domain.GlobalRole;
 import com.storyplatform.identity.domain.UserState;
 import com.storyplatform.identity.infrastructure.persistence.MongoUserAccountDocument;
@@ -19,16 +21,22 @@ import org.springframework.http.MediaType;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mongodb.MongoDBContainer;
 
 import java.util.List;
+import java.time.Instant;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.matchesPattern;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -66,8 +74,16 @@ class RegistrationIntegrationTest {
     @Autowired
     private VerificationTokenCodec tokenCodec;
 
+    @Autowired
+    private PasswordHasher passwordHasher;
+
+    @MockitoBean
+    private LoginRiskLimiter loginRiskLimiter;
+
     @BeforeEach
     void resetUsers() {
+        when(loginRiskLimiter.allow(anyString(), anyString()))
+                .thenReturn(true);
         mongoTemplate.dropCollection(
                 MongoUserAccountDocument.COLLECTION
         );
@@ -77,6 +93,44 @@ class RegistrationIntegrationTest {
         );
         mongoTemplate.dropCollection(OutboxMessage.COLLECTION);
         new EmailVerificationIndexes().apply(mongoTemplate);
+    }
+
+    @Test
+    void activeAccountCanLoginAndReceivesSignedAccessToken()
+            throws Exception {
+        Instant now = Instant.parse("2026-07-24T00:00:00Z");
+        mongoTemplate.insert(new MongoUserAccountDocument(
+                "active-user",
+                "reader@example.com",
+                passwordHasher.hash("correct horse battery staple"),
+                Set.of(GlobalRole.USER),
+                UserState.ACTIVE,
+                1,
+                "2026-07-24",
+                now,
+                now,
+                now,
+                0L
+        ));
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "Reader@Example.com",
+                                  "password": "correct horse battery staple"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tokenType").value("Bearer"))
+                .andExpect(jsonPath("$.expiresIn").value(600))
+                .andExpect(jsonPath("$.accessToken").value(
+                        matchesPattern(
+                                "^[A-Za-z0-9_-]+\\."
+                                        + "[A-Za-z0-9_-]+\\."
+                                        + "[A-Za-z0-9_-]+$"
+                        )
+                ));
     }
 
     @Test

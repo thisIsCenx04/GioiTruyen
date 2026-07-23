@@ -42,4 +42,20 @@ public record MongoUserAccountDocument(
                 null
         );
     }
+
+    UserAccount toDomain() {
+        return new UserAccount(
+                id,
+                emailNormalized,
+                passwordHash,
+                globalRoles,
+                state,
+                securityVersion,
+                acceptedConsentVersion,
+                consentAcceptedAt,
+                createdAt,
+                updatedAt,
+                version == null ? 0 : version
+        );
+    }
 }

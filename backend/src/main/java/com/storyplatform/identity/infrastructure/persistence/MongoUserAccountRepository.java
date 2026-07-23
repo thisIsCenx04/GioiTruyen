@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.util.Objects;
+import java.util.Optional;
 
 @Repository
 public class MongoUserAccountRepository implements UserAccountRepository {
@@ -41,6 +42,17 @@ public class MongoUserAccountRepository implements UserAccountRepository {
                 activate,
                 MongoUserAccountDocument.class
         ).getModifiedCount() == 1;
+    }
+
+    @Override
+    public Optional<UserAccount> findByEmail(String emailNormalized) {
+        Query email = Query.query(
+                Criteria.where("emailNormalized").is(emailNormalized)
+        );
+        return Optional.ofNullable(mongoTemplate.findOne(
+                email,
+                MongoUserAccountDocument.class
+        )).map(MongoUserAccountDocument::toDomain);
     }
 
     @Override

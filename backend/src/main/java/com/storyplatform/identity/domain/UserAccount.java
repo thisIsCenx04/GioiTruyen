@@ -89,6 +89,10 @@ public record UserAccount(
         return state == UserState.PENDING_EMAIL_VERIFICATION;
     }
 
+    public boolean isActive() {
+        return state == UserState.ACTIVE;
+    }
+
     private static String requireText(String value, String field) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(
