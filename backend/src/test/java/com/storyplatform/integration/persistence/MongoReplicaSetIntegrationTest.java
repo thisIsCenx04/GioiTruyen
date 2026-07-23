@@ -50,6 +50,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class MongoReplicaSetIntegrationTest {
 
     private static final String COLLECTION = "transaction_probe";
+    private static final String DATABASE = "story_platform_test";
+    private static final String REPLICA_SET = "docker-rs";
     private static final Instant FIXED_INSTANT = Instant.parse(
             "2026-01-01T00:00:00Z"
     );
@@ -66,11 +68,12 @@ class MongoReplicaSetIntegrationTest {
     static void mongoProperties(DynamicPropertyRegistry registry) {
         registry.add(
                 "spring.mongodb.uri",
-                () -> MONGO.getReplicaSetUrl("story_platform_test")
+                () -> MONGO.getReplicaSetUrl(DATABASE)
+                        + "?replicaSet=" + REPLICA_SET
         );
         registry.add(
                 "spring.mongodb.database",
-                () -> "story_platform_test"
+                () -> DATABASE
         );
     }
 
