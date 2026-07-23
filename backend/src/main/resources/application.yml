@@ -56,6 +56,10 @@ app:
     read-timeout: ${MONGODB_READ_TIMEOUT:5s}
     server-selection-timeout: ${MONGODB_SERVER_SELECTION_TIMEOUT:3s}
     write-timeout: ${MONGODB_WRITE_TIMEOUT:5s}
+    migrations:
+      enabled: ${MONGODB_MIGRATIONS_ENABLED:false}
+      dry-run: ${MONGODB_MIGRATIONS_DRY_RUN:true}
+      lock-duration: ${MONGODB_MIGRATIONS_LOCK_DURATION:15m}
 
 logging:
   level:

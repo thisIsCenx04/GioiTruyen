@@ -33,6 +33,31 @@ image. They run automatically when a Docker-compatible runtime is available and
 are reported as skipped when the runtime is absent; CI must provide Docker and
 must not accept that skip.
 
+## MongoDB migrations
+
+Migrations are forward-only, versioned, checksummed and protected by a MongoDB
+lease lock. They are disabled during normal API startup and default to dry-run
+when explicitly enabled.
+
+Preview pending migrations:
+
+```powershell
+$env:MONGODB_MIGRATIONS_ENABLED = "true"
+$env:MONGODB_MIGRATIONS_DRY_RUN = "true"
+.\gradlew.bat bootRun --args="--spring.main.web-application-type=none"
+```
+
+Apply after reviewing the dry-run with a dedicated migration database identity:
+
+```powershell
+$env:MONGODB_MIGRATIONS_DRY_RUN = "false"
+.\gradlew.bat bootRun --args="--spring.main.web-application-type=none"
+```
+
+Never edit an applied migration. Add a higher version that is idempotent and
+backward-compatible with the previous application version. Destructive changes
+follow expand, backfill, switch and contract as separate releases.
+
 The application starts deny-by-default. Only Actuator health/info are public
 until Identity and explicit API authorization policies are implemented.
 
