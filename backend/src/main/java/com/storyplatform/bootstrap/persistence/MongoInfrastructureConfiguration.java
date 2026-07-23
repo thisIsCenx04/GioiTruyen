@@ -80,7 +80,12 @@ public class MongoInfrastructureConfiguration {
     }
 
     static void requireReplicaSet(String uri) {
-        String replicaSet = new ConnectionString(uri).getRequiredReplicaSetName();
+        ConnectionString connection = new ConnectionString(uri);
+        if (connection.isSrvProtocol()) {
+            return;
+        }
+
+        String replicaSet = connection.getRequiredReplicaSetName();
         if (replicaSet == null || replicaSet.isBlank()) {
             throw new IllegalStateException(
                     "MongoDB URI must declare a replicaSet"

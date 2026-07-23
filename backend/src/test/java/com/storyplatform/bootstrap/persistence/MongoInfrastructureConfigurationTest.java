@@ -46,6 +46,13 @@ class MongoInfrastructureConfigurationTest {
     }
 
     @Test
+    void atlasSrvUriIsAcceptedBecauseTopologyIsDiscoveredFromDns() {
+        MongoInfrastructureConfiguration.requireReplicaSet(
+                "mongodb+srv://reader:secret@cluster.example.net/story_platform"
+        );
+    }
+
+    @Test
     void clientPolicyAppliesDurabilityTimeoutAndPoolBounds() {
         MongoProperties properties = new MongoProperties();
         properties.setUri(
