@@ -1,0 +1,51 @@
+package com.storyplatform.integration.api;
+
+import com.storyplatform.shared.api.CorrelationId;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+class SecurityProblemHandlingIntegrationTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Test
+    void anonymousDenialUsesProblemJsonAndPreservesCorrelationId()
+            throws Exception {
+        mockMvc.perform(get("/private-resource")
+                        .header(CorrelationId.HEADER_NAME, "security-42"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentTypeCompatibleWith(
+                        MediaType.APPLICATION_PROBLEM_JSON
+                ))
+                .andExpect(header().string(CorrelationId.HEADER_NAME, "security-42"))
+                .andExpect(jsonPath("$.code").value("AUTHENTICATION_REQUIRED"))
+                .andExpect(jsonPath("$.traceId").value("security-42"));
+    }
+
+    @Test
+    @WithMockUser
+    void authenticatedDenialUsesTheForbiddenProblemContract() throws Exception {
+        mockMvc.perform(get("/private-resource")
+                        .header(CorrelationId.HEADER_NAME, "security-43"))
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentTypeCompatibleWith(
+                        MediaType.APPLICATION_PROBLEM_JSON
+                ))
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"))
+                .andExpect(jsonPath("$.traceId").value("security-43"));
+    }
+}
