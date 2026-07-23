@@ -21,6 +21,24 @@ describe("dependency license policy", () => {
     ).toEqual([]);
   });
 
+  it("allows the reviewed dynamically linked Sharp Linux runtime", () => {
+    expect(
+      findBlockingLicenseFindings({
+        Results: [
+          {
+            Licenses: [
+              {
+                Severity: "HIGH",
+                PkgName: "@img/sharp-libvips-linux-x64",
+                Name: "LGPL-3.0-or-later",
+              },
+            ],
+          },
+        ],
+      }),
+    ).toEqual([]);
+  });
+
   it("blocks an unreviewed high or critical restricted license", () => {
     const finding = {
       Severity: "CRITICAL",

@@ -13,9 +13,9 @@ weekly scheduled run execute the security workflow.
 - Trivy scans packaged Java dependencies, lockfiles, repository secrets,
   Dockerfile/IaC configuration, and the built runtime image.
 - A structured Trivy license report blocks unreviewed high/critical restricted
-  licenses. The only reviewed exception is the optional Windows Sharp binary's
-  combined Apache-2.0/LGPL-3.0-or-later metadata; it is not present in the Linux
-  runtime image.
+  licenses. The reviewed exceptions are limited to Sharp's exact Windows binary
+  package and dynamically linked Linux libvips package under LGPL-3.0-or-later;
+  neither is copied into the backend runtime image.
 - High or critical resolved dependency, IaC, and image findings block the
   workflow. Critical/high unresolved findings require a documented,
   time-limited security exception with owner and expiry; they are never hidden

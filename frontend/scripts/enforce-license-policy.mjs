@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const allowedFindings = new Set([
   "@img/sharp-win32-x64|Apache-2.0 AND LGPL-3.0-or-later",
+  "@img/sharp-libvips-linux-x64|LGPL-3.0-or-later",
 ]);
 const blockingSeverities = new Set(["HIGH", "CRITICAL"]);
 
