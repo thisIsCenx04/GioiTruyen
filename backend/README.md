@@ -18,8 +18,15 @@ Load the root environment and run:
 Run tests:
 
 ```powershell
+.\gradlew.bat unitTest
 .\gradlew.bat test
+.\gradlew.bat jacocoTestReport jacocoTestCoverageVerification
+.\gradlew.bat check
 ```
+
+`unitTest` only discovers tests below `com.storyplatform.unit`, does not start
+Spring, and must not access network, MongoDB, or Redis. The JaCoCo HTML report
+is written to `build/reports/jacoco/test/html/index.html`.
 
 The application starts deny-by-default. Only Actuator health/info are public
 until Identity and explicit API authorization policies are implemented.
@@ -34,5 +41,5 @@ presentation → application → domain
 infrastructure → application + domain
 ```
 
-Architecture tests will enforce these dependencies in the next Phase Base
-commit.
+ArchUnit tests enforce module isolation, dependency direction, framework-free
+domain code, and top-level cycle checks.
