@@ -3,6 +3,7 @@ package com.storyplatform.unit.teams.api;
 import com.storyplatform.shared.api.ApiException;
 import com.storyplatform.teams.api.AddTeamMemberRequest;
 import com.storyplatform.teams.api.TeamMembershipController;
+import com.storyplatform.teams.api.UpdateTeamPermissionsRequest;
 import com.storyplatform.teams.application.TeamAccessDeniedException;
 import com.storyplatform.teams.application.TeamConflictException;
 import com.storyplatform.teams.application.TeamInvitationInvalidException;
@@ -61,6 +62,15 @@ class TeamMembershipControllerTest {
                 )
         );
         controller.accept(jwt, "raw-token");
+        controller.updatePermissions(
+                jwt,
+                TEAM_ID,
+                USER_ID,
+                new UpdateTeamPermissionsRequest(
+                        Set.of("story:edit"),
+                        2L
+                )
+        );
         controller.remove(jwt, TEAM_ID, USER_ID, 2);
 
         verify(operations).list("owner-1", TEAM_ID);
@@ -72,6 +82,13 @@ class TeamMembershipControllerTest {
                 "request-123"
         );
         verify(operations).accept("owner-1", "raw-token");
+        verify(operations).updatePermissions(
+                "owner-1",
+                TEAM_ID,
+                USER_ID,
+                2,
+                Set.of("story:edit")
+        );
         verify(operations).remove("owner-1", TEAM_ID, USER_ID, 2);
     }
 

@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 @Repository
 public class MongoTeamMembershipRepository
@@ -71,6 +72,41 @@ public class MongoTeamMembershipRepository
                 update,
                 MongoTeamMembershipDocument.class
         ).getModifiedCount() == 1;
+    }
+
+    @Override
+    public PermissionUpdateResult updatePermissions(
+            String teamId,
+            String userId,
+            long version,
+            Set<String> permissions
+    ) {
+        Query query = Query.query(Criteria.where("teamId").is(teamId)
+                .and("userId").is(userId)
+                .and("role").is(TeamMembership.Role.MEMBER)
+                .and("state").is(TeamMembership.State.ACTIVE)
+                .and("version").is(version));
+        Update update = new Update()
+                .set("permissions", Set.copyOf(permissions))
+                .inc("version", 1);
+        if (mongo.updateFirst(
+                query,
+                update,
+                MongoTeamMembershipDocument.class
+        ).getModifiedCount() == 1) {
+            return PermissionUpdateResult.UPDATED;
+        }
+        Query existence = Query.query(Criteria.where("teamId").is(teamId)
+                .and("userId").is(userId)
+                .and("role").is(TeamMembership.Role.MEMBER)
+                .and("state").is(TeamMembership.State.ACTIVE));
+        if (mongo.exists(
+                existence,
+                MongoTeamMembershipDocument.class
+        )) {
+            return PermissionUpdateResult.VERSION_CONFLICT;
+        }
+        return PermissionUpdateResult.NOT_FOUND;
     }
 
     @Override

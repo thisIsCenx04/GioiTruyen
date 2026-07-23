@@ -88,6 +88,7 @@ public class SecurityConfiguration {
                         .requestMatchers(
                                 "/teams/*/members",
                                 "/teams/*/members/*",
+                                "/teams/*/members/*/permissions",
                                 "/team-invitations/*/accept"
                         ).authenticated()
                         .anyRequest().denyAll())

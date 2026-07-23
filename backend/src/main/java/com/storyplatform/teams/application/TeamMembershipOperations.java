@@ -17,6 +17,14 @@ public interface TeamMembershipOperations {
 
     MembershipView accept(String actorId, String rawToken);
 
+    MembershipView updatePermissions(
+            String actorId,
+            String teamId,
+            String targetUserId,
+            long version,
+            Set<String> permissions
+    );
+
     void remove(
             String actorId,
             String teamId,

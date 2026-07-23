@@ -77,6 +77,34 @@ class MongoTeamMembershipRepositoryTest {
     }
 
     @Test
+    void permissionUpdateDistinguishesSuccessStaleAndMissing() {
+        when(mongo.updateFirst(
+                any(Query.class),
+                any(Update.class),
+                eq(MongoTeamMembershipDocument.class)
+        )).thenReturn(
+                UpdateResult.acknowledged(1, 1L, null),
+                UpdateResult.acknowledged(0, 0L, null),
+                UpdateResult.acknowledged(0, 0L, null)
+        );
+        when(mongo.exists(
+                any(Query.class),
+                eq(MongoTeamMembershipDocument.class)
+        )).thenReturn(true, false);
+
+        assertThat(updatePermissions()).isEqualTo(
+                TeamMembershipRepository.PermissionUpdateResult.UPDATED
+        );
+        assertThat(updatePermissions()).isEqualTo(
+                TeamMembershipRepository.PermissionUpdateResult
+                        .VERSION_CONFLICT
+        );
+        assertThat(updatePermissions()).isEqualTo(
+                TeamMembershipRepository.PermissionUpdateResult.NOT_FOUND
+        );
+    }
+
+    @Test
     void removalProtectsOwnerAndHandlesMemberConcurrency() {
         when(mongo.findOne(
                 any(Query.class),
@@ -120,6 +148,16 @@ class MongoTeamMembershipRepositoryTest {
                 "user-2",
                 Set.of("story:create"),
                 NOW
+        );
+    }
+
+    private TeamMembershipRepository.PermissionUpdateResult
+            updatePermissions() {
+        return repository.updatePermissions(
+                "team-1",
+                "user-2",
+                0,
+                Set.of("story:edit")
         );
     }
 

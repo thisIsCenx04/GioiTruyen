@@ -13,6 +13,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -107,6 +108,30 @@ public final class TeamMembershipController {
                     uuid(teamId),
                     uuid(userId),
                     version
+            );
+        } catch (TeamAccessDeniedException exception) {
+            throw forbidden();
+        } catch (TeamNotFoundException exception) {
+            throw notFound();
+        } catch (TeamConflictException exception) {
+            throw conflict(exception);
+        }
+    }
+
+    @PatchMapping("/teams/{teamId}/members/{userId}/permissions")
+    public TeamMembershipOperations.MembershipView updatePermissions(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable String teamId,
+            @PathVariable String userId,
+            @Valid @RequestBody UpdateTeamPermissionsRequest request
+    ) {
+        try {
+            return memberships.updatePermissions(
+                    jwt.getSubject(),
+                    uuid(teamId),
+                    uuid(userId),
+                    request.version(),
+                    request.permissions()
             );
         } catch (TeamAccessDeniedException exception) {
             throw forbidden();

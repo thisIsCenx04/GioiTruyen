@@ -290,6 +290,119 @@ class TeamMembershipUseCaseTest {
         )).isInstanceOf(TeamNotFoundException.class);
     }
 
+    @Test
+    void ownerUpdatesAllowlistedPermissionsWithOptimisticVersion() {
+        when(memberships.updatePermissions(
+                "team-1",
+                "user-2",
+                0,
+                Set.of("story:create", "story:edit")
+        )).thenReturn(
+                TeamMembershipRepository.PermissionUpdateResult.UPDATED
+        );
+        when(memberships.find("team-1", "user-2"))
+                .thenReturn(Optional.of(activeMember(
+                        Set.of("story:create", "story:edit"),
+                        1
+                )));
+
+        var updated = useCase.updatePermissions(
+                "owner-1",
+                "team-1",
+                "user-2",
+                0,
+                Set.of("story:create", "story:edit")
+        );
+
+        assertThat(updated.version()).isEqualTo(1);
+        assertThat(updated.permissions())
+                .containsExactlyInAnyOrder("story:create", "story:edit");
+        verify(outbox).append(any());
+    }
+
+    @Test
+    void permissionUpdateRejectsStaleInvalidAndMissingMembership() {
+        when(memberships.updatePermissions(
+                "team-1",
+                "user-2",
+                0,
+                Set.of("story:create")
+        )).thenReturn(
+                TeamMembershipRepository.PermissionUpdateResult
+                        .VERSION_CONFLICT
+        );
+        assertThatThrownBy(() -> useCase.updatePermissions(
+                "owner-1",
+                "team-1",
+                "user-2",
+                0,
+                Set.of("story:create")
+        )).isInstanceOf(TeamConflictException.class)
+                .hasMessageContaining("Reload");
+
+        assertThatThrownBy(() -> useCase.updatePermissions(
+                "owner-1",
+                "team-1",
+                "user-2",
+                0,
+                Set.of("root:grant")
+        )).isInstanceOf(TeamConflictException.class);
+
+        when(memberships.updatePermissions(
+                "team-1",
+                "missing",
+                0,
+                Set.of("story:create")
+        )).thenReturn(
+                TeamMembershipRepository.PermissionUpdateResult.NOT_FOUND
+        );
+        assertThatThrownBy(() -> useCase.updatePermissions(
+                "owner-1",
+                "team-1",
+                "missing",
+                0,
+                Set.of("story:create")
+        )).isInstanceOf(TeamNotFoundException.class);
+    }
+
+    @Test
+    void ownerCannotManageMembershipFromAnotherTeam() {
+        Team otherTeam = new Team(
+                "team-2",
+                "other",
+                "Other",
+                "",
+                "owner-2",
+                Team.State.ACTIVE,
+                NOW,
+                NOW,
+                0
+        );
+        when(teams.findById("team-2")).thenReturn(Optional.of(otherTeam));
+        when(memberships.find("team-2", "owner-1"))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> useCase.updatePermissions(
+                "owner-1",
+                "team-2",
+                "user-2",
+                0,
+                Set.of("story:create")
+        )).isInstanceOf(TeamAccessDeniedException.class);
+        assertThatThrownBy(() -> useCase.remove(
+                "owner-1",
+                "team-2",
+                "user-2",
+                0
+        )).isInstanceOf(TeamAccessDeniedException.class);
+        verify(memberships, never()).updatePermissions(
+                org.mockito.ArgumentMatchers.eq("team-2"),
+                anyString(),
+                org.mockito.ArgumentMatchers.anyLong(),
+                org.mockito.ArgumentMatchers.anySet()
+        );
+    }
+
     private static Team team() {
         return new Team(
                 "team-1",
@@ -314,6 +427,22 @@ class TeamMembershipUseCaseTest {
                 "user-2",
                 Set.of("story:create"),
                 NOW
+        );
+    }
+
+    private static TeamMembership activeMember(
+            Set<String> permissions,
+            long version
+    ) {
+        return new TeamMembership(
+                "team-1:user-2",
+                "team-1",
+                "user-2",
+                TeamMembership.Role.MEMBER,
+                permissions,
+                TeamMembership.State.ACTIVE,
+                NOW,
+                version
         );
     }
 

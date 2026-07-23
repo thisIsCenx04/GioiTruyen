@@ -2,7 +2,11 @@ package com.storyplatform.teams.infrastructure;
 
 import com.storyplatform.identity.application.contract.IdentityUserDirectory;
 import com.storyplatform.shared.events.persistence.OutboxAppender;
+import com.storyplatform.shared.cache.RedisKeyFactory;
+import com.storyplatform.shared.cache.ResilientRedisCache;
 import com.storyplatform.teams.application.ProfileService;
+import com.storyplatform.teams.application.TeamAuthorizationPolicy;
+import com.storyplatform.teams.application.TeamAuthorizationUseCase;
 import com.storyplatform.teams.application.TeamMembershipOperations;
 import com.storyplatform.teams.application.TeamMembershipUseCase;
 import com.storyplatform.teams.application.TeamOperations;
@@ -10,6 +14,7 @@ import com.storyplatform.teams.application.TeamUseCase;
 import com.storyplatform.teams.application.port.TeamInvitationRepository;
 import com.storyplatform.teams.application.port.TeamInvitationTokenCodec;
 import com.storyplatform.teams.application.port.TeamMembershipRepository;
+import com.storyplatform.teams.application.port.TeamMembershipCache;
 import com.storyplatform.teams.application.port.TeamRepository;
 import com.storyplatform.teams.application.port.UserProfileRepository;
 import org.springframework.context.annotation.Bean;
@@ -68,5 +73,21 @@ public class TeamsConfiguration {
                 Clock.systemUTC()
         );
         return new TransactionalTeamMembershipOperations(useCase);
+    }
+
+    @Bean
+    TeamMembershipCache teamMembershipCache(
+            ResilientRedisCache cache,
+            RedisKeyFactory keys
+    ) {
+        return new RedisTeamMembershipCache(cache, keys);
+    }
+
+    @Bean
+    TeamAuthorizationPolicy teamAuthorizationPolicy(
+            TeamMembershipRepository memberships,
+            TeamMembershipCache cache
+    ) {
+        return new TeamAuthorizationUseCase(memberships, cache);
     }
 }

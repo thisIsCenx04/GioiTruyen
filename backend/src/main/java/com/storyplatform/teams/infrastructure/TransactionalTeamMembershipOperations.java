@@ -50,6 +50,24 @@ public class TransactionalTeamMembershipOperations
 
     @Override
     @Transactional
+    public MembershipView updatePermissions(
+            String actorId,
+            String teamId,
+            String targetUserId,
+            long version,
+            Set<String> permissions
+    ) {
+        return delegate.updatePermissions(
+                actorId,
+                teamId,
+                targetUserId,
+                version,
+                permissions
+        );
+    }
+
+    @Override
+    @Transactional
     public void remove(
             String actorId,
             String teamId,

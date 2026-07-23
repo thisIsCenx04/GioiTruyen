@@ -768,6 +768,44 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /teams/{teamId}/members/{userId}/permissions:
+    patch:
+      operationId: updateTeamMemberPermissions
+      summary: Replace a member permission set using optimistic concurrency
+      tags: [Teams]
+      parameters:
+        - $ref: "#/components/parameters/TeamId"
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTeamPermissionsRequest"
+      responses:
+        "200":
+          description: Versioned membership permissions updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamMembership"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Membership version is stale
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
   /team-invitations/{token}/accept:
     post:
       operationId: acceptTeamInvitation
@@ -1289,6 +1327,29 @@ components:
         version:
           type: integer
           format: int64
+    UpdateTeamPermissionsRequest:
+      type: object
+      additionalProperties: false
+      required: [permissions, version]
+      properties:
+        permissions:
+          type: array
+          minItems: 1
+          maxItems: 6
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+              - story:create
+              - story:edit
+              - story:submit
+              - story:publish
+              - analytics:read
+              - finance:request
+        version:
+          type: integer
+          format: int64
+          minimum: 0
     ApplicationInfo:
       type: object
       description: Allowlisted non-sensitive build and application metadata.

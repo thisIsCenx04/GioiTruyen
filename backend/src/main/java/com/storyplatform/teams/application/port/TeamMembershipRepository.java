@@ -5,6 +5,7 @@ import com.storyplatform.teams.domain.TeamMembership;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public interface TeamMembershipRepository {
 
@@ -23,6 +24,13 @@ public interface TeamMembershipRepository {
             Instant joinedAt
     );
 
+    PermissionUpdateResult updatePermissions(
+            String teamId,
+            String userId,
+            long version,
+            Set<String> permissions
+    );
+
     RemovalResult revokeMember(
             String teamId,
             String userId,
@@ -33,5 +41,11 @@ public interface TeamMembershipRepository {
         REMOVED,
         LAST_OWNER,
         NOT_FOUND_OR_CONFLICT
+    }
+
+    enum PermissionUpdateResult {
+        UPDATED,
+        VERSION_CONFLICT,
+        NOT_FOUND
     }
 }

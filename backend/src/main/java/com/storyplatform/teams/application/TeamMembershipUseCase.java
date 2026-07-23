@@ -10,6 +10,7 @@ import com.storyplatform.teams.application.port.TeamRepository;
 import com.storyplatform.teams.domain.Team;
 import com.storyplatform.teams.domain.TeamInvitation;
 import com.storyplatform.teams.domain.TeamMembership;
+import com.storyplatform.teams.domain.TeamPermissions;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -25,16 +26,10 @@ public final class TeamMembershipUseCase
 
     public static final String INVITED_EVENT = "teams.member.invited";
     public static final String ACCEPTED_EVENT = "teams.member.accepted";
+    public static final String PERMISSIONS_EVENT =
+            "teams.member.permissions.changed";
     public static final String REMOVED_EVENT = "teams.member.removed";
 
-    private static final Set<String> PERMISSIONS = Set.of(
-            "story:create",
-            "story:edit",
-            "story:submit",
-            "story:publish",
-            "analytics:read",
-            "finance:request"
-    );
     private static final Pattern IDEMPOTENCY_KEY = Pattern.compile(
             "[A-Za-z0-9][A-Za-z0-9._:-]{7,127}"
     );
@@ -214,6 +209,49 @@ public final class TeamMembershipUseCase
     }
 
     @Override
+    public MembershipView updatePermissions(
+            String actorId,
+            String teamId,
+            String targetUserId,
+            long version,
+            Set<String> permissions
+    ) {
+        requireOwner(actorId, teamId);
+        Set<String> requested = requirePermissions(permissions);
+        TeamMembershipRepository.PermissionUpdateResult result =
+                memberships.updatePermissions(
+                        teamId,
+                        targetUserId,
+                        version,
+                        requested
+                );
+        if (result == TeamMembershipRepository.PermissionUpdateResult
+                .VERSION_CONFLICT) {
+            throw conflict(
+                    "TEAM_MEMBERSHIP_VERSION_CONFLICT",
+                    "The membership changed. Reload before retrying."
+            );
+        }
+        if (result != TeamMembershipRepository.PermissionUpdateResult
+                .UPDATED) {
+            throw new TeamNotFoundException();
+        }
+        Instant now = clock.instant();
+        append(
+                UUID.randomUUID(),
+                PERMISSIONS_EVENT,
+                teamId + ":" + targetUserId,
+                actorId,
+                teamId,
+                new MemberChanged(targetUserId),
+                UUID.randomUUID().toString(),
+                now
+        );
+        return view(memberships.find(teamId, targetUserId)
+                .orElseThrow(TeamNotFoundException::new));
+    }
+
+    @Override
     public void remove(
             String actorId,
             String teamId,
@@ -271,7 +309,7 @@ public final class TeamMembershipUseCase
     private static Set<String> requirePermissions(Set<String> requested) {
         if (requested == null
                 || requested.isEmpty()
-                || !PERMISSIONS.containsAll(requested)) {
+                || !TeamPermissions.areMemberAssignable(requested)) {
             throw conflict(
                     "TEAM_PERMISSION_INVALID",
                     "One or more permissions are not allowed."
