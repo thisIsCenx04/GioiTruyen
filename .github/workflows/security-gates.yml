@@ -1,0 +1,311 @@
+name: Security gates
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - main
+  push:
+    branches:
+      - dev
+      - main
+  schedule:
+    - cron: "17 18 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-gates-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GITLEAKS_VERSION: "8.30.1"
+  GITLEAKS_LINUX_X64_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+  TRIVY_VERSION: "0.72.0"
+  TRIVY_LINUX_X64_SHA256: "bbb64b9695866ce4a7a8f5c9592002c5961cab378577fa3f8a040df362b9b2ea"
+  IMAGE_NAME: "gioitruyen/story-platform"
+
+jobs:
+  secret-scan:
+    name: Git history and seeded secret gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out full history without persisted credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Enforce immutable GitHub Action references
+        run: node frontend/scripts/enforce-action-pinning.mjs
+
+      - name: Install checksum-verified Gitleaks
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          url="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${archive}"
+          mkdir -p "${RUNNER_TEMP}/security-bin"
+          curl --fail --silent --show-error --location "${url}" --output "${RUNNER_TEMP}/${archive}"
+          echo "${GITLEAKS_LINUX_X64_SHA256}  ${RUNNER_TEMP}/${archive}" | sha256sum --check --strict
+          tar --extract --gzip --file "${RUNNER_TEMP}/${archive}" --directory "${RUNNER_TEMP}/security-bin" gitleaks
+          chmod 0755 "${RUNNER_TEMP}/security-bin/gitleaks"
+          echo "${RUNNER_TEMP}/security-bin" >> "${GITHUB_PATH}"
+
+      - name: Scan complete Git history for secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/security
+          gitleaks git . \
+            --config .gitleaks.toml \
+            --exit-code 1 \
+            --no-banner \
+            --no-color \
+            --redact \
+            --report-format sarif \
+            --report-path build/security/gitleaks.sarif
+
+      - name: Prove the secret gate rejects a seeded finding
+        env:
+          GITLEAKS_BIN: gitleaks
+        run: node frontend/scripts/verify-secret-gate.mjs
+
+      - name: Upload redacted secret scan report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: gitleaks-${{ github.sha }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: build/security/gitleaks.sarif
+
+  codeql:
+    name: CodeQL (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language:
+          - java-kotlin
+          - javascript-typescript
+    steps:
+      - name: Check out repository without persisted credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4
+        with:
+          build-mode: none
+          languages: ${{ matrix.language }}
+          queries: security-extended,security-and-quality
+
+      - name: Analyze source
+        uses: github/codeql-action/analyze@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4
+        with:
+          category: /language:${{ matrix.language }}
+
+  repository-and-image-scan:
+    name: Dependency, SBOM, IaC, filesystem, and image scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out repository without persisted credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11.12.0
+          run_install: false
+
+      - name: Set up Node.js without implicit package caching
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Materialize dependency metadata without lifecycle scripts
+        run: pnpm --dir frontend install --frozen-lockfile --ignore-scripts
+
+      - name: Build the backend artifact for dependency and image scans
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x backend/gradlew
+          ./backend/gradlew --project-dir backend bootJar
+
+      - name: Install checksum-verified Trivy
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          url="https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/${archive}"
+          mkdir -p "${RUNNER_TEMP}/security-bin"
+          curl --fail --silent --show-error --location "${url}" --output "${RUNNER_TEMP}/${archive}"
+          echo "${TRIVY_LINUX_X64_SHA256}  ${RUNNER_TEMP}/${archive}" | sha256sum --check --strict
+          tar --extract --gzip --file "${RUNNER_TEMP}/${archive}" --directory "${RUNNER_TEMP}/security-bin" trivy
+          chmod 0755 "${RUNNER_TEMP}/security-bin/trivy"
+          echo "${RUNNER_TEMP}/security-bin" >> "${GITHUB_PATH}"
+
+      - name: Create backend and repository SBOMs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/security
+          trivy rootfs \
+            --format cyclonedx \
+            --output build/security/backend.cdx.json \
+            --scanners vuln \
+            backend/build/libs
+          trivy fs \
+            --format cyclonedx \
+            --include-dev-deps \
+            --output build/security/repository.cdx.json \
+            --scanners vuln \
+            --skip-dirs .git \
+            .
+
+      - name: Reject high or critical dependency vulnerabilities
+        shell: bash
+        run: |
+          set -euo pipefail
+          trivy rootfs \
+            --exit-code 1 \
+            --ignore-unfixed \
+            --no-progress \
+            --scanners vuln \
+            --severity HIGH,CRITICAL \
+            backend/build/libs
+          trivy fs \
+            --exit-code 1 \
+            --ignore-unfixed \
+            --include-dev-deps \
+            --no-progress \
+            --scanners vuln \
+            --severity HIGH,CRITICAL \
+            --skip-dirs .git \
+            .
+
+      - name: Reject filesystem secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          trivy fs \
+            --exit-code 1 \
+            --no-progress \
+            --scanners secret \
+            --skip-dirs .git \
+            .
+
+      - name: Enforce dependency license policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          trivy fs \
+            --exit-code 0 \
+            --format json \
+            --include-dev-deps \
+            --license-full \
+            --no-progress \
+            --output build/security/licenses.json \
+            --scanners license \
+            --severity HIGH,CRITICAL \
+            --skip-dirs .git \
+            .
+          node frontend/scripts/enforce-license-policy.mjs \
+            build/security/licenses.json
+
+      - name: Reject high or critical IaC and Dockerfile findings
+        shell: bash
+        run: |
+          set -euo pipefail
+          trivy fs \
+            --exit-code 1 \
+            --no-progress \
+            --scanners misconfig \
+            --severity HIGH,CRITICAL \
+            --skip-dirs .git \
+            .
+
+      - name: Build immutable application image
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build \
+            --file backend/Dockerfile \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --tag "${IMAGE_NAME}:${GITHUB_SHA}" \
+            .
+
+      - name: Create image SBOM
+        shell: bash
+        run: |
+          set -euo pipefail
+          trivy image \
+            --format cyclonedx \
+            --output build/security/image.cdx.json \
+            --scanners vuln \
+            "${IMAGE_NAME}:${GITHUB_SHA}"
+
+      - name: Reject high or critical image vulnerabilities
+        shell: bash
+        run: |
+          set -euo pipefail
+          trivy image \
+            --exit-code 1 \
+            --ignore-unfixed \
+            --no-progress \
+            --scanners vuln,secret \
+            --severity HIGH,CRITICAL \
+            "${IMAGE_NAME}:${GITHUB_SHA}"
+
+      - name: Upload immutable security reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: security-sbom-${{ github.sha }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: build/security/
+
+  dependency-review:
+    name: Pull request dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository without persisted credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Reject newly introduced vulnerable dependencies
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          fail-on-scopes: development,runtime,unknown
+          deny-licenses: AGPL-1.0-only,AGPL-1.0-or-later,AGPL-3.0-only,AGPL-3.0-or-later,SSPL-1.0

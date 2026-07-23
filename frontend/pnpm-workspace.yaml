@@ -8,3 +8,6 @@ allowBuilds:
   unrs-resolver: true
 
 minimumReleaseAge: 1440
+
+overrides:
+  sharp: 0.35.3
