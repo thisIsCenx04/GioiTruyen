@@ -16,6 +16,8 @@ tags:
     description: Safe operational probes exposed to load balancers and orchestrators.
   - name: Identity
     description: Public account registration and identity lifecycle operations.
+  - name: Profiles
+    description: Private account details and allowlisted public profile fields.
 security:
   - bearerAuth: []
 paths:
@@ -513,6 +515,71 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /me:
+    get:
+      operationId: getPrivateProfile
+      summary: Get the authenticated user's private profile
+      tags: [Profiles]
+      responses:
+        "200":
+          description: Private owner-only profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrivateProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      operationId: updatePrivateProfile
+      summary: Update profile fields with optimistic concurrency
+      tags: [Profiles]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileRequest"
+      responses:
+        "200":
+          description: Updated private profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrivateProfile"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: The supplied profile version is stale
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /users/{userId}:
+    get:
+      operationId: getPublicProfile
+      summary: Get an allowlisted public profile
+      security: []
+      tags: [Profiles]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Public profile without identity or security fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicProfile"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
 components:
   securitySchemes:
     bearerAuth:
@@ -808,6 +875,82 @@ components:
           format: date-time
         current:
           type: boolean
+    UpdateProfileRequest:
+      type: object
+      additionalProperties: false
+      required: [displayName, version]
+      properties:
+        displayName:
+          type: string
+          minLength: 2
+          maxLength: 80
+        bio:
+          type: string
+          maxLength: 500
+        avatarMediaId:
+          type: [string, "null"]
+          format: uuid
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+    PublicProfile:
+      type: object
+      additionalProperties: false
+      required: [id, displayName, bio, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        bio:
+          type: string
+        avatarMediaId:
+          type: [string, "null"]
+          format: uuid
+        version:
+          type: integer
+          format: int64
+    PrivateProfile:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - email
+        - roles
+        - state
+        - displayName
+        - bio
+        - version
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        roles:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        state:
+          type: string
+        displayName:
+          type: string
+        bio:
+          type: string
+        avatarMediaId:
+          type: [string, "null"]
+          format: uuid
+        version:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
     ApplicationInfo:
       type: object
       description: Allowlisted non-sensitive build and application metadata.

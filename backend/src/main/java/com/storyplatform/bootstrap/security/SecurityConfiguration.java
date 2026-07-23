@@ -33,7 +33,8 @@ public class SecurityConfiguration {
                         "/auth/sessions/*",
                         "/auth/mfa/challenge",
                         "/auth/mfa/verify",
-                        "/auth/reauth/grants"
+                        "/auth/reauth/grants",
+                        "/me"
                 ))
                 .oauth2ResourceServer(resourceServer -> resourceServer
                         .jwt(Customizer.withDefaults())
@@ -49,6 +50,10 @@ public class SecurityConfiguration {
                                 "/livez",
                                 "/readyz",
                                 "/actuator/info"
+                        ).permitAll()
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/users/*"
                         ).permitAll()
                         .requestMatchers(
                                 HttpMethod.POST,
@@ -67,6 +72,7 @@ public class SecurityConfiguration {
                                 "/auth/mfa/verify",
                                 "/auth/reauth/grants"
                         ).authenticated()
+                        .requestMatchers("/me").authenticated()
                         .anyRequest().denyAll())
                 .build();
     }
