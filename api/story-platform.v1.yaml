@@ -272,6 +272,52 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /auth/password/forgot:
+    post:
+      operationId: requestPasswordReset
+      summary: Request a password reset without account disclosure
+      description: |
+        Always returns the same accepted response. When an active account
+        exists, a hashed, expiring, single-use token is queued for delivery.
+      tags:
+        - Identity
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForgotPasswordRequest"
+      responses:
+        "202":
+          description: The request was accepted without disclosing account state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PasswordResetAccepted"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /auth/password/reset:
+    post:
+      operationId: resetPassword
+      summary: Consume a single-use password reset token
+      description: |
+        Replaces the Argon2id password, increments the security version, and
+        revokes every existing session atomically.
+      tags:
+        - Identity
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordRequest"
+      responses:
+        "204":
+          description: Password reset and session revocation completed.
+        "400":
+          $ref: "#/components/responses/BadRequest"
   /auth/logout:
     post:
       operationId: logout
@@ -459,6 +505,42 @@ components:
           minLength: 43
           maxLength: 128
           pattern: '^[A-Za-z0-9_-]+$'
+    ForgotPasswordRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 320
+    ResetPasswordRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - token
+        - newPassword
+      properties:
+        token:
+          type: string
+          minLength: 1
+          maxLength: 128
+        newPassword:
+          type: string
+          minLength: 12
+          maxLength: 128
+          format: password
+    PasswordResetAccepted:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - ACCEPTED
     SessionListResponse:
       type: object
       additionalProperties: false
@@ -537,6 +619,12 @@ components:
           type: string
           format: uri-reference
   responses:
+    BadRequest:
+      description: The request, token, or proposed password is invalid.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
     HealthUp:
       description: The requested health group is available.
       content:

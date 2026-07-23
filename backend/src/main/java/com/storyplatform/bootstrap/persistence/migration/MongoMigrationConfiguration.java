@@ -47,6 +47,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    PasswordResetIndexes passwordResetIndexes() {
+        return new PasswordResetIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

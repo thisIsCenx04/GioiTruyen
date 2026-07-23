@@ -45,6 +45,28 @@ public class MongoUserAccountRepository implements UserAccountRepository {
     }
 
     @Override
+    public boolean resetPassword(
+            String userId,
+            String passwordHash,
+            Instant changedAt
+    ) {
+        Query activeAccount = Query.query(new Criteria().andOperator(
+                Criteria.where("_id").is(userId),
+                Criteria.where("state").is(UserState.ACTIVE)
+        ));
+        Update reset = new Update()
+                .set("passwordHash", passwordHash)
+                .set("updatedAt", changedAt)
+                .inc("securityVersion", 1)
+                .inc("version", 1);
+        return mongoTemplate.updateFirst(
+                activeAccount,
+                reset,
+                MongoUserAccountDocument.class
+        ).getModifiedCount() == 1;
+    }
+
+    @Override
     public Optional<UserAccount> findByEmail(String emailNormalized) {
         Query email = Query.query(
                 Criteria.where("emailNormalized").is(emailNormalized)

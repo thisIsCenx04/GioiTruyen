@@ -11,6 +11,14 @@ public interface UserAccountRepository {
 
     boolean activatePending(String userId, Instant activatedAt);
 
+    default boolean resetPassword(
+            String userId,
+            String passwordHash,
+            Instant changedAt
+    ) {
+        return false;
+    }
+
     default Optional<UserAccount> findByEmail(String emailNormalized) {
         return Optional.empty();
     }

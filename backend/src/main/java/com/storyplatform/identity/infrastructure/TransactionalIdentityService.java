@@ -7,6 +7,9 @@ import com.storyplatform.identity.application.LoginOutcome;
 import com.storyplatform.identity.application.LoginUseCase;
 import com.storyplatform.identity.application.RefreshSessionOutcome;
 import com.storyplatform.identity.application.RefreshSessionUseCase;
+import com.storyplatform.identity.application.RequestPasswordResetUseCase;
+import com.storyplatform.identity.application.ResetPasswordUseCase;
+import com.storyplatform.identity.application.PasswordResetOutcome;
 import com.storyplatform.identity.application.SessionManagementUseCase;
 import com.storyplatform.identity.application.SessionView;
 import com.storyplatform.identity.application.RegisterUserCommand;
@@ -25,13 +28,17 @@ public class TransactionalIdentityService implements IdentityService {
     private final LoginUseCase login;
     private final RefreshSessionUseCase refreshSession;
     private final SessionManagementUseCase sessions;
+    private final RequestPasswordResetUseCase requestPasswordReset;
+    private final ResetPasswordUseCase resetPassword;
 
     public TransactionalIdentityService(
             RegisterUserUseCase registerUser,
             VerifyEmailUseCase verifyEmail,
             LoginUseCase login,
             RefreshSessionUseCase refreshSession,
-            SessionManagementUseCase sessions
+            SessionManagementUseCase sessions,
+            RequestPasswordResetUseCase requestPasswordReset,
+            ResetPasswordUseCase resetPassword
     ) {
         this.registerUser = Objects.requireNonNull(
                 registerUser,
@@ -44,6 +51,14 @@ public class TransactionalIdentityService implements IdentityService {
                 "refreshSession"
         );
         this.sessions = Objects.requireNonNull(sessions, "sessions");
+        this.requestPasswordReset = Objects.requireNonNull(
+                requestPasswordReset,
+                "requestPasswordReset"
+        );
+        this.resetPassword = Objects.requireNonNull(
+                resetPassword,
+                "resetPassword"
+        );
     }
 
     @Override
@@ -95,5 +110,23 @@ public class TransactionalIdentityService implements IdentityService {
     @Transactional
     public void revokeAllSessions(String userId) {
         sessions.revokeAll(userId);
+    }
+
+    @Override
+    @Transactional
+    public void requestPasswordReset(
+            String email,
+            String correlationId
+    ) {
+        requestPasswordReset.request(email, correlationId);
+    }
+
+    @Override
+    @Transactional
+    public PasswordResetOutcome resetPassword(
+            String token,
+            String newPassword
+    ) {
+        return resetPassword.reset(token, newPassword);
     }
 }

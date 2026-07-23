@@ -4,6 +4,8 @@ import com.storyplatform.identity.application.IdentityService;
 import com.storyplatform.identity.application.LoginUseCase;
 import com.storyplatform.identity.application.RegisterUserUseCase;
 import com.storyplatform.identity.application.RefreshSessionUseCase;
+import com.storyplatform.identity.application.RequestPasswordResetUseCase;
+import com.storyplatform.identity.application.ResetPasswordUseCase;
 import com.storyplatform.identity.application.SessionManagementUseCase;
 import com.storyplatform.identity.application.VerifyEmailUseCase;
 import com.storyplatform.identity.application.port.EmailVerificationIssuer;
@@ -11,6 +13,7 @@ import com.storyplatform.identity.application.port.EmailVerificationRepository;
 import com.storyplatform.identity.application.port.AccessTokenIssuer;
 import com.storyplatform.identity.application.port.LoginRiskLimiter;
 import com.storyplatform.identity.application.port.PasswordHasher;
+import com.storyplatform.identity.application.port.PasswordResetRepository;
 import com.storyplatform.identity.application.port.RefreshTokenCodec;
 import com.storyplatform.identity.application.port
         .RefreshTokenFamilyRepository;
@@ -159,14 +162,18 @@ public class IdentityConfiguration {
             VerifyEmailUseCase verifyEmail,
             LoginUseCase login,
             RefreshSessionUseCase refreshSession,
-            SessionManagementUseCase sessions
+            SessionManagementUseCase sessions,
+            RequestPasswordResetUseCase requestPasswordReset,
+            ResetPasswordUseCase resetPassword
     ) {
         return new TransactionalIdentityService(
                 registerUser,
                 verifyEmail,
                 login,
                 refreshSession,
-                sessions
+                sessions,
+                requestPasswordReset,
+                resetPassword
         );
     }
 
@@ -301,6 +308,46 @@ public class IdentityConfiguration {
     ) {
         return new SessionManagementUseCase(
                 families,
+                Clock.systemUTC()
+        );
+    }
+
+    @Bean
+    RequestPasswordResetUseCase requestPasswordResetUseCase(
+            UserAccountRepository users,
+            PasswordResetRepository resets,
+            VerificationTokenCodec tokens,
+            EmailNormalizer emails,
+            OutboxAppender outbox,
+            VerificationProperties properties
+    ) {
+        return new RequestPasswordResetUseCase(
+                users,
+                resets,
+                tokens,
+                emails,
+                outbox,
+                properties.tokenTtl(),
+                Clock.systemUTC()
+        );
+    }
+
+    @Bean
+    ResetPasswordUseCase resetPasswordUseCase(
+            PasswordResetRepository resets,
+            UserAccountRepository users,
+            RefreshTokenFamilyRepository sessions,
+            VerificationTokenCodec tokens,
+            PasswordHasher passwords,
+            PasswordPolicy policy
+    ) {
+        return new ResetPasswordUseCase(
+                resets,
+                users,
+                sessions,
+                tokens,
+                passwords,
+                policy,
                 Clock.systemUTC()
         );
     }

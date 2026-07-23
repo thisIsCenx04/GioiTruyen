@@ -20,4 +20,8 @@ public interface IdentityService {
     void revokeSession(String userId, String sessionId);
 
     void revokeAllSessions(String userId);
+
+    void requestPasswordReset(String email, String correlationId);
+
+    PasswordResetOutcome resetPassword(String token, String newPassword);
 }

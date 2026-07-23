@@ -26,6 +26,8 @@ public class SecurityConfiguration {
                         "/auth/email/verify",
                         "/auth/login",
                         "/auth/refresh",
+                        "/auth/password/forgot",
+                        "/auth/password/reset",
                         "/auth/logout",
                         "/auth/sessions",
                         "/auth/sessions/*"
@@ -50,7 +52,9 @@ public class SecurityConfiguration {
                                 "/auth/register",
                                 "/auth/email/verify",
                                 "/auth/login",
-                                "/auth/refresh"
+                                "/auth/refresh",
+                                "/auth/password/forgot",
+                                "/auth/password/reset"
                         ).permitAll()
                         .requestMatchers(
                                 "/auth/logout",
