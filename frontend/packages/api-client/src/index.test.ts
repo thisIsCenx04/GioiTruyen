@@ -2,7 +2,11 @@ import { HttpResponse, http } from "msw";
 import { describe, expect, it } from "vitest";
 
 import { apiMockServer } from "../../../test/msw/server";
-import { createStoryApiClient, StoryApiError } from "./index";
+import {
+  createBrowserAuthClient,
+  createStoryApiClient,
+  StoryApiError,
+} from "./index";
 
 const API_URL = "https://api.gioitruyen.test";
 
@@ -71,5 +75,141 @@ describe("story API client", () => {
         traceId: "trace-01",
       },
     });
+  });
+});
+
+describe("browser authentication client", () => {
+  it("sends login credentials only to the same-origin BFF", async () => {
+    apiMockServer.use(
+      http.post("/api/auth/login", async ({ request }) => {
+        await expect(request.json()).resolves.toEqual({
+          email: "reader@gioitruyen.vn",
+          password: "correct horse battery",
+        });
+        return HttpResponse.json({ status: "AUTHENTICATED" });
+      }),
+    );
+
+    await expect(
+      createBrowserAuthClient().login(
+        "reader@gioitruyen.vn",
+        "correct horse battery",
+      ),
+    ).resolves.toEqual({ status: "AUTHENTICATED" });
+  });
+
+  it("refreshes an expired access cookie once before retrying", async () => {
+    let attempts = 0;
+    apiMockServer.use(
+      http.get("/api/auth/sessions", () => {
+        attempts += 1;
+        if (attempts === 1) {
+          return HttpResponse.json(
+            {
+              code: "AUTHENTICATION_REQUIRED",
+              status: 401,
+              title: "Authentication required",
+              type: "about:blank",
+            },
+            { status: 401 },
+          );
+        }
+        return HttpResponse.json({ sessions: [] });
+      }),
+      http.post("/api/auth/refresh", () =>
+        HttpResponse.json({ status: "AUTHENTICATED" }),
+      ),
+    );
+
+    await expect(
+      createBrowserAuthClient().listSessions(),
+    ).resolves.toEqual({ sessions: [] });
+    expect(attempts).toBe(2);
+  });
+
+  it("does not refresh public authentication failures", async () => {
+    let refreshAttempts = 0;
+    apiMockServer.use(
+      http.post("/api/auth/login", () =>
+        HttpResponse.json(
+          {
+            code: "MFA_CODE_REQUIRED",
+            status: 401,
+            title: "Login rejected",
+            type: "about:blank",
+          },
+          { status: 401 },
+        ),
+      ),
+      http.post("/api/auth/refresh", () => {
+        refreshAttempts += 1;
+        return HttpResponse.json({ status: "AUTHENTICATED" });
+      }),
+    );
+
+    await expect(
+      createBrowserAuthClient().login("reader@example.test", "password"),
+    ).rejects.toMatchObject({
+      problem: { code: "MFA_CODE_REQUIRED" },
+    });
+    expect(refreshAttempts).toBe(0);
+  });
+
+  it("maps the remaining identity journeys to the BFF contract", async () => {
+    apiMockServer.use(
+      http.post("/api/auth/register", () =>
+        HttpResponse.json({ status: "PENDING_VERIFICATION" }),
+      ),
+      http.post("/api/auth/password/forgot", () =>
+        HttpResponse.json({ status: "ACCEPTED" }),
+      ),
+      http.post("/api/auth/password/reset", () =>
+        new HttpResponse(null, { status: 204 }),
+      ),
+      http.post("/api/auth/email/verify", () =>
+        new HttpResponse(null, { status: 204 }),
+      ),
+      http.post("/api/auth/mfa/challenge", () =>
+        HttpResponse.json({
+          algorithm: "SHA1",
+          digits: 6,
+          periodSeconds: 30,
+          provisioningSecret: "BASE32",
+        }),
+      ),
+      http.post("/api/auth/mfa/verify", () =>
+        HttpResponse.json({ recoveryCodes: ["recovery-01"] }),
+      ),
+      http.post("/api/auth/logout", () =>
+        new HttpResponse(null, { status: 204 }),
+      ),
+      http.delete("/api/auth/sessions", () =>
+        new HttpResponse(null, { status: 204 }),
+      ),
+      http.delete("/api/auth/sessions/session-01", () =>
+        new HttpResponse(null, { status: 204 }),
+      ),
+    );
+    const client = createBrowserAuthClient();
+
+    await expect(
+      client.register("reader@example.test", "a long safe password", true),
+    ).resolves.toEqual({ status: "PENDING_VERIFICATION" });
+    await expect(
+      client.forgotPassword("reader@example.test"),
+    ).resolves.toEqual({ status: "ACCEPTED" });
+    await expect(
+      client.resetPassword("reset-token", "a new safe password"),
+    ).resolves.toBeUndefined();
+    await expect(client.verifyEmail("verify-token")).resolves.toBeUndefined();
+    await expect(client.beginMfa()).resolves.toMatchObject({
+      provisioningSecret: "BASE32",
+    });
+    await expect(client.verifyMfa("123456")).resolves.toEqual({
+      recoveryCodes: ["recovery-01"],
+    });
+    await expect(client.revokeSession("session-01")).resolves.toBeUndefined();
+    await expect(client.revokeAllSessions()).resolves.toBeUndefined();
+    await expect(client.logout()).resolves.toBeUndefined();
   });
 });

@@ -45,7 +45,7 @@ export default function HomePage() {
           <a href="#reading">Tủ truyện</a>
           <a href="#teams">Nhóm xuất bản</a>
         </nav>
-        <a className="quietAction" href="#signin">
+        <a className="quietAction" href="/auth/login">
           Đăng nhập
         </a>
       </header>
