@@ -402,6 +402,7 @@ class MongoReplicaSetIntegrationTest {
                 1,
                 Instant.parse("2026-01-01T00:00:00Z"),
                 "request-1",
+                Map.of(),
                 "story",
                 "story-1",
                 "user-1",

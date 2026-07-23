@@ -5,6 +5,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
+import java.util.Map;
 
 @Document(collection = OutboxMessage.COLLECTION)
 public record OutboxMessage(
@@ -13,6 +14,7 @@ public record OutboxMessage(
         int eventVersion,
         Instant occurredAt,
         String correlationId,
+        Map<String, String> traceContext,
         String aggregateType,
         String aggregateId,
         String actorId,
@@ -35,6 +37,7 @@ public record OutboxMessage(
     static OutboxMessage pending(
             IntegrationEvent event,
             String payload,
+            Map<String, String> traceContext,
             Instant createdAt
     ) {
         return new OutboxMessage(
@@ -43,6 +46,7 @@ public record OutboxMessage(
                 event.eventVersion(),
                 event.occurredAt(),
                 event.correlationId(),
+                traceContext,
                 event.aggregateType(),
                 event.aggregateId(),
                 event.actorId(),

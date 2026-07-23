@@ -140,6 +140,7 @@ class InboxDispatcherTest {
                 1,
                 NOW.minusSeconds(1),
                 "request-1",
+                java.util.Map.of(),
                 "story",
                 "story-1",
                 "user-1",

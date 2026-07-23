@@ -5,6 +5,8 @@ import com.storyplatform.shared.events.persistence.OutboxAppender;
 import com.storyplatform.shared.events.persistence.OutboxMessage;
 import com.storyplatform.shared.events.persistence.OutboxProperties;
 import com.storyplatform.shared.events.persistence.OutboxStatus;
+import com.storyplatform.shared.observability.TraceContextPropagation;
+import io.opentelemetry.api.OpenTelemetry;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -34,7 +36,8 @@ class OutboxAppenderTest {
             mongoTemplate,
             JsonMapper.builder().build(),
             new OutboxProperties(65_536),
-            Clock.fixed(NOW, ZoneOffset.UTC)
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            new TraceContextPropagation(OpenTelemetry.noop())
     );
 
     @Test
@@ -58,6 +61,7 @@ class OutboxAppenderTest {
         assertThat(result.attempts()).isZero();
         assertThat(result.nextAttemptAt()).isEqualTo(NOW);
         assertThat(result.createdAt()).isEqualTo(NOW);
+        assertThat(result.traceContext()).isEmpty();
         assertThat(result.payload()).isEqualTo("{\"revision\":3}");
         assertThat(result.leaseOwner()).isNull();
         assertThat(result.processedAt()).isNull();

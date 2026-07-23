@@ -76,6 +76,25 @@ backoff and moves terminal failures to `DEAD_LETTER`. Inbox receipts deduplicate
 each `(consumer, eventId)` transactionally. External handlers must also pass the
 event ID as the provider idempotency key.
 
+## Observability
+
+Actuator and Micrometer instrument HTTP, JVM, MongoDB and Redis. The outbox adds
+the low-cardinality observations `story.outbox.poll` and
+`story.outbox.process`; they never include event IDs, actor/Team IDs, payloads,
+exception messages or credentials.
+
+Console logs use structured ECS JSON and include trace/span/correlation context.
+Application code must log allowlisted fields, stable error codes and sanitized
+values only. Never pass request bodies, connection strings, tokens, private
+chapter content or raw exception messages to a logger or telemetry attribute.
+
+OTLP export is deny-by-default for local and test runs. Set
+`OTEL_TRACES_EXPORT_ENABLED=true` and/or
+`OTEL_METRICS_EXPORT_ENABLED=true` only in an environment with an approved
+collector. `OTEL_EXPORTER_OTLP_ENDPOINT` is the collector base URL; configure
+collector authentication through the runtime secret manager, never `.env`
+committed to Git.
+
 The application starts deny-by-default. Only Actuator health/info are public
 until Identity and explicit API authorization policies are implemented.
 

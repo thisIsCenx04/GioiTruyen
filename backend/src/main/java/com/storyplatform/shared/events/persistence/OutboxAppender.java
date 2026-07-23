@@ -1,6 +1,7 @@
 package com.storyplatform.shared.events.persistence;
 
 import com.storyplatform.shared.events.IntegrationEvent;
+import com.storyplatform.shared.observability.TraceContextPropagation;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,17 +18,20 @@ public class OutboxAppender {
     private final ObjectMapper objectMapper;
     private final OutboxProperties properties;
     private final Clock clock;
+    private final TraceContextPropagation traceContextPropagation;
 
     public OutboxAppender(
             MongoTemplate mongoTemplate,
             ObjectMapper objectMapper,
             OutboxProperties properties,
-            Clock clock
+            Clock clock,
+            TraceContextPropagation traceContextPropagation
     ) {
         this.mongoTemplate = mongoTemplate;
         this.objectMapper = objectMapper;
         this.properties = properties;
         this.clock = clock;
+        this.traceContextPropagation = traceContextPropagation;
     }
 
     /**
@@ -49,6 +53,7 @@ public class OutboxAppender {
         OutboxMessage message = OutboxMessage.pending(
                 event,
                 new String(serialized, StandardCharsets.UTF_8),
+                traceContextPropagation.capture(),
                 createdAt
         );
         return mongoTemplate.insert(message);

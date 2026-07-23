@@ -44,6 +44,26 @@ management:
       show-details: never
       probes:
         enabled: true
+  tracing:
+    sampling:
+      probability: ${OTEL_TRACES_SAMPLING_PROBABILITY:0.1}
+    export:
+      otlp:
+        enabled: ${OTEL_TRACES_EXPORT_ENABLED:false}
+  opentelemetry:
+    resource-attributes:
+      deployment.environment: ${APP_ENV:local}
+      service.version: ${APP_VERSION:dev}
+    tracing:
+      limits:
+        max-attributes: 64
+        max-attribute-value-length: 256
+        max-events: 32
+  otlp:
+    metrics:
+      export:
+        enabled: ${OTEL_METRICS_EXPORT_ENABLED:false}
+        step: ${OTEL_METRICS_EXPORT_INTERVAL:30s}
 
 app:
   events:
@@ -75,3 +95,17 @@ app:
 logging:
   level:
     root: ${LOG_LEVEL:INFO}
+  structured:
+    format:
+      console: ${LOG_FORMAT:ecs}
+    ecs:
+      service:
+        environment: ${APP_ENV:local}
+        version: ${APP_VERSION:dev}
+    json:
+      stacktrace:
+        max-length: 2048
+        max-throwable-depth: 12
+  include-application-name: false
+  pattern:
+    correlation: "[${spring.application.name:},%X{traceId:-},%X{spanId:-},%X{correlationId:-}] "

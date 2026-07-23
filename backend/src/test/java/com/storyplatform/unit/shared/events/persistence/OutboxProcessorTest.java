@@ -7,6 +7,10 @@ import com.storyplatform.shared.events.persistence.OutboxProcessor;
 import com.storyplatform.shared.events.persistence.OutboxStatus;
 import com.storyplatform.shared.events.persistence.OutboxWorkerProperties;
 import com.storyplatform.shared.events.persistence.RetryBackoff;
+import com.storyplatform.shared.observability.OutboxTelemetry;
+import com.storyplatform.shared.observability.TraceContextPropagation;
+import io.micrometer.observation.ObservationRegistry;
+import io.opentelemetry.api.OpenTelemetry;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
@@ -49,7 +53,11 @@ class OutboxProcessorTest {
                     properties.initialBackoff(),
                     properties.maxBackoff()
             ),
-            Clock.fixed(NOW, ZoneOffset.UTC)
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            new OutboxTelemetry(
+                    ObservationRegistry.create(),
+                    new TraceContextPropagation(OpenTelemetry.noop())
+            )
     );
 
     @Test
@@ -145,6 +153,7 @@ class OutboxProcessorTest {
                 1,
                 NOW.minusSeconds(1),
                 "request-1",
+                java.util.Map.of(),
                 "story",
                 "story-1",
                 "user-1",
