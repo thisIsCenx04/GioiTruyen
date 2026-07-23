@@ -31,4 +31,8 @@ public interface IdentityService {
             String userId,
             String code
     );
+
+    ReauthenticationUseCase.IssueResult issueReauthenticationGrant(
+            ReauthenticationUseCase.IssueCommand command
+    );
 }

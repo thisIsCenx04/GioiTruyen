@@ -5,6 +5,7 @@ import com.storyplatform.identity.application.LoginUseCase;
 import com.storyplatform.identity.application.MfaUseCase;
 import com.storyplatform.identity.application.RegisterUserUseCase;
 import com.storyplatform.identity.application.RefreshSessionUseCase;
+import com.storyplatform.identity.application.ReauthenticationUseCase;
 import com.storyplatform.identity.application.RequestPasswordResetUseCase;
 import com.storyplatform.identity.application.ResetPasswordUseCase;
 import com.storyplatform.identity.application.SessionManagementUseCase;
@@ -18,6 +19,10 @@ import com.storyplatform.identity.application.port.MfaFactorRepository;
 import com.storyplatform.identity.application.port.PasswordHasher;
 import com.storyplatform.identity.application.port.PasswordResetRepository;
 import com.storyplatform.identity.application.port.RefreshTokenCodec;
+import com.storyplatform.identity.application.port
+        .ReauthenticationGrantRepository;
+import com.storyplatform.identity.application.port
+        .ReauthenticationTokenCodec;
 import com.storyplatform.identity.application.port
         .RefreshTokenFamilyRepository;
 import com.storyplatform.identity.application.port.SessionTokenIssuer;
@@ -36,6 +41,8 @@ import com.storyplatform.identity.infrastructure.security
         .PersistentSessionTokenIssuer;
 import com.storyplatform.identity.infrastructure.security
         .SecureRefreshTokenCodec;
+import com.storyplatform.identity.infrastructure.security
+        .SecureReauthenticationTokenCodec;
 import com.storyplatform.identity.infrastructure.security
         .SessionJwtValidator;
 import com.storyplatform.shared.cache.RedisKeyFactory;
@@ -66,7 +73,8 @@ import java.util.UUID;
         AccessTokenProperties.class,
         LoginRiskProperties.class,
         RefreshSessionProperties.class,
-        MfaProperties.class
+        MfaProperties.class,
+        ReauthenticationProperties.class
 })
 public class IdentityConfiguration {
 
@@ -170,7 +178,8 @@ public class IdentityConfiguration {
             SessionManagementUseCase sessions,
             RequestPasswordResetUseCase requestPasswordReset,
             ResetPasswordUseCase resetPassword,
-            MfaUseCase mfa
+            MfaUseCase mfa,
+            ReauthenticationUseCase reauthentication
     ) {
         return new TransactionalIdentityService(
                 registerUser,
@@ -180,7 +189,8 @@ public class IdentityConfiguration {
                 sessions,
                 requestPasswordReset,
                 resetPassword,
-                mfa
+                mfa,
+                reauthentication
         );
     }
 
@@ -385,6 +395,34 @@ public class IdentityConfiguration {
                 users,
                 sessions,
                 Clock.systemUTC()
+        );
+    }
+
+    @Bean
+    ReauthenticationTokenCodec reauthenticationTokenCodec() {
+        return new SecureReauthenticationTokenCodec(
+                new SecureRandom()
+        );
+    }
+
+    @Bean
+    ReauthenticationUseCase reauthenticationUseCase(
+            UserAccountRepository users,
+            PasswordHasher passwords,
+            MfaUseCase mfa,
+            ReauthenticationTokenCodec tokens,
+            ReauthenticationGrantRepository grants,
+            ReauthenticationProperties properties
+    ) {
+        return new ReauthenticationUseCase(
+                users,
+                passwords,
+                mfa,
+                tokens,
+                grants,
+                properties.ttl(),
+                Clock.systemUTC(),
+                UUID::randomUUID
         );
     }
 

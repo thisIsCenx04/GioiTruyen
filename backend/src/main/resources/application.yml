@@ -99,6 +99,8 @@ app:
       maximum-generations: ${REFRESH_SESSION_MAX_GENERATIONS:500}
     mfa:
       encryption-key: ${MFA_ENCRYPTION_KEY}
+    reauthentication:
+      ttl: ${REAUTHENTICATION_GRANT_TTL:5m}
   redis:
     application-prefix: ${REDIS_KEY_PREFIX:gioitruyen}
     key-version: ${REDIS_KEY_VERSION:v1}

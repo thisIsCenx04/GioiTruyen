@@ -5,8 +5,13 @@ import com.storyplatform.bootstrap.persistence.migration
         .EmailVerificationIndexes;
 import com.storyplatform.bootstrap.persistence.migration
         .RefreshSessionIndexes;
+import com.storyplatform.bootstrap.persistence.migration
+        .ReauthenticationGrantIndexes;
 import com.storyplatform.identity.application.port
         .RefreshTokenFamilyRepository;
+import com.storyplatform.identity.application.port
+        .ReauthenticationGrantRepository;
+import com.storyplatform.identity.application.ReauthenticationScope;
 import com.storyplatform.identity.application.port.VerificationTokenCodec;
 import com.storyplatform.identity.application.port.LoginRiskLimiter;
 import com.storyplatform.identity.application.port.PasswordHasher;
@@ -19,6 +24,10 @@ import com.storyplatform.identity.infrastructure.persistence
         .MongoRefreshTokenFamilyDocument;
 import com.storyplatform.identity.infrastructure.persistence
         .MongoRefreshTokenFamilyRepository;
+import com.storyplatform.identity.infrastructure.persistence
+        .MongoReauthenticationGrantDocument;
+import com.storyplatform.identity.infrastructure.persistence
+        .MongoReauthenticationGrantRepository;
 import com.storyplatform.identity.domain.RefreshTokenFamily;
 import com.storyplatform.shared.events.persistence.OutboxMessage;
 import org.junit.jupiter.api.BeforeEach;
@@ -106,6 +115,9 @@ class RegistrationIntegrationTest {
     @Autowired
     private JwtDecoder jwtDecoder;
 
+    @Autowired
+    private MongoReauthenticationGrantRepository reauthenticationGrants;
+
     @BeforeEach
     void resetUsers() {
         when(loginRiskLimiter.allow(anyString(), anyString()))
@@ -123,6 +135,10 @@ class RegistrationIntegrationTest {
                 MongoRefreshTokenFamilyDocument.COLLECTION
         );
         new RefreshSessionIndexes().apply(mongoTemplate);
+        mongoTemplate.dropCollection(
+                MongoReauthenticationGrantDocument.COLLECTION
+        );
+        new ReauthenticationGrantIndexes().apply(mongoTemplate);
     }
 
     @Test
@@ -296,6 +312,49 @@ class RegistrationIntegrationTest {
         assertThat(mongoTemplate.findAll(
                 MongoRefreshTokenFamilyDocument.class
         )).isEmpty();
+    }
+
+    @Test
+    void scopedReauthenticationGrantIsSingleUseAndExactBound() {
+        Instant now = Instant.parse("2026-07-24T00:00:00Z");
+        reauthenticationGrants.save(
+                new ReauthenticationGrantRepository.Grant(
+                        "grant-1",
+                        "token-hash",
+                        "admin-1",
+                        ReauthenticationScope.TOPUP_MANUAL_APPROVAL,
+                        "topup",
+                        "topup-1",
+                        now.plusSeconds(300),
+                        null,
+                        now
+                )
+        );
+
+        assertThat(reauthenticationGrants.consume(
+                "token-hash",
+                "admin-1",
+                ReauthenticationScope.WITHDRAWAL_APPROVAL,
+                "topup",
+                "topup-1",
+                now
+        )).isFalse();
+        assertThat(reauthenticationGrants.consume(
+                "token-hash",
+                "admin-1",
+                ReauthenticationScope.TOPUP_MANUAL_APPROVAL,
+                "topup",
+                "topup-1",
+                now
+        )).isTrue();
+        assertThat(reauthenticationGrants.consume(
+                "token-hash",
+                "admin-1",
+                ReauthenticationScope.TOPUP_MANUAL_APPROVAL,
+                "topup",
+                "topup-1",
+                now.plusSeconds(1)
+        )).isFalse();
     }
 
     @Test

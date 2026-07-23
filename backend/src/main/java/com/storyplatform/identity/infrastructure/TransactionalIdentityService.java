@@ -8,6 +8,7 @@ import com.storyplatform.identity.application.LoginUseCase;
 import com.storyplatform.identity.application.MfaUseCase;
 import com.storyplatform.identity.application.RefreshSessionOutcome;
 import com.storyplatform.identity.application.RefreshSessionUseCase;
+import com.storyplatform.identity.application.ReauthenticationUseCase;
 import com.storyplatform.identity.application.RequestPasswordResetUseCase;
 import com.storyplatform.identity.application.ResetPasswordUseCase;
 import com.storyplatform.identity.application.PasswordResetOutcome;
@@ -32,6 +33,7 @@ public class TransactionalIdentityService implements IdentityService {
     private final RequestPasswordResetUseCase requestPasswordReset;
     private final ResetPasswordUseCase resetPassword;
     private final MfaUseCase mfa;
+    private final ReauthenticationUseCase reauthentication;
 
     public TransactionalIdentityService(
             RegisterUserUseCase registerUser,
@@ -41,7 +43,8 @@ public class TransactionalIdentityService implements IdentityService {
             SessionManagementUseCase sessions,
             RequestPasswordResetUseCase requestPasswordReset,
             ResetPasswordUseCase resetPassword,
-            MfaUseCase mfa
+            MfaUseCase mfa,
+            ReauthenticationUseCase reauthentication
     ) {
         this.registerUser = Objects.requireNonNull(
                 registerUser,
@@ -63,6 +66,10 @@ public class TransactionalIdentityService implements IdentityService {
                 "resetPassword"
         );
         this.mfa = Objects.requireNonNull(mfa, "mfa");
+        this.reauthentication = Objects.requireNonNull(
+                reauthentication,
+                "reauthentication"
+        );
     }
 
     @Override
@@ -149,5 +156,14 @@ public class TransactionalIdentityService implements IdentityService {
             String code
     ) {
         return mfa.verifyEnrollment(userId, code);
+    }
+
+    @Override
+    @Transactional
+    public ReauthenticationUseCase.IssueResult
+            issueReauthenticationGrant(
+                    ReauthenticationUseCase.IssueCommand command
+            ) {
+        return reauthentication.issue(command);
     }
 }

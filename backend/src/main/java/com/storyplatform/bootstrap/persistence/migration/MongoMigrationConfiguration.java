@@ -57,6 +57,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    ReauthenticationGrantIndexes reauthenticationGrantIndexes() {
+        return new ReauthenticationGrantIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

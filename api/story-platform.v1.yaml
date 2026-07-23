@@ -392,6 +392,51 @@ paths:
           description: Password reset and session revocation completed.
         "400":
           $ref: "#/components/responses/BadRequest"
+  /auth/reauth/grants:
+    post:
+      operationId: issueReauthenticationGrant
+      summary: Issue a single-use scoped reauthentication grant
+      description: |
+        Verifies the current password and applicable MFA proof, then issues an
+        opaque short-lived grant bound to actor, scope, target type, and target
+        ID. Downstream sensitive actions must consume it atomically.
+      tags:
+        - Identity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReauthenticationGrantRequest"
+      responses:
+        "200":
+          description: Scoped reauthentication grant issued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReauthenticationGrantResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          description: Reauthentication attempts exceeded the risk limit.
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+                maximum: 86400
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "503":
+          description: Reauthentication risk controls are unavailable.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
   /auth/logout:
     post:
       operationId: logout
@@ -668,6 +713,66 @@ components:
           type: string
           enum:
             - ACCEPTED
+    ReauthenticationGrantRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - password
+        - scope
+        - targetType
+        - targetId
+      properties:
+        password:
+          type: string
+          format: password
+          minLength: 1
+          maxLength: 128
+          writeOnly: true
+        mfaCode:
+          type: string
+          minLength: 6
+          maxLength: 32
+          writeOnly: true
+        scope:
+          type: string
+          enum:
+            - EMAIL_CHANGE
+            - MFA_FACTOR_CHANGE
+            - TEAM_OWNER_CHANGE
+            - TEAM_DESTINATION_CHANGE
+            - MODERATION_EMERGENCY_TAKEDOWN
+            - TOPUP_MANUAL_APPROVAL
+            - WITHDRAWAL_APPROVAL
+            - SYSTEM_CONFIG_CHANGE
+        targetType:
+          type: string
+          pattern: '^[a-z][a-z0-9_-]{0,63}$'
+        targetId:
+          type: string
+          pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$'
+    ReauthenticationGrantResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - grantToken
+        - grantType
+        - expiresIn
+        - expiresAt
+      properties:
+        grantToken:
+          type: string
+          pattern: '^[A-Za-z0-9_-]{43}$'
+          writeOnly: true
+        grantType:
+          type: string
+          const: Scoped-Reauthentication
+        expiresIn:
+          type: integer
+          minimum: 60
+          maximum: 900
+        expiresAt:
+          type: string
+          format: date-time
     SessionListResponse:
       type: object
       additionalProperties: false

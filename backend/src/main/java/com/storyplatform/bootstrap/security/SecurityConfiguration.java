@@ -32,7 +32,8 @@ public class SecurityConfiguration {
                         "/auth/sessions",
                         "/auth/sessions/*",
                         "/auth/mfa/challenge",
-                        "/auth/mfa/verify"
+                        "/auth/mfa/verify",
+                        "/auth/reauth/grants"
                 ))
                 .oauth2ResourceServer(resourceServer -> resourceServer
                         .jwt(Customizer.withDefaults())
@@ -63,7 +64,8 @@ public class SecurityConfiguration {
                                 "/auth/sessions",
                                 "/auth/sessions/*",
                                 "/auth/mfa/challenge",
-                                "/auth/mfa/verify"
+                                "/auth/mfa/verify",
+                                "/auth/reauth/grants"
                         ).authenticated()
                         .anyRequest().denyAll())
                 .build();
