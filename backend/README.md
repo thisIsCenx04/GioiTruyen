@@ -67,9 +67,14 @@ raw payment data or unnecessary PII.
 
 Call `OutboxAppender.append(...)` from an existing MongoDB transaction that also
 writes the business aggregate. The appender deliberately uses mandatory
-transaction propagation and rejects standalone calls. Outbox delivery,
-lease/retry and dead-letter processing are implemented by the following worker
-commit; this foundation only defines durable outbox/inbox data and indexes.
+transaction propagation and rejects standalone calls.
+
+The polling worker is disabled by default. A dedicated worker deployment enables
+`OUTBOX_WORKER_ENABLED=true`; it atomically claims messages with an expiring
+lease, fans out to version-specific consumers, retries with bounded exponential
+backoff and moves terminal failures to `DEAD_LETTER`. Inbox receipts deduplicate
+each `(consumer, eventId)` transactionally. External handlers must also pass the
+event ID as the provider idempotency key.
 
 The application starts deny-by-default. Only Actuator health/info are public
 until Identity and explicit API authorization policies are implemented.

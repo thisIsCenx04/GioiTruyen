@@ -9,9 +9,13 @@ import com.storyplatform.bootstrap.persistence.migration.MongoMigrationRunner;
 import com.storyplatform.bootstrap.persistence.migration.MongoMigrationStore;
 import com.storyplatform.bootstrap.persistence.migration.OutboxInboxIndexes;
 import com.storyplatform.shared.events.IntegrationEvent;
+import com.storyplatform.shared.events.IntegrationEventHandler;
+import com.storyplatform.shared.events.OutboxDelivery;
+import com.storyplatform.shared.events.persistence.InboxDispatcher;
 import com.storyplatform.shared.events.persistence.InboxReceipt;
 import com.storyplatform.shared.events.persistence.OutboxAppender;
 import com.storyplatform.shared.events.persistence.OutboxMessage;
+import com.storyplatform.shared.events.persistence.OutboxMessageStore;
 import com.storyplatform.shared.events.persistence.OutboxStatus;
 import org.bson.Document;
 import org.junit.jupiter.api.BeforeEach;
@@ -286,6 +290,85 @@ class MongoReplicaSetIntegrationTest {
         });
     }
 
+    @Test
+    void concurrentWorkersCannotClaimTheSameOutboxMessage() {
+        TransactionTemplate transaction = new TransactionTemplate(
+                transactionManager
+        );
+        transaction.executeWithoutResult(status ->
+                outboxAppender.append(integrationEvent())
+        );
+        OutboxMessageStore store = new OutboxMessageStore(mongoTemplate);
+        Instant claimTime = Instant.now().plusSeconds(1);
+
+        assertThat(store.claim(
+                "worker-1",
+                claimTime,
+                Duration.ofSeconds(30)
+        )).isPresent();
+        assertThat(store.claim(
+                "worker-2",
+                claimTime,
+                Duration.ofSeconds(30)
+        )).isEmpty();
+    }
+
+    @Test
+    void inboxReplayDoesNotRepeatTransactionalHandlerSideEffect() {
+        IntegrationEventHandler handler = new IntegrationEventHandler() {
+            @Override
+            public String consumer() {
+                return "integration-probe";
+            }
+
+            @Override
+            public String eventType() {
+                return "publishing.story.published";
+            }
+
+            @Override
+            public int eventVersion() {
+                return 1;
+            }
+
+            @Override
+            public void handle(OutboxDelivery event) {
+                mongoTemplate.upsert(
+                        Query.query(
+                                org.springframework.data.mongodb.core.query
+                                        .Criteria.where("_id")
+                                        .is("handler-count")
+                        ),
+                        new Update().inc("count", 1),
+                        COLLECTION
+                );
+            }
+        };
+        InboxDispatcher dispatcher = new InboxDispatcher(
+                mongoTemplate,
+                List.of(handler),
+                Clock.systemUTC()
+        );
+        OutboxMessage message = outboxMessage();
+        TransactionTemplate transaction = new TransactionTemplate(
+                transactionManager
+        );
+
+        transaction.execute(status -> dispatcher.dispatch(message));
+        transaction.execute(status -> dispatcher.dispatch(message));
+
+        Document result = mongoTemplate.findById(
+                "handler-count",
+                Document.class,
+                COLLECTION
+        );
+        assertThat(result).isNotNull();
+        assertThat(result.getInteger("count")).isEqualTo(1);
+        assertThat(mongoTemplate.getCollection(
+                InboxReceipt.COLLECTION
+        ).countDocuments()).isEqualTo(1);
+    }
+
     private MongoMigrationRunner migrationRunner(
             List<MongoMigration> migrations
     ) {
@@ -309,6 +392,30 @@ class MongoReplicaSetIntegrationTest {
                 "user-1",
                 "team-1",
                 Map.of("revision", 3)
+        );
+    }
+
+    private static OutboxMessage outboxMessage() {
+        return new OutboxMessage(
+                "event-1",
+                "publishing.story.published",
+                1,
+                Instant.parse("2026-01-01T00:00:00Z"),
+                "request-1",
+                "story",
+                "story-1",
+                "user-1",
+                "team-1",
+                "application/json",
+                "{\"revision\":3}",
+                OutboxStatus.PROCESSING,
+                1,
+                Instant.parse("2026-01-01T00:00:00Z"),
+                "worker-1",
+                Instant.parse("2026-01-01T00:00:30Z"),
+                null,
+                Instant.parse("2026-01-01T00:00:00Z"),
+                null
         );
     }
 

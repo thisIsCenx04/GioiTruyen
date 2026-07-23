@@ -61,4 +61,20 @@ public record InboxReceipt(
                 processedAt
         );
     }
+
+    public static InboxReceipt from(
+            String consumer,
+            OutboxMessage message,
+            Instant processedAt
+    ) {
+        Objects.requireNonNull(message, "message");
+        return new InboxReceipt(
+                consumer + ":" + message.id(),
+                consumer,
+                message.id(),
+                message.eventType(),
+                message.eventVersion(),
+                processedAt
+        );
+    }
 }

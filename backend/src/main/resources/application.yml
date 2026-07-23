@@ -49,6 +49,14 @@ app:
   events:
     outbox:
       max-payload-bytes: ${OUTBOX_MAX_PAYLOAD_BYTES:65536}
+      worker:
+        enabled: ${OUTBOX_WORKER_ENABLED:false}
+        batch-size: ${OUTBOX_WORKER_BATCH_SIZE:25}
+        lease-duration: ${OUTBOX_WORKER_LEASE_DURATION:30s}
+        poll-interval: ${OUTBOX_WORKER_POLL_INTERVAL:1s}
+        max-attempts: ${OUTBOX_WORKER_MAX_ATTEMPTS:8}
+        initial-backoff: ${OUTBOX_WORKER_INITIAL_BACKOFF:1s}
+        max-backoff: ${OUTBOX_WORKER_MAX_BACKOFF:15m}
   mongodb:
     min-pool-size: ${MONGODB_MIN_POOL_SIZE:2}
     max-pool-size: ${MONGODB_MAX_POOL_SIZE:50}
