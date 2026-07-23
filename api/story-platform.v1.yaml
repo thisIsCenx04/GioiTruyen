@@ -212,7 +212,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
         "401":
-          description: The credentials or account state are invalid.
+          description: Credentials, MFA code, or account state are invalid.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: A privileged account must enroll MFA before login.
           content:
             application/problem+json:
               schema:
@@ -268,6 +274,74 @@ paths:
                 $ref: "#/components/schemas/Problem"
         "401":
           description: The token is invalid, expired, revoked, or replayed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /auth/mfa/challenge:
+    post:
+      operationId: beginMfaEnrollment
+      summary: Start encrypted TOTP enrollment
+      description: |
+        Replaces any unverified enrollment and returns a provisioning secret
+        once. The server stores only an AES-GCM protected form.
+      tags:
+        - Identity
+      responses:
+        "200":
+          description: TOTP enrollment challenge created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MfaChallengeResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: MFA is already enabled and cannot be replaced here.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /auth/mfa/verify:
+    post:
+      operationId: verifyMfaEnrollment
+      summary: Activate TOTP and issue one-time recovery codes
+      description: |
+        Activates the pending factor, increments the account security version,
+        and revokes all existing sessions. Recovery codes are returned once.
+      tags:
+        - Identity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MfaVerificationRequest"
+      responses:
+        "200":
+          description: MFA activated; recovery codes must be stored securely.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MfaActivationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          description: MFA verification attempts exceeded the risk limit.
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+                maximum: 86400
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "503":
+          description: MFA risk controls are temporarily unavailable.
           content:
             application/problem+json:
               schema:
@@ -469,6 +543,12 @@ components:
           writeOnly: true
           minLength: 1
           maxLength: 128
+        mfaCode:
+          type: string
+          minLength: 6
+          maxLength: 32
+          description: Six-digit TOTP or a single-use recovery code.
+          writeOnly: true
     LoginResponse:
       type: object
       additionalProperties: false
@@ -505,6 +585,53 @@ components:
           minLength: 43
           maxLength: 128
           pattern: '^[A-Za-z0-9_-]+$'
+    MfaVerificationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+      properties:
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
+          writeOnly: true
+    MfaChallengeResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - provisioningSecret
+        - algorithm
+        - digits
+        - periodSeconds
+      properties:
+        provisioningSecret:
+          type: string
+          pattern: '^[A-Z2-7]{32}$'
+          writeOnly: true
+        algorithm:
+          type: string
+          const: SHA1
+        digits:
+          type: integer
+          const: 6
+        periodSeconds:
+          type: integer
+          const: 30
+    MfaActivationResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - recoveryCodes
+      properties:
+        recoveryCodes:
+          type: array
+          minItems: 8
+          maxItems: 8
+          items:
+            type: string
+            minLength: 16
+            maxLength: 16
+            writeOnly: true
     ForgotPasswordRequest:
       type: object
       additionalProperties: false
@@ -621,6 +748,12 @@ components:
   responses:
     BadRequest:
       description: The request, token, or proposed password is invalid.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    Unauthorized:
+      description: The access token, session, or MFA proof is invalid.
       content:
         application/problem+json:
           schema:

@@ -30,7 +30,9 @@ public class SecurityConfiguration {
                         "/auth/password/reset",
                         "/auth/logout",
                         "/auth/sessions",
-                        "/auth/sessions/*"
+                        "/auth/sessions/*",
+                        "/auth/mfa/challenge",
+                        "/auth/mfa/verify"
                 ))
                 .oauth2ResourceServer(resourceServer -> resourceServer
                         .jwt(Customizer.withDefaults())
@@ -59,7 +61,9 @@ public class SecurityConfiguration {
                         .requestMatchers(
                                 "/auth/logout",
                                 "/auth/sessions",
-                                "/auth/sessions/*"
+                                "/auth/sessions/*",
+                                "/auth/mfa/challenge",
+                                "/auth/mfa/verify"
                         ).authenticated()
                         .anyRequest().denyAll())
                 .build();

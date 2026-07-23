@@ -3,6 +3,7 @@ package com.storyplatform.unit.identity.application;
 import com.storyplatform.identity.application.LoginCommand;
 import com.storyplatform.identity.application.LoginOutcome;
 import com.storyplatform.identity.application.LoginUseCase;
+import com.storyplatform.identity.application.MfaUseCase;
 import com.storyplatform.identity.application.port.SessionTokenIssuer;
 import com.storyplatform.identity.application.port.LoginRiskLimiter;
 import com.storyplatform.identity.application.port.PasswordHasher;
@@ -18,6 +19,10 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class LoginUseCaseTest {
 
@@ -33,9 +38,17 @@ class LoginUseCaseTest {
                     600,
                     "refresh-token-value"
             ),
+            unrestrictedMfa(),
             new EmailNormalizer(),
             "$argon2id$dummy"
     );
+
+    private static MfaUseCase unrestrictedMfa() {
+        MfaUseCase mfa = mock(MfaUseCase.class);
+        when(mfa.authenticate(any(), nullable(String.class)))
+                .thenReturn(MfaUseCase.AuthenticationResult.VERIFIED);
+        return mfa;
+    }
 
     @Test
     void authenticatesActiveAccountAndIssuesAccessToken() {
@@ -98,6 +111,38 @@ class LoginUseCaseTest {
         assertThat(passwords.invocations).isEqualTo(1);
     }
 
+    @Test
+    void privilegedAccountCannotBypassMfa() {
+        MfaUseCase mfa = mock(MfaUseCase.class);
+        when(mfa.authenticate(any(), nullable(String.class)))
+                .thenReturn(
+                        MfaUseCase.AuthenticationResult.ENROLLMENT_REQUIRED
+                );
+        LoginUseCase privilegedLogin = new LoginUseCase(
+                users,
+                passwords,
+                risk,
+                account -> {
+                    throw new AssertionError(
+                            "Session must not be issued before MFA"
+                    );
+                },
+                mfa,
+                new EmailNormalizer(),
+                "$argon2id$dummy"
+        );
+        users.account = Optional.of(account(
+                UserState.ACTIVE,
+                GlobalRole.ADMIN
+        ));
+        passwords.matches = true;
+
+        assertThat(privilegedLogin.login(command()).status())
+                .isEqualTo(
+                        LoginOutcome.Status.MFA_ENROLLMENT_REQUIRED
+                );
+    }
+
     private static LoginCommand command() {
         return new LoginCommand(
                 " Reader@Example.com ",
@@ -107,12 +152,19 @@ class LoginUseCaseTest {
     }
 
     private static UserAccount account(UserState state) {
+        return account(state, GlobalRole.USER);
+    }
+
+    private static UserAccount account(
+            UserState state,
+            GlobalRole role
+    ) {
         Instant now = Instant.parse("2026-07-24T00:00:00Z");
         return new UserAccount(
                 "user-1",
                 "reader@example.com",
                 "$argon2id$real",
-                Set.of(GlobalRole.USER),
+                Set.of(role),
                 state,
                 1,
                 "2026-07-24",

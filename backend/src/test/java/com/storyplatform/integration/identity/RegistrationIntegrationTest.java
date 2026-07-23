@@ -285,6 +285,20 @@ class RegistrationIntegrationTest {
     }
 
     @Test
+    void privilegedAccountCannotLoginWithoutMfaEnrollment()
+            throws Exception {
+        insertActiveUser(GlobalRole.ADMIN);
+
+        mockMvc.perform(loginRequest())
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code")
+                        .value("MFA_ENROLLMENT_REQUIRED"));
+        assertThat(mongoTemplate.findAll(
+                MongoRefreshTokenFamilyDocument.class
+        )).isEmpty();
+    }
+
+    @Test
     void verificationTokenIsSingleUseAndActivatesAccount()
             throws Exception {
         mockMvc.perform(request(
@@ -445,12 +459,16 @@ class RegistrationIntegrationTest {
     }
 
     private void insertActiveUser() {
+        insertActiveUser(GlobalRole.USER);
+    }
+
+    private void insertActiveUser(GlobalRole role) {
         Instant now = Instant.parse("2026-07-24T00:00:00Z");
         mongoTemplate.insert(new MongoUserAccountDocument(
                 "active-user",
                 "reader@example.com",
                 passwordHasher.hash("correct horse battery staple"),
-                Set.of(GlobalRole.USER),
+                Set.of(role),
                 UserState.ACTIVE,
                 1,
                 "2026-07-24",

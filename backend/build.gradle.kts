@@ -98,6 +98,10 @@ tasks.withType<Test>().configureEach {
 		"app.identity.login-risk.hmac-key",
 		"C".repeat(43) + "="
 	)
+	systemProperty(
+		"app.identity.mfa.encryption-key",
+		"D".repeat(43) + "="
+	)
 }
 
 val unitTest by tasks.registering(Test::class) {

@@ -40,7 +40,8 @@ public class LoginController {
             outcome = identityService.login(new LoginCommand(
                     request.email(),
                     request.password(),
-                    servletRequest.getRemoteAddr()
+                    servletRequest.getRemoteAddr(),
+                    request.mfaCode()
             ));
         } catch (LoginRiskUnavailableException exception) {
             throw new ApiException(
@@ -67,6 +68,14 @@ public class LoginController {
                     HttpStatus.TOO_MANY_REQUESTS,
                     "LOGIN_RATE_LIMITED",
                     Duration.ofSeconds(outcome.retryAfterSeconds())
+            );
+            case MFA_CODE_REQUIRED -> throw rejected(
+                    HttpStatus.UNAUTHORIZED,
+                    "MFA_CODE_REQUIRED"
+            );
+            case MFA_ENROLLMENT_REQUIRED -> throw rejected(
+                    HttpStatus.FORBIDDEN,
+                    "MFA_ENROLLMENT_REQUIRED"
             );
         };
     }

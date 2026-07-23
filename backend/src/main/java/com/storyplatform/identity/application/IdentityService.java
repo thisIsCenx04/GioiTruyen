@@ -24,4 +24,11 @@ public interface IdentityService {
     void requestPasswordReset(String email, String correlationId);
 
     PasswordResetOutcome resetPassword(String token, String newPassword);
+
+    MfaUseCase.EnrollmentChallenge beginMfaEnrollment(String userId);
+
+    MfaUseCase.EnrollmentResult verifyMfaEnrollment(
+            String userId,
+            String code
+    );
 }

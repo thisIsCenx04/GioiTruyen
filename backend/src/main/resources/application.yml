@@ -97,6 +97,8 @@ app:
     refresh-session:
       ttl: ${REFRESH_SESSION_TTL:30d}
       maximum-generations: ${REFRESH_SESSION_MAX_GENERATIONS:500}
+    mfa:
+      encryption-key: ${MFA_ENCRYPTION_KEY}
   redis:
     application-prefix: ${REDIS_KEY_PREFIX:gioitruyen}
     key-version: ${REDIS_KEY_VERSION:v1}

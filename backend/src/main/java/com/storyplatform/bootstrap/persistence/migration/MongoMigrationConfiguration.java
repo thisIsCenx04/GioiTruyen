@@ -52,6 +52,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    MfaFactorIndexes mfaFactorIndexes() {
+        return new MfaFactorIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

@@ -16,6 +16,7 @@ public final class LoginUseCase {
     private final PasswordHasher passwords;
     private final LoginRiskLimiter riskLimiter;
     private final SessionTokenIssuer tokenIssuer;
+    private final MfaUseCase mfa;
     private final EmailNormalizer emailNormalizer;
     private final String dummyPasswordHash;
 
@@ -24,6 +25,7 @@ public final class LoginUseCase {
             PasswordHasher passwords,
             LoginRiskLimiter riskLimiter,
             SessionTokenIssuer tokenIssuer,
+            MfaUseCase mfa,
             EmailNormalizer emailNormalizer,
             String dummyPasswordHash
     ) {
@@ -37,6 +39,7 @@ public final class LoginUseCase {
                 tokenIssuer,
                 "tokenIssuer"
         );
+        this.mfa = Objects.requireNonNull(mfa, "mfa");
         this.emailNormalizer = Objects.requireNonNull(
                 emailNormalizer,
                 "emailNormalizer"
@@ -74,6 +77,21 @@ public final class LoginUseCase {
         }
 
         UserAccount authenticated = account.orElseThrow();
+        MfaUseCase.AuthenticationResult mfaResult =
+                mfa.authenticate(authenticated, command.mfaCode());
+        if (mfaResult != MfaUseCase.AuthenticationResult.VERIFIED) {
+            if (mfaResult == MfaUseCase.AuthenticationResult.INVALID) {
+                riskLimiter.recordFailure(
+                        email,
+                        command.clientAddress()
+                );
+                return LoginOutcome.invalidCredentials();
+            }
+            return mfaResult
+                    == MfaUseCase.AuthenticationResult.CODE_REQUIRED
+                    ? LoginOutcome.mfaCodeRequired()
+                    : LoginOutcome.mfaEnrollmentRequired();
+        }
         riskLimiter.recordSuccess(email, command.clientAddress());
         SessionTokenIssuer.IssuedSession token =
                 tokenIssuer.issue(authenticated);

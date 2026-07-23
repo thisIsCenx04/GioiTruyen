@@ -5,6 +5,7 @@ import com.storyplatform.identity.application.IdentityService;
 import com.storyplatform.identity.application.LoginCommand;
 import com.storyplatform.identity.application.LoginOutcome;
 import com.storyplatform.identity.application.LoginUseCase;
+import com.storyplatform.identity.application.MfaUseCase;
 import com.storyplatform.identity.application.RefreshSessionOutcome;
 import com.storyplatform.identity.application.RefreshSessionUseCase;
 import com.storyplatform.identity.application.RequestPasswordResetUseCase;
@@ -30,6 +31,7 @@ public class TransactionalIdentityService implements IdentityService {
     private final SessionManagementUseCase sessions;
     private final RequestPasswordResetUseCase requestPasswordReset;
     private final ResetPasswordUseCase resetPassword;
+    private final MfaUseCase mfa;
 
     public TransactionalIdentityService(
             RegisterUserUseCase registerUser,
@@ -38,7 +40,8 @@ public class TransactionalIdentityService implements IdentityService {
             RefreshSessionUseCase refreshSession,
             SessionManagementUseCase sessions,
             RequestPasswordResetUseCase requestPasswordReset,
-            ResetPasswordUseCase resetPassword
+            ResetPasswordUseCase resetPassword,
+            MfaUseCase mfa
     ) {
         this.registerUser = Objects.requireNonNull(
                 registerUser,
@@ -59,6 +62,7 @@ public class TransactionalIdentityService implements IdentityService {
                 resetPassword,
                 "resetPassword"
         );
+        this.mfa = Objects.requireNonNull(mfa, "mfa");
     }
 
     @Override
@@ -128,5 +132,22 @@ public class TransactionalIdentityService implements IdentityService {
             String newPassword
     ) {
         return resetPassword.reset(token, newPassword);
+    }
+
+    @Override
+    @Transactional
+    public MfaUseCase.EnrollmentChallenge beginMfaEnrollment(
+            String userId
+    ) {
+        return mfa.beginEnrollment(userId);
+    }
+
+    @Override
+    @Transactional
+    public MfaUseCase.EnrollmentResult verifyMfaEnrollment(
+            String userId,
+            String code
+    ) {
+        return mfa.verifyEnrollment(userId, code);
     }
 }

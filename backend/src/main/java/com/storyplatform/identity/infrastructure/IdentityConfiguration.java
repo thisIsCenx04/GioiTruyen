@@ -2,6 +2,7 @@ package com.storyplatform.identity.infrastructure;
 
 import com.storyplatform.identity.application.IdentityService;
 import com.storyplatform.identity.application.LoginUseCase;
+import com.storyplatform.identity.application.MfaUseCase;
 import com.storyplatform.identity.application.RegisterUserUseCase;
 import com.storyplatform.identity.application.RefreshSessionUseCase;
 import com.storyplatform.identity.application.RequestPasswordResetUseCase;
@@ -12,6 +13,8 @@ import com.storyplatform.identity.application.port.EmailVerificationIssuer;
 import com.storyplatform.identity.application.port.EmailVerificationRepository;
 import com.storyplatform.identity.application.port.AccessTokenIssuer;
 import com.storyplatform.identity.application.port.LoginRiskLimiter;
+import com.storyplatform.identity.application.port.MfaCryptography;
+import com.storyplatform.identity.application.port.MfaFactorRepository;
 import com.storyplatform.identity.application.port.PasswordHasher;
 import com.storyplatform.identity.application.port.PasswordResetRepository;
 import com.storyplatform.identity.application.port.RefreshTokenCodec;
@@ -27,6 +30,7 @@ import com.storyplatform.identity.infrastructure.persistence.MongoEmailVerificat
 import com.storyplatform.identity.infrastructure.security.Argon2PasswordHasher;
 import com.storyplatform.identity.infrastructure.security.HmacVerificationTokenCodec;
 import com.storyplatform.identity.infrastructure.security.JwtAccessTokenIssuer;
+import com.storyplatform.identity.infrastructure.security.TotpMfaCryptography;
 import com.storyplatform.identity.infrastructure.security.RedisLoginRiskLimiter;
 import com.storyplatform.identity.infrastructure.security
         .PersistentSessionTokenIssuer;
@@ -61,7 +65,8 @@ import java.util.UUID;
         VerificationProperties.class,
         AccessTokenProperties.class,
         LoginRiskProperties.class,
-        RefreshSessionProperties.class
+        RefreshSessionProperties.class,
+        MfaProperties.class
 })
 public class IdentityConfiguration {
 
@@ -164,7 +169,8 @@ public class IdentityConfiguration {
             RefreshSessionUseCase refreshSession,
             SessionManagementUseCase sessions,
             RequestPasswordResetUseCase requestPasswordReset,
-            ResetPasswordUseCase resetPassword
+            ResetPasswordUseCase resetPassword,
+            MfaUseCase mfa
     ) {
         return new TransactionalIdentityService(
                 registerUser,
@@ -173,7 +179,8 @@ public class IdentityConfiguration {
                 refreshSession,
                 sessions,
                 requestPasswordReset,
-                resetPassword
+                resetPassword,
+                mfa
         );
     }
 
@@ -272,6 +279,7 @@ public class IdentityConfiguration {
             PasswordHasher passwords,
             LoginRiskLimiter riskLimiter,
             SessionTokenIssuer tokenIssuer,
+            MfaUseCase mfa,
             EmailNormalizer emailNormalizer
     ) {
         return new LoginUseCase(
@@ -279,6 +287,7 @@ public class IdentityConfiguration {
                 passwords,
                 riskLimiter,
                 tokenIssuer,
+                mfa,
                 emailNormalizer,
                 passwords.hash("dummy login timing password")
         );
@@ -348,6 +357,33 @@ public class IdentityConfiguration {
                 tokens,
                 passwords,
                 policy,
+                Clock.systemUTC()
+        );
+    }
+
+    @Bean
+    MfaCryptography mfaCryptography(MfaProperties properties) {
+        return new TotpMfaCryptography(
+                decodeKey(
+                        properties.encryptionKey(),
+                        "MFA_ENCRYPTION_KEY"
+                ),
+                new SecureRandom()
+        );
+    }
+
+    @Bean
+    MfaUseCase mfaUseCase(
+            MfaFactorRepository factors,
+            MfaCryptography cryptography,
+            UserAccountRepository users,
+            RefreshTokenFamilyRepository sessions
+    ) {
+        return new MfaUseCase(
+                factors,
+                cryptography,
+                users,
+                sessions,
                 Clock.systemUTC()
         );
     }

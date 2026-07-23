@@ -19,6 +19,13 @@ public interface UserAccountRepository {
         return false;
     }
 
+    default boolean incrementSecurityVersion(
+            String userId,
+            Instant changedAt
+    ) {
+        return false;
+    }
+
     default Optional<UserAccount> findByEmail(String emailNormalized) {
         return Optional.empty();
     }

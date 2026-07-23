@@ -11,7 +11,9 @@ public record LoginOutcome(
     public enum Status {
         AUTHENTICATED,
         INVALID_CREDENTIALS,
-        RATE_LIMITED
+        RATE_LIMITED,
+        MFA_CODE_REQUIRED,
+        MFA_ENROLLMENT_REQUIRED
     }
 
     public static LoginOutcome authenticated(
@@ -46,5 +48,17 @@ public record LoginOutcome(
                 null,
                 retryAfterSeconds
         );
+    }
+
+    public static LoginOutcome mfaCodeRequired() {
+        return empty(Status.MFA_CODE_REQUIRED);
+    }
+
+    public static LoginOutcome mfaEnrollmentRequired() {
+        return empty(Status.MFA_ENROLLMENT_REQUIRED);
+    }
+
+    private static LoginOutcome empty(Status status) {
+        return new LoginOutcome(status, null, 0, null, 0);
     }
 }

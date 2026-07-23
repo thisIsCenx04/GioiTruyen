@@ -67,6 +67,21 @@ public class MongoUserAccountRepository implements UserAccountRepository {
     }
 
     @Override
+    public boolean incrementSecurityVersion(
+            String userId,
+            Instant changedAt
+    ) {
+        return mongoTemplate.updateFirst(
+                Query.query(Criteria.where("_id").is(userId)),
+                new Update()
+                        .set("updatedAt", changedAt)
+                        .inc("securityVersion", 1)
+                        .inc("version", 1),
+                MongoUserAccountDocument.class
+        ).getModifiedCount() == 1;
+    }
+
+    @Override
     public Optional<UserAccount> findByEmail(String emailNormalized) {
         Query email = Query.query(
                 Criteria.where("emailNormalized").is(emailNormalized)
