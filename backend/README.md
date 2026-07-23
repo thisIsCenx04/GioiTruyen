@@ -28,6 +28,11 @@ Run tests:
 Spring, and must not access network, MongoDB, or Redis. The JaCoCo HTML report
 is written to `build/reports/jacoco/test/html/index.html`.
 
+MongoDB integration tests use Testcontainers with a pinned MongoDB replica-set
+image. They run automatically when a Docker-compatible runtime is available and
+are reported as skipped when the runtime is absent; CI must provide Docker and
+must not accept that skip.
+
 The application starts deny-by-default. Only Actuator health/info are public
 until Identity and explicit API authorization policies are implemented.
 

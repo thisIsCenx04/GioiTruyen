@@ -46,6 +46,8 @@ dependencies {
 	testImplementation("org.mockito:mockito-core")
 	testImplementation("org.mockito:mockito-junit-jupiter")
 	testImplementation("net.jqwik:jqwik:$jqwikVersion")
+	testImplementation("org.testcontainers:testcontainers-junit-jupiter:2.0.5")
+	testImplementation("org.testcontainers:testcontainers-mongodb:2.0.5")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 	mockitoAgent("org.mockito:mockito-core") {
 		isTransitive = false
