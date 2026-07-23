@@ -12,11 +12,22 @@
     "dev:web": "pnpm --filter @gioitruyen/web dev",
     "dev:admin": "pnpm --filter @gioitruyen/admin dev",
     "lint": "pnpm -r --if-present lint",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest",
     "typecheck": "pnpm -r --if-present typecheck"
   },
   "devDependencies": {
+    "@testing-library/dom": "10.4.1",
+    "@testing-library/jest-dom": "7.0.0",
+    "@testing-library/react": "16.3.2",
+    "@testing-library/user-event": "14.6.1",
+    "@vitest/coverage-v8": "4.1.10",
     "eslint": "9.39.2",
     "eslint-config-next": "16.2.11",
-    "typescript": "5.9.3"
+    "jsdom": "29.1.1",
+    "msw": "2.15.0",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
   }
 }
