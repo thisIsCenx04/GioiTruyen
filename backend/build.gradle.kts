@@ -71,6 +71,11 @@ val unitTest by tasks.registering(Test::class) {
 
 	testClassesDirs = sourceSets.test.get().output.classesDirs
 	classpath = sourceSets.test.get().runtimeClasspath
+	maxParallelForks = Runtime.getRuntime().availableProcessors().coerceIn(1, 4)
+
+	systemProperty("junit.jupiter.execution.parallel.enabled", "true")
+	systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
+	systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
 
 	include(
 			"com/storyplatform/unit/**/*Test.class",
