@@ -158,7 +158,7 @@ class MongoReplicaSetIntegrationTest {
         ).getIndexInfo()).anySatisfy(index -> {
             assertThat(index.getName())
                     .isEqualTo("migration_lock_expiry_ttl");
-            assertThat(index.getExpireAfter()).isEqualTo(Duration.ZERO);
+            assertThat(index.getExpireAfter()).contains(Duration.ZERO);
         });
     }
 
@@ -307,11 +307,12 @@ class MongoReplicaSetIntegrationTest {
         TransactionTemplate transaction = new TransactionTemplate(
                 transactionManager
         );
-        transaction.executeWithoutResult(status ->
+        OutboxMessage appended = transaction.execute(status ->
                 outboxAppender.append(integrationEvent())
         );
+        assertThat(appended).isNotNull();
         OutboxMessageStore store = new OutboxMessageStore(mongoTemplate);
-        Instant claimTime = FIXED_INSTANT.plusSeconds(1);
+        Instant claimTime = appended.nextAttemptAt().plusSeconds(1);
 
         assertThat(store.claim(
                 "worker-1",
