@@ -89,6 +89,7 @@ public class SecurityConfiguration {
                                 "/teams/*/members",
                                 "/teams/*/members/*",
                                 "/teams/*/members/*/permissions",
+                                "/teams/*/follow",
                                 "/team-invitations/*/accept"
                         ).authenticated()
                         .anyRequest().denyAll())

@@ -7,6 +7,8 @@ import com.storyplatform.shared.cache.ResilientRedisCache;
 import com.storyplatform.teams.application.ProfileService;
 import com.storyplatform.teams.application.TeamAuthorizationPolicy;
 import com.storyplatform.teams.application.TeamAuthorizationUseCase;
+import com.storyplatform.teams.application.TeamFollowOperations;
+import com.storyplatform.teams.application.TeamFollowUseCase;
 import com.storyplatform.teams.application.TeamMembershipOperations;
 import com.storyplatform.teams.application.TeamMembershipUseCase;
 import com.storyplatform.teams.application.TeamOperations;
@@ -15,10 +17,13 @@ import com.storyplatform.teams.application.port.TeamInvitationRepository;
 import com.storyplatform.teams.application.port.TeamInvitationTokenCodec;
 import com.storyplatform.teams.application.port.TeamMembershipRepository;
 import com.storyplatform.teams.application.port.TeamMembershipCache;
+import com.storyplatform.teams.application.port.TeamFollowRepository;
 import com.storyplatform.teams.application.port.TeamRepository;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import com.storyplatform.teams.application.port.UserProfileRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -89,5 +94,43 @@ public class TeamsConfiguration {
             TeamMembershipCache cache
     ) {
         return new TeamAuthorizationUseCase(memberships, cache);
+    }
+
+    @Bean
+    TeamFollowOperations teamFollowOperations(
+            TeamRepository teams,
+            TeamFollowRepository follows,
+            OutboxAppender outbox
+    ) {
+        TeamFollowUseCase useCase = new TeamFollowUseCase(
+                teams,
+                follows,
+                outbox,
+                Clock.systemUTC()
+        );
+        return new TransactionalTeamFollowOperations(useCase);
+    }
+
+    @Bean
+    TeamFollowCounterStore teamFollowCounterStore(
+            MongoTemplate mongo
+    ) {
+        return new TeamFollowCounterStore(mongo, Clock.systemUTC());
+    }
+
+    @Bean
+    TeamFollowCounterProjector teamFollowCounterProjector(
+            TeamFollowCounterStore counters,
+            ObjectMapper objectMapper
+    ) {
+        return new TeamFollowCounterProjector(counters, objectMapper);
+    }
+
+    @Bean
+    TeamFollowCounterReconciler teamFollowCounterReconciler(
+            TeamFollowRepository follows,
+            TeamFollowCounterStore counters
+    ) {
+        return new TeamFollowCounterReconciler(follows, counters);
     }
 }

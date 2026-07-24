@@ -829,6 +829,52 @@ paths:
                 $ref: "#/components/schemas/TeamMembership"
         "404":
           $ref: "#/components/responses/NotFound"
+  /teams/{teamId}/follow:
+    get:
+      operationId: getTeamFollowStatus
+      summary: Get the current user's follow state and authoritative count
+      tags: [Teams]
+      parameters:
+        - $ref: "#/components/parameters/TeamId"
+      responses:
+        "200":
+          description: Current follow state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamFollow"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: followTeam
+      summary: Idempotently follow an active Team
+      tags: [Teams]
+      parameters:
+        - $ref: "#/components/parameters/TeamId"
+      responses:
+        "200":
+          description: Following; repeated calls produce no duplicate relation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamFollow"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: unfollowTeam
+      summary: Idempotently stop following an active Team
+      tags: [Teams]
+      parameters:
+        - $ref: "#/components/parameters/TeamId"
+      responses:
+        "200":
+          description: Not following; repeated calls produce no counter delta
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamFollow"
+        "404":
+          $ref: "#/components/responses/NotFound"
 components:
   securitySchemes:
     bearerAuth:
@@ -1347,6 +1393,20 @@ components:
               - analytics:read
               - finance:request
         version:
+          type: integer
+          format: int64
+          minimum: 0
+    TeamFollow:
+      type: object
+      additionalProperties: false
+      required: [teamId, following, followerCount]
+      properties:
+        teamId:
+          type: string
+          format: uuid
+        following:
+          type: boolean
+        followerCount:
           type: integer
           format: int64
           minimum: 0
