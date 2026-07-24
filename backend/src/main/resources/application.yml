@@ -85,6 +85,9 @@ app:
   moderation:
     appeals:
       window: ${MODERATION_APPEAL_WINDOW:7d}
+    copyright:
+      response-sla: ${COPYRIGHT_RESPONSE_SLA:48h}
+      hold-duration: ${COPYRIGHT_HOLD_DURATION:7d}
     queue:
       claim-lease: ${MODERATION_QUEUE_CLAIM_LEASE:15m}
     reports:

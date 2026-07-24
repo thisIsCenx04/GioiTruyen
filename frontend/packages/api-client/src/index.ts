@@ -335,6 +335,27 @@ export type ModerationAppeal = Readonly<{
   decidedAt: string | null;
 }>;
 
+export type CopyrightCase = Readonly<{
+  id: string;
+  storyId: string;
+  claimantId: string;
+  claimantName: string;
+  statement: string;
+  evidenceMediaIds: readonly string[];
+  status: "PENDING" | "APPEALED" | "TAKEDOWN" | "REINSTATED";
+  createdAt: string;
+  responseDueAt: string;
+  holdUntil: string;
+  appealStatement: string | null;
+  appealActorId: string | null;
+  appealedAt: string | null;
+  decision: "TAKEDOWN" | "REINSTATE" | null;
+  decisionReasonCode: string | null;
+  decisionNote: string | null;
+  reviewerId: string | null;
+  decidedAt: string | null;
+}>;
+
 export type BrowserTeamClientOptions = Readonly<{
   baseUrl?: string;
   fetchImplementation?: typeof fetch;
@@ -706,6 +727,19 @@ export function createBrowserModerationClient({
         { body: input, method: "POST" },
       );
     },
+    decideCopyrightCase(
+      caseId: string,
+      input: {
+        decision: "TAKEDOWN" | "REINSTATE";
+        reasonCode: string;
+        note: string;
+      },
+    ) {
+      return request<CopyrightCase>(
+        `/copyright/cases/${encodeURIComponent(caseId)}/decisions`,
+        { body: input, method: "POST" },
+      );
+    },
   });
 }
 
@@ -719,6 +753,37 @@ export function createBrowserAppealClient({
     create(reviewId: string, statement: string) {
       return client.request<ModerationAppeal>(
         `/moderation/cases/${encodeURIComponent(reviewId)}/appeals`,
+        {
+          body: { statement },
+          credentials: "same-origin",
+          method: "POST",
+        },
+      );
+    },
+  });
+}
+
+export function createBrowserCopyrightClient({
+  baseUrl = "/api/workspace",
+  fetchImplementation = fetch,
+}: BrowserTeamClientOptions = {}) {
+  const client = createStoryApiClient({ baseUrl, fetchImplementation });
+  return Object.freeze({
+    create(input: {
+      storyId: string;
+      claimantName: string;
+      statement: string;
+      evidenceMediaIds: readonly string[];
+    }) {
+      return client.request<CopyrightCase>("/copyright/cases", {
+        body: input,
+        credentials: "same-origin",
+        method: "POST",
+      });
+    },
+    appeal(caseId: string, statement: string) {
+      return client.request<CopyrightCase>(
+        `/copyright/cases/${encodeURIComponent(caseId)}/appeals`,
         {
           body: { statement },
           credentials: "same-origin",

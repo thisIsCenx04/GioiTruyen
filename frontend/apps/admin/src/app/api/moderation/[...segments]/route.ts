@@ -23,6 +23,11 @@ function allowed(method: string, path: string) {
   ) {
     return method === "POST";
   }
+  if (
+    new RegExp(`^copyright/cases/${uuid}/decisions$`, "u").test(path)
+  ) {
+    return method === "POST";
+  }
   return (
     method === "POST" &&
     new RegExp(`^cases/${uuid}/decisions$`, "u").test(path)
@@ -67,8 +72,11 @@ async function proxy(request: NextRequest, context: RouteContext) {
     if (body) headers.set("Content-Type", "application/json");
   }
   try {
+    const backendPath = path.startsWith("copyright/")
+      ? path
+      : `moderation/${path}`;
     const backend = await fetch(
-      `${backendBaseUrl}/moderation/${path}${request.nextUrl.search}`,
+      `${backendBaseUrl}/${backendPath}${request.nextUrl.search}`,
       {
         ...(body === undefined ? {} : { body }),
         cache: "no-store",

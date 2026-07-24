@@ -49,6 +49,9 @@ public class SecurityConfiguration {
                         "/reports",
                         "/moderation/cases/*/appeals",
                         "/moderation/cases/*/appeals/*/decisions",
+                        "/copyright/cases",
+                        "/copyright/cases/*/appeals",
+                        "/copyright/cases/*/decisions",
                         "/reading-sessions",
                         "/reading-sessions/*/heartbeats",
                         "/reading-sessions/*/complete",
@@ -138,6 +141,12 @@ public class SecurityConfiguration {
                                 HttpMethod.POST,
                                 "/moderation/cases/*/appeals",
                                 "/moderation/cases/*/appeals/*/decisions"
+                        ).authenticated()
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/copyright/cases",
+                                "/copyright/cases/*/appeals",
+                                "/copyright/cases/*/decisions"
                         ).authenticated()
                         .requestMatchers(
                                 HttpMethod.POST,

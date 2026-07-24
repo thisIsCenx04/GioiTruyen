@@ -90,6 +90,14 @@ function allowed(method: string, path: string) {
   ) {
     return method === "POST";
   }
+  if (path === "copyright/cases") {
+    return method === "POST";
+  }
+  if (
+    new RegExp(`^copyright/cases/${uuid}/appeals$`, "u").test(path)
+  ) {
+    return method === "POST";
+  }
   if (
     new RegExp(`^me/reading-progress/${uuid}$`, "u").test(path)
   ) {

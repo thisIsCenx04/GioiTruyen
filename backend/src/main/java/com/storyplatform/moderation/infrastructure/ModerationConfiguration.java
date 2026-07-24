@@ -2,6 +2,8 @@ package com.storyplatform.moderation.infrastructure;
 
 import com.storyplatform.moderation.application.CommunityReportOperations;
 import com.storyplatform.moderation.application.CommunityReportService;
+import com.storyplatform.moderation.application.CopyrightCaseOperations;
+import com.storyplatform.moderation.application.CopyrightCaseService;
 import com.storyplatform.moderation.application.ModerationAppealOperations;
 import com.storyplatform.moderation.application.ModerationAppealService;
 import com.storyplatform.moderation.application.ModerationQueueOperations;
@@ -11,6 +13,7 @@ import com.storyplatform.moderation.application.ModerationDecisionService;
 import com.storyplatform.moderation.application.ReportRateLimiter;
 import com.storyplatform.moderation.application.port
         .CommunityReportRepository;
+import com.storyplatform.moderation.application.port.CopyrightCaseRepository;
 import com.storyplatform.moderation.application.port
         .ModerationAppealRepository;
 import com.storyplatform.moderation.application.port
@@ -21,6 +24,8 @@ import com.storyplatform.moderation.application.port
         .ModerationQueueRepository;
 import com.storyplatform.moderation.infrastructure.persistence
         .MongoCommunityReportRepository;
+import com.storyplatform.moderation.infrastructure.persistence
+        .MongoCopyrightCaseRepository;
 import com.storyplatform.moderation.infrastructure.persistence
         .MongoModerationAppealRepository;
 import com.storyplatform.moderation.infrastructure.persistence
@@ -45,6 +50,30 @@ import java.util.UUID;
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(ModerationQueueProperties.class)
 public class ModerationConfiguration {
+
+    @Bean
+    CopyrightCaseRepository copyrightCaseRepository(MongoTemplate mongo) {
+        return new MongoCopyrightCaseRepository(mongo);
+    }
+
+    @Bean
+    CopyrightCaseOperations copyrightCaseOperations(
+            CopyrightCaseRepository repository,
+            @Value("${app.moderation.copyright.response-sla}")
+            Duration responseSla,
+            @Value("${app.moderation.copyright.hold-duration}")
+            Duration holdDuration
+    ) {
+        return new TransactionalCopyrightCaseOperations(
+                new CopyrightCaseService(
+                        repository,
+                        Clock.systemUTC(),
+                        responseSla,
+                        holdDuration,
+                        () -> UUID.randomUUID().toString()
+                )
+        );
+    }
 
     @Bean
     ModerationAppealRepository moderationAppealRepository(

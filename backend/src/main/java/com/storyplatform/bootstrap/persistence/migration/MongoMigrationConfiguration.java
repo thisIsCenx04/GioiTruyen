@@ -202,6 +202,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    CopyrightCaseIndexes copyrightCaseIndexes() {
+        return new CopyrightCaseIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }
