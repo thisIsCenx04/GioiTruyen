@@ -610,6 +610,103 @@ paths:
               schema:
                 type: integer
                 minimum: 1
+  /stories:
+    get:
+      operationId: listPublishedStories
+      summary: List published stories with bounded filters and signed keyset pagination
+      security: []
+      tags: [Catalog]
+      parameters:
+        - name: category
+          in: query
+          description: Comma-separated active category slugs, at most 10.
+          schema:
+            type: string
+            maxLength: 800
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ongoing, completed, hiatus]
+        - name: origin
+          in: query
+          schema:
+            type: string
+            enum: [original, translated]
+        - name: teamId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [updated_desc, published_desc]
+            default: published_desc
+        - name: cursor
+          in: query
+          schema:
+            type: string
+            maxLength: 512
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        "200":
+          description: Published story page.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicStoryPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          description: Public catalog request limits were exceeded.
+  /stories/{idOrSlug}:
+    get:
+      operationId: getPublishedStory
+      summary: Get one published story by UUID or globally unique slug
+      security: []
+      tags: [Catalog]
+      parameters:
+        - name: idOrSlug
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+        - name: If-None-Match
+          in: header
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Published story metadata.
+          headers:
+            ETag:
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicStory"
+        "304":
+          description: The supplied ETag still represents the current version.
+        "404":
+          $ref: "#/components/responses/NotFound"
   /teams:
     get:
       operationId: listTeams
@@ -1371,6 +1468,75 @@ components:
           type: string
           minLength: 1
           maxLength: 100
+    PublicStoryPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor, hasMore]
+      properties:
+        items:
+          type: array
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/PublicStory"
+        nextCursor:
+          type: [string, "null"]
+          maxLength: 512
+        hasMore:
+          type: boolean
+    PublicStory:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - teamId
+        - slug
+        - title
+        - synopsis
+        - categoryIds
+        - origin
+        - language
+        - completionStatus
+        - publishedAt
+        - updatedAt
+        - version
+      properties:
+        id:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        title:
+          type: string
+        synopsis:
+          type: string
+        categoryIds:
+          type: array
+          maxItems: 30
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+        origin:
+          type: string
+          enum: [ORIGINAL, TRANSLATED]
+        language:
+          type: string
+        completionStatus:
+          type: string
+          enum: [ONGOING, COMPLETED, HIATUS]
+        publishedAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+          minimum: 1
     Team:
       type: object
       additionalProperties: false
