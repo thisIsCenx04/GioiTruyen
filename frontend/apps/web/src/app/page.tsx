@@ -1,135 +1,95 @@
-import { BrandMark, StatusPill, StoryCard } from "@gioitruyen/ui";
+import { StatusPill } from "@gioitruyen/ui";
 import Link from "next/link";
 
-const chapters = [
-  { number: "128", title: "Dưới chân thành cũ", time: "7 phút trước" },
-  { number: "127", title: "Lời hẹn trên sông", time: "Hôm qua" },
-  { number: "126", title: "Người giữ đèn", time: "2 ngày trước" },
-];
+import { CatalogSearch } from "@/components/catalog-search";
+import { CatalogStoryCard } from "@/components/catalog-story-card";
+import { PublicShell } from "@/components/site-chrome";
+import { loadHome } from "@/lib/catalog";
 
-const stories = [
-  {
-    author: "Lâm Dạ",
-    coverTone: "blue" as const,
-    eyebrow: "Huyền huyễn · Đang ra",
-    href: "#story-1",
-    latestChapter: "Ch. 128",
-    title: "Người Chép Sử Cuối Cùng",
-  },
-  {
-    author: "An Vi",
-    coverTone: "coral" as const,
-    eyebrow: "Kỳ ảo đô thị · Trọn bộ",
-    href: "#story-2",
-    latestChapter: "Ch. 64",
-    title: "Thành Phố Không Ngủ",
-  },
-  {
-    author: "Mộc Miên",
-    coverTone: "jade" as const,
-    eyebrow: "Trinh thám · Độc quyền",
-    href: "#story-3",
-    latestChapter: "Ch. 39",
-    title: "Bản Thảo Màu Lục",
-  },
-];
+export const revalidate = 60;
 
-export default function HomePage() {
+export default async function HomePage() {
+  const home = await loadHome();
+  const lead = home.sections[0]?.stories[0];
+
   return (
-    <main>
-      <header className="siteHeader">
-        <a aria-label="Về trang chủ Giới Truyện" href="#">
-          <BrandMark />
-        </a>
-        <nav aria-label="Điều hướng chính">
-          <a href="#featured">Khám phá</a>
-          <a href="#reading">Tủ truyện</a>
-          <Link href="/teams">Nhóm xuất bản</Link>
-        </nav>
-        <a className="quietAction" href="/auth/login">
-          Đăng nhập
-        </a>
-      </header>
-
-      <section className="hero" aria-labelledby="hero-title">
-        <div className="heroCopy">
+    <PublicShell>
+      <section className="catalogHero" aria-labelledby="hero-title">
+        <div className="heroManifesto">
           <div className="heroEyebrow">
-            <StatusPill tone="active">12 chương mới hôm nay</StatusPill>
-            <span>Tuyển chọn mùa 07</span>
+            <StatusPill tone="active">Thư viện đang mở</StatusPill>
+            <span>Cập nhật theo từng chương</span>
           </div>
           <h1 id="hero-title">
-            Đừng chỉ đọc hết.
-            <span>Hãy sống cùng từng chương.</span>
+            Một thế giới hay
+            <span>không khép lại ở trang cuối.</span>
           </h1>
-          <p className="heroLead">
-            Theo dõi bản thảo từ lúc còn thơm mùi mực, bàn luận cùng tác giả và
-            trở lại đúng dòng bạn đã dừng.
+          <p>
+            Theo dõi truyện dài kỳ, tìm đúng chương vừa ra và trở lại
+            chính xác nơi bạn đã dừng.
           </p>
-          <div className="heroActions">
-            <a className="primaryAction" href="#featured">
-              Mở chương mới nhất
-            </a>
-            <a className="textAction" href="#editor-note">
-              Xem lời người biên tập <span aria-hidden="true">↗</span>
-            </a>
-          </div>
+          <CatalogSearch />
         </div>
 
-        <aside className="chapterRail" id="reading" aria-label="Chương mới của truyện nổi bật">
-          <div className="railTop">
-            <p>Đang theo dõi</p>
-            <span>78%</span>
+        <aside className="featuredVolume" aria-label="Truyện nổi bật">
+          <span className="volumeIndex">Tập tuyển chọn · 07</span>
+          <div className="volumeGlyph" aria-hidden="true">
+            {lead?.title.slice(0, 1) ?? "G"}
           </div>
-          <h2>Người Chép Sử Cuối Cùng</h2>
-          <ol>
-            {chapters.map((chapter, index) => (
-              <li data-current={index === 0 || undefined} key={chapter.number}>
-                <span className="chapterNumber">{chapter.number}</span>
-                <span>
-                  <strong>{chapter.title}</strong>
-                  <small>{chapter.time}</small>
-                </span>
-              </li>
-            ))}
-          </ol>
-          <a href="#continue">Đọc tiếp chương 128</a>
+          <p>Đang được đọc</p>
+          <h2>{lead?.title ?? "Người Chép Sử Cuối Cùng"}</h2>
+          {lead && (
+            <Link href={`/stories/${lead.slug}`}>
+              Bắt đầu đọc <span aria-hidden="true">↗</span>
+            </Link>
+          )}
         </aside>
       </section>
 
-      <section className="featured" id="featured" aria-labelledby="featured-title">
-        <div className="sectionHeading">
-          <div>
-            <p className="sectionEyebrow">Bàn tuyển chọn</p>
-            <h2 id="featured-title">Ba thế giới đáng bước vào tuần này</h2>
-          </div>
-          <a href="#all-stories">Xem toàn bộ truyện</a>
-        </div>
-        <div className="storyGrid">
-          {stories.map((story) => (
-            <StoryCard key={story.title} {...story} />
-          ))}
-        </div>
-      </section>
+      <div className="catalogIndex" aria-hidden="true">
+        <span>Đọc mới</span>
+        <span>Trọn bộ</span>
+        <span>Sáng tác Việt</span>
+      </div>
 
-      <section className="editorNote" id="editor-note">
-        <span className="editorStamp" aria-hidden="true">
-          BT
-        </span>
-        <div>
-          <p className="sectionEyebrow">Ghi chú bên lề</p>
-          <blockquote>
-            “Một chương hay không kết thúc ở dấu chấm cuối. Nó để lại một cánh
-            cửa hé mở trong đầu người đọc.”
-          </blockquote>
-        </div>
-        <p className="noteByline">Ban biên tập · 23.07.2026</p>
+      <section className="catalogSections" id="catalog">
+        {home.sections.map((section, sectionIndex) => (
+          <section
+            aria-labelledby={`section-${section.id}`}
+            className="storySection"
+            key={section.id}
+          >
+            <header>
+              <div>
+                <p>
+                  Kệ {String(sectionIndex + 1).padStart(2, "0")} ·{" "}
+                  {section.type === "LATEST"
+                    ? "Theo nhịp xuất bản"
+                    : "Tuyển chọn biên tập"}
+                </p>
+                <h2 id={`section-${section.id}`}>{section.title}</h2>
+              </div>
+              <Link href="/search">Xem toàn bộ</Link>
+            </header>
+            {section.stories.length > 0 ? (
+              <div className="catalogGrid">
+                {section.stories.map((story, index) => (
+                  <CatalogStoryCard
+                    index={index + sectionIndex}
+                    key={story.id}
+                    story={story}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="emptyCatalog">
+                Kệ này đang được biên tập. Khám phá các truyện mới nhất
+                trong lúc chờ.
+              </p>
+            )}
+          </section>
+        ))}
       </section>
-
-      <footer>
-        <BrandMark />
-        <p>Đọc có nhịp. Viết có người đồng hành.</p>
-        <a href="#publishing">Gửi bản thảo</a>
-      </footer>
-    </main>
+    </PublicShell>
   );
 }

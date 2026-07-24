@@ -343,3 +343,115 @@ export function createBrowserTeamClient({
     },
   });
 }
+
+export type PublicStory = Readonly<{
+  id: string;
+  teamId: string;
+  slug: string;
+  title: string;
+  synopsis: string;
+  categoryIds: readonly string[];
+  origin: "ORIGINAL" | "TRANSLATED";
+  language: string;
+  completionStatus: "ONGOING" | "COMPLETED" | "HIATUS";
+  publishedAt: string;
+  updatedAt: string;
+  version: number;
+}>;
+
+export type HomeStorySummary = Readonly<{
+  id: string;
+  teamId: string;
+  slug: string;
+  title: string;
+  coverAssetId: string | null;
+  publishedAt: string;
+}>;
+
+export type HomeSection = Readonly<{
+  id: "latest" | "completed" | "original";
+  type: "LATEST" | "COMPLETED" | "ORIGINAL";
+  title: string;
+  stories: readonly HomeStorySummary[];
+}>;
+
+export type HomeResponse = Readonly<{
+  locale: string;
+  version: string;
+  generatedAt: string;
+  sections: readonly HomeSection[];
+}>;
+
+export type PublicChapter = Readonly<{
+  id: string;
+  storyId: string;
+  number: number;
+  slug: string;
+  title: string;
+  publishedAt: string;
+  version: number;
+}>;
+
+export type SearchHit = Readonly<{
+  story: HomeStorySummary;
+  score: number;
+  highlights: readonly string[];
+}>;
+
+export type SearchResponse = Readonly<{
+  items: readonly SearchHit[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  facets: Readonly<Record<string, Readonly<Record<string, number>>>>;
+  tookMs: number;
+}>;
+
+export type SuggestionResponse = Readonly<{
+  items: readonly Readonly<{
+    id: string;
+    slug: string;
+    title: string;
+    coverAssetId: string | null;
+  }>[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}>;
+
+export function createPublicCatalogClient({
+  baseUrl,
+  fetchImplementation = fetch,
+}: StoryApiClientOptions) {
+  const client = createStoryApiClient({ baseUrl, fetchImplementation });
+
+  return Object.freeze({
+    home(locale = "vi-VN") {
+      return client.request<HomeResponse>(
+        `/home?locale=${encodeURIComponent(locale)}`,
+      );
+    },
+    story(identifier: string) {
+      return client.request<PublicStory>(
+        `/stories/${encodeURIComponent(identifier)}`,
+      );
+    },
+    chapters(identifier: string, limit = 100) {
+      return client.request<{
+        items: PublicChapter[];
+        nextCursor: string | null;
+        hasMore: boolean;
+      }>(
+        `/stories/${encodeURIComponent(identifier)}/chapters?limit=${limit}`,
+      );
+    },
+    search(query: string, limit = 20) {
+      return client.request<SearchResponse>(
+        `/search?q=${encodeURIComponent(query)}&limit=${limit}`,
+      );
+    },
+    suggestions(query: string, limit = 8) {
+      return client.request<SuggestionResponse>(
+        `/search/suggestions?q=${encodeURIComponent(query)}&limit=${limit}`,
+      );
+    },
+  });
+}

@@ -5,6 +5,7 @@ import { apiMockServer } from "../../../test/msw/server";
 import {
   createBrowserAuthClient,
   createBrowserTeamClient,
+  createPublicCatalogClient,
   createStoryApiClient,
   StoryApiError,
 } from "./index";
@@ -75,6 +76,62 @@ describe("story API client", () => {
         status: 404,
         traceId: "trace-01",
       },
+    });
+  });
+});
+
+describe("public catalog client", () => {
+  it("maps home, story, chapters, search and suggestion routes", async () => {
+    apiMockServer.use(
+      http.get(`${API_URL}/home`, () =>
+        HttpResponse.json({
+          generatedAt: "2026-07-24T00:00:00Z",
+          locale: "vi-VN",
+          sections: [],
+          version: "v1",
+        }),
+      ),
+      http.get(`${API_URL}/stories/story`, () =>
+        HttpResponse.json({ id: "story-01", title: "Story" }),
+      ),
+      http.get(`${API_URL}/stories/story/chapters`, () =>
+        HttpResponse.json({
+          hasMore: false,
+          items: [],
+          nextCursor: null,
+        }),
+      ),
+      http.get(`${API_URL}/search`, () =>
+        HttpResponse.json({
+          facets: {},
+          hasMore: false,
+          items: [],
+          nextCursor: null,
+          tookMs: 2,
+        }),
+      ),
+      http.get(`${API_URL}/search/suggestions`, () =>
+        HttpResponse.json({
+          hasMore: false,
+          items: [],
+          nextCursor: null,
+        }),
+      ),
+    );
+    const client = createPublicCatalogClient({ baseUrl: API_URL });
+
+    await expect(client.home()).resolves.toMatchObject({ version: "v1" });
+    await expect(client.story("story")).resolves.toMatchObject({
+      title: "Story",
+    });
+    await expect(client.chapters("story")).resolves.toMatchObject({
+      items: [],
+    });
+    await expect(client.search("kiếm hiệp")).resolves.toMatchObject({
+      tookMs: 2,
+    });
+    await expect(client.suggestions("kiếm")).resolves.toMatchObject({
+      items: [],
     });
   });
 });
