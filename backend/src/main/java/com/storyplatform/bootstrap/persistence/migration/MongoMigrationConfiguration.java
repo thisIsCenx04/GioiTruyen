@@ -252,6 +252,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    TopupDiscountIndexes topupDiscountIndexes() {
+        return new TopupDiscountIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

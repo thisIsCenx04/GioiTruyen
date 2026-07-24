@@ -122,6 +122,31 @@ class ReauthenticationUseCaseTest {
     }
 
     @Test
+    void publishedVerifierContractMapsAllowlistedScopeAndFailsClosed() {
+        validProof();
+        useCase.issue(command(
+                ReauthenticationScope.SYSTEM_CONFIG_CHANGE,
+                "configuration",
+                "topup-discount"
+        ));
+
+        assertThat(useCase.consume(
+                tokens.raw,
+                "user-1",
+                "SYSTEM_CONFIG_CHANGE",
+                "configuration",
+                "topup-discount"
+        )).isTrue();
+        assertThat(useCase.consume(
+                tokens.raw,
+                "user-1",
+                "UNKNOWN_SCOPE",
+                "configuration",
+                "topup-discount"
+        )).isFalse();
+    }
+
+    @Test
     void invalidPasswordMfaAndTargetNeverIssueGrant() {
         when(users.findById("user-1"))
                 .thenReturn(Optional.of(account()));

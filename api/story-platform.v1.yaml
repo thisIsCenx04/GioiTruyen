@@ -2989,6 +2989,69 @@ paths:
                 $ref: "#/components/schemas/WalletBalance"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /admin/configuration/topup-discount:
+    get:
+      operationId: getTopupDiscountConfiguration
+      summary: Get the current versioned top-up discount
+      tags: [Monetization]
+      responses:
+        "200":
+          description: Current or system-default discount configuration
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopupDiscountConfiguration"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    patch:
+      operationId: updateTopupDiscountConfiguration
+      summary: Append a new top-up discount configuration version
+      description: |
+        Requires Administrator SYSTEM_CONFIGURE capability and a single-use
+        SYSTEM_CONFIG_CHANGE reauthentication grant bound to topup-discount.
+      tags: [Monetization]
+      parameters:
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: '^"[0-9]+"$'
+        - name: Scoped-Reauthentication
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 20
+            maxLength: 512
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTopupDiscountRequest"
+      responses:
+        "200":
+          description: New immutable discount configuration version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopupDiscountConfiguration"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /rankings/stories:
     get:
       operationId: rankStories
@@ -5746,6 +5809,41 @@ components:
           type: integer
           format: int64
           minimum: 0
+    TopupDiscountConfiguration:
+      type: object
+      additionalProperties: false
+      required: [discountPercent, version, effectiveAt, changedBy]
+      properties:
+        discountPercent:
+          type: number
+          minimum: 0
+          maximum: 100
+          multipleOf: 0.01
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+        effectiveAt:
+          type: string
+          format: date-time
+        changedBy:
+          type: string
+          minLength: 1
+          maxLength: 128
+    UpdateTopupDiscountRequest:
+      type: object
+      additionalProperties: false
+      required: [discountPercent, reason]
+      properties:
+        discountPercent:
+          type: number
+          minimum: 0
+          maximum: 100
+          multipleOf: 0.01
+        reason:
+          type: string
+          minLength: 10
+          maxLength: 500
     WalletBalance:
       type: object
       additionalProperties: false

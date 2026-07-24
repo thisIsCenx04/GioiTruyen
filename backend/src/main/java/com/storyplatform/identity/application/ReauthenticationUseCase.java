@@ -6,6 +6,8 @@ import com.storyplatform.identity.application.port
 import com.storyplatform.identity.application.port
         .ReauthenticationTokenCodec;
 import com.storyplatform.identity.application.port.UserAccountRepository;
+import com.storyplatform.identity.application.contract
+        .ReauthenticationVerifier;
 import com.storyplatform.identity.domain.UserAccount;
 
 import java.time.Clock;
@@ -16,7 +18,8 @@ import java.util.UUID;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
-public final class ReauthenticationUseCase {
+public final class ReauthenticationUseCase
+        implements ReauthenticationVerifier {
 
     private static final Pattern TARGET_TYPE =
             Pattern.compile("[a-z][a-z0-9_-]{0,63}");
@@ -114,6 +117,27 @@ public final class ReauthenticationUseCase {
                 targetId,
                 clock.instant()
         );
+    }
+
+    @Override
+    public boolean consume(
+            String rawToken,
+            String actorId,
+            String scope,
+            String targetType,
+            String targetId
+    ) {
+        try {
+            return consume(
+                    rawToken,
+                    actorId,
+                    ReauthenticationScope.valueOf(scope),
+                    targetType,
+                    targetId
+            );
+        } catch (RuntimeException exception) {
+            return false;
+        }
     }
 
     private static boolean validTarget(String type, String id) {
