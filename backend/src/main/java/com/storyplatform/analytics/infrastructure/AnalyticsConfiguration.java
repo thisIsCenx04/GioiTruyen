@@ -29,9 +29,13 @@ import com.storyplatform.analytics.infrastructure.persistence
         .MongoViewAggregateRepository;
 import com.storyplatform.analytics.application.TeamAnalyticsOperations;
 import com.storyplatform.analytics.application.TeamAnalyticsService;
+import com.storyplatform.analytics.application.contract
+        .RewardViewAggregateDirectory;
 import com.storyplatform.analytics.application.port.TeamAnalyticsRepository;
 import com.storyplatform.analytics.infrastructure.persistence
         .MongoTeamAnalyticsRepository;
+import com.storyplatform.analytics.infrastructure.persistence
+        .MongoRewardViewAggregateDirectory;
 import com.storyplatform.teams.application.contract.TeamPermissionAuthorizer;
 import com.storyplatform.analytics.infrastructure.security
         .HmacReadingSessionPseudonymizer;
@@ -49,6 +53,13 @@ import java.util.Base64;
 
 @Configuration(proxyBeanMethods = false)
 public class AnalyticsConfiguration {
+
+    @Bean
+    RewardViewAggregateDirectory rewardViewAggregateDirectory(
+            MongoTemplate mongo
+    ) {
+        return new MongoRewardViewAggregateDirectory(mongo);
+    }
 
     @Bean
     TeamAnalyticsRepository teamAnalyticsRepository(MongoTemplate mongo) {

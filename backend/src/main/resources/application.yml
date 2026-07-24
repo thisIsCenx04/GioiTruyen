@@ -85,6 +85,11 @@ app:
       webhook-enabled: ${TOPUP_WEBHOOK_ENABLED:false}
       webhook-secret: ${TOPUP_WEBHOOK_SECRET:not-configured-payment-webhook-secret}
       webhook-max-age: ${TOPUP_WEBHOOK_MAX_AGE:10m}
+    rewards:
+      rule-version: ${REWARD_RULE_VERSION:reward-2026.1}
+      xu-per-thousand: ${REWARD_XU_PER_THOUSAND_VALID_VIEWS:100}
+      team-daily-cap: ${REWARD_TEAM_DAILY_CAP_XU:100000}
+      cron: "${REWARD_SETTLEMENT_CRON:0 */5 * * * *}"
   analytics:
     raw-events:
       retention: ${ANALYTICS_RAW_EVENT_RETENTION:90d}

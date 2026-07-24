@@ -2967,6 +2967,47 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /teams/{teamId}/rewards:
+    get:
+      operationId: listTeamRewardSettlements
+      summary: List immutable reward settlements for an authorized team
+      description: |
+        Returns XU rewards calculated only from a locked valid-view period.
+        Each row exposes the snapshotted rule and aggregate versions.
+      tags: [Monetization]
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 24
+      responses:
+        "200":
+          description: Private reward settlement history
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 100
+                items:
+                  $ref: "#/components/schemas/RewardSettlement"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /donations:
     post:
       operationId: createDonation
@@ -6130,6 +6171,49 @@ components:
           type: string
           minLength: 10
           maxLength: 500
+    RewardSettlement:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - periodId
+        - validViews
+        - amountXu
+        - capApplied
+        - ruleVersion
+        - aggregateVersion
+        - state
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        periodId:
+          type: string
+          format: date
+        validViews:
+          type: integer
+          format: int64
+          minimum: 0
+        amountXu:
+          type: integer
+          format: int64
+          minimum: 0
+        capApplied:
+          type: boolean
+        ruleVersion:
+          type: string
+        aggregateVersion:
+          type: string
+        state:
+          type: string
+          enum: [PENDING, POSTED, NO_REWARD]
+        createdAt:
+          type: string
+          format: date-time
+        postedAt:
+          type: string
+          format: date-time
     CreateDonationRequest:
       type: object
       additionalProperties: false

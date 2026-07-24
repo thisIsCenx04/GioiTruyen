@@ -4,10 +4,14 @@ import com.storyplatform.monetization.application.LedgerOperations;
 import com.storyplatform.monetization.application.LedgerService;
 import com.storyplatform.monetization.application.DonationOperations;
 import com.storyplatform.monetization.application.DonationService;
+import com.storyplatform.monetization.application.RewardOperations;
+import com.storyplatform.monetization.application.RewardRule;
+import com.storyplatform.monetization.application.RewardService;
 import com.storyplatform.monetization.application.ManualTopupOperations;
 import com.storyplatform.monetization.application.ManualTopupService;
 import com.storyplatform.monetization.application.port.LedgerRepository;
 import com.storyplatform.monetization.application.port.DonationRepository;
+import com.storyplatform.monetization.application.port.RewardRepository;
 import com.storyplatform.monetization.application.port.ManualTopupAuthorizer;
 import com.storyplatform.monetization.application.port.ManualTopupRepository;
 import com.storyplatform.monetization.application.WalletBalanceProjector;
@@ -38,6 +42,10 @@ import com.storyplatform.monetization.infrastructure.persistence
 import com.storyplatform.monetization.infrastructure.persistence
         .MongoDonationRepository;
 import com.storyplatform.monetization.infrastructure.persistence
+        .MongoRewardRepository;
+import com.storyplatform.analytics.application.contract
+        .RewardViewAggregateDirectory;
+import com.storyplatform.monetization.infrastructure.persistence
         .MongoManualTopupRepository;
 import com.storyplatform.monetization.infrastructure.persistence
         .MongoWalletRepository;
@@ -53,6 +61,7 @@ import com.storyplatform.identity.application.contract
         .ReauthenticationVerifier;
 import com.storyplatform.shared.events.persistence.OutboxAppender;
 import com.storyplatform.teams.application.contract.TeamStatusDirectory;
+import com.storyplatform.teams.application.contract.TeamPermissionAuthorizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.beans.factory.annotation.Value;
@@ -65,6 +74,47 @@ import java.util.UUID;
 
 @Configuration(proxyBeanMethods = false)
 public class MonetizationConfiguration {
+
+    @Bean
+    RewardRepository rewardRepository(MongoTemplate mongo) {
+        return new MongoRewardRepository(mongo);
+    }
+
+    @Bean
+    RewardOperations rewardOperations(
+            RewardRepository repository,
+            RewardViewAggregateDirectory aggregates,
+            TeamPermissionAuthorizer permissions,
+            WalletOperations wallets,
+            LedgerOperations ledger,
+            @Value("${app.monetization.rewards.rule-version:reward-2026.1}")
+            String ruleVersion,
+            @Value("${app.monetization.rewards.xu-per-thousand:100}")
+            long xuPerThousand,
+            @Value("${app.monetization.rewards.team-daily-cap:100000}")
+            long teamDailyCap
+    ) {
+        return new TransactionalRewardOperations(new RewardService(
+                repository,
+                aggregates,
+                permissions,
+                wallets,
+                ledger,
+                new RewardRule(
+                        ruleVersion,
+                        xuPerThousand,
+                        teamDailyCap
+                ),
+                Clock.systemUTC()
+        ));
+    }
+
+    @Bean
+    RewardSettlementWorker rewardSettlementWorker(
+            RewardOperations rewards
+    ) {
+        return new RewardSettlementWorker(rewards, Clock.systemUTC());
+    }
 
     @Bean
     DonationRepository donationRepository(MongoTemplate mongo) {

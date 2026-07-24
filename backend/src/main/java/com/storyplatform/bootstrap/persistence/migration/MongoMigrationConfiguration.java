@@ -277,6 +277,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    RewardIndexes rewardIndexes() {
+        return new RewardIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }
