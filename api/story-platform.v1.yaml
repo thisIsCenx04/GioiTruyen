@@ -2967,6 +2967,64 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /donations:
+    post:
+      operationId: createDonation
+      summary: Transfer XU atomically from the caller to an active team
+      description: |
+        This operation only transfers internal XU. It never accepts bank,
+        provider, QR or callback data. Idempotency is scoped to the caller.
+      tags: [Monetization]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 16
+            maxLength: 128
+            pattern: '^[A-Za-z0-9._:-]+$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDonationRequest"
+      responses:
+        "201":
+          description: Donation posted to the immutable XU ledger
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DonationReceipt"
+        "200":
+          description: Idempotent replay of the existing donation
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DonationReceipt"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          description: The caller wallet has insufficient available XU
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
   /webhooks/payments:
     post:
       operationId: receivePaymentWebhook
@@ -6072,6 +6130,58 @@ components:
           type: string
           minLength: 10
           maxLength: 500
+    CreateDonationRequest:
+      type: object
+      additionalProperties: false
+      required: [teamId, amountXu]
+      properties:
+        teamId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        amountXu:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 1000000000
+        message:
+          type: string
+          maxLength: 500
+    DonationReceipt:
+      type: object
+      additionalProperties: false
+      required:
+        - donationId
+        - teamId
+        - amountXu
+        - ledgerTransactionId
+        - status
+        - replayed
+        - createdAt
+      properties:
+        donationId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+        amountXu:
+          type: integer
+          format: int64
+          minimum: 1
+        message:
+          type: string
+          maxLength: 500
+        ledgerTransactionId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          const: POSTED
+        replayed:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
     RejectTopupRequest:
       type: object
       additionalProperties: false

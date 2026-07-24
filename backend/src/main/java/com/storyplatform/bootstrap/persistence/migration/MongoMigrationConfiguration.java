@@ -272,6 +272,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    DonationIndexes donationIndexes() {
+        return new DonationIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

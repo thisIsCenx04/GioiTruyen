@@ -2,9 +2,12 @@ package com.storyplatform.monetization.infrastructure;
 
 import com.storyplatform.monetization.application.LedgerOperations;
 import com.storyplatform.monetization.application.LedgerService;
+import com.storyplatform.monetization.application.DonationOperations;
+import com.storyplatform.monetization.application.DonationService;
 import com.storyplatform.monetization.application.ManualTopupOperations;
 import com.storyplatform.monetization.application.ManualTopupService;
 import com.storyplatform.monetization.application.port.LedgerRepository;
+import com.storyplatform.monetization.application.port.DonationRepository;
 import com.storyplatform.monetization.application.port.ManualTopupAuthorizer;
 import com.storyplatform.monetization.application.port.ManualTopupRepository;
 import com.storyplatform.monetization.application.WalletBalanceProjector;
@@ -33,6 +36,8 @@ import com.storyplatform.monetization.application.port
 import com.storyplatform.monetization.infrastructure.persistence
         .MongoLedgerRepository;
 import com.storyplatform.monetization.infrastructure.persistence
+        .MongoDonationRepository;
+import com.storyplatform.monetization.infrastructure.persistence
         .MongoManualTopupRepository;
 import com.storyplatform.monetization.infrastructure.persistence
         .MongoWalletRepository;
@@ -47,6 +52,7 @@ import com.storyplatform.monetization.infrastructure.persistence
 import com.storyplatform.identity.application.contract
         .ReauthenticationVerifier;
 import com.storyplatform.shared.events.persistence.OutboxAppender;
+import com.storyplatform.teams.application.contract.TeamStatusDirectory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.beans.factory.annotation.Value;
@@ -59,6 +65,30 @@ import java.util.UUID;
 
 @Configuration(proxyBeanMethods = false)
 public class MonetizationConfiguration {
+
+    @Bean
+    DonationRepository donationRepository(MongoTemplate mongo) {
+        return new MongoDonationRepository(mongo);
+    }
+
+    @Bean
+    DonationOperations donationOperations(
+            DonationRepository repository,
+            TeamStatusDirectory teams,
+            WalletOperations wallets,
+            LedgerOperations ledger,
+            OutboxAppender outbox
+    ) {
+        return new TransactionalDonationOperations(new DonationService(
+                repository,
+                teams,
+                wallets,
+                ledger,
+                outbox,
+                Clock.systemUTC(),
+                UUID::randomUUID
+        ));
+    }
 
     @Bean
     TopupRejectionRepository topupRejectionRepository(
