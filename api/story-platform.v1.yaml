@@ -1581,6 +1581,63 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /moderation/cases/{reviewId}/decisions:
+    post:
+      operationId: decideModerationCase
+      summary: Decide a claimed publishing review exactly once
+      description: |
+        Requires Moderator or Admin and an active lease owned by the caller.
+        The review, frozen story/chapter states, and immutable audit entry are
+        committed in one transaction. The policy version and reason are
+        retained with the decision.
+      tags: [Moderation]
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: '^"[1-9][0-9]*"$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModerationDecisionRequest"
+      responses:
+        "200":
+          description: Review decision committed exactly once
+          headers:
+            ETag:
+              schema:
+                type: string
+                pattern: '^"[1-9][0-9]*"$'
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModerationDecision"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Review already decided, lease lost, or target stale
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
 components:
   securitySchemes:
     bearerAuth:
@@ -1854,7 +1911,14 @@ components:
             $ref: "#/components/schemas/FrozenChapterRevision"
         state:
           type: string
-          enum: [AUTOMATED_CHECK_PENDING, AUTOMATED_CHECK_RUNNING, OPEN]
+          enum:
+            - AUTOMATED_CHECK_PENDING
+            - AUTOMATED_CHECK_RUNNING
+            - OPEN
+            - CLAIMED
+            - APPROVED
+            - CHANGES_REQUESTED
+            - REJECTED
         version:
           type: integer
           format: int64
@@ -1960,6 +2024,70 @@ components:
         policyVersion:
           type: string
           maxLength: 64
+    ModerationDecisionRequest:
+      type: object
+      additionalProperties: false
+      required: [decision, reasonCode, policyVersion]
+      properties:
+        decision:
+          type: string
+          enum: [APPROVE, REQUEST_CHANGES, REJECT]
+        reasonCode:
+          type: string
+          pattern: "^[A-Z][A-Z0-9_]{2,63}$"
+        note:
+          type: [string, "null"]
+          maxLength: 2000
+          description: Required for REQUEST_CHANGES and REJECT.
+        evidenceRefs:
+          type: array
+          maxItems: 20
+          uniqueItems: true
+          items:
+            type: string
+            pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        policyVersion:
+          type: string
+          maxLength: 64
+          pattern: "^[a-z0-9][a-z0-9._-]+$"
+    ModerationDecision:
+      type: object
+      additionalProperties: false
+      required:
+        - reviewId
+        - state
+        - decision
+        - reasonCode
+        - policyVersion
+        - reviewerId
+        - decidedAt
+        - version
+      properties:
+        reviewId:
+          type: string
+          format: uuid
+        state:
+          type: string
+          enum: [APPROVED, CHANGES_REQUESTED, REJECTED]
+        decision:
+          type: string
+          enum: [APPROVE, REQUEST_CHANGES, REJECT]
+        reasonCode:
+          type: string
+          pattern: "^[A-Z][A-Z0-9_]{2,63}$"
+        policyVersion:
+          type: string
+          maxLength: 64
+        reviewerId:
+          type: string
+          format: uuid
+        decidedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+          minimum: 1
     UploadSignatureRequest:
       type: object
       additionalProperties: false

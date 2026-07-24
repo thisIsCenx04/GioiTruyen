@@ -85,7 +85,10 @@ public record PublishingReview(
         AUTOMATED_CHECK_PENDING,
         AUTOMATED_CHECK_RUNNING,
         OPEN,
-        CLAIMED
+        CLAIMED,
+        APPROVED,
+        CHANGES_REQUESTED,
+        REJECTED
     }
 
     private static String uuid(String value, String field) {

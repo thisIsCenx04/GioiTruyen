@@ -100,6 +100,13 @@ class MongoModerationQueueRepositoryTest {
                 "40000000-0000-4000-8000-000000000001",
                 "20000000-0000-4000-8000-000000000001",
                 "50000000-0000-4000-8000-000000000001",
+                2,
+                List.of(new MongoModerationReviewDocument
+                        .FrozenChapterRevision(
+                        "60000000-0000-4000-8000-000000000001",
+                        "70000000-0000-4000-8000-000000000001",
+                        1
+                )),
                 "OPEN",
                 List.of(new ModerationQueueOperations.CheckSummary(
                         "SCHEMA",
@@ -113,7 +120,8 @@ class MongoModerationQueueRepositoryTest {
                 null,
                 NOW,
                 NOW,
-                2
+                2,
+                null
         );
     }
 }

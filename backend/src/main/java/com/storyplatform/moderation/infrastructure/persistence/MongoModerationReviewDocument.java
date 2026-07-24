@@ -14,6 +14,8 @@ public record MongoModerationReviewDocument(
         String targetId,
         String teamId,
         String submittedRevision,
+        long submittedVersion,
+        List<FrozenChapterRevision> chapterRevisions,
         String state,
         List<ModerationQueueOperations.CheckSummary> checks,
         boolean manualFallback,
@@ -22,7 +24,29 @@ public record MongoModerationReviewDocument(
         Instant leaseUntil,
         Instant submittedAt,
         Instant updatedAt,
-        long version
+        long version,
+        ModerationDecisionDocument decision
 ) {
     public static final String COLLECTION = "moderation_reviews";
+
+    public record FrozenChapterRevision(
+            String chapterId,
+            String revisionId,
+            int number
+    ) {
+    }
+
+    public record ModerationDecisionDocument(
+            String decision,
+            String reasonCode,
+            String note,
+            List<String> evidenceRefs,
+            String policyVersion,
+            String reviewerId,
+            Instant decidedAt
+    ) {
+        public ModerationDecisionDocument {
+            evidenceRefs = List.copyOf(evidenceRefs);
+        }
+    }
 }

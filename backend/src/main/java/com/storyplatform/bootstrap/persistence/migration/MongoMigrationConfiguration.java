@@ -142,6 +142,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    ModerationAuditIndexes moderationAuditIndexes() {
+        return new ModerationAuditIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

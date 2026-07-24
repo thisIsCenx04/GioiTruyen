@@ -2,12 +2,18 @@ package com.storyplatform.moderation.infrastructure;
 
 import com.storyplatform.moderation.application.ModerationQueueOperations;
 import com.storyplatform.moderation.application.ModerationQueueService;
+import com.storyplatform.moderation.application.ModerationDecisionOperations;
+import com.storyplatform.moderation.application.ModerationDecisionService;
+import com.storyplatform.moderation.application.port
+        .ModerationDecisionRepository;
 import com.storyplatform.moderation.application.port
         .ModerationQueueCursorCodec;
 import com.storyplatform.moderation.application.port
         .ModerationQueueRepository;
 import com.storyplatform.moderation.infrastructure.persistence
         .MongoModerationQueueRepository;
+import com.storyplatform.moderation.infrastructure.persistence
+        .MongoModerationDecisionRepository;
 import com.storyplatform.moderation.infrastructure.security
         .HmacModerationQueueCursorCodec;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,6 +24,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 
 import java.time.Clock;
 import java.util.Base64;
+import java.util.UUID;
 
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(ModerationQueueProperties.class)
@@ -28,6 +35,16 @@ public class ModerationConfiguration {
             MongoTemplate mongo
     ) {
         return new MongoModerationQueueRepository(mongo);
+    }
+
+    @Bean
+    ModerationDecisionRepository moderationDecisionRepository(
+            MongoTemplate mongo
+    ) {
+        return new MongoModerationDecisionRepository(
+                mongo,
+                () -> UUID.randomUUID().toString()
+        );
     }
 
     @Bean
@@ -57,6 +74,18 @@ public class ModerationConfiguration {
                 cursors,
                 Clock.systemUTC(),
                 properties.claimLease()
+        );
+    }
+
+    @Bean
+    ModerationDecisionOperations moderationDecisionOperations(
+            ModerationDecisionRepository repository
+    ) {
+        return new TransactionalModerationDecisionOperations(
+                new ModerationDecisionService(
+                        repository,
+                        Clock.systemUTC()
+                )
         );
     }
 }
