@@ -242,6 +242,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    LedgerIndexes ledgerIndexes() {
+        return new LedgerIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }
