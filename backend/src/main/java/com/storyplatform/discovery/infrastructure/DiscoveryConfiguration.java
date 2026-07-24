@@ -59,6 +59,26 @@ public class DiscoveryConfiguration {
     }
 
     @Bean
+    PublishingDiscoveryProjector chapterPublishingDiscoveryProjector(
+            HomeOperations homes
+    ) {
+        return new PublishingDiscoveryProjector(
+                homes,
+                "publishing.chapter.published"
+        );
+    }
+
+    @Bean
+    PublishingDiscoveryProjector visibilityPublishingDiscoveryProjector(
+            HomeOperations homes
+    ) {
+        return new PublishingDiscoveryProjector(
+                homes,
+                "publishing.visibility.changed"
+        );
+    }
+
+    @Bean
     SearchCursorCodec searchCursorCodec(
             @Value("${app.identity.login-risk.hmac-key}") String encodedKey
     ) {

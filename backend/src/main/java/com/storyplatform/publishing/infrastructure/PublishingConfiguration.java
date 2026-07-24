@@ -166,4 +166,60 @@ public class PublishingConfiguration {
         );
         return new TransactionalContentVisibilityOperations(service);
     }
+
+    @Bean
+    PublishingPropagationHandler publishedChapterEdgePropagation(
+            MongoTemplate mongo
+    ) {
+        return propagation(
+                mongo,
+                "publishing.chapter.published",
+                PublishingPropagationHandler.Channel.EDGE
+        );
+    }
+
+    @Bean
+    PublishingPropagationHandler visibilityEdgePropagation(
+            MongoTemplate mongo
+    ) {
+        return propagation(
+                mongo,
+                "publishing.visibility.changed",
+                PublishingPropagationHandler.Channel.EDGE
+        );
+    }
+
+    @Bean
+    PublishingPropagationHandler publishedChapterNotificationPropagation(
+            MongoTemplate mongo
+    ) {
+        return propagation(
+                mongo,
+                "publishing.chapter.published",
+                PublishingPropagationHandler.Channel.NOTIFICATION
+        );
+    }
+
+    @Bean
+    PublishingPropagationHandler visibilityNotificationPropagation(
+            MongoTemplate mongo
+    ) {
+        return propagation(
+                mongo,
+                "publishing.visibility.changed",
+                PublishingPropagationHandler.Channel.NOTIFICATION
+        );
+    }
+
+    private static PublishingPropagationHandler propagation(
+            MongoTemplate mongo,
+            String eventType,
+            PublishingPropagationHandler.Channel channel
+    ) {
+        return new PublishingPropagationHandler(
+                mongo,
+                eventType,
+                channel
+        );
+    }
 }

@@ -89,6 +89,16 @@ app:
       lease-duration: ${PUBLISHING_DUE_LEASE_DURATION:30s}
       inactive-retry-delay: ${PUBLISHING_DUE_INACTIVE_RETRY_DELAY:5m}
       poll-interval: ${PUBLISHING_DUE_POLL_INTERVAL:2s}
+    propagation:
+      enabled: ${PUBLISHING_PROPAGATION_ENABLED:false}
+      lease-duration: ${PUBLISHING_PROPAGATION_LEASE_DURATION:30s}
+      initial-backoff: ${PUBLISHING_PROPAGATION_INITIAL_BACKOFF:5s}
+      max-attempts: ${PUBLISHING_PROPAGATION_MAX_ATTEMPTS:8}
+      poll-interval: ${PUBLISHING_PROPAGATION_POLL_INTERVAL:2s}
+      cloudflare-endpoint: ${CLOUDFLARE_PURGE_ENDPOINT:https://api.cloudflare.com/client/v4/zones/disabled/purge_cache}
+      cloudflare-token: ${CLOUDFLARE_API_TOKEN:}
+      isr-endpoint: ${NEXT_ISR_REVALIDATE_ENDPOINT:https://localhost.invalid/api/internal/revalidate}
+      isr-token: ${NEXT_ISR_REVALIDATE_TOKEN:}
   media:
     cloudinary:
       enabled: ${CLOUDINARY_UPLOAD_SIGNING_ENABLED:false}
