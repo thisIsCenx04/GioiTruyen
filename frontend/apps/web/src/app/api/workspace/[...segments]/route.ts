@@ -82,6 +82,9 @@ function allowed(method: string, path: string) {
   ) {
     return ["DELETE", "GET", "PUT"].includes(method);
   }
+  if (path === "reports") {
+    return method === "POST";
+  }
   if (
     new RegExp(`^me/reading-progress/${uuid}$`, "u").test(path)
   ) {

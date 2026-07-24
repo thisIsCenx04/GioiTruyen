@@ -46,6 +46,7 @@ public class SecurityConfiguration {
                         "/comments",
                         "/comments/*",
                         "/reactions/*/*",
+                        "/reports",
                         "/reading-sessions",
                         "/reading-sessions/*/heartbeats",
                         "/reading-sessions/*/complete",
@@ -126,6 +127,10 @@ public class SecurityConfiguration {
                         ).authenticated()
                         .requestMatchers(
                                 "/reactions/*/*"
+                        ).authenticated()
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/reports"
                         ).authenticated()
                         .requestMatchers(
                                 HttpMethod.POST,

@@ -1265,6 +1265,39 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /reports:
+    post:
+      operationId: createCommunityReport
+      summary: Create or return a daily deduplicated abuse report
+      tags: [Community]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReportRequest"
+      responses:
+        "201":
+          description: Report received or matching daily report returned
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommunityReport"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /reading-sessions/{sessionId}/heartbeats:
     post:
       operationId: ingestReadingHeartbeats
@@ -4581,6 +4614,89 @@ components:
           type: integer
           format: int64
           minimum: 0
+    CreateReportRequest:
+      type: object
+      additionalProperties: false
+      required: [targetType, targetId, reasonCode]
+      properties:
+        targetType:
+          type: string
+          enum: [story, chapter, comment, team, user]
+        targetId:
+          type: string
+          format: uuid
+        reasonCode:
+          type: string
+          enum:
+            - copyright
+            - impersonation
+            - harassment
+            - sexual_content
+            - illegal_content
+            - spam
+            - broken_content
+            - other
+        detail:
+          type: string
+          maxLength: 5000
+        evidenceMediaIds:
+          type: array
+          maxItems: 10
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+    CommunityReport:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - targetType
+        - targetId
+        - reason
+        - status
+        - riskScore
+        - duplicate
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        targetType:
+          type: string
+          enum: [STORY, CHAPTER, COMMENT, TEAM, USER]
+        targetId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          enum:
+            - COPYRIGHT
+            - IMPERSONATION
+            - HARASSMENT
+            - SEXUAL_CONTENT
+            - ILLEGAL_CONTENT
+            - SPAM
+            - BROKEN_CONTENT
+            - OTHER
+        status:
+          type: string
+          enum:
+            - RECEIVED
+            - TRIAGED
+            - INVESTIGATING
+            - RESOLVED
+            - REJECTED
+            - APPEALED
+        riskScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+        duplicate:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
     Team:
       type: object
       additionalProperties: false

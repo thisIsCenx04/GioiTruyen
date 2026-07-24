@@ -50,6 +50,22 @@ describe("comments", () => {
           targetId: params.commentId,
           targetType: "COMMENT",
         })),
+      http.post("/api/workspace/reports", async ({ request }) => {
+        const input = await request.json() as {
+          targetId: string;
+          reasonCode: string;
+        };
+        return HttpResponse.json({
+          createdAt,
+          duplicate: false,
+          id: "80000000-0000-4000-8000-000000000001",
+          reason: input.reasonCode.toUpperCase(),
+          riskScore: 70,
+          status: "RECEIVED",
+          targetId: input.targetId,
+          targetType: "COMMENT",
+        }, { status: 201 });
+      }),
       http.post("/api/workspace/comments", async ({ request }) => {
         const input = await request.json() as { body: string };
         return HttpResponse.json({
@@ -127,6 +143,15 @@ describe("comments", () => {
     await user.click(reaction);
     expect(await screen.findByRole("button", { name: "Bỏ thích · 5" }))
       .toHaveAttribute("aria-pressed", "true");
+    await user.click(screen.getByRole("button", { name: "Báo cáo" }));
+    await user.selectOptions(screen.getByLabelText("Lý do"), "harassment");
+    await user.type(
+      screen.getByLabelText("Chi tiết (không bắt buộc)"),
+      "Nội dung công kích cá nhân.",
+    );
+    await user.click(screen.getByRole("button", { name: "Gửi báo cáo" }));
+    expect(await screen.findByText("Đã gửi báo cáo đến đội kiểm duyệt."))
+      .toBeVisible();
     await user.type(
       screen.getByLabelText("Chia sẻ cảm nhận"),
       "Mình cũng thích chương này.",

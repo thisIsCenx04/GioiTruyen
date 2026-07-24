@@ -1620,10 +1620,15 @@ components:
     Report:
       type: object
       additionalProperties: false
-      required: [id, status, createdAt]
+      required: [id, targetType, targetId, reason, status, riskScore, duplicate, createdAt]
       properties:
         id: { type: string, format: uuid }
-        status: { type: string, enum: [received, triaged, investigating, resolved, rejected, appealed] }
+        targetType: { type: string, enum: [STORY, CHAPTER, COMMENT, TEAM, USER] }
+        targetId: { type: string, format: uuid }
+        reason: { type: string, enum: [COPYRIGHT, IMPERSONATION, HARASSMENT, SEXUAL_CONTENT, ILLEGAL_CONTENT, SPAM, BROKEN_CONTENT, OTHER] }
+        status: { type: string, enum: [RECEIVED, TRIAGED, INVESTIGATING, RESOLVED, REJECTED, APPEALED] }
+        riskScore: { type: integer, minimum: 0, maximum: 100 }
+        duplicate: { type: boolean }
         createdAt: { type: string, format: date-time }
         resolutionCode: { type: [string, 'null'] }
     WalletSummary:

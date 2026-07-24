@@ -85,6 +85,9 @@ app:
   moderation:
     queue:
       claim-lease: ${MODERATION_QUEUE_CLAIM_LEASE:15m}
+    reports:
+      rate-limit:
+        window: ${REPORT_RATE_LIMIT_WINDOW:24h}
   publishing:
     prechecks:
       enabled: ${PUBLISHING_PRECHECKS_ENABLED:false}

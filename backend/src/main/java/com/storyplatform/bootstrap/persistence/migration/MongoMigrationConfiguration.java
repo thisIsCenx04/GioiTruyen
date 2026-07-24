@@ -192,6 +192,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    CommunityReportIndexes communityReportIndexes() {
+        return new CommunityReportIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

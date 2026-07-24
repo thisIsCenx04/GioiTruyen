@@ -3,9 +3,11 @@
 import {
   createBrowserCommentClient,
   createBrowserReactionClient,
+  createBrowserReportClient,
   StoryApiError,
   type CommunityComment,
   type CommentTargetType,
+  type ReportReason,
 } from "@gioitruyen/api-client";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -64,6 +66,7 @@ function ReactionButton({ commentId }: Readonly<{ commentId: string }>) {
 
 export function Comments({ targetId, targetType }: Props) {
   const api = useMemo(() => createBrowserCommentClient(), []);
+  const reports = useMemo(() => createBrowserReportClient(), []);
   const [items, setItems] = useState<readonly CommunityComment[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [owned, setOwned] = useState<ReadonlySet<string>>(new Set());
@@ -73,6 +76,11 @@ export function Comments({ targetId, targetType }: Props) {
   const [editBody, setEditBody] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const [reportTarget, setReportTarget] =
+    useState<CommunityComment | null>(null);
+  const [reportReason, setReportReason] =
+    useState<ReportReason>("spam");
+  const [reportDetail, setReportDetail] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -154,6 +162,32 @@ export function Comments({ targetId, targetType }: Props) {
       const page = await api.list(targetType, targetId, cursor);
       setItems((current) => [...current, ...page.items]);
       setCursor(page.nextCursor);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitReport() {
+    if (!reportTarget || busy) return;
+    setBusy(true);
+    try {
+      const report = await reports.create({
+        ...(reportDetail.trim() ? { detail: reportDetail } : {}),
+        reasonCode: reportReason,
+        targetId: reportTarget.id,
+        targetType: "comment",
+      });
+      setNotice(report.duplicate
+        ? "Báo cáo này đã được tiếp nhận trước đó."
+        : "Đã gửi báo cáo đến đội kiểm duyệt.");
+      setReportTarget(null);
+      setReportDetail("");
+    } catch (error) {
+      setNotice(error instanceof StoryApiError && error.problem.status === 401
+        ? "LOGIN_REQUIRED"
+        : error instanceof StoryApiError
+          ? error.problem.detail ?? "Chưa thể gửi báo cáo."
+          : "Chưa thể gửi báo cáo.");
     } finally {
       setBusy(false);
     }
@@ -245,6 +279,12 @@ export function Comments({ targetId, targetType }: Props) {
                       Trả lời
                     </button>
                   )}
+                  <button
+                    onClick={() => setReportTarget(comment)}
+                    type="button"
+                  >
+                    Báo cáo
+                  </button>
                   {owned.has(comment.id) && (
                     <>
                       <button onClick={() => {
@@ -264,6 +304,49 @@ export function Comments({ targetId, targetType }: Props) {
           </li>
         ))}
       </ol>
+      {reportTarget && (
+        <div aria-labelledby="report-title" aria-modal="true" className={styles.report} role="dialog">
+          <div>
+            <h3 id="report-title">Báo cáo bình luận</h3>
+            <p>
+              Chỉ gửi báo cáo khi nội dung vi phạm tiêu chuẩn cộng đồng.
+            </p>
+            <label htmlFor={`reason-${reportTarget.id}`}>Lý do</label>
+            <select
+              id={`reason-${reportTarget.id}`}
+              onChange={(event) =>
+                setReportReason(event.target.value as ReportReason)}
+              value={reportReason}
+            >
+              <option value="spam">Spam hoặc quảng cáo</option>
+              <option value="harassment">Quấy rối</option>
+              <option value="impersonation">Mạo danh</option>
+              <option value="sexual_content">Nội dung tình dục</option>
+              <option value="illegal_content">Nội dung bất hợp pháp</option>
+              <option value="copyright">Vi phạm bản quyền</option>
+              <option value="other">Lý do khác</option>
+            </select>
+            <label htmlFor={`report-detail-${reportTarget.id}`}>
+              Chi tiết (không bắt buộc)
+            </label>
+            <textarea
+              id={`report-detail-${reportTarget.id}`}
+              maxLength={5000}
+              onChange={(event) => setReportDetail(event.target.value)}
+              rows={4}
+              value={reportDetail}
+            />
+            <footer>
+              <button disabled={busy} onClick={() => void submitReport()} type="button">
+                Gửi báo cáo
+              </button>
+              <button onClick={() => setReportTarget(null)} type="button">
+                Hủy
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
       {cursor && (
         <button className={styles.more} disabled={busy} onClick={() => void loadMore()} type="button">
           Xem thêm bình luận

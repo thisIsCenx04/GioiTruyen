@@ -1,9 +1,14 @@
 package com.storyplatform.moderation.infrastructure;
 
+import com.storyplatform.moderation.application.CommunityReportOperations;
+import com.storyplatform.moderation.application.CommunityReportService;
 import com.storyplatform.moderation.application.ModerationQueueOperations;
 import com.storyplatform.moderation.application.ModerationQueueService;
 import com.storyplatform.moderation.application.ModerationDecisionOperations;
 import com.storyplatform.moderation.application.ModerationDecisionService;
+import com.storyplatform.moderation.application.ReportRateLimiter;
+import com.storyplatform.moderation.application.port
+        .CommunityReportRepository;
 import com.storyplatform.moderation.application.port
         .ModerationDecisionRepository;
 import com.storyplatform.moderation.application.port
@@ -11,24 +16,65 @@ import com.storyplatform.moderation.application.port
 import com.storyplatform.moderation.application.port
         .ModerationQueueRepository;
 import com.storyplatform.moderation.infrastructure.persistence
+        .MongoCommunityReportRepository;
+import com.storyplatform.moderation.infrastructure.persistence
         .MongoModerationQueueRepository;
 import com.storyplatform.moderation.infrastructure.persistence
         .MongoModerationDecisionRepository;
 import com.storyplatform.moderation.infrastructure.security
         .HmacModerationQueueCursorCodec;
+import com.storyplatform.shared.cache.RedisKeyFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.UUID;
 
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(ModerationQueueProperties.class)
 public class ModerationConfiguration {
+
+    @Bean
+    CommunityReportRepository communityReportRepository(
+            MongoTemplate mongo
+    ) {
+        return new MongoCommunityReportRepository(mongo);
+    }
+
+    @Bean
+    ReportRateLimiter reportRateLimiter(
+            StringRedisTemplate redis,
+            RedisKeyFactory keys,
+            @Value("${app.moderation.reports.rate-limit.window}")
+            Duration window,
+            @Value("${app.identity.login-risk.hmac-key}")
+            String encodedKey
+    ) {
+        return new RedisReportRateLimiter(
+                redis,
+                keys,
+                window,
+                Base64.getDecoder().decode(encodedKey)
+        );
+    }
+
+    @Bean
+    CommunityReportOperations communityReportOperations(
+            CommunityReportRepository repository,
+            ReportRateLimiter limiter
+    ) {
+        return new CommunityReportService(
+                repository,
+                limiter,
+                Clock.systemUTC()
+        );
+    }
 
     @Bean
     ModerationQueueRepository moderationQueueRepository(

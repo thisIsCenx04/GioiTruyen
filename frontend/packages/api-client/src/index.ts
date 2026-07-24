@@ -825,6 +825,55 @@ export type CommunityReaction = Readonly<{
   count: number;
 }>;
 
+export type ReportReason =
+  | "copyright"
+  | "impersonation"
+  | "harassment"
+  | "sexual_content"
+  | "illegal_content"
+  | "spam"
+  | "broken_content"
+  | "other";
+
+export type CommunityReport = Readonly<{
+  id: string;
+  targetType: "STORY" | "CHAPTER" | "COMMENT" | "TEAM" | "USER";
+  targetId: string;
+  reason: Uppercase<ReportReason>;
+  status:
+    | "RECEIVED"
+    | "TRIAGED"
+    | "INVESTIGATING"
+    | "RESOLVED"
+    | "REJECTED"
+    | "APPEALED";
+  riskScore: number;
+  duplicate: boolean;
+  createdAt: string;
+}>;
+
+export function createBrowserReportClient({
+  baseUrl = "/api/workspace",
+  fetchImplementation = fetch,
+}: BrowserTeamClientOptions = {}) {
+  const client = createStoryApiClient({ baseUrl, fetchImplementation });
+  return Object.freeze({
+    create(input: {
+      targetType: "story" | "chapter" | "comment" | "team" | "user";
+      targetId: string;
+      reasonCode: ReportReason;
+      detail?: string;
+      evidenceMediaIds?: readonly string[];
+    }) {
+      return client.request<CommunityReport>("/reports", {
+        body: input,
+        credentials: "same-origin",
+        method: "POST",
+      });
+    },
+  });
+}
+
 export function createBrowserReactionClient({
   baseUrl = "/api/workspace",
   fetchImplementation = fetch,
