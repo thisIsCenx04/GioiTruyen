@@ -6,10 +6,16 @@ import com.storyplatform.publishing.application.StoryDraftService;
 import com.storyplatform.publishing.application.ChapterContentSanitizer;
 import com.storyplatform.publishing.application.ChapterDraftOperations;
 import com.storyplatform.publishing.application.ChapterDraftService;
+import com.storyplatform.publishing.application.PublishingSubmissionOperations;
+import com.storyplatform.publishing.application.PublishingSubmissionService;
 import com.storyplatform.publishing.application.port.ChapterDraftRepository;
+import com.storyplatform.publishing.application.port
+        .PublishingSubmissionRepository;
 import com.storyplatform.publishing.application.port.StoryDraftRepository;
 import com.storyplatform.publishing.infrastructure.persistence
         .MongoChapterDraftRepository;
+import com.storyplatform.publishing.infrastructure.persistence
+        .MongoPublishingSubmissionRepository;
 import com.storyplatform.publishing.infrastructure.persistence
         .MongoStoryDraftRepository;
 import com.storyplatform.shared.events.persistence.OutboxAppender;
@@ -33,6 +39,13 @@ public class PublishingConfiguration {
     @Bean
     ChapterDraftRepository chapterDraftRepository(MongoTemplate mongo) {
         return new MongoChapterDraftRepository(mongo);
+    }
+
+    @Bean
+    PublishingSubmissionRepository publishingSubmissionRepository(
+            MongoTemplate mongo
+    ) {
+        return new MongoPublishingSubmissionRepository(mongo);
     }
 
     @Bean
@@ -72,5 +85,24 @@ public class PublishingConfiguration {
                 Clock.systemUTC()
         );
         return new TransactionalChapterDraftOperations(service);
+    }
+
+    @Bean
+    PublishingSubmissionOperations publishingSubmissionOperations(
+            TeamPermissionAuthorizer permissions,
+            TeamStatusDirectory teams,
+            PublishingSubmissionRepository submissions,
+            OutboxAppender outbox
+    ) {
+        PublishingSubmissionService service =
+                new PublishingSubmissionService(
+                        permissions,
+                        teams,
+                        submissions,
+                        outbox,
+                        () -> UUID.randomUUID().toString(),
+                        Clock.systemUTC()
+                );
+        return new TransactionalPublishingSubmissionOperations(service);
     }
 }

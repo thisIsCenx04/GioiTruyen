@@ -127,6 +127,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    PublishingReviewIndexes publishingReviewIndexes() {
+        return new PublishingReviewIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

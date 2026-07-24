@@ -95,6 +95,7 @@ public record StoryDraft(
 
     public enum WorkflowStatus {
         DRAFT,
-        CHANGES_REQUESTED
+        CHANGES_REQUESTED,
+        IN_REVIEW
     }
 }
