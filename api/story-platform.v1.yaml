@@ -2989,6 +2989,96 @@ paths:
                 $ref: "#/components/schemas/WalletBalance"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /wallets/me/topups:
+    post:
+      operationId: createMyTopupRequest
+      summary: Create an expiring server-authoritative VietQR top-up request
+      description: |
+        Snapshots the active discount and floors the credited XU calculation.
+        The same Idempotency-Key and amount returns the original request.
+      tags: [Monetization]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 16
+            maxLength: 128
+            pattern: '^[A-Za-z0-9._:-]+$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTopupRequest"
+      responses:
+        "201":
+          description: New or idempotently replayed top-up request
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopupRequest"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    get:
+      operationId: listMyTopupRequests
+      summary: List the caller's 50 most recent top-up requests
+      tags: [Monetization]
+      responses:
+        "200":
+          description: Private top-up request history
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 50
+                items:
+                  $ref: "#/components/schemas/TopupRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /wallets/me/topups/{requestId}:
+    get:
+      operationId: getMyTopupRequest
+      summary: Get one top-up request owned by the caller
+      tags: [Monetization]
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Private top-up request
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopupRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /admin/configuration/topup-discount:
     get:
       operationId: getTopupDiscountConfiguration
@@ -5844,6 +5934,68 @@ components:
           type: string
           minLength: 10
           maxLength: 500
+    CreateTopupRequest:
+      type: object
+      additionalProperties: false
+      required: [amountVnd]
+      properties:
+        amountVnd:
+          type: integer
+          format: int64
+          minimum: 10000
+          maximum: 1000000000
+    TopupRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - amountVnd
+        - creditedXu
+        - discountPercent
+        - discountVersion
+        - transferReference
+        - qrPayload
+        - status
+        - expiresAt
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        amountVnd:
+          type: integer
+          format: int64
+          minimum: 10000
+          maximum: 1000000000
+        creditedXu:
+          type: integer
+          format: int64
+          minimum: 0
+        discountPercent:
+          type: number
+          minimum: 0
+          maximum: 100
+          multipleOf: 0.01
+        discountVersion:
+          type: integer
+          format: int64
+          minimum: 0
+        transferReference:
+          type: string
+          pattern: '^GT[0-9A-Z]{12,24}$'
+        qrPayload:
+          type: string
+          minLength: 1
+          maxLength: 1024
+        status:
+          type: string
+          enum: [AWAITING_PAYMENT]
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
     WalletBalance:
       type: object
       additionalProperties: false

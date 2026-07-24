@@ -257,6 +257,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    TopupRequestIndexes topupRequestIndexes() {
+        return new TopupRequestIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

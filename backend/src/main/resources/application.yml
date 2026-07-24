@@ -75,6 +75,12 @@ management:
         step: ${OTEL_METRICS_EXPORT_INTERVAL:30s}
 
 app:
+  monetization:
+    topup:
+      request-ttl: ${TOPUP_REQUEST_TTL:30m}
+      bank-bin: ${TOPUP_BANK_BIN:970436}
+      account-number: ${TOPUP_BANK_ACCOUNT:0000000000}
+      account-name: ${TOPUP_BANK_NAME:GIOI TRUYEN}
   analytics:
     raw-events:
       retention: ${ANALYTICS_RAW_EVENT_RETENTION:90d}

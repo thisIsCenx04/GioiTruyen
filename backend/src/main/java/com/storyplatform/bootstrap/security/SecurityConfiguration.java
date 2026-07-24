@@ -117,6 +117,10 @@ public class SecurityConfiguration {
                         .requestMatchers("/notifications/**")
                         .authenticated()
                         .requestMatchers("/rankings/**").permitAll()
+                        .requestMatchers("/wallets/**").authenticated()
+                        .requestMatchers(
+                                "/admin/configuration/topup-discount"
+                        ).authenticated()
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/notification-unsubscribe"
