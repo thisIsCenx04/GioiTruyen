@@ -98,6 +98,15 @@ function allowed(method: string, path: string) {
   ) {
     return method === "POST";
   }
+  if (path === "notifications") {
+    return method === "GET";
+  }
+  if (path === "notifications/read-all") {
+    return method === "POST";
+  }
+  if (new RegExp(`^notifications/${uuid}/read$`, "u").test(path)) {
+    return method === "POST";
+  }
   if (
     new RegExp(`^me/reading-progress/${uuid}$`, "u").test(path)
   ) {

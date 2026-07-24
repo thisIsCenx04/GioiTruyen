@@ -356,6 +356,23 @@ export type CopyrightCase = Readonly<{
   decidedAt: string | null;
 }>;
 
+export type NotificationItem = Readonly<{
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  data: Readonly<Record<string, string>>;
+  readAt: string | null;
+  createdAt: string;
+}>;
+
+export type NotificationPage = Readonly<{
+  items: readonly NotificationItem[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  unreadCount: number;
+}>;
+
 export type BrowserTeamClientOptions = Readonly<{
   baseUrl?: string;
   fetchImplementation?: typeof fetch;
@@ -789,6 +806,43 @@ export function createBrowserCopyrightClient({
           credentials: "same-origin",
           method: "POST",
         },
+      );
+    },
+  });
+}
+
+export function createBrowserNotificationClient({
+  baseUrl = "/api/workspace",
+  fetchImplementation = fetch,
+}: BrowserTeamClientOptions = {}) {
+  const client = createStoryApiClient({ baseUrl, fetchImplementation });
+  const request = <Response>(
+    path: `/${string}`,
+    options: RequestOptions = {},
+  ) =>
+    client.request<Response>(path, {
+      credentials: "same-origin",
+      ...options,
+    });
+
+  return Object.freeze({
+    list(cursor?: string) {
+      const query = new URLSearchParams({ limit: "20" });
+      if (cursor) query.set("cursor", cursor);
+      return request<NotificationPage>(
+        `/notifications?${query.toString()}`,
+      );
+    },
+    markRead(notificationId: string) {
+      return request<NotificationItem>(
+        `/notifications/${encodeURIComponent(notificationId)}/read`,
+        { method: "POST" },
+      );
+    },
+    markAllRead() {
+      return request<{ readBefore: string; unreadCount: number }>(
+        "/notifications/read-all",
+        { method: "POST" },
       );
     },
   });

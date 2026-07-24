@@ -52,6 +52,8 @@ public class SecurityConfiguration {
                         "/copyright/cases",
                         "/copyright/cases/*/appeals",
                         "/copyright/cases/*/decisions",
+                        "/notifications/*/read",
+                        "/notifications/read-all",
                         "/reading-sessions",
                         "/reading-sessions/*/heartbeats",
                         "/reading-sessions/*/complete",
@@ -108,6 +110,8 @@ public class SecurityConfiguration {
                                 "/auth/mfa/verify",
                                 "/auth/reauth/grants"
                         ).authenticated()
+                        .requestMatchers("/notifications/**")
+                        .authenticated()
                         .requestMatchers("/me").authenticated()
                         .requestMatchers(
                                 "/me/reading-history",

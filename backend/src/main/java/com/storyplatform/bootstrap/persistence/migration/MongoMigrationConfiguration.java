@@ -207,6 +207,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    NotificationInboxIndexes notificationInboxIndexes() {
+        return new NotificationInboxIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }
