@@ -82,6 +82,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    StoryIndexes storyIndexes() {
+        return new StoryIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }
