@@ -14,6 +14,8 @@ import com.storyplatform.monetization.application.TopupDiscountOperations;
 import com.storyplatform.monetization.application.TopupDiscountService;
 import com.storyplatform.monetization.application.TopupRequestOperations;
 import com.storyplatform.monetization.application.TopupRequestService;
+import com.storyplatform.monetization.application.TopupRejectionOperations;
+import com.storyplatform.monetization.application.TopupRejectionService;
 import com.storyplatform.monetization.application.TopupSettlementOperations;
 import com.storyplatform.monetization.application.TopupSettlementService;
 import com.storyplatform.monetization.application.port.LedgerBalanceProjector;
@@ -24,6 +26,8 @@ import com.storyplatform.monetization.application.port
         .TopupDiscountRepository;
 import com.storyplatform.monetization.application.port
         .TopupRequestRepository;
+import com.storyplatform.monetization.application.port
+        .TopupRejectionRepository;
 import com.storyplatform.monetization.application.port
         .TopupSettlementRepository;
 import com.storyplatform.monetization.infrastructure.persistence
@@ -36,6 +40,8 @@ import com.storyplatform.monetization.infrastructure.persistence
         .MongoTopupDiscountRepository;
 import com.storyplatform.monetization.infrastructure.persistence
         .MongoTopupRequestRepository;
+import com.storyplatform.monetization.infrastructure.persistence
+        .MongoTopupRejectionRepository;
 import com.storyplatform.monetization.infrastructure.persistence
         .MongoTopupSettlementRepository;
 import com.storyplatform.identity.application.contract
@@ -53,6 +59,28 @@ import java.util.UUID;
 
 @Configuration(proxyBeanMethods = false)
 public class MonetizationConfiguration {
+
+    @Bean
+    TopupRejectionRepository topupRejectionRepository(
+            MongoTemplate mongo
+    ) {
+        return new MongoTopupRejectionRepository(mongo);
+    }
+
+    @Bean
+    TopupRejectionOperations topupRejectionOperations(
+            TopupRejectionRepository repository,
+            OutboxAppender outbox
+    ) {
+        return new TransactionalTopupRejectionOperations(
+                new TopupRejectionService(
+                        repository,
+                        outbox,
+                        Clock.systemUTC(),
+                        UUID::randomUUID
+                )
+        );
+    }
 
     @Bean
     ManualTopupRepository manualTopupRepository(MongoTemplate mongo) {

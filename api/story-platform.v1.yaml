@@ -3173,6 +3173,50 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /admin/topups/{topupId}/reject:
+    post:
+      operationId: rejectTopupReview
+      summary: Reject an unmatched top-up without creating ledger credit
+      description: |
+        Requires FINANCE_REVIEW. The pending top-up and payment event are
+        atomically rejected, audited and emitted for user notification.
+        Repeating an already successful rejection is idempotent.
+      tags: [Monetization]
+      parameters:
+        - name: topupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectTopupRequest"
+      responses:
+        "200":
+          description: Rejection result, including replay state
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopupRejection"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /admin/configuration/topup-discount:
     get:
       operationId: getTopupDiscountConfiguration
@@ -6028,6 +6072,44 @@ components:
           type: string
           minLength: 10
           maxLength: 500
+    RejectTopupRequest:
+      type: object
+      additionalProperties: false
+      required: [reasonCode, reason, evidenceReference]
+      properties:
+        reasonCode:
+          type: string
+          enum:
+            - AMOUNT_MISMATCH
+            - REFERENCE_UNVERIFIABLE
+            - DUPLICATE_PAYMENT
+            - FRAUD_SUSPECTED
+            - OTHER
+        reason:
+          type: string
+          minLength: 10
+          maxLength: 500
+        evidenceReference:
+          type: string
+          minLength: 3
+          maxLength: 512
+          pattern: '^[A-Za-z0-9][A-Za-z0-9._:/-]{2,511}$'
+    TopupRejection:
+      type: object
+      additionalProperties: false
+      required: [topupId, paymentEventId, status, replayed]
+      properties:
+        topupId:
+          type: string
+          format: uuid
+        paymentEventId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          const: REJECTED
+        replayed:
+          type: boolean
     ApproveManualTopupRequest:
       type: object
       additionalProperties: false
@@ -6155,7 +6237,7 @@ components:
           maxLength: 1024
         status:
           type: string
-          enum: [AWAITING_PAYMENT, CREDITED, PENDING_REVIEW]
+          enum: [AWAITING_PAYMENT, CREDITED, PENDING_REVIEW, REJECTED]
         expiresAt:
           type: string
           format: date-time
