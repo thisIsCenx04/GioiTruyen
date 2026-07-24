@@ -4,10 +4,8 @@ import com.storyplatform.monetization.application.port.WalletRepository;
 import com.storyplatform.monetization.domain.LedgerEntry;
 import com.storyplatform.monetization.domain.WalletAccount;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.util.Objects;
-import java.util.UUID;
 
 public final class WalletService implements WalletOperations {
 
@@ -37,7 +35,7 @@ public final class WalletService implements WalletOperations {
                 .map(WalletService::view)
                 .orElseGet(() -> view(repository.insert(
                         new WalletAccount(
-                                deterministicId(ownerType, ownerId),
+                                WalletOperations.accountId(ownerType, ownerId),
                                 ownerType,
                                 ownerId,
                                 ownerType == WalletAccount.OwnerType.PLATFORM
@@ -60,15 +58,5 @@ public final class WalletService implements WalletOperations {
                 value.version(),
                 value.updatedAt()
         );
-    }
-
-    private static String deterministicId(
-            WalletAccount.OwnerType ownerType,
-            String ownerId
-    ) {
-        return UUID.nameUUIDFromBytes(
-                ("gioitruyen:XU:" + ownerType + ":" + ownerId)
-                        .getBytes(StandardCharsets.UTF_8)
-        ).toString();
     }
 }

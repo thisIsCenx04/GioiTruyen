@@ -10,6 +10,8 @@ import com.storyplatform.monetization.application.TopupDiscountOperations;
 import com.storyplatform.monetization.application.TopupDiscountService;
 import com.storyplatform.monetization.application.TopupRequestOperations;
 import com.storyplatform.monetization.application.TopupRequestService;
+import com.storyplatform.monetization.application.TopupSettlementOperations;
+import com.storyplatform.monetization.application.TopupSettlementService;
 import com.storyplatform.monetization.application.port.LedgerBalanceProjector;
 import com.storyplatform.monetization.application.port.WalletRepository;
 import com.storyplatform.monetization.application.port
@@ -18,6 +20,8 @@ import com.storyplatform.monetization.application.port
         .TopupDiscountRepository;
 import com.storyplatform.monetization.application.port
         .TopupRequestRepository;
+import com.storyplatform.monetization.application.port
+        .TopupSettlementRepository;
 import com.storyplatform.monetization.infrastructure.persistence
         .MongoLedgerRepository;
 import com.storyplatform.monetization.infrastructure.persistence
@@ -26,6 +30,8 @@ import com.storyplatform.monetization.infrastructure.persistence
         .MongoTopupDiscountRepository;
 import com.storyplatform.monetization.infrastructure.persistence
         .MongoTopupRequestRepository;
+import com.storyplatform.monetization.infrastructure.persistence
+        .MongoTopupSettlementRepository;
 import com.storyplatform.identity.application.contract
         .ReauthenticationVerifier;
 import com.storyplatform.shared.events.persistence.OutboxAppender;
@@ -41,6 +47,29 @@ import java.util.UUID;
 
 @Configuration(proxyBeanMethods = false)
 public class MonetizationConfiguration {
+
+    @Bean
+    TopupSettlementRepository topupSettlementRepository(
+            MongoTemplate mongo
+    ) {
+        return new MongoTopupSettlementRepository(mongo);
+    }
+
+    @Bean
+    TopupSettlementOperations topupSettlementOperations(
+            TopupSettlementRepository repository,
+            WalletOperations wallets,
+            LedgerOperations ledger
+    ) {
+        return new TransactionalTopupSettlementOperations(
+                new TopupSettlementService(
+                        repository,
+                        wallets,
+                        ledger,
+                        Clock.systemUTC()
+                )
+        );
+    }
 
     @Bean
     TopupRequestRepository topupRequestRepository(MongoTemplate mongo) {

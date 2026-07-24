@@ -131,6 +131,8 @@ public record TopupRequest(
     }
 
     public enum Status {
-        AWAITING_PAYMENT
+        AWAITING_PAYMENT,
+        CREDITED,
+        PENDING_REVIEW
     }
 }

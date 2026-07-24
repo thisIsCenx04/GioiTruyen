@@ -20,6 +20,7 @@ public final class PaymentWebhookService
     private final PaymentWebhookVerifier verifier;
     private final PaymentEventDecoder decoder;
     private final PaymentEventRepository repository;
+    private final TopupSettlementOperations settlements;
     private final Clock clock;
     private final Supplier<UUID> ids;
 
@@ -27,12 +28,14 @@ public final class PaymentWebhookService
             PaymentWebhookVerifier verifier,
             PaymentEventDecoder decoder,
             PaymentEventRepository repository,
+            TopupSettlementOperations settlements,
             Clock clock,
             Supplier<UUID> ids
     ) {
         this.verifier = Objects.requireNonNull(verifier);
         this.decoder = Objects.requireNonNull(decoder);
         this.repository = Objects.requireNonNull(repository);
+        this.settlements = Objects.requireNonNull(settlements);
         this.clock = Objects.requireNonNull(clock);
         this.ids = Objects.requireNonNull(ids);
     }
@@ -78,9 +81,15 @@ public final class PaymentWebhookService
         } catch (IllegalArgumentException exception) {
             throw invalid("Payment webhook payload is invalid.");
         }
-        return repository.insertIfAbsent(event)
-                ? Result.ACCEPTED
-                : Result.DUPLICATE;
+        boolean inserted = repository.insertIfAbsent(event);
+        try {
+            settlements.settle(provider, decoded.eventId());
+        } catch (IllegalArgumentException exception) {
+            if (inserted) {
+                throw exception;
+            }
+        }
+        return inserted ? Result.ACCEPTED : Result.DUPLICATE;
     }
 
     private static String hash(byte[] value) {

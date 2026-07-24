@@ -3,6 +3,7 @@ package com.storyplatform.unit.monetization.application;
 import com.storyplatform.monetization.application.PaymentWebhookException;
 import com.storyplatform.monetization.application.PaymentWebhookOperations;
 import com.storyplatform.monetization.application.PaymentWebhookService;
+import com.storyplatform.monetization.application.TopupSettlementOperations;
 import com.storyplatform.monetization.application.port.PaymentEventDecoder;
 import com.storyplatform.monetization.application.port.PaymentEventRepository;
 import com.storyplatform.monetization.application.port.PaymentWebhookVerifier;
@@ -37,11 +38,14 @@ class PaymentWebhookServiceTest {
             mock(PaymentEventDecoder.class);
     private final PaymentEventRepository repository =
             mock(PaymentEventRepository.class);
+    private final TopupSettlementOperations settlements =
+            mock(TopupSettlementOperations.class);
     private final PaymentWebhookService service =
             new PaymentWebhookService(
                     verifier,
                     decoder,
                     repository,
+                    settlements,
                     Clock.fixed(NOW, ZoneOffset.UTC),
                     () -> UUID.fromString(
                             "10000000-0000-4000-8000-000000000001"
@@ -67,6 +71,7 @@ class PaymentWebhookServiceTest {
                 .isEqualTo(new String(BODY, StandardCharsets.UTF_8));
         assertThat(event.getValue().status())
                 .isEqualTo(PaymentEvent.Status.RECEIVED);
+        verify(settlements).settle("local-bank", "event-1");
     }
 
     @Test
@@ -87,6 +92,7 @@ class PaymentWebhookServiceTest {
         assertThat(service.accept(
                 "local-bank", BODY, "timestamp", "signature"
         )).isEqualTo(PaymentWebhookOperations.Result.DUPLICATE);
+        verify(settlements).settle("local-bank", "event-1");
     }
 
     private static PaymentEventDecoder.DecodedPayment decoded() {

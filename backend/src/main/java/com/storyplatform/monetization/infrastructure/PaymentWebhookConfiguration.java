@@ -2,6 +2,7 @@ package com.storyplatform.monetization.infrastructure;
 
 import com.storyplatform.monetization.application.PaymentWebhookOperations;
 import com.storyplatform.monetization.application.PaymentWebhookService;
+import com.storyplatform.monetization.application.TopupSettlementOperations;
 import com.storyplatform.monetization.infrastructure.persistence
         .MongoPaymentEventRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,6 +27,7 @@ public class PaymentWebhookConfiguration {
     PaymentWebhookOperations paymentWebhookOperations(
             MongoTemplate mongo,
             ObjectMapper mapper,
+            TopupSettlementOperations settlements,
             @Value("${app.monetization.topup.provider}") String provider,
             @Value("${app.monetization.topup.webhook-secret}") String secret,
             @Value("${app.monetization.topup.webhook-max-age}")
@@ -41,6 +43,7 @@ public class PaymentWebhookConfiguration {
                 ),
                 new PaymentEventJsonDecoder(mapper),
                 new MongoPaymentEventRepository(mongo),
+                settlements,
                 clock,
                 UUID::randomUUID
         );

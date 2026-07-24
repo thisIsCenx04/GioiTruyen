@@ -37,4 +37,20 @@ public record MongoPaymentEventDocument(
                 value.status().name()
         );
     }
+
+    PaymentEvent toDomain() {
+        return new PaymentEvent(
+                id,
+                provider,
+                providerEventId,
+                bankReference,
+                amountVnd,
+                transferReference,
+                occurredAt,
+                receivedAt,
+                payloadHash,
+                rawPayload,
+                PaymentEvent.Status.valueOf(status)
+        );
+    }
 }

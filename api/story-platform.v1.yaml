@@ -6064,7 +6064,7 @@ components:
           maxLength: 1024
         status:
           type: string
-          enum: [AWAITING_PAYMENT]
+          enum: [AWAITING_PAYMENT, CREDITED, PENDING_REVIEW]
         expiresAt:
           type: string
           format: date-time

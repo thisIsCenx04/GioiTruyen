@@ -67,6 +67,8 @@ public record PaymentEvent(
     }
 
     public enum Status {
-        RECEIVED
+        RECEIVED,
+        MATCHED,
+        PENDING_REVIEW
     }
 }
