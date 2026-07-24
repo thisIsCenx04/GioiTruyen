@@ -10,12 +10,18 @@ import com.storyplatform.analytics.application
         .ReadingViewValidationOperations;
 import com.storyplatform.analytics.application
         .ReadingViewValidationService;
+import com.storyplatform.analytics.application.TrafficFraudOperations;
+import com.storyplatform.analytics.application.TrafficFraudScorer;
+import com.storyplatform.analytics.application.TrafficFraudService;
 import com.storyplatform.analytics.application.port
         .ReadingViewValidationRepository;
 import com.storyplatform.analytics.infrastructure.persistence
         .MongoRawReadingEventRepository;
 import com.storyplatform.analytics.infrastructure.persistence
         .MongoReadingViewValidationRepository;
+import com.storyplatform.analytics.application.port.TrafficFraudRepository;
+import com.storyplatform.analytics.infrastructure.persistence
+        .MongoTrafficFraudRepository;
 import com.storyplatform.analytics.infrastructure.security
         .HmacReadingSessionPseudonymizer;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,6 +38,29 @@ import java.util.Base64;
 
 @Configuration(proxyBeanMethods = false)
 public class AnalyticsConfiguration {
+
+    @Bean
+    TrafficFraudRepository trafficFraudRepository(MongoTemplate mongo) {
+        return new TransactionalTrafficFraudRepository(
+                new MongoTrafficFraudRepository(mongo)
+        );
+    }
+
+    @Bean
+    TrafficFraudOperations trafficFraudOperations(
+            TrafficFraudRepository repository,
+            @Value("${app.analytics.fraud.lease:1m}") Duration lease,
+            @Value("${app.analytics.fraud.retry-delay:30s}")
+            Duration retryDelay
+    ) {
+        return new TrafficFraudService(
+                repository,
+                new TrafficFraudScorer(),
+                Clock.systemUTC(),
+                lease,
+                retryDelay
+        );
+    }
 
     @Bean
     ReadingViewValidationRepository readingViewValidationRepository(

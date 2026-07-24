@@ -29,6 +29,11 @@ public final class ReadingViewClassifier {
         return new Classification(
                 candidate.eventId(),
                 candidate.fingerprint(),
+                candidate.sessionRef(),
+                candidate.actorRef(),
+                candidate.storyId(),
+                candidate.chapterId(),
+                candidate.kind(),
                 RULE_VERSION,
                 reasons.isEmpty(),
                 Set.copyOf(reasons),
@@ -39,6 +44,10 @@ public final class ReadingViewClassifier {
     public record Candidate(
             String eventId,
             String fingerprint,
+            String sessionRef,
+            String actorRef,
+            String storyId,
+            String chapterId,
             RawReadingEvent.Kind kind,
             double position,
             Integer activeSeconds,
@@ -49,6 +58,10 @@ public final class ReadingViewClassifier {
         public Candidate {
             Objects.requireNonNull(eventId, "eventId");
             Objects.requireNonNull(fingerprint, "fingerprint");
+            Objects.requireNonNull(sessionRef, "sessionRef");
+            Objects.requireNonNull(actorRef, "actorRef");
+            Objects.requireNonNull(storyId, "storyId");
+            Objects.requireNonNull(chapterId, "chapterId");
             Objects.requireNonNull(kind, "kind");
             botSignals = Set.copyOf(botSignals);
         }
@@ -57,6 +70,11 @@ public final class ReadingViewClassifier {
     public record Classification(
             String eventId,
             String fingerprint,
+            String sessionRef,
+            String actorRef,
+            String storyId,
+            String chapterId,
+            RawReadingEvent.Kind kind,
             String ruleVersion,
             boolean valid,
             Set<String> reasons,

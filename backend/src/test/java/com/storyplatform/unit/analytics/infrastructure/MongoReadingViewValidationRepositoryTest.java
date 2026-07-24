@@ -219,6 +219,11 @@ class MongoReadingViewValidationRepositoryTest {
         repository.save(List.of(new ReadingViewClassifier.Classification(
                 "event",
                 "fingerprint",
+                "session",
+                "actor",
+                "story",
+                "chapter",
+                RawReadingEvent.Kind.HEARTBEAT,
                 ReadingViewClassifier.RULE_VERSION,
                 false,
                 Set.of("DUPLICATE"),

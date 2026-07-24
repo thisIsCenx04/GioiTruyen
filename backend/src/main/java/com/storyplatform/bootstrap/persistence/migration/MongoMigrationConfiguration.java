@@ -227,6 +227,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    TrafficFraudIndexes trafficFraudIndexes() {
+        return new TrafficFraudIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

@@ -218,6 +218,23 @@ public final class MongoReadingViewValidationRepository
                                 classification.fingerprint()
                         )
                         .setOnInsert(
+                                "sessionRef",
+                                classification.sessionRef()
+                        )
+                        .setOnInsert(
+                                "actorRef",
+                                classification.actorRef()
+                        )
+                        .setOnInsert("storyId", classification.storyId())
+                        .setOnInsert(
+                                "chapterId",
+                                classification.chapterId()
+                        )
+                        .setOnInsert(
+                                "kind",
+                                classification.kind().name()
+                        )
+                        .setOnInsert(
                                 "ruleVersion",
                                 classification.ruleVersion()
                         )
@@ -344,6 +361,11 @@ public final class MongoReadingViewValidationRepository
             @Id String id,
             String eventId,
             String fingerprint,
+            String sessionRef,
+            String actorRef,
+            String storyId,
+            String chapterId,
+            String kind,
             String ruleVersion,
             boolean valid,
             Set<String> reasons,

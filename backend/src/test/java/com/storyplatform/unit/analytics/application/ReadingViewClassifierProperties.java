@@ -29,6 +29,10 @@ class ReadingViewClassifierProperties {
                 new ReadingViewClassifier.Candidate(
                         "event",
                         "fingerprint",
+                        "session",
+                        "actor",
+                        "story",
+                        "chapter",
                         RawReadingEvent.Kind.HEARTBEAT,
                         zeroActiveProgress ? 50 : 0,
                         zeroActiveProgress ? 0 : 10,
@@ -60,6 +64,10 @@ class ReadingViewClassifierProperties {
                 new ReadingViewClassifier.Candidate(
                         "event",
                         "fingerprint",
+                        "session",
+                        "actor",
+                        "story",
+                        "chapter",
                         RawReadingEvent.Kind.COMPLETION,
                         position,
                         null,

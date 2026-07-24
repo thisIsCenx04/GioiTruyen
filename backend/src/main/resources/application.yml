@@ -83,6 +83,10 @@ app:
       readiness-delay: ${ANALYTICS_VALIDATION_READINESS_DELAY:2m}
       lease: ${ANALYTICS_VALIDATION_LEASE:1m}
       retry-delay: ${ANALYTICS_VALIDATION_RETRY_DELAY:30s}
+    fraud:
+      enabled: ${ANALYTICS_FRAUD_ENABLED:false}
+      lease: ${ANALYTICS_FRAUD_LEASE:1m}
+      retry-delay: ${ANALYTICS_FRAUD_RETRY_DELAY:30s}
   notifications:
     delivery:
       enabled: ${NOTIFICATION_DELIVERY_ENABLED:false}

@@ -95,6 +95,10 @@ public final class ReadingViewValidationService
                     new ReadingViewClassifier.Candidate(
                             event.eventId(),
                             fingerprint,
+                            event.sessionRef(),
+                            event.actorRef(),
+                            event.storyId(),
+                            event.chapterId(),
                             event.kind(),
                             event.position(),
                             event.activeSeconds(),
