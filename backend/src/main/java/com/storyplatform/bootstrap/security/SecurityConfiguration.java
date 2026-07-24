@@ -43,6 +43,8 @@ public class SecurityConfiguration {
                         "/me/reading-progress/*",
                         "/stories/*/favorite",
                         "/stories/*/follow",
+                        "/comments",
+                        "/comments/*",
                         "/reading-sessions",
                         "/reading-sessions/*/heartbeats",
                         "/reading-sessions/*/complete",
@@ -75,7 +77,8 @@ public class SecurityConfiguration {
                                 "/chapters/*",
                                 "/users/*",
                                 "/teams",
-                                "/teams/*"
+                                "/teams/*",
+                                "/comments"
                         ).permitAll()
                         .requestMatchers(
                                 HttpMethod.POST,
@@ -107,6 +110,18 @@ public class SecurityConfiguration {
                         .requestMatchers(
                                 "/stories/*/favorite",
                                 "/stories/*/follow"
+                        ).authenticated()
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/comments"
+                        ).authenticated()
+                        .requestMatchers(
+                                HttpMethod.PATCH,
+                                "/comments/*"
+                        ).authenticated()
+                        .requestMatchers(
+                                HttpMethod.DELETE,
+                                "/comments/*"
                         ).authenticated()
                         .requestMatchers(
                                 HttpMethod.POST,

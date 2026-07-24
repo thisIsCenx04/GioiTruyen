@@ -38,6 +38,12 @@ describe("chapter reader", () => {
           sessionId: "40000000-0000-4000-8000-000000000001",
           sessionToken: "signed-token",
         }, { status: 201 })),
+      http.get("/api/catalog/comments", () =>
+        HttpResponse.json({
+          hasMore: false,
+          items: [],
+          nextCursor: null,
+        })),
     );
     const user = userEvent.setup();
     render(<ChapterReader chapter={chapter} />);

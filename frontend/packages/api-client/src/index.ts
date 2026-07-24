@@ -789,6 +789,99 @@ export type StoryRelation = Readonly<{
   count: number;
 }>;
 
+export type CommentTargetType = "STORY" | "CHAPTER";
+
+export type CommunityComment = Readonly<{
+  id: string;
+  targetType: CommentTargetType;
+  targetId: string;
+  parentId: string | null;
+  rootId: string;
+  depth: number;
+  author: Readonly<{
+    id: string;
+    displayName: string;
+    avatarMediaId: string | null;
+  }>;
+  body: string;
+  status: "VISIBLE" | "HIDDEN" | "DELETED";
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}>;
+
+export type CommentPage = Readonly<{
+  items: readonly CommunityComment[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}>;
+
+export function createBrowserCommentClient({
+  fetchImplementation = fetch,
+}: Pick<BrowserTeamClientOptions, "fetchImplementation"> = {}) {
+  const publicClient = createStoryApiClient({
+    baseUrl: "/api/catalog",
+    fetchImplementation,
+  });
+  const privateClient = createStoryApiClient({
+    baseUrl: "/api/workspace",
+    fetchImplementation,
+  });
+  return Object.freeze({
+    list(
+      targetType: CommentTargetType,
+      targetId: string,
+      cursor?: string,
+    ) {
+      const query = new URLSearchParams({
+        limit: "20",
+        targetId,
+        targetType: targetType.toLowerCase(),
+      });
+      if (cursor) query.set("cursor", cursor);
+      return publicClient.request<CommentPage>(`/comments?${query}`, {
+        cache: "no-store",
+      });
+    },
+    create(input: {
+      targetType: CommentTargetType;
+      targetId: string;
+      parentId?: string;
+      body: string;
+    }) {
+      return privateClient.request<CommunityComment>("/comments", {
+        body: {
+          ...input,
+          targetType: input.targetType.toLowerCase(),
+        },
+        credentials: "same-origin",
+        method: "POST",
+      });
+    },
+    update(commentId: string, version: number, body: string) {
+      return privateClient.request<CommunityComment>(
+        `/comments/${encodeURIComponent(commentId)}`,
+        {
+          body: { body },
+          credentials: "same-origin",
+          headers: { "If-Match": `"${version}"` },
+          method: "PATCH",
+        },
+      );
+    },
+    remove(commentId: string, version: number) {
+      return privateClient.request<CommunityComment>(
+        `/comments/${encodeURIComponent(commentId)}`,
+        {
+          credentials: "same-origin",
+          headers: { "If-Match": `"${version}"` },
+          method: "DELETE",
+        },
+      );
+    },
+  });
+}
+
 export function createBrowserStoryRelationClient({
   baseUrl = "/api/workspace",
   fetchImplementation = fetch,

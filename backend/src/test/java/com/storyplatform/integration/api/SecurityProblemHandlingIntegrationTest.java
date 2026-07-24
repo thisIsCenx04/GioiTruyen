@@ -90,4 +90,27 @@ class SecurityProblemHandlingIntegrationTest {
                 .andExpect(jsonPath("$.traceId")
                         .value("security-registration"));
     }
+
+    @Test
+    void anonymousCommentMutationRequiresAuthenticationNotCsrf()
+            throws Exception {
+        mockMvc.perform(post("/comments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header(
+                                CorrelationId.HEADER_NAME,
+                                "security-comment"
+                        )
+                        .content("""
+                                {
+                                  "targetType": "story",
+                                  "targetId": "20000000-0000-4000-8000-000000000001",
+                                  "body": "Nội dung"
+                                }
+                                """))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code")
+                        .value("AUTHENTICATION_REQUIRED"))
+                .andExpect(jsonPath("$.traceId")
+                        .value("security-comment"));
+    }
 }

@@ -11,6 +11,7 @@ import type { Route } from "next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 
+import { Comments } from "./comments";
 import styles from "./chapter-reader.module.css";
 
 export function ChapterReader({
@@ -179,6 +180,7 @@ export function ChapterReader({
           {chapter.next.title} →</Link> : <Link href={`/stories/${chapter.storyId}`}>
           Về trang truyện</Link>}
       </nav>
+      <Comments targetId={chapter.id} targetType="CHAPTER" />
     </main>
   );
 }

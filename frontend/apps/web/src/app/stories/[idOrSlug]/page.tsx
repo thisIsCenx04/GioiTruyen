@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 
 import { PublicShell } from "@/components/site-chrome";
+import { Comments } from "@/components/comments";
 import { StoryRelations } from "@/components/story-relations";
 import { catalog } from "@/lib/catalog";
 
@@ -125,6 +126,7 @@ export default async function StoryPage({ params }: StoryPageProps) {
             </p>
           )}
         </section>
+        <Comments targetId={story.id} targetType="STORY" />
       </article>
     </PublicShell>
   );

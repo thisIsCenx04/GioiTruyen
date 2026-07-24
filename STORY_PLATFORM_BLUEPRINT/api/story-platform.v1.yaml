@@ -636,6 +636,60 @@ paths:
           $ref: '#/components/responses/ValidationProblem'
         '429':
           $ref: '#/components/responses/RateLimited'
+  /comments/{commentId}:
+    parameters:
+      - in: path
+        name: commentId
+        required: true
+        schema: { type: string, format: uuid }
+      - in: header
+        name: If-Match
+        required: true
+        schema:
+          type: string
+          pattern: '^"[1-9][0-9]*"$'
+    patch:
+      tags: [Community]
+      operationId: updateOwnComment
+      summary: Sửa bình luận của chính người dùng bằng optimistic version
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCommentRequest'
+      responses:
+        '200':
+          description: Đã cập nhật
+          headers:
+            ETag:
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+        '404':
+          $ref: '#/components/responses/NotFoundProblem'
+        '409':
+          $ref: '#/components/responses/ConflictProblem'
+    delete:
+      tags: [Community]
+      operationId: deleteOwnComment
+      summary: Xóa mềm bình luận của chính người dùng
+      responses:
+        '200':
+          description: Đã tạo tombstone và giữ nguyên cấu trúc thread
+          headers:
+            ETag:
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+        '404':
+          $ref: '#/components/responses/NotFoundProblem'
+        '409':
+          $ref: '#/components/responses/ConflictProblem'
   /reports:
     post:
       tags: [Moderation]
@@ -1440,16 +1494,37 @@ components:
         targetId: { type: string, format: uuid }
         parentId: { type: string, format: uuid }
         body: { type: string, minLength: 1, maxLength: 5000 }
+    UpdateCommentRequest:
+      type: object
+      additionalProperties: false
+      required: [body]
+      properties:
+        body: { type: string, minLength: 1, maxLength: 5000 }
     Comment:
       type: object
       additionalProperties: false
-      required: [id, author, body, status, createdAt]
+      required: [id, targetType, targetId, rootId, depth, author, body, status, version, createdAt, updatedAt]
       properties:
         id: { type: string, format: uuid }
-        author: { $ref: '#/components/schemas/PublicUser' }
+        targetType: { type: string, enum: [STORY, CHAPTER] }
+        targetId: { type: string, format: uuid }
+        parentId: { type: [string, 'null'], format: uuid }
+        rootId: { type: string, format: uuid }
+        depth: { type: integer, minimum: 0, maximum: 2 }
+        author: { $ref: '#/components/schemas/CommentAuthor' }
         body: { type: string }
-        status: { type: string, enum: [visible, pending, hidden] }
+        status: { type: string, enum: [VISIBLE, HIDDEN, DELETED] }
+        version: { type: integer, format: int64, minimum: 1 }
         createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CommentAuthor:
+      type: object
+      additionalProperties: false
+      required: [id, displayName]
+      properties:
+        id: { type: string, format: uuid }
+        displayName: { type: string }
+        avatarMediaId: { type: [string, 'null'], format: uuid }
     CommentPage:
       type: object
       additionalProperties: false

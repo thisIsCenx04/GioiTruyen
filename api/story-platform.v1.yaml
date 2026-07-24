@@ -28,6 +28,8 @@ tags:
     description: Team-owned story and chapter authoring workflows.
   - name: Reading
     description: Public revisioned chapter reading operations.
+  - name: Community
+    description: Reader relations and safety-bounded discussion operations.
 security:
   - bearerAuth: []
 paths:
@@ -1069,6 +1071,147 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /comments:
+    get:
+      operationId: listComments
+      summary: List visible comments with bounded keyset pagination
+      security: []
+      tags: [Community]
+      parameters:
+        - name: targetType
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [story, chapter]
+        - name: targetId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: cursor
+          in: query
+          schema:
+            type: string
+            maxLength: 512
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: A page of visible comments and deletion tombstones
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommentPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: createComment
+      summary: Create a sanitized, rate-limited comment
+      tags: [Community]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCommentRequest"
+      responses:
+        "201":
+          description: Comment created
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /comments/{commentId}:
+    parameters:
+      - name: commentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+          pattern: '^"[1-9][0-9]*"$'
+    patch:
+      operationId: updateOwnComment
+      summary: Update an owned comment with optimistic concurrency
+      tags: [Community]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCommentRequest"
+      responses:
+        "200":
+          description: Comment updated
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      operationId: deleteOwnComment
+      summary: Soft-delete an owned comment while preserving its thread
+      tags: [Community]
+      responses:
+        "200":
+          description: Comment replaced by a deletion tombstone
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /reading-sessions/{sessionId}/heartbeats:
     post:
       operationId: ingestReadingHeartbeats
@@ -4261,6 +4404,113 @@ components:
           type: integer
           format: int64
           minimum: 0
+    CreateCommentRequest:
+      type: object
+      additionalProperties: false
+      required: [targetType, targetId, body]
+      properties:
+        targetType:
+          type: string
+          enum: [story, chapter]
+        targetId:
+          type: string
+          format: uuid
+        parentId:
+          type: string
+          format: uuid
+        body:
+          type: string
+          minLength: 1
+          maxLength: 5000
+    UpdateCommentRequest:
+      type: object
+      additionalProperties: false
+      required: [body]
+      properties:
+        body:
+          type: string
+          minLength: 1
+          maxLength: 5000
+    Comment:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - targetType
+        - targetId
+        - rootId
+        - depth
+        - author
+        - body
+        - status
+        - version
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        targetType:
+          type: string
+          enum: [STORY, CHAPTER]
+        targetId:
+          type: string
+          format: uuid
+        parentId:
+          type: [string, "null"]
+          format: uuid
+        rootId:
+          type: string
+          format: uuid
+        depth:
+          type: integer
+          minimum: 0
+          maximum: 2
+        author:
+          $ref: "#/components/schemas/CommentAuthor"
+        body:
+          type: string
+        status:
+          type: string
+          enum: [VISIBLE, HIDDEN, DELETED]
+        version:
+          type: integer
+          format: int64
+          minimum: 1
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    CommentAuthor:
+      type: object
+      additionalProperties: false
+      required: [id, displayName]
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        avatarMediaId:
+          type: [string, "null"]
+          format: uuid
+    CommentPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor, hasMore]
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/Comment"
+        nextCursor:
+          type: [string, "null"]
+          maxLength: 512
+        hasMore:
+          type: boolean
     Team:
       type: object
       additionalProperties: false
@@ -4443,6 +4693,23 @@ components:
             $ref: "#/components/schemas/Problem"
     Forbidden:
       description: The authenticated actor lacks the required Team ownership.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    Conflict:
+      description: The resource version or business uniqueness rule conflicts.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    RateLimited:
+      description: The caller exceeded a safety-bounded request quota.
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            minimum: 1
       content:
         application/problem+json:
           schema:

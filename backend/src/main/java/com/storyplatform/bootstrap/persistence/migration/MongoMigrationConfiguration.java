@@ -182,6 +182,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    CommentIndexes commentIndexes() {
+        return new CommentIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }
