@@ -1,5 +1,6 @@
 import { StoryApiError } from "@gioitruyen/api-client";
 import type { Metadata } from "next";
+import type { Route } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
@@ -101,6 +102,7 @@ export default async function StoryPage({ params }: StoryPageProps) {
                   id={`chapter-${chapter.number}`}
                   key={chapter.id}
                 >
+                  <Link href={`/read/${chapter.id}` as Route}>
                   <span>{String(chapter.number).padStart(3, "0")}</span>
                   <div>
                     <strong>{chapter.title}</strong>
@@ -111,6 +113,7 @@ export default async function StoryPage({ params }: StoryPageProps) {
                     </small>
                   </div>
                   <span aria-hidden="true">→</span>
+                  </Link>
                 </li>
               ))}
             </ol>

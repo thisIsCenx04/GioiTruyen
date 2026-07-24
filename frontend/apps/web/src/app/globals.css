@@ -608,15 +608,19 @@ main {
 }
 
 .chapterList li {
-  align-items: center;
   border-bottom: 0.08rem solid var(--line);
+}
+
+.chapterList li > a {
+  align-items: center;
   display: grid;
   gap: 1.5rem;
   grid-template-columns: 3rem 1fr auto;
   min-height: 5.2rem;
+  text-decoration: none;
 }
 
-.chapterList li > span {
+.chapterList li > a > span {
   color: var(--blue);
   font: 800 0.7rem/1 var(--utility);
   letter-spacing: 0.08em;
