@@ -13,6 +13,8 @@ import com.storyplatform.analytics.application
 import com.storyplatform.analytics.application.TrafficFraudOperations;
 import com.storyplatform.analytics.application.TrafficFraudScorer;
 import com.storyplatform.analytics.application.TrafficFraudService;
+import com.storyplatform.analytics.application.ViewAggregateOperations;
+import com.storyplatform.analytics.application.ViewAggregateService;
 import com.storyplatform.analytics.application.port
         .ReadingViewValidationRepository;
 import com.storyplatform.analytics.infrastructure.persistence
@@ -22,6 +24,9 @@ import com.storyplatform.analytics.infrastructure.persistence
 import com.storyplatform.analytics.application.port.TrafficFraudRepository;
 import com.storyplatform.analytics.infrastructure.persistence
         .MongoTrafficFraudRepository;
+import com.storyplatform.analytics.application.port.ViewAggregateRepository;
+import com.storyplatform.analytics.infrastructure.persistence
+        .MongoViewAggregateRepository;
 import com.storyplatform.analytics.infrastructure.security
         .HmacReadingSessionPseudonymizer;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,6 +43,29 @@ import java.util.Base64;
 
 @Configuration(proxyBeanMethods = false)
 public class AnalyticsConfiguration {
+
+    @Bean
+    ViewAggregateRepository viewAggregateRepository(MongoTemplate mongo) {
+        return new TransactionalViewAggregateRepository(
+                new MongoViewAggregateRepository(mongo)
+        );
+    }
+
+    @Bean
+    ViewAggregateOperations viewAggregateOperations(
+            ViewAggregateRepository repository,
+            @Value("${app.analytics.aggregates.lease:1m}")
+            Duration lease,
+            @Value("${app.analytics.aggregates.retry-delay:30s}")
+            Duration retryDelay
+    ) {
+        return new ViewAggregateService(
+                repository,
+                Clock.systemUTC(),
+                lease,
+                retryDelay
+        );
+    }
 
     @Bean
     TrafficFraudRepository trafficFraudRepository(MongoTemplate mongo) {

@@ -235,6 +235,10 @@ public final class MongoReadingViewValidationRepository
                                 classification.kind().name()
                         )
                         .setOnInsert(
+                                "occurredAt",
+                                classification.occurredAt()
+                        )
+                        .setOnInsert(
                                 "ruleVersion",
                                 classification.ruleVersion()
                         )
@@ -366,6 +370,7 @@ public final class MongoReadingViewValidationRepository
             String storyId,
             String chapterId,
             String kind,
+            Instant occurredAt,
             String ruleVersion,
             boolean valid,
             Set<String> reasons,

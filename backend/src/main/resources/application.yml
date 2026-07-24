@@ -87,6 +87,10 @@ app:
       enabled: ${ANALYTICS_FRAUD_ENABLED:false}
       lease: ${ANALYTICS_FRAUD_LEASE:1m}
       retry-delay: ${ANALYTICS_FRAUD_RETRY_DELAY:30s}
+    aggregates:
+      enabled: ${ANALYTICS_AGGREGATES_ENABLED:false}
+      lease: ${ANALYTICS_AGGREGATES_LEASE:1m}
+      retry-delay: ${ANALYTICS_AGGREGATES_RETRY_DELAY:30s}
   notifications:
     delivery:
       enabled: ${NOTIFICATION_DELIVERY_ENABLED:false}

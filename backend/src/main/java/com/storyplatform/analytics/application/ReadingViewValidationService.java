@@ -100,6 +100,7 @@ public final class ReadingViewValidationService
                             event.storyId(),
                             event.chapterId(),
                             event.kind(),
+                            event.occurredAt(),
                             event.position(),
                             event.activeSeconds(),
                             duplicate,

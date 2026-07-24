@@ -232,6 +232,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    ViewAggregateIndexes viewAggregateIndexes() {
+        return new ViewAggregateIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

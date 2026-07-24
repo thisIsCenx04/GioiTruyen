@@ -34,6 +34,7 @@ public final class ReadingViewClassifier {
                 candidate.storyId(),
                 candidate.chapterId(),
                 candidate.kind(),
+                candidate.occurredAt(),
                 RULE_VERSION,
                 reasons.isEmpty(),
                 Set.copyOf(reasons),
@@ -49,6 +50,7 @@ public final class ReadingViewClassifier {
             String storyId,
             String chapterId,
             RawReadingEvent.Kind kind,
+            Instant occurredAt,
             double position,
             Integer activeSeconds,
             boolean duplicate,
@@ -63,6 +65,7 @@ public final class ReadingViewClassifier {
             Objects.requireNonNull(storyId, "storyId");
             Objects.requireNonNull(chapterId, "chapterId");
             Objects.requireNonNull(kind, "kind");
+            Objects.requireNonNull(occurredAt, "occurredAt");
             botSignals = Set.copyOf(botSignals);
         }
     }
@@ -75,6 +78,7 @@ public final class ReadingViewClassifier {
             String storyId,
             String chapterId,
             RawReadingEvent.Kind kind,
+            Instant occurredAt,
             String ruleVersion,
             boolean valid,
             Set<String> reasons,

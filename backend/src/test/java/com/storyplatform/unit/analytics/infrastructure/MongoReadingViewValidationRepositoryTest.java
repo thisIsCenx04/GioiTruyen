@@ -224,6 +224,7 @@ class MongoReadingViewValidationRepositoryTest {
                 "story",
                 "chapter",
                 RawReadingEvent.Kind.HEARTBEAT,
+                NOW,
                 ReadingViewClassifier.RULE_VERSION,
                 false,
                 Set.of("DUPLICATE"),
