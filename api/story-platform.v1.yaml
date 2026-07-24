@@ -989,6 +989,86 @@ paths:
                 $ref: "#/components/schemas/Problem"
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
+  /stories/{storyId}/favorite:
+    get:
+      operationId: getStoryFavorite
+      summary: Get the caller's favorite relation
+      tags: [Community]
+      parameters:
+        - $ref: "#/components/parameters/StoryId"
+      responses:
+        "200":
+          $ref: "#/components/responses/StoryRelation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: favoriteStory
+      summary: Idempotently favorite a published story
+      tags: [Community]
+      parameters:
+        - $ref: "#/components/parameters/StoryId"
+      responses:
+        "200":
+          $ref: "#/components/responses/StoryRelation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: unfavoriteStory
+      summary: Idempotently remove a story favorite
+      tags: [Community]
+      parameters:
+        - $ref: "#/components/parameters/StoryId"
+      responses:
+        "200":
+          $ref: "#/components/responses/StoryRelation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /stories/{storyId}/follow:
+    get:
+      operationId: getStoryFollow
+      summary: Get the caller's story follow relation
+      tags: [Community]
+      parameters:
+        - $ref: "#/components/parameters/StoryId"
+      responses:
+        "200":
+          $ref: "#/components/responses/StoryRelation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: followStory
+      summary: Idempotently follow a published story
+      tags: [Community]
+      parameters:
+        - $ref: "#/components/parameters/StoryId"
+      responses:
+        "200":
+          $ref: "#/components/responses/StoryRelation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: unfollowStory
+      summary: Idempotently remove a story follow
+      tags: [Community]
+      parameters:
+        - $ref: "#/components/parameters/StoryId"
+      responses:
+        "200":
+          $ref: "#/components/responses/StoryRelation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /reading-sessions/{sessionId}/heartbeats:
     post:
       operationId: ingestReadingHeartbeats
@@ -2416,6 +2496,13 @@ components:
       bearerFormat: JWT
       description: Access token issued by the GioiTruyen identity service.
   parameters:
+    StoryId:
+      name: storyId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     TeamId:
       name: teamId
       in: path
@@ -4157,6 +4244,23 @@ components:
           maxLength: 512
         hasMore:
           type: boolean
+    StoryRelation:
+      type: object
+      additionalProperties: false
+      required: [storyId, type, active, count]
+      properties:
+        storyId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [FAVORITE, FOLLOW]
+        active:
+          type: boolean
+        count:
+          type: integer
+          format: int64
+          minimum: 0
     Team:
       type: object
       additionalProperties: false
@@ -4314,6 +4418,17 @@ components:
           type: string
           format: uri-reference
   responses:
+    StoryRelation:
+      description: Caller relation state and source-of-truth count
+      headers:
+        Cache-Control:
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/StoryRelation"
     BadRequest:
       description: The request, token, or proposed password is invalid.
       content:

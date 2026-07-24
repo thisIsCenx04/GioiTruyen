@@ -66,6 +66,11 @@ function allowed(method: string, path: string) {
     return ["DELETE", "GET", "PUT"].includes(method);
   }
   if (
+    new RegExp(`^stories/${uuid}/(favorite|follow)$`, "u").test(path)
+  ) {
+    return ["DELETE", "GET", "PUT"].includes(method);
+  }
+  if (
     new RegExp(`^me/reading-progress/${uuid}$`, "u").test(path)
   ) {
     return method === "GET" || method === "PUT";

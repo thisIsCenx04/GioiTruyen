@@ -41,6 +41,8 @@ public class SecurityConfiguration {
                         "/me/reading-history",
                         "/me/reading-history/*",
                         "/me/reading-progress/*",
+                        "/stories/*/favorite",
+                        "/stories/*/follow",
                         "/reading-sessions",
                         "/reading-sessions/*/heartbeats",
                         "/reading-sessions/*/complete",
@@ -101,6 +103,10 @@ public class SecurityConfiguration {
                                 "/me/reading-history",
                                 "/me/reading-history/*",
                                 "/me/reading-progress/*"
+                        ).authenticated()
+                        .requestMatchers(
+                                "/stories/*/favorite",
+                                "/stories/*/follow"
                         ).authenticated()
                         .requestMatchers(
                                 HttpMethod.POST,

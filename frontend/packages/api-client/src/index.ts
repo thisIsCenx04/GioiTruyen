@@ -782,6 +782,38 @@ export type ReadingCompletionReceipt = Readonly<{
   duplicate: boolean;
 }>;
 
+export type StoryRelation = Readonly<{
+  storyId: string;
+  type: "FAVORITE" | "FOLLOW";
+  active: boolean;
+  count: number;
+}>;
+
+export function createBrowserStoryRelationClient({
+  baseUrl = "/api/workspace",
+  fetchImplementation = fetch,
+}: BrowserTeamClientOptions = {}) {
+  const client = createStoryApiClient({ baseUrl, fetchImplementation });
+  const path = (storyId: string, relation: "favorite" | "follow") =>
+    `/stories/${encodeURIComponent(storyId)}/${relation}` as const;
+  const request = (
+    storyId: string,
+    relation: "favorite" | "follow",
+    method = "GET",
+  ) => client.request<StoryRelation>(path(storyId, relation), {
+    credentials: "same-origin",
+    method,
+  });
+  return Object.freeze({
+    status: (storyId: string, relation: "favorite" | "follow") =>
+      request(storyId, relation),
+    add: (storyId: string, relation: "favorite" | "follow") =>
+      request(storyId, relation, "PUT"),
+    remove: (storyId: string, relation: "favorite" | "follow") =>
+      request(storyId, relation, "DELETE"),
+  });
+}
+
 export function createBrowserReadingSessionClient({
   baseUrl = "/api",
   fetchImplementation = fetch,

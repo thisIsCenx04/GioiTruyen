@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 
 import { PublicShell } from "@/components/site-chrome";
+import { StoryRelations } from "@/components/story-relations";
 import { catalog } from "@/lib/catalog";
 
 type StoryPageProps = Readonly<{
@@ -84,6 +85,7 @@ export default async function StoryPage({ params }: StoryPageProps) {
                 Đọc từ chương đầu
               </Link>
             )}
+            <StoryRelations storyId={story.id} />
           </div>
         </header>
 
