@@ -162,6 +162,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    ReadingProgressIndexes readingProgressIndexes() {
+        return new ReadingProgressIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

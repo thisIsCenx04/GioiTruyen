@@ -748,6 +748,50 @@ export type PublishedChapterDetail = PublicChapter &
     }> | null;
   }>;
 
+export type ReadingProgress = Readonly<{
+  storyId: string;
+  chapterId: string;
+  position: number;
+  deviceUpdatedAt: string;
+  updatedAt: string;
+  version: number;
+}>;
+
+export function createBrowserReadingClient({
+  baseUrl = "/api/workspace",
+  fetchImplementation = fetch,
+}: BrowserTeamClientOptions = {}) {
+  const client = createStoryApiClient({ baseUrl, fetchImplementation });
+  const path = (storyId: string) =>
+    `/me/reading-progress/${encodeURIComponent(storyId)}` as const;
+
+  return Object.freeze({
+    progress(storyId: string) {
+      return client.request<ReadingProgress>(path(storyId), {
+        credentials: "same-origin",
+      });
+    },
+    synchronize(
+      storyId: string,
+      input: {
+        chapterId: string;
+        position: number;
+        deviceUpdatedAt: string;
+      },
+      version?: number,
+    ) {
+      return client.request<ReadingProgress>(path(storyId), {
+        body: input,
+        credentials: "same-origin",
+        ...(version === undefined
+          ? {}
+          : { headers: { "If-Match": `"${version}"` } }),
+        method: "PUT",
+      });
+    },
+  });
+}
+
 export type SearchHit = Readonly<{
   story: HomeStorySummary;
   score: number;

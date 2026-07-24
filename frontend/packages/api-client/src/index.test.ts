@@ -5,6 +5,7 @@ import { apiMockServer } from "../../../test/msw/server";
 import {
   createBrowserAuthClient,
   createBrowserPublishingClient,
+  createBrowserReadingClient,
   createBrowserTeamClient,
   createPublicCatalogClient,
   createStoryApiClient,
@@ -78,6 +79,43 @@ describe("story API client", () => {
         traceId: "trace-01",
       },
     });
+  });
+});
+
+describe("browser reading client", () => {
+  it("synchronizes cross-device progress with If-Match", async () => {
+    apiMockServer.use(
+      http.put(
+        "/api/workspace/me/reading-progress/story-01",
+        async ({ request }) => {
+          expect(request.headers.get("if-match")).toBe('"4"');
+          await expect(request.json()).resolves.toMatchObject({
+            chapterId: "chapter-03",
+            position: 62.5,
+          });
+          return HttpResponse.json({
+            chapterId: "chapter-03",
+            deviceUpdatedAt: "2026-07-24T00:00:00Z",
+            position: 62.5,
+            storyId: "story-01",
+            updatedAt: "2026-07-24T00:00:01Z",
+            version: 5,
+          });
+        },
+      ),
+    );
+
+    await expect(
+      createBrowserReadingClient().synchronize(
+        "story-01",
+        {
+          chapterId: "chapter-03",
+          deviceUpdatedAt: "2026-07-24T00:00:00Z",
+          position: 62.5,
+        },
+        4,
+      ),
+    ).resolves.toMatchObject({ position: 62.5, version: 5 });
   });
 });
 

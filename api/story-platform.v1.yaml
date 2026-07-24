@@ -939,6 +939,95 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
+  /me/reading-progress/{storyId}:
+    get:
+      operationId: getReadingProgress
+      summary: Get the caller's synchronized progress for one story
+      tags: [Reading]
+      parameters:
+        - name: storyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Private reading progress
+          headers:
+            ETag:
+              schema:
+                type: string
+                pattern: '^"[1-9][0-9]*"$'
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadingProgress"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: synchronizeReadingProgress
+      summary: Synchronize progress using device time and optimistic version
+      description: |
+        A newer deviceUpdatedAt wins. An older device update returns the
+        existing server winner without overwriting it. Existing records require
+        If-Match; concurrent newer updates return a conflict.
+      tags: [Reading]
+      parameters:
+        - name: storyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: If-Match
+          in: header
+          required: false
+          schema:
+            type: string
+            pattern: '^"[1-9][0-9]*"$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SynchronizeReadingProgressRequest"
+      responses:
+        "200":
+          description: Created, updated, or existing LWW winner
+          headers:
+            ETag:
+              schema:
+                type: string
+                pattern: '^"[1-9][0-9]*"$'
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadingProgress"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: A newer progress write won the optimistic race
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
   /teams:
     get:
       operationId: listTeams
@@ -3686,6 +3775,52 @@ components:
         title:
           type: string
           maxLength: 200
+    SynchronizeReadingProgressRequest:
+      type: object
+      additionalProperties: false
+      required: [chapterId, position, deviceUpdatedAt]
+      properties:
+        chapterId:
+          type: string
+          format: uuid
+        position:
+          type: number
+          minimum: 0
+          maximum: 100
+        deviceUpdatedAt:
+          type: string
+          format: date-time
+    ReadingProgress:
+      type: object
+      additionalProperties: false
+      required:
+        - storyId
+        - chapterId
+        - position
+        - deviceUpdatedAt
+        - updatedAt
+        - version
+      properties:
+        storyId:
+          type: string
+          format: uuid
+        chapterId:
+          type: string
+          format: uuid
+        position:
+          type: number
+          minimum: 0
+          maximum: 100
+        deviceUpdatedAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+          minimum: 1
     Team:
       type: object
       additionalProperties: false
