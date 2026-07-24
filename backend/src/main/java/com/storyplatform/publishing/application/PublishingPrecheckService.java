@@ -18,7 +18,7 @@ import java.util.Objects;
 public final class PublishingPrecheckService
         implements PublishingPrecheckOperations {
 
-    public static final String POLICY_VERSION = "publishing-precheck-v1";
+    public static final String POLICY_VERSION = "publishing-precheck-v2";
 
     private final PublishingPrecheckRepository repository;
     private final PublishingPrecheckEngine engine;

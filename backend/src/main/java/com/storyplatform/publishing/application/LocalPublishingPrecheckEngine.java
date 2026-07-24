@@ -2,6 +2,8 @@ package com.storyplatform.publishing.application;
 
 import com.storyplatform.publishing.application.port
         .PublishingPrecheckRepository;
+import com.storyplatform.moderation.application.contract
+        .ExternalDonationContentPolicy;
 import org.jsoup.Jsoup;
 
 import java.net.URI;
@@ -10,7 +12,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -20,17 +21,21 @@ public final class LocalPublishingPrecheckEngine
 
     private static final int MAXIMUM_LINKS = 50;
     private static final long MAXIMUM_SCAN_CHARACTERS = 5_000_000;
-    private static final Pattern PAYMENT_SIGNAL = Pattern.compile(
-            "(?iu)(?:\\bqr\\b|chuyển\\s*khoản|tài\\s*khoản\\s*ngân\\s*hàng"
-                    + "|bank\\s*account|payment\\s*code|donat(?:e|ion))"
-    );
     private static final Pattern REPEATED_CHARACTER =
             Pattern.compile("(.)\\1{11,}");
 
     private final Clock clock;
+    private final ExternalDonationContentPolicy donationPolicy;
 
-    public LocalPublishingPrecheckEngine(Clock clock) {
+    public LocalPublishingPrecheckEngine(
+            Clock clock,
+            ExternalDonationContentPolicy donationPolicy
+    ) {
         this.clock = Objects.requireNonNull(clock, "clock");
+        this.donationPolicy = Objects.requireNonNull(
+                donationPolicy,
+                "donationPolicy"
+        );
     }
 
     @Override
@@ -44,7 +49,9 @@ public final class LocalPublishingPrecheckEngine
         List<CheckResult> results = new ArrayList<>();
         results.add(schema(evidence));
         results.add(media(evidence));
-        long characters = evidence.chapters().stream()
+        long characters = length(evidence.storyTitle())
+                + length(evidence.storySynopsis())
+                + evidence.chapters().stream()
                 .mapToLong(value -> (long) value.contentHtml().length()
                         + value.plainText().length())
                 .sum();
@@ -76,6 +83,9 @@ public final class LocalPublishingPrecheckEngine
             PublishingPrecheckRepository.ReviewEvidence evidence
     ) {
         boolean valid = !evidence.chapters().isEmpty()
+                && evidence.storyTitle() != null
+                && !evidence.storyTitle().isBlank()
+                && evidence.storySynopsis() != null
                 && evidence.chapters().size()
                 == evidence.review().chapters().size()
                 && evidence.chapters().stream().allMatch(value ->
@@ -152,20 +162,49 @@ public final class LocalPublishingPrecheckEngine
             PublishingPrecheckRepository.ReviewEvidence evidence,
             Instant deadline
     ) {
-        boolean signal = false;
+        ExternalDonationContentPolicy.Decision decision =
+                donationPolicy.assess(
+                        "",
+                        Objects.toString(evidence.storyTitle(), "")
+                                + "\n"
+                                + Objects.toString(
+                                evidence.storySynopsis(),
+                                ""
+                        )
+                ).decision();
         for (var chapter : evidence.chapters()) {
             deadline(deadline);
-            if (PAYMENT_SIGNAL.matcher(
-                    chapter.plainText().toLowerCase(Locale.ROOT)
-            ).find()) {
-                signal = true;
+            var assessed = donationPolicy.assess(
+                    chapter.contentHtml(),
+                    chapter.plainText()
+            );
+            if (assessed.decision()
+                    == ExternalDonationContentPolicy.Decision.BLOCK) {
+                decision = assessed.decision();
                 break;
             }
+            if (assessed.decision()
+                    == ExternalDonationContentPolicy.Decision.REVIEW) {
+                if (decision
+                        == ExternalDonationContentPolicy.Decision.ALLOW) {
+                    decision = assessed.decision();
+                }
+            }
         }
+        Outcome outcome = switch (decision) {
+            case ALLOW -> Outcome.PASS;
+            case REVIEW -> Outcome.FLAG;
+            case BLOCK -> Outcome.FAIL;
+        };
+        String code = switch (decision) {
+            case ALLOW -> "DONATION_POLICY_PASS";
+            case REVIEW -> "DONATION_CONTENT_REVIEW";
+            case BLOCK -> "EXTERNAL_DONATION_BLOCKED";
+        };
         return result(
                 Rule.QR_POLICY,
-                signal ? Outcome.FLAG : Outcome.PASS,
-                signal ? "PAYMENT_QR_SIGNAL" : "QR_POLICY_PASS"
+                outcome,
+                code
         );
     }
 
@@ -196,6 +235,10 @@ public final class LocalPublishingPrecheckEngine
         if (!clock.instant().isBefore(deadline)) {
             throw new PublishingPrecheckTimeoutException();
         }
+    }
+
+    private static long length(String value) {
+        return value == null ? 0 : value.length();
     }
 
     private static CheckResult result(

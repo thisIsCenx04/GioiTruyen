@@ -4,6 +4,8 @@ import com.storyplatform.moderation.application.CommunityReportOperations;
 import com.storyplatform.moderation.application.CommunityReportService;
 import com.storyplatform.moderation.application.CopyrightCaseOperations;
 import com.storyplatform.moderation.application.CopyrightCaseService;
+import com.storyplatform.moderation.application
+        .ExternalDonationContentDetector;
 import com.storyplatform.moderation.application.ModerationAppealOperations;
 import com.storyplatform.moderation.application.ModerationAppealService;
 import com.storyplatform.moderation.application.ModerationQueueOperations;
@@ -11,6 +13,8 @@ import com.storyplatform.moderation.application.ModerationQueueService;
 import com.storyplatform.moderation.application.ModerationDecisionOperations;
 import com.storyplatform.moderation.application.ModerationDecisionService;
 import com.storyplatform.moderation.application.ReportRateLimiter;
+import com.storyplatform.moderation.application.contract
+        .ExternalDonationContentPolicy;
 import com.storyplatform.moderation.application.port
         .CommunityReportRepository;
 import com.storyplatform.moderation.application.port.CopyrightCaseRepository;
@@ -50,6 +54,11 @@ import java.util.UUID;
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(ModerationQueueProperties.class)
 public class ModerationConfiguration {
+
+    @Bean
+    ExternalDonationContentPolicy externalDonationContentPolicy() {
+        return new ExternalDonationContentDetector();
+    }
 
     @Bean
     CopyrightCaseRepository copyrightCaseRepository(MongoTemplate mongo) {

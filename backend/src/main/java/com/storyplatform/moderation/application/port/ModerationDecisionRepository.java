@@ -8,6 +8,8 @@ import java.util.List;
 
 public interface ModerationDecisionRepository {
 
+    boolean hasBlockingDonationPolicy(String reviewId);
+
     Result decide(
             String reviewId,
             String reviewerId,

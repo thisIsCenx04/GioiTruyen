@@ -1,5 +1,7 @@
 package com.storyplatform.unit.teams.application;
 
+import com.storyplatform.moderation.application
+        .ExternalDonationContentDetector;
 import com.storyplatform.teams.application.TeamConflictException;
 import com.storyplatform.teams.application.TeamNotFoundException;
 import com.storyplatform.teams.application.TeamUseCase;
@@ -50,7 +52,8 @@ class TeamUseCaseTest {
                 teams,
                 membershipRepository,
                 () -> "73457d55-9602-4bcd-bbf0-e38b99c6c56e",
-                Clock.fixed(NOW, ZoneOffset.UTC)
+                Clock.fixed(NOW, ZoneOffset.UTC),
+                new ExternalDonationContentDetector()
         );
     }
 
@@ -85,6 +88,27 @@ class TeamUseCaseTest {
                 ""
         )).isInstanceOf(TeamConflictException.class);
         assertThat(memberships).isEmpty();
+    }
+
+    @Test
+    void blocksExternalDonationDetailsBeforeWritingTeam() {
+        assertThatThrownBy(() -> useCase.create(
+                "user-1",
+                "lam-da",
+                "Lâm Dạ",
+                "Ủng hộ qua số tài khoản 0123456789"
+        )).isInstanceOf(TeamConflictException.class)
+                .extracting("code")
+                .isEqualTo("TEAM_EXTERNAL_DONATION_CONTENT");
+        assertThat(memberships).isEmpty();
+        assertThat(teams.team).isEmpty();
+
+        assertThatThrownBy(() -> useCase.create(
+                "user-1",
+                "lam-da",
+                "https://paypal.me/lamda",
+                "Donate"
+        )).isInstanceOf(TeamConflictException.class);
     }
 
     @Test

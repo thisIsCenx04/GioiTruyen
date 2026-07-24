@@ -88,6 +88,10 @@ class MongoPublishingPrecheckRepositoryTest {
 
         var evidence = repository.loadEvidence(review).orElseThrow();
 
+        assertThat(evidence.storyTitle())
+                .isEqualTo(storyRevision().snapshot().title());
+        assertThat(evidence.storySynopsis())
+                .isEqualTo(storyRevision().snapshot().synopsis());
         assertThat(evidence.coverAssetId())
                 .isEqualTo(storyRevision().snapshot().coverAssetId());
         assertThat(evidence.cover().moderationState())

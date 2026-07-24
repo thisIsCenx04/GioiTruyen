@@ -2,6 +2,8 @@ package com.storyplatform.publishing.infrastructure;
 
 import com.storyplatform.publishing.application
         .LocalPublishingPrecheckEngine;
+import com.storyplatform.moderation.application.contract
+        .ExternalDonationContentPolicy;
 import com.storyplatform.publishing.application.PublishingPrecheckEngine;
 import com.storyplatform.publishing.application.PublishingPrecheckOperations;
 import com.storyplatform.publishing.application.PublishingPrecheckService;
@@ -36,8 +38,13 @@ public class PublishingPrecheckConfiguration {
     }
 
     @Bean
-    PublishingPrecheckEngine publishingPrecheckEngine() {
-        return new LocalPublishingPrecheckEngine(Clock.systemUTC());
+    PublishingPrecheckEngine publishingPrecheckEngine(
+            ExternalDonationContentPolicy donationPolicy
+    ) {
+        return new LocalPublishingPrecheckEngine(
+                Clock.systemUTC(),
+                donationPolicy
+        );
     }
 
     @Bean

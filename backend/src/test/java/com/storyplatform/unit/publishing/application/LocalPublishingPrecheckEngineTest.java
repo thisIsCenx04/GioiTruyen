@@ -1,5 +1,7 @@
 package com.storyplatform.unit.publishing.application;
 
+import com.storyplatform.moderation.application
+        .ExternalDonationContentDetector;
 import com.storyplatform.publishing.application
         .LocalPublishingPrecheckEngine;
 import com.storyplatform.publishing.application.PublishingPrecheckEngine;
@@ -23,7 +25,8 @@ class LocalPublishingPrecheckEngineTest {
             Instant.parse("2026-07-24T00:00:00Z");
     private final LocalPublishingPrecheckEngine engine =
             new LocalPublishingPrecheckEngine(
-                    Clock.fixed(NOW, ZoneOffset.UTC)
+                    Clock.fixed(NOW, ZoneOffset.UTC),
+                    new ExternalDonationContentDetector()
             );
 
     @Test
@@ -45,7 +48,7 @@ class LocalPublishingPrecheckEngineTest {
     }
 
     @Test
-    void paymentLinksAndRepeatedContentProduceStructuredFlags() {
+    void externalDonationFailsAndOtherSignalsRemainReviewable() {
         var results = engine.check(
                 evidence(
                         "<p><a href=\"http://unsafe.test\">pay</a></p>",
@@ -56,12 +59,19 @@ class LocalPublishingPrecheckEngineTest {
                 NOW.plusSeconds(1)
         );
 
+        assertThat(results).anySatisfy(value -> {
+            assertThat(value.rule())
+                    .isEqualTo(PublishingPrecheckEngine.Rule.QR_POLICY);
+            assertThat(value.outcome())
+                    .isEqualTo(PublishingPrecheckEngine.Outcome.FAIL);
+            assertThat(value.code())
+                    .isEqualTo("EXTERNAL_DONATION_BLOCKED");
+        });
         assertThat(results).filteredOn(value ->
                 value.outcome() == PublishingPrecheckEngine.Outcome.FLAG
         ).extracting(PublishingPrecheckEngine.CheckResult::rule)
                 .containsExactly(
                         PublishingPrecheckEngine.Rule.LINK_POLICY,
-                        PublishingPrecheckEngine.Rule.QR_POLICY,
                         PublishingPrecheckEngine.Rule.SPAM
                 );
     }
@@ -70,6 +80,8 @@ class LocalPublishingPrecheckEngineTest {
     void unapprovedCoverAndMissingRevisionRequireHumanReview() {
         var incomplete = new PublishingPrecheckRepository.ReviewEvidence(
                 PublishingPrecheckServiceTest.review(),
+                "Story",
+                "Synopsis",
                 "30000000-0000-4000-8000-000000000001",
                 new PublishingPrecheckRepository.MediaEvidence(
                         "TEAM",
@@ -98,6 +110,59 @@ class LocalPublishingPrecheckEngineTest {
     }
 
     @Test
+    void scansStoryMetadataAsPartOfFrozenReviewEvidence() {
+        var safe = evidence(
+                "<p>Chapter</p>",
+                "Chapter",
+                "a".repeat(64),
+                null
+        );
+        var unsafe = new PublishingPrecheckRepository.ReviewEvidence(
+                safe.review(),
+                safe.storyTitle(),
+                "Donate at https://paypal.me/author",
+                safe.coverAssetId(),
+                safe.cover(),
+                safe.chapters()
+        );
+
+        assertThat(engine.check(unsafe, NOW.plusSeconds(1)))
+                .anySatisfy(result -> {
+                    assertThat(result.rule())
+                            .isEqualTo(
+                                    PublishingPrecheckEngine.Rule.QR_POLICY
+                            );
+                    assertThat(result.outcome())
+                            .isEqualTo(
+                                    PublishingPrecheckEngine.Outcome.FAIL
+                            );
+                });
+    }
+
+    @Test
+    void ambiguousDonationLinkCreatesReviewSignalNotHardFailure() {
+        var results = engine.check(
+                evidence(
+                        "<p><a href=\"https://author.example/support\">"
+                                + "Donate here</a></p>",
+                        "Support the author",
+                        "a".repeat(64),
+                        null
+                ),
+                NOW.plusSeconds(1)
+        );
+
+        assertThat(results).anySatisfy(result -> {
+            assertThat(result.rule())
+                    .isEqualTo(PublishingPrecheckEngine.Rule.QR_POLICY);
+            assertThat(result.outcome())
+                    .isEqualTo(PublishingPrecheckEngine.Outcome.FLAG);
+            assertThat(result.code())
+                    .isEqualTo("DONATION_CONTENT_REVIEW");
+        });
+    }
+
+    @Test
     void expiredBudgetFallsBackThroughTimeoutSignal() {
         assertThatThrownBy(() -> engine.check(
                 PublishingPrecheckServiceTest.evidence(),
@@ -113,6 +178,8 @@ class LocalPublishingPrecheckEngineTest {
     ) {
         return new PublishingPrecheckRepository.ReviewEvidence(
                 PublishingPrecheckServiceTest.review(),
+                "Story",
+                "Synopsis",
                 cover == null
                         ? null
                         : "30000000-0000-4000-8000-000000000001",

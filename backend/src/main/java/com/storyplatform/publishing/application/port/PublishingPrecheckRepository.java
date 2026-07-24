@@ -47,6 +47,8 @@ public interface PublishingPrecheckRepository {
 
     record ReviewEvidence(
             ClaimedReview review,
+            String storyTitle,
+            String storySynopsis,
             String coverAssetId,
             MediaEvidence cover,
             List<ChapterEvidence> chapters

@@ -32,6 +32,24 @@ public final class MongoModerationDecisionRepository
     }
 
     @Override
+    public boolean hasBlockingDonationPolicy(String reviewId) {
+        Criteria blocked = Criteria.where("checks").elemMatch(
+                Criteria.where("rule").is("QR_POLICY")
+                        .and("outcome").is("FAIL")
+                        .and("code").is(
+                                "EXTERNAL_DONATION_BLOCKED"
+                        )
+        );
+        return mongo.exists(
+                Query.query(new Criteria().andOperator(
+                        Criteria.where("_id").is(reviewId),
+                        blocked
+                )),
+                MongoModerationReviewDocument.class
+        );
+    }
+
+    @Override
     public Result decide(
             String reviewId,
             String reviewerId,

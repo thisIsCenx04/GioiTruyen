@@ -198,6 +198,8 @@ class PublishingPrecheckServiceTest {
     static PublishingPrecheckRepository.ReviewEvidence evidence() {
         return new PublishingPrecheckRepository.ReviewEvidence(
                 review(),
+                "Story",
+                "Synopsis",
                 null,
                 null,
                 List.of(new PublishingPrecheckRepository.ChapterEvidence(

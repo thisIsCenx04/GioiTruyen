@@ -56,6 +56,15 @@ public final class ModerationDecisionService
             );
         }
         List<String> evidence = evidence(command.evidenceRefs());
+        if (command.decision() == Decision.APPROVE
+                && repository.hasBlockingDonationPolicy(review)) {
+            throw new ModerationDecisionException(
+                    "EXTERNAL_DONATION_CONTENT_BLOCKED",
+                    "Remove external donation or payment content "
+                            + "before approval.",
+                    ModerationDecisionException.Kind.CONFLICT
+            );
+        }
         Instant now = clock.instant();
         ModerationDecisionRepository.Result result = repository.decide(
                 review,

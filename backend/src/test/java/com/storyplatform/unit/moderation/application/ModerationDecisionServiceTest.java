@@ -20,6 +20,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 class ModerationDecisionServiceTest {
@@ -116,6 +117,21 @@ class ModerationDecisionServiceTest {
         )).isInstanceOf(ModerationDecisionException.class)
                 .extracting("code")
                 .isEqualTo("REVIEW_TARGET_STALE");
+    }
+
+    @Test
+    void cannotApproveAConfirmedExternalDonationViolation() {
+        when(repository.hasBlockingDonationPolicy(REVIEW))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> service().decide(
+                REVIEWER, REVIEW, 3, approve()
+        )).isInstanceOf(ModerationDecisionException.class)
+                .extracting("code")
+                .isEqualTo("EXTERNAL_DONATION_CONTENT_BLOCKED");
+        verify(repository, never()).decide(
+                any(), any(), anyLong(), any(), any()
+        );
     }
 
     @Test

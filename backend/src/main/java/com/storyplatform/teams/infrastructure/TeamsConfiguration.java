@@ -1,6 +1,8 @@
 package com.storyplatform.teams.infrastructure;
 
 import com.storyplatform.identity.application.contract.IdentityUserDirectory;
+import com.storyplatform.moderation.application.contract
+        .ExternalDonationContentPolicy;
 import com.storyplatform.shared.events.persistence.OutboxAppender;
 import com.storyplatform.shared.cache.RedisKeyFactory;
 import com.storyplatform.shared.cache.ResilientRedisCache;
@@ -48,13 +50,15 @@ public class TeamsConfiguration {
     @Bean
     TeamOperations teamOperations(
             TeamRepository teams,
-            TeamMembershipRepository memberships
+            TeamMembershipRepository memberships,
+            ExternalDonationContentPolicy donationPolicy
     ) {
         TeamUseCase useCase = new TeamUseCase(
                 teams,
                 memberships,
                 () -> UUID.randomUUID().toString(),
-                Clock.systemUTC()
+                Clock.systemUTC(),
+                donationPolicy
         );
         return new TransactionalTeamOperations(useCase);
     }

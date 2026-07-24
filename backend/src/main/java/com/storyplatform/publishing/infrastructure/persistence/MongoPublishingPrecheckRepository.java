@@ -105,6 +105,8 @@ public final class MongoPublishingPrecheckRepository
                 : cover(coverAssetId);
         return Optional.of(new ReviewEvidence(
                 review,
+                story.snapshot().title(),
+                story.snapshot().synopsis(),
                 coverAssetId,
                 cover,
                 chapters

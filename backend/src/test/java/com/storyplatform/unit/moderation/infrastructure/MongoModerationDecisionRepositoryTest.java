@@ -133,6 +133,23 @@ class MongoModerationDecisionRepositoryTest {
         );
     }
 
+    @Test
+    void detectsBlockingDonationCheckOnTheFrozenReview() {
+        MongoTemplate mongo = mock(MongoTemplate.class);
+        when(mongo.exists(
+                any(Query.class),
+                eq(MongoModerationReviewDocument.class)
+        )).thenReturn(true);
+
+        assertThat(repository(mongo).hasBlockingDonationPolicy(
+                review().id()
+        )).isTrue();
+        verify(mongo).exists(
+                any(Query.class),
+                eq(MongoModerationReviewDocument.class)
+        );
+    }
+
     private static MongoTemplate successfulMongo() {
         MongoTemplate mongo = mock(MongoTemplate.class);
         when(mongo.findAndModify(

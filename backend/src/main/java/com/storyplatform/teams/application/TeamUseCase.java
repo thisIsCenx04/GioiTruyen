@@ -1,5 +1,7 @@
 package com.storyplatform.teams.application;
 
+import com.storyplatform.moderation.application.contract
+        .ExternalDonationContentPolicy;
 import com.storyplatform.teams.application.port.TeamMembershipRepository;
 import com.storyplatform.teams.application.port.TeamRepository;
 import com.storyplatform.teams.domain.Team;
@@ -17,12 +19,14 @@ public final class TeamUseCase implements TeamOperations {
     private final TeamMembershipRepository memberships;
     private final Supplier<String> ids;
     private final Clock clock;
+    private final ExternalDonationContentPolicy donationPolicy;
 
     public TeamUseCase(
             TeamRepository teams,
             TeamMembershipRepository memberships,
             Supplier<String> ids,
-            Clock clock
+            Clock clock,
+            ExternalDonationContentPolicy donationPolicy
     ) {
         this.teams = Objects.requireNonNull(teams, "teams");
         this.memberships = Objects.requireNonNull(
@@ -31,6 +35,10 @@ public final class TeamUseCase implements TeamOperations {
         );
         this.ids = Objects.requireNonNull(ids, "ids");
         this.clock = Objects.requireNonNull(clock, "clock");
+        this.donationPolicy = Objects.requireNonNull(
+                donationPolicy,
+                "donationPolicy"
+        );
     }
 
     @Override
@@ -41,11 +49,14 @@ public final class TeamUseCase implements TeamOperations {
             String description
     ) {
         Instant now = clock.instant();
+        String safeName = name.strip();
+        String safeDescription = text(description);
+        requireSafeContent(safeName, safeDescription);
         Team team = new Team(
                 ids.get(),
                 slug,
-                name.strip(),
-                text(description),
+                safeName,
+                safeDescription,
                 actorId,
                 Team.State.ACTIVE,
                 now,
@@ -86,12 +97,15 @@ public final class TeamUseCase implements TeamOperations {
             String name,
             String description
     ) {
+        String safeName = name.strip();
+        String safeDescription = text(description);
+        requireSafeContent(safeName, safeDescription);
         TeamRepository.UpdateResult result = teams.updateOwned(
                 teamId,
                 actorId,
                 version,
-                name.strip(),
-                text(description),
+                safeName,
+                safeDescription,
                 clock.instant()
         );
         if (result == TeamRepository.UpdateResult.VERSION_CONFLICT) {
@@ -114,6 +128,21 @@ public final class TeamUseCase implements TeamOperations {
 
     private static String text(String value) {
         return value == null ? "" : value.strip();
+    }
+
+    private void requireSafeContent(String name, String description) {
+        var assessment = donationPolicy.assess(
+                "",
+                name + "\n" + description
+        );
+        if (assessment.decision()
+                == ExternalDonationContentPolicy.Decision.BLOCK) {
+            throw new TeamConflictException(
+                    "TEAM_EXTERNAL_DONATION_CONTENT",
+                    "Team descriptions cannot contain external donation "
+                            + "links, payment accounts, or donation QR prompts."
+            );
+        }
     }
 
     private static TeamView view(Team team) {
