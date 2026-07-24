@@ -23,6 +23,7 @@ public final class ChapterDraftException extends RuntimeException {
         INVALID,
         FORBIDDEN,
         NOT_FOUND,
-        CONFLICT
+        CONFLICT,
+        PRECONDITION
     }
 }

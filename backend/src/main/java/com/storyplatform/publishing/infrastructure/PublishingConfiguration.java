@@ -12,12 +12,16 @@ import com.storyplatform.publishing.application.PublishingScheduleOperations;
 import com.storyplatform.publishing.application.PublishingScheduleService;
 import com.storyplatform.publishing.application.ContentVisibilityOperations;
 import com.storyplatform.publishing.application.ContentVisibilityService;
+import com.storyplatform.publishing.application.PublishingWorkspaceOperations;
+import com.storyplatform.publishing.application.PublishingWorkspaceService;
 import com.storyplatform.publishing.application.port.ChapterDraftRepository;
 import com.storyplatform.publishing.application.port
         .PublishingSubmissionRepository;
 import com.storyplatform.publishing.application.port.StoryDraftRepository;
 import com.storyplatform.publishing.application.port.PublishingScheduleRepository;
 import com.storyplatform.publishing.application.port.ContentVisibilityRepository;
+import com.storyplatform.publishing.application.port
+        .PublishingWorkspaceRepository;
 import com.storyplatform.publishing.infrastructure.persistence
         .MongoChapterDraftRepository;
 import com.storyplatform.publishing.infrastructure.persistence
@@ -28,6 +32,8 @@ import com.storyplatform.publishing.infrastructure.persistence
         .MongoPublishingScheduleRepository;
 import com.storyplatform.publishing.infrastructure.persistence
         .MongoContentVisibilityRepository;
+import com.storyplatform.publishing.infrastructure.persistence
+        .MongoPublishingWorkspaceRepository;
 import com.storyplatform.shared.events.persistence.OutboxAppender;
 import com.storyplatform.teams.application.contract.TeamPermissionAuthorizer;
 import com.storyplatform.teams.application.contract.TeamStatusDirectory;
@@ -73,6 +79,13 @@ public class PublishingConfiguration {
                 mongo,
                 () -> UUID.randomUUID().toString()
         );
+    }
+
+    @Bean
+    PublishingWorkspaceRepository publishingWorkspaceRepository(
+            MongoTemplate mongo
+    ) {
+        return new MongoPublishingWorkspaceRepository(mongo);
     }
 
     @Bean
@@ -165,6 +178,19 @@ public class PublishingConfiguration {
                 Clock.systemUTC()
         );
         return new TransactionalContentVisibilityOperations(service);
+    }
+
+    @Bean
+    PublishingWorkspaceOperations publishingWorkspaceOperations(
+            TeamPermissionAuthorizer permissions,
+            TeamStatusDirectory teams,
+            PublishingWorkspaceRepository repository
+    ) {
+        return new PublishingWorkspaceService(
+                permissions,
+                teams,
+                repository
+        );
     }
 
     @Bean

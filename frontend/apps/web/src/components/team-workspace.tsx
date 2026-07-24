@@ -405,6 +405,9 @@ export function TeamWorkspace({ teamId }: Readonly<{ teamId: string }>) {
         </div>
         <nav aria-label="Mục trong không gian nhóm">
           <a href="#overview">Tổng quan</a>
+          <Link href={`/teams/${teamId}/stories` as Route}>
+            Bàn bản thảo
+          </Link>
           {canManage && <a href="#settings">Thông tin nhóm</a>}
           {canManage && <a href="#members">Sổ thành viên</a>}
           {canManage && <a href="#invite">Mời cộng sự</a>}

@@ -2,6 +2,7 @@ package com.storyplatform.unit.publishing.api;
 
 import com.storyplatform.publishing.api.ChapterDraftController;
 import com.storyplatform.publishing.api.CreateChapterDraftRequest;
+import com.storyplatform.publishing.api.UpdateChapterDraftRequest;
 import com.storyplatform.publishing.application.ChapterDraftException;
 import com.storyplatform.publishing.application.ChapterDraftOperations;
 import com.storyplatform.shared.api.ApiException;
@@ -101,6 +102,77 @@ class ChapterDraftControllerTest {
         assertMapped(ChapterDraftException.Kind.INVALID, 400);
         assertMapped(ChapterDraftException.Kind.FORBIDDEN, 403);
         assertMapped(ChapterDraftException.Kind.NOT_FOUND, 404);
+        assertMapped(ChapterDraftException.Kind.PRECONDITION, 412);
+    }
+
+    @Test
+    void conditionallyUpdatesAChapterAndReturnsTheNewEtag() {
+        var updated = new ChapterDraftOperations.ChapterView(
+                view().id(),
+                STORY,
+                TEAM,
+                1,
+                view().slug(),
+                "New title",
+                "DRAFT",
+                "70000000-0000-4000-8000-000000000002",
+                2,
+                2,
+                2,
+                view().createdAt(),
+                view().updatedAt()
+        );
+        when(operations.update(
+                any(),
+                any(),
+                any(),
+                any(),
+                org.mockito.ArgumentMatchers.anyLong(),
+                any()
+        ))
+                .thenReturn(updated);
+
+        var response = controller.update(
+                jwt,
+                TEAM,
+                STORY,
+                view().id(),
+                "\"1\"",
+                new UpdateChapterDraftRequest(
+                        "New title",
+                        "<p>Two words</p>"
+                )
+        );
+
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        assertThat(response.getHeaders().getETag()).isEqualTo("\"2\"");
+        assertThat(response.getHeaders().getCacheControl())
+                .contains("no-store");
+        verify(operations).update(
+                ACTOR,
+                TEAM,
+                STORY,
+                view().id(),
+                1,
+                new ChapterDraftOperations.UpdateCommand(
+                        "New title",
+                        "<p>Two words</p>"
+                )
+        );
+    }
+
+    @Test
+    void rejectsAnUnquotedChapterVersion() {
+        assertThatThrownBy(() -> controller.update(
+                jwt,
+                TEAM,
+                STORY,
+                view().id(),
+                "1",
+                new UpdateChapterDraftRequest("Title", "<p>x</p>")
+        )).isInstanceOfSatisfying(ApiException.class, exception ->
+                assertThat(exception.status().value()).isEqualTo(400)
+        );
     }
 
     private void assertMapped(

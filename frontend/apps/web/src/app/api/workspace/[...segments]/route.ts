@@ -18,6 +18,37 @@ function allowed(method: string, path: string) {
   if (new RegExp(`^teams/${uuid}$`, "u").test(path)) {
     return method === "GET" || method === "PATCH";
   }
+  if (new RegExp(`^teams/${uuid}/stories$`, "u").test(path)) {
+    return method === "GET" || method === "POST";
+  }
+  if (new RegExp(`^teams/${uuid}/stories/${uuid}$`, "u").test(path)) {
+    return method === "GET" || method === "PATCH";
+  }
+  if (
+    new RegExp(`^teams/${uuid}/stories/${uuid}/chapters$`, "u").test(
+      path,
+    )
+  ) {
+    return method === "GET" || method === "POST";
+  }
+  if (
+    new RegExp(
+      `^teams/${uuid}/stories/${uuid}/chapters/${uuid}$`,
+      "u",
+    ).test(path)
+  ) {
+    return method === "PATCH";
+  }
+  if (new RegExp(`^teams/${uuid}/stories/${uuid}/submit$`, "u").test(path)) {
+    return method === "POST";
+  }
+  if (
+    new RegExp(`^teams/${uuid}/stories/${uuid}/schedule$`, "u").test(
+      path,
+    )
+  ) {
+    return ["DELETE", "PATCH", "POST"].includes(method);
+  }
   if (new RegExp(`^teams/${uuid}/members$`, "u").test(path)) {
     return method === "GET" || method === "POST";
   }
@@ -76,6 +107,10 @@ async function proxy(request: NextRequest, context: RouteContext) {
   if (idempotencyKey) {
     headers.set("Idempotency-Key", idempotencyKey);
   }
+  const ifMatch = request.headers.get("if-match");
+  if (ifMatch) {
+    headers.set("If-Match", ifMatch);
+  }
 
   let body: string | undefined;
   if (!["GET", "HEAD"].includes(request.method)) {
@@ -106,6 +141,10 @@ async function proxy(request: NextRequest, context: RouteContext) {
     const retryAfter = backend.headers.get("retry-after");
     if (retryAfter) {
       response.headers.set("Retry-After", retryAfter);
+    }
+    const etag = backend.headers.get("etag");
+    if (etag) {
+      response.headers.set("ETag", etag);
     }
     return response;
   } catch {

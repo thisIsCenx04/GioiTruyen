@@ -1258,6 +1258,32 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
   /teams/{teamId}/stories:
+    get:
+      operationId: listPublishingWorkspaceStories
+      summary: List non-archived stories in an authorized Team workspace
+      tags: [Publishing]
+      parameters:
+        - $ref: "#/components/parameters/TeamId"
+      responses:
+        "200":
+          description: Team publishing stories ordered by latest update
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PublishingStorySummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
     post:
       operationId: createStoryDraft
       summary: Idempotently create a Team-owned story draft and revision one
@@ -1307,6 +1333,38 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
   /teams/{teamId}/stories/{storyId}:
+    get:
+      operationId: getPublishingWorkspaceStory
+      summary: Get a Team-owned story for the publishing workspace
+      tags: [Publishing]
+      parameters:
+        - $ref: "#/components/parameters/TeamId"
+        - name: storyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Publishing story metadata and current version
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublishingStorySummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
     patch:
       operationId: updateStoryDraft
       summary: Update an editable Team story with optimistic concurrency
@@ -1365,6 +1423,40 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
   /teams/{teamId}/stories/{storyId}/chapters:
+    get:
+      operationId: listPublishingWorkspaceChapters
+      summary: List current chapter revisions for a Team-owned story
+      tags: [Publishing]
+      parameters:
+        - $ref: "#/components/parameters/TeamId"
+        - name: storyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Chapters ordered by chapter number
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PublishingChapterEditor"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
     post:
       operationId: createChapterDraft
       summary: Create a chapter draft and its immutable first revision
@@ -1416,6 +1508,71 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           description: The chapter number already exists in this story
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /teams/{teamId}/stories/{storyId}/chapters/{chapterId}:
+    patch:
+      operationId: updateChapterDraft
+      summary: Autosave a chapter by creating its next immutable revision
+      description: |
+        Requires story:edit. If-Match performs compare-and-set against the
+        current chapter version so concurrent browser sessions cannot overwrite
+        each other.
+      tags: [Publishing]
+      parameters:
+        - $ref: "#/components/parameters/TeamId"
+        - name: storyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: chapterId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: '^"[1-9][0-9]*"$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateChapterDraftRequest"
+      responses:
+        "200":
+          description: Chapter and immutable revision updated
+          headers:
+            ETag:
+              schema:
+                type: string
+                pattern: '^"[1-9][0-9]*"$'
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamChapterDraft"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "412":
+          description: If-Match chapter version is stale
           content:
             application/problem+json:
               schema:
@@ -1991,6 +2148,45 @@ components:
           description: |
             UTF-8 HTML input. The server enforces a 1,000,000-byte,
             20,000-node, and 30,000-word limit and sanitizes it.
+    UpdateChapterDraftRequest:
+      type: object
+      additionalProperties: false
+      required: [title, contentHtml]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        contentHtml:
+          type: string
+          minLength: 1
+          maxLength: 1000000
+    PublishingStorySummary:
+      allOf:
+        - $ref: "#/components/schemas/TeamStoryDraft"
+        - type: object
+          required: [workflowStatus]
+          properties:
+            workflowStatus:
+              type: string
+              enum:
+                - DRAFT
+                - IN_REVIEW
+                - CHANGES_REQUESTED
+                - APPROVED
+                - SCHEDULED
+                - PUBLISHED
+                - HIDDEN
+                - SUSPENDED
+    PublishingChapterEditor:
+      allOf:
+        - $ref: "#/components/schemas/TeamChapterDraft"
+        - type: object
+          required: [contentHtml]
+          properties:
+            contentHtml:
+              type: string
+              maxLength: 1000000
     TeamStoryDraft:
       type: object
       additionalProperties: false
@@ -2008,7 +2204,6 @@ components:
         - currentRevision
         - revisionNo
         - version
-        - createdAt
         - updatedAt
       properties:
         id:
@@ -2048,7 +2243,15 @@ components:
           enum: [ONGOING, COMPLETED, HIATUS]
         workflowStatus:
           type: string
-          const: DRAFT
+          enum:
+            - DRAFT
+            - IN_REVIEW
+            - CHANGES_REQUESTED
+            - APPROVED
+            - SCHEDULED
+            - PUBLISHED
+            - HIDDEN
+            - SUSPENDED
         currentRevision:
           type: string
           format: uuid
@@ -2081,7 +2284,6 @@ components:
         - revisionNo
         - version
         - wordCount
-        - createdAt
         - updatedAt
       properties:
         id:

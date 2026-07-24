@@ -139,6 +139,104 @@ public final class ChapterDraftService implements ChapterDraftOperations {
         );
     }
 
+    @Override
+    public ChapterView update(
+            String actorId,
+            String teamId,
+            String storyId,
+            String chapterId,
+            long expectedVersion,
+            UpdateCommand command
+    ) {
+        if (!teams.isActive(teamId)
+                || !permissions.allows(
+                actorId,
+                teamId,
+                EDIT_PERMISSION
+        )) {
+            throw rejected(
+                    "CHAPTER_EDIT_FORBIDDEN",
+                    "An active Team membership with story:edit is required.",
+                    ChapterDraftException.Kind.FORBIDDEN
+            );
+        }
+        if (stories.findOwned(teamId, storyId).isEmpty()) {
+            throw rejected(
+                    "STORY_DRAFT_NOT_FOUND",
+                    "The editable Team story does not exist.",
+                    ChapterDraftException.Kind.NOT_FOUND
+            );
+        }
+        if (command == null) {
+            throw invalid("Chapter update body is required.");
+        }
+        ChapterDraft current = chapters.findOwned(
+                teamId,
+                storyId,
+                uuid(chapterId, "chapterId")
+        ).map(ChapterDraftRepository.StoredChapter::chapter)
+                .orElseThrow(() -> rejected(
+                        "CHAPTER_DRAFT_NOT_FOUND",
+                        "The editable Team chapter does not exist.",
+                        ChapterDraftException.Kind.NOT_FOUND
+                ));
+        if (expectedVersion < 1
+                || current.version() != expectedVersion) {
+            throw stale();
+        }
+        String title = normalizeTitle(command.title());
+        ChapterContentSanitizer.SanitizedContent content =
+                sanitizer.sanitize(command.contentHtml());
+        Instant now = clock.instant();
+        String revisionId = uuid(
+                identifiers.get(),
+                "revisionId"
+        );
+        long revisionNo = current.currentRevisionNo() + 1;
+        ChapterDraft updated = new ChapterDraft(
+                current.id(),
+                current.storyId(),
+                current.teamId(),
+                current.number(),
+                current.slug(),
+                title,
+                ChapterDraft.WorkflowStatus.DRAFT,
+                revisionId,
+                revisionNo,
+                current.createdAt(),
+                now,
+                expectedVersion + 1
+        );
+        ChapterRevision revision = new ChapterRevision(
+                revisionId,
+                current.id(),
+                revisionNo,
+                content.html(),
+                content.plainText(),
+                checksum(content.html(), content.plainText()),
+                actorId,
+                now
+        );
+        if (!chapters.update(updated, revision, expectedVersion)) {
+            throw stale();
+        }
+        return new ChapterView(
+                updated.id(),
+                updated.storyId(),
+                updated.teamId(),
+                updated.number(),
+                updated.slug(),
+                updated.title(),
+                updated.workflowStatus().name(),
+                updated.currentRevision(),
+                updated.currentRevisionNo(),
+                updated.version(),
+                content.wordCount(),
+                updated.createdAt(),
+                updated.updatedAt()
+        );
+    }
+
     private static String normalizeTitle(String value) {
         if (value == null) {
             throw invalid("Chapter title is required.");
@@ -201,6 +299,14 @@ public final class ChapterDraftService implements ChapterDraftOperations {
                 "CHAPTER_DRAFT_INVALID",
                 message,
                 ChapterDraftException.Kind.INVALID
+        );
+    }
+
+    private static ChapterDraftException stale() {
+        return rejected(
+                "CHAPTER_VERSION_STALE",
+                "The chapter changed after the supplied If-Match version.",
+                ChapterDraftException.Kind.PRECONDITION
         );
     }
 

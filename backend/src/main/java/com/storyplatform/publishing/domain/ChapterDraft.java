@@ -33,8 +33,8 @@ public record ChapterDraft(
                 || title.isBlank()
                 || title.length() > 200
                 || workflowStatus != WorkflowStatus.DRAFT
-                || currentRevisionNo != 1
-                || version != 1
+                || currentRevisionNo < 1
+                || version < 1
                 || updatedAt.isBefore(createdAt)) {
             throw new IllegalArgumentException(
                     "chapter draft metadata is invalid"

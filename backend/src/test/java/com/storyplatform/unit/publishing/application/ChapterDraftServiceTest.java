@@ -165,10 +165,85 @@ class ChapterDraftServiceTest {
         verify(chapters, never()).insert(any(), any());
     }
 
+    @Test
+    void updatesWithCompareAndSetAndCreatesTheNextImmutableRevision() {
+        when(chapters.findOwned(TEAM, STORY, CHAPTER))
+                .thenReturn(Optional.of(
+                        new ChapterDraftRepository.StoredChapter(chapter())
+                ));
+        when(chapters.update(any(), any(), org.mockito.ArgumentMatchers.eq(1L)))
+                .thenReturn(true);
+        ArgumentCaptor<ChapterDraft> chapter =
+                ArgumentCaptor.forClass(ChapterDraft.class);
+        ArgumentCaptor<ChapterRevision> revision =
+                ArgumentCaptor.forClass(ChapterRevision.class);
+
+        var result = updateService().update(
+                ACTOR,
+                TEAM,
+                STORY,
+                CHAPTER,
+                1,
+                new com.storyplatform.publishing.application
+                        .ChapterDraftOperations.UpdateCommand(
+                        " ChÆ°Æ¡ng má»›i ",
+                        "<p onclick=\"bad()\">Hello <b>again</b></p>"
+                )
+        );
+
+        verify(chapters).update(
+                chapter.capture(),
+                revision.capture(),
+                org.mockito.ArgumentMatchers.eq(1L)
+        );
+        assertThat(result.version()).isEqualTo(2);
+        assertThat(result.revisionNo()).isEqualTo(2);
+        assertThat(chapter.getValue().currentRevision()).isEqualTo(REVISION);
+        assertThat(revision.getValue().contentHtml())
+                .doesNotContain("onclick", "<b>");
+    }
+
+    @Test
+    void rejectsAStaleChapterWithoutWritingARevision() {
+        when(chapters.findOwned(TEAM, STORY, CHAPTER))
+                .thenReturn(Optional.of(
+                        new ChapterDraftRepository.StoredChapter(chapter())
+                ));
+
+        assertThatThrownBy(() -> updateService().update(
+                ACTOR,
+                TEAM,
+                STORY,
+                CHAPTER,
+                2,
+                new com.storyplatform.publishing.application
+                        .ChapterDraftOperations.UpdateCommand(
+                        "Title",
+                        "<p>content</p>"
+                )
+        )).isInstanceOf(ChapterDraftException.class)
+                .extracting("code")
+                .isEqualTo("CHAPTER_VERSION_STALE");
+
+        verify(chapters, never()).update(
+                any(),
+                any(),
+                org.mockito.ArgumentMatchers.anyLong()
+        );
+    }
+
     private ChapterDraftService service() {
         ArrayDeque<String> ids = new ArrayDeque<>(
                 List.of(CHAPTER, REVISION)
         );
+        return service(ids);
+    }
+
+    private ChapterDraftService updateService() {
+        return service(new ArrayDeque<>(List.of(REVISION)));
+    }
+
+    private ChapterDraftService service(ArrayDeque<String> ids) {
         return new ChapterDraftService(
                 permissions,
                 TEAM::equals,
@@ -202,6 +277,23 @@ class ChapterDraftServiceTest {
                 StoryDraft.WorkflowStatus.DRAFT,
                 "50000000-0000-4000-8000-000000000001",
                 null,
+                NOW,
+                NOW,
+                1
+        );
+    }
+
+    private static ChapterDraft chapter() {
+        return new ChapterDraft(
+                CHAPTER,
+                STORY,
+                TEAM,
+                1,
+                "chapter-1",
+                "Chapter",
+                ChapterDraft.WorkflowStatus.DRAFT,
+                "70000000-0000-4000-8000-000000000000",
+                1,
                 NOW,
                 NOW,
                 1

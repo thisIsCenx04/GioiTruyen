@@ -11,8 +11,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
@@ -62,6 +64,41 @@ public final class ChapterDraftController {
         }
     }
 
+    @PatchMapping(
+            "/teams/{teamId}/stories/{storyId}/chapters/{chapterId}"
+    )
+    public ResponseEntity<ChapterDraftOperations.ChapterView> update(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable String teamId,
+            @PathVariable String storyId,
+            @PathVariable String chapterId,
+            @RequestHeader(HttpHeaders.IF_MATCH) String ifMatch,
+            @Valid @RequestBody UpdateChapterDraftRequest request
+    ) {
+        try {
+            var chapter = chapters.update(
+                    jwt.getSubject(),
+                    uuid(teamId),
+                    uuid(storyId),
+                    uuid(chapterId),
+                    version(ifMatch),
+                    new ChapterDraftOperations.UpdateCommand(
+                            request.title(),
+                            request.contentHtml()
+                    )
+            );
+            return ResponseEntity.ok()
+                    .cacheControl(CacheControl.noStore())
+                    .header(
+                            HttpHeaders.ETAG,
+                            "\"" + chapter.version() + "\""
+                    )
+                    .body(chapter);
+        } catch (ChapterDraftException exception) {
+            throw problem(exception);
+        }
+    }
+
     private static String uuid(String value) {
         try {
             return UUID.fromString(value).toString();
@@ -81,6 +118,7 @@ public final class ChapterDraftController {
             case FORBIDDEN -> HttpStatus.FORBIDDEN;
             case NOT_FOUND -> HttpStatus.NOT_FOUND;
             case CONFLICT -> HttpStatus.CONFLICT;
+            case PRECONDITION -> HttpStatus.PRECONDITION_FAILED;
         };
         return new ApiException(
                 status,
@@ -88,5 +126,26 @@ public final class ChapterDraftController {
                 "Chapter draft request rejected",
                 exception.getMessage()
         );
+    }
+
+    private static long version(String value) {
+        if (value == null || !value.matches("\"[1-9][0-9]*\"")) {
+            throw new ApiException(
+                    HttpStatus.BAD_REQUEST,
+                    "IF_MATCH_INVALID",
+                    "Chapter draft request rejected",
+                    "If-Match must contain one quoted positive version."
+            );
+        }
+        try {
+            return Long.parseLong(value.substring(1, value.length() - 1));
+        } catch (NumberFormatException exception) {
+            throw new ApiException(
+                    HttpStatus.BAD_REQUEST,
+                    "IF_MATCH_INVALID",
+                    "Chapter draft request rejected",
+                    "If-Match version is outside the supported range."
+            );
+        }
     }
 }

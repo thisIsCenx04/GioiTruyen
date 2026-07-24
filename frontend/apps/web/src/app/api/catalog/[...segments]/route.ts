@@ -9,7 +9,7 @@ type RouteContext = Readonly<{
 }>;
 
 function allowed(path: string) {
-  return path === "search/suggestions";
+  return path === "categories" || path === "search/suggestions";
 }
 
 export async function GET(

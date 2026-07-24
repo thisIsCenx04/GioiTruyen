@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { apiMockServer } from "../../../test/msw/server";
 import {
   createBrowserAuthClient,
+  createBrowserPublishingClient,
   createBrowserTeamClient,
   createPublicCatalogClient,
   createStoryApiClient,
@@ -77,6 +78,77 @@ describe("story API client", () => {
         traceId: "trace-01",
       },
     });
+  });
+});
+
+describe("browser publishing client", () => {
+  it("uses If-Match for chapter autosave and preserves editor content", async () => {
+    apiMockServer.use(
+      http.patch(
+        "/api/workspace/teams/team-01/stories/story-01/chapters/chapter-01",
+        async ({ request }) => {
+          expect(request.headers.get("if-match")).toBe('"3"');
+          await expect(request.json()).resolves.toEqual({
+            contentHtml: "<p>Revision four</p>",
+            title: "Chapter",
+          });
+          return HttpResponse.json({
+            currentRevision: "revision-04",
+            id: "chapter-01",
+            number: 1,
+            revisionNo: 4,
+            storyId: "story-01",
+            teamId: "team-01",
+            title: "Chapter",
+            version: 4,
+            wordCount: 2,
+            workflowStatus: "DRAFT",
+          });
+        },
+      ),
+    );
+
+    await expect(
+      createBrowserPublishingClient().updateChapter(
+        "team-01",
+        "story-01",
+        "chapter-01",
+        3,
+        { contentHtml: "<p>Revision four</p>", title: "Chapter" },
+      ),
+    ).resolves.toMatchObject({
+      contentHtml: "<p>Revision four</p>",
+      revisionNo: 4,
+      version: 4,
+    });
+  });
+
+  it("carries an idempotency key when submitting a frozen revision", async () => {
+    apiMockServer.use(
+      http.post(
+        "/api/workspace/teams/team-01/stories/story-01/submit",
+        ({ request }) => {
+          expect(request.headers.get("idempotency-key")).toBe("submit-01");
+          return HttpResponse.json(
+            {
+              reviewId: "review-01",
+              state: "PRECHECK_PENDING",
+              storyId: "story-01",
+              version: 1,
+            },
+            { status: 202 },
+          );
+        },
+      ),
+    );
+
+    await expect(
+      createBrowserPublishingClient().submit(
+        "team-01",
+        "story-01",
+        "submit-01",
+      ),
+    ).resolves.toMatchObject({ reviewId: "review-01" });
   });
 });
 

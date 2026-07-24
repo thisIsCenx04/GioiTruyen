@@ -214,6 +214,54 @@ export type TeamFollow = Readonly<{
   followerCount: number;
 }>;
 
+export type PublishingStory = Readonly<{
+  id: string;
+  teamId: string;
+  slug: string;
+  title: string;
+  synopsis: string;
+  origin: "ORIGINAL" | "TRANSLATED";
+  language: string;
+  categoryIds: readonly string[];
+  coverAssetId: string | null;
+  completionStatus: "ONGOING" | "COMPLETED" | "HIATUS";
+  workflowStatus: string;
+  currentRevision: string;
+  revisionNo: number;
+  version: number;
+  updatedAt: string;
+}>;
+
+export type PublishingChapter = Readonly<{
+  id: string;
+  storyId: string;
+  teamId: string;
+  number: number;
+  slug: string;
+  title: string;
+  workflowStatus: string;
+  currentRevision: string;
+  revisionNo: number;
+  version: number;
+  contentHtml: string;
+  wordCount: number;
+  updatedAt: string;
+}>;
+
+export type PublishingSchedule = Readonly<{
+  scheduleId: string;
+  storyId: string;
+  teamId: string;
+  revision: string;
+  chapterCount: number;
+  state: "SCHEDULED";
+  publishAt: string;
+  timeZone: string;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}>;
+
 export type BrowserTeamClientOptions = Readonly<{
   baseUrl?: string;
   fetchImplementation?: typeof fetch;
@@ -344,6 +392,154 @@ export function createBrowserTeamClient({
   });
 }
 
+export function createBrowserPublishingClient({
+  baseUrl = "/api/workspace",
+  fetchImplementation = fetch,
+}: BrowserTeamClientOptions = {}) {
+  const client = createStoryApiClient({ baseUrl, fetchImplementation });
+
+  async function request<Response>(
+    path: `/${string}`,
+    options: RequestOptions = {},
+  ): Promise<Response> {
+    try {
+      return await client.request<Response>(path, {
+        credentials: "same-origin",
+        ...options,
+      });
+    } catch (error) {
+      if (
+        !(error instanceof StoryApiError) ||
+        error.problem.status !== 401
+      ) {
+        throw error;
+      }
+      await createStoryApiClient({
+        baseUrl: "/api/auth",
+        fetchImplementation,
+      }).request("/refresh", {
+        credentials: "same-origin",
+        method: "POST",
+      });
+      return client.request<Response>(path, {
+        credentials: "same-origin",
+        ...options,
+      });
+    }
+  }
+
+  const storyPath = (teamId: string, storyId: string) =>
+    `/teams/${encodeURIComponent(teamId)}/stories/${encodeURIComponent(storyId)}` as const;
+
+  return Object.freeze({
+    stories(teamId: string) {
+      return request<PublishingStory[]>(
+        `/teams/${encodeURIComponent(teamId)}/stories`,
+      );
+    },
+    story(teamId: string, storyId: string) {
+      return request<PublishingStory>(storyPath(teamId, storyId));
+    },
+    createStory(
+      teamId: string,
+      input: {
+        title: string;
+        synopsis: string;
+        origin: "ORIGINAL" | "TRANSLATED";
+        language: string;
+        categoryIds: readonly string[];
+        coverAssetId: string | null;
+      },
+      idempotencyKey: string,
+    ) {
+      return request<PublishingStory>(
+        `/teams/${encodeURIComponent(teamId)}/stories`,
+        {
+          body: input,
+          headers: { "Idempotency-Key": idempotencyKey },
+          method: "POST",
+        },
+      );
+    },
+    updateStory(
+      teamId: string,
+      storyId: string,
+      version: number,
+      input: {
+        title: string;
+        synopsis: string;
+        categoryIds: readonly string[];
+        coverAssetId: string | null;
+        completionStatus: "ONGOING" | "COMPLETED" | "HIATUS";
+      },
+    ) {
+      return request<PublishingStory>(storyPath(teamId, storyId), {
+        body: input,
+        headers: { "If-Match": `"${version}"` },
+        method: "PATCH",
+      });
+    },
+    chapters(teamId: string, storyId: string) {
+      return request<PublishingChapter[]>(
+        `${storyPath(teamId, storyId)}/chapters`,
+      );
+    },
+    async createChapter(
+      teamId: string,
+      storyId: string,
+      input: { number: number; title: string; contentHtml: string },
+    ) {
+      const chapter = await request<PublishingChapter>(
+        `${storyPath(teamId, storyId)}/chapters`,
+        { body: input, method: "POST" },
+      );
+      return { ...chapter, contentHtml: input.contentHtml };
+    },
+    async updateChapter(
+      teamId: string,
+      storyId: string,
+      chapterId: string,
+      version: number,
+      input: { title: string; contentHtml: string },
+    ) {
+      const chapter = await request<PublishingChapter>(
+        `${storyPath(teamId, storyId)}/chapters/${encodeURIComponent(chapterId)}`,
+        {
+          body: input,
+          headers: { "If-Match": `"${version}"` },
+          method: "PATCH",
+        },
+      );
+      return { ...chapter, contentHtml: input.contentHtml };
+    },
+    submit(teamId: string, storyId: string, idempotencyKey: string) {
+      return request<{
+        reviewId: string;
+        storyId: string;
+        state: string;
+        version: number;
+      }>(`${storyPath(teamId, storyId)}/submit`, {
+        headers: { "Idempotency-Key": idempotencyKey },
+        method: "POST",
+      });
+    },
+    schedule(
+      teamId: string,
+      storyId: string,
+      input: {
+        publishAt: string;
+        timeZone: string;
+        revision: string;
+      },
+    ) {
+      return request<PublishingSchedule>(
+        `${storyPath(teamId, storyId)}/schedule`,
+        { body: input, method: "POST" },
+      );
+    },
+  });
+}
+
 export type PublicStory = Readonly<{
   id: string;
   teamId: string;
@@ -417,6 +613,19 @@ export type SuggestionResponse = Readonly<{
   hasMore: boolean;
 }>;
 
+export type CategoryTaxonomy = Readonly<{
+  version: string;
+  groups: readonly Readonly<{
+    group: string;
+    label: string;
+    categories: readonly Readonly<{
+      id: string;
+      slug: string;
+      name: string;
+    }>[];
+  }>[];
+}>;
+
 export function createPublicCatalogClient({
   baseUrl,
   fetchImplementation = fetch,
@@ -428,6 +637,9 @@ export function createPublicCatalogClient({
       return client.request<HomeResponse>(
         `/home?locale=${encodeURIComponent(locale)}`,
       );
+    },
+    categories() {
+      return client.request<CategoryTaxonomy>("/categories");
     },
     story(identifier: string) {
       return client.request<PublicStory>(

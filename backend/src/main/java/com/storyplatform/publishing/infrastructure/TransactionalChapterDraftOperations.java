@@ -26,4 +26,24 @@ public class TransactionalChapterDraftOperations
     ) {
         return delegate.create(actorId, teamId, storyId, command);
     }
+
+    @Override
+    @Transactional
+    public ChapterView update(
+            String actorId,
+            String teamId,
+            String storyId,
+            String chapterId,
+            long expectedVersion,
+            UpdateCommand command
+    ) {
+        return delegate.update(
+                actorId,
+                teamId,
+                storyId,
+                chapterId,
+                expectedVersion,
+                command
+        );
+    }
 }

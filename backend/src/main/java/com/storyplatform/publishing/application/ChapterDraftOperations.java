@@ -11,7 +11,19 @@ public interface ChapterDraftOperations {
             CreateCommand command
     );
 
+    ChapterView update(
+            String actorId,
+            String teamId,
+            String storyId,
+            String chapterId,
+            long expectedVersion,
+            UpdateCommand command
+    );
+
     record CreateCommand(int number, String title, String contentHtml) {
+    }
+
+    record UpdateCommand(String title, String contentHtml) {
     }
 
     record ChapterView(
