@@ -122,6 +122,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    ChapterRevisionIndexes chapterRevisionIndexes() {
+        return new ChapterRevisionIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

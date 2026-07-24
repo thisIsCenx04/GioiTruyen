@@ -1364,6 +1364,62 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /teams/{teamId}/stories/{storyId}/chapters:
+    post:
+      operationId: createChapterDraft
+      summary: Create a chapter draft and its immutable first revision
+      description: |
+        Requires an active Team, story:edit permission, and ownership of an
+        editable story. HTML is normalized, size-limited, and sanitized with
+        a strict allowlist before the immutable revision is persisted.
+      tags: [Publishing]
+      parameters:
+        - $ref: "#/components/parameters/TeamId"
+        - name: storyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateChapterDraftRequest"
+      responses:
+        "201":
+          description: Chapter draft and immutable revision created
+          headers:
+            Location:
+              schema:
+                type: string
+            ETag:
+              schema:
+                type: string
+                const: '"1"'
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamChapterDraft"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The chapter number already exists in this story
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
 components:
   securitySchemes:
     bearerAuth:
@@ -1453,6 +1509,26 @@ components:
         completionStatus:
           type: string
           enum: [ONGOING, COMPLETED, HIATUS]
+    CreateChapterDraftRequest:
+      type: object
+      additionalProperties: false
+      required: [number, title, contentHtml]
+      properties:
+        number:
+          type: integer
+          minimum: 1
+          maximum: 100000
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        contentHtml:
+          type: string
+          minLength: 1
+          maxLength: 1000000
+          description: |
+            UTF-8 HTML input. The server enforces a 1,000,000-byte,
+            20,000-node, and 30,000-word limit and sanitizes it.
     TeamStoryDraft:
       type: object
       additionalProperties: false
@@ -1522,6 +1598,66 @@ components:
           type: integer
           format: int64
           minimum: 1
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    TeamChapterDraft:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - storyId
+        - teamId
+        - number
+        - slug
+        - title
+        - workflowStatus
+        - currentRevision
+        - revisionNo
+        - version
+        - wordCount
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        storyId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        number:
+          type: integer
+          minimum: 1
+        slug:
+          type: string
+          pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        title:
+          type: string
+          maxLength: 200
+        workflowStatus:
+          type: string
+          const: DRAFT
+        currentRevision:
+          type: string
+          format: uuid
+        revisionNo:
+          type: integer
+          format: int64
+          const: 1
+        version:
+          type: integer
+          format: int64
+          const: 1
+        wordCount:
+          type: integer
+          minimum: 1
+          maximum: 30000
         createdAt:
           type: string
           format: date-time

@@ -3,7 +3,13 @@ package com.storyplatform.publishing.infrastructure;
 import com.storyplatform.catalog.application.contract.ActiveCategoryDirectory;
 import com.storyplatform.publishing.application.StoryDraftOperations;
 import com.storyplatform.publishing.application.StoryDraftService;
+import com.storyplatform.publishing.application.ChapterContentSanitizer;
+import com.storyplatform.publishing.application.ChapterDraftOperations;
+import com.storyplatform.publishing.application.ChapterDraftService;
+import com.storyplatform.publishing.application.port.ChapterDraftRepository;
 import com.storyplatform.publishing.application.port.StoryDraftRepository;
+import com.storyplatform.publishing.infrastructure.persistence
+        .MongoChapterDraftRepository;
 import com.storyplatform.publishing.infrastructure.persistence
         .MongoStoryDraftRepository;
 import com.storyplatform.shared.events.persistence.OutboxAppender;
@@ -25,6 +31,11 @@ public class PublishingConfiguration {
     }
 
     @Bean
+    ChapterDraftRepository chapterDraftRepository(MongoTemplate mongo) {
+        return new MongoChapterDraftRepository(mongo);
+    }
+
+    @Bean
     StoryDraftOperations storyDraftOperations(
             TeamPermissionAuthorizer permissions,
             TeamStatusDirectory teams,
@@ -42,5 +53,24 @@ public class PublishingConfiguration {
                 Clock.systemUTC()
         );
         return new TransactionalStoryDraftOperations(service);
+    }
+
+    @Bean
+    ChapterDraftOperations chapterDraftOperations(
+            TeamPermissionAuthorizer permissions,
+            TeamStatusDirectory teams,
+            StoryDraftRepository stories,
+            ChapterDraftRepository chapters
+    ) {
+        ChapterDraftService service = new ChapterDraftService(
+                permissions,
+                teams,
+                stories,
+                chapters,
+                new ChapterContentSanitizer(),
+                () -> UUID.randomUUID().toString(),
+                Clock.systemUTC()
+        );
+        return new TransactionalChapterDraftOperations(service);
     }
 }
