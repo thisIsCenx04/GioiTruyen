@@ -153,7 +153,7 @@ describe("browser publishing client", () => {
 });
 
 describe("public catalog client", () => {
-  it("maps home, story, chapters, search and suggestion routes", async () => {
+  it("maps public catalog and revisioned chapter routes", async () => {
     apiMockServer.use(
       http.get(`${API_URL}/home`, () =>
         HttpResponse.json({
@@ -171,6 +171,14 @@ describe("public catalog client", () => {
           hasMore: false,
           items: [],
           nextCursor: null,
+        }),
+      ),
+      http.get(`${API_URL}/chapters/chapter-01`, () =>
+        HttpResponse.json({
+          contentHtml: "<p>Published</p>",
+          etag: "a".repeat(64),
+          id: "chapter-01",
+          revisionNo: 2,
         }),
       ),
       http.get(`${API_URL}/search`, () =>
@@ -198,6 +206,10 @@ describe("public catalog client", () => {
     });
     await expect(client.chapters("story")).resolves.toMatchObject({
       items: [],
+    });
+    await expect(client.chapter("chapter-01")).resolves.toMatchObject({
+      contentHtml: "<p>Published</p>",
+      revisionNo: 2,
     });
     await expect(client.search("kiếm hiệp")).resolves.toMatchObject({
       tookMs: 2,

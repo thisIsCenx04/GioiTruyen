@@ -148,6 +148,86 @@ class ChapterCatalogServiceTest {
         ));
     }
 
+    @Test
+    void servesFrozenPublishedContentWithAdjacentChapterLinks() {
+        StoryRepository stories = mock(StoryRepository.class);
+        ChapterRepository chapters = mock(ChapterRepository.class);
+        when(chapters.findPublishedDetail(chapter(2).id()))
+                .thenReturn(Optional.of(stored(chapter(2))));
+        when(stories.findPublishedByIdOrSlug(story().id()))
+                .thenReturn(Optional.of(story()));
+        when(chapters.previous(
+                story().id(), 2, chapter(2).id()
+        )).thenReturn(Optional.of(chapter(1)));
+        when(chapters.next(
+                story().id(), 2, chapter(2).id()
+        )).thenReturn(Optional.of(chapter(3)));
+
+        var detail = new ChapterCatalogService(
+                stories,
+                chapters,
+                mock(ChapterCursorCodec.class)
+        ).detail(chapter(2).id());
+
+        assertThat(detail.contentHtml()).isEqualTo("<p>Two words</p>");
+        assertThat(detail.wordCount()).isEqualTo(2);
+        assertThat(detail.etag()).isEqualTo("a".repeat(64));
+        assertThat(detail.previous().number()).isEqualTo(1);
+        assertThat(detail.next().number()).isEqualTo(3);
+    }
+
+    @Test
+    void hidesMissingStaleOrStoryHiddenChapterEvidence() {
+        StoryRepository stories = mock(StoryRepository.class);
+        ChapterRepository chapters = mock(ChapterRepository.class);
+        var service = new ChapterCatalogService(
+                stories,
+                chapters,
+                mock(ChapterCursorCodec.class)
+        );
+
+        assertThatThrownBy(() -> service.detail("invalid"))
+                .hasMessageContaining("identifier");
+        assertThatThrownBy(() -> service.detail(chapter(2).id()))
+                .hasMessageContaining("not found");
+
+        when(chapters.findPublishedDetail(chapter(2).id()))
+                .thenReturn(Optional.of(stored(chapter(2))));
+        when(stories.findPublishedByIdOrSlug(story().id()))
+                .thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.detail(chapter(2).id()))
+                .hasMessageContaining("not found");
+    }
+
+    @Test
+    void representsAnEmptyPublishedRevisionWithoutInventingNavigation() {
+        StoryRepository stories = mock(StoryRepository.class);
+        ChapterRepository chapters = mock(ChapterRepository.class);
+        ChapterRepository.StoredChapter empty =
+                new ChapterRepository.StoredChapter(
+                        chapter(1),
+                        "30000000-0000-4000-8000-000000000001",
+                        1,
+                        "",
+                        " ",
+                        "b".repeat(64)
+                );
+        when(chapters.findPublishedDetail(chapter(1).id()))
+                .thenReturn(Optional.of(empty));
+        when(stories.findPublishedByIdOrSlug(story().id()))
+                .thenReturn(Optional.of(story()));
+
+        var detail = new ChapterCatalogService(
+                stories,
+                chapters,
+                mock(ChapterCursorCodec.class)
+        ).detail(chapter(1).id());
+
+        assertThat(detail.wordCount()).isZero();
+        assertThat(detail.previous()).isNull();
+        assertThat(detail.next()).isNull();
+    }
+
     private static PublicStoryProjection story() {
         Instant now = Instant.parse("2026-07-24T00:00:00Z");
         return new PublicStoryProjection(
@@ -175,6 +255,19 @@ class ChapterCatalogServiceTest {
                 "Chapter " + number,
                 Instant.parse("2026-07-24T00:00:00Z"),
                 1
+        );
+    }
+
+    private static ChapterRepository.StoredChapter stored(
+            PublicChapterProjection chapter
+    ) {
+        return new ChapterRepository.StoredChapter(
+                chapter,
+                "30000000-0000-4000-8000-000000000001",
+                2,
+                "<p>Two words</p>",
+                "Two words",
+                "a".repeat(64)
         );
     }
 }

@@ -26,6 +26,8 @@ tags:
     description: Restricted direct-upload grants and asset processing.
   - name: Publishing
     description: Team-owned story and chapter authoring workflows.
+  - name: Reading
+    description: Public revisioned chapter reading operations.
 security:
   - bearerAuth: []
 paths:
@@ -890,6 +892,49 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PublicChapterPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /chapters/{chapterId}:
+    get:
+      operationId: getPublishedChapter
+      summary: Read one immutable published chapter revision
+      description: |
+        Returns the exact sanitized revision referenced by the published
+        chapter. Hidden chapters, hidden stories, and missing revision
+        evidence all produce the same not-found response.
+      security: []
+      tags: [Reading]
+      parameters:
+        - name: chapterId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: If-None-Match
+          in: header
+          schema:
+            type: string
+            pattern: '^"[0-9a-f]{64}"$'
+      responses:
+        "200":
+          description: Published chapter content and adjacent navigation
+          headers:
+            ETag:
+              schema:
+                type: string
+                pattern: '^"[0-9a-f]{64}"$'
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublishedChapterDetail"
+        "304":
+          description: The supplied revision ETag is still current
         "400":
           $ref: "#/components/responses/BadRequest"
         "404":
@@ -3558,6 +3603,89 @@ components:
           type: integer
           format: int64
           minimum: 1
+    PublishedChapterDetail:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - storyId
+        - number
+        - slug
+        - title
+        - revisionId
+        - revisionNo
+        - contentHtml
+        - wordCount
+        - publishedAt
+        - version
+        - etag
+        - previous
+        - next
+      properties:
+        id:
+          type: string
+          format: uuid
+        storyId:
+          type: string
+          format: uuid
+        number:
+          type: integer
+          minimum: 1
+        slug:
+          type: string
+          pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        title:
+          type: string
+          maxLength: 200
+        revisionId:
+          type: string
+          format: uuid
+        revisionNo:
+          type: integer
+          format: int64
+          minimum: 1
+        contentHtml:
+          type: string
+          maxLength: 1000000
+          description: Server-sanitized immutable HTML.
+        wordCount:
+          type: integer
+          minimum: 0
+        publishedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+          minimum: 1
+        etag:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+        previous:
+          oneOf:
+            - $ref: "#/components/schemas/ChapterLink"
+            - type: "null"
+        next:
+          oneOf:
+            - $ref: "#/components/schemas/ChapterLink"
+            - type: "null"
+    ChapterLink:
+      type: object
+      additionalProperties: false
+      required: [id, number, slug, title]
+      properties:
+        id:
+          type: string
+          format: uuid
+        number:
+          type: integer
+          minimum: 1
+        slug:
+          type: string
+          pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        title:
+          type: string
+          maxLength: 200
     Team:
       type: object
       additionalProperties: false

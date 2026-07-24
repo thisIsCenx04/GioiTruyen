@@ -727,6 +727,27 @@ export type PublicChapter = Readonly<{
   version: number;
 }>;
 
+export type PublishedChapterDetail = PublicChapter &
+  Readonly<{
+    revisionId: string;
+    revisionNo: number;
+    contentHtml: string;
+    wordCount: number;
+    etag: string;
+    previous: Readonly<{
+      id: string;
+      number: number;
+      slug: string;
+      title: string;
+    }> | null;
+    next: Readonly<{
+      id: string;
+      number: number;
+      slug: string;
+      title: string;
+    }> | null;
+  }>;
+
 export type SearchHit = Readonly<{
   story: HomeStorySummary;
   score: number;
@@ -792,6 +813,11 @@ export function createPublicCatalogClient({
         hasMore: boolean;
       }>(
         `/stories/${encodeURIComponent(identifier)}/chapters?limit=${limit}`,
+      );
+    },
+    chapter(chapterId: string) {
+      return client.request<PublishedChapterDetail>(
+        `/chapters/${encodeURIComponent(chapterId)}`,
       );
     },
     search(query: string, limit = 20) {

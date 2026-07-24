@@ -7,6 +7,7 @@ import com.storyplatform.shared.api.ApiException;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -56,5 +57,44 @@ class ChapterCatalogControllerTest {
                 .isInstanceOf(ApiException.class);
         assertThatThrownBy(() -> controller.list("story", null, 0))
                 .isInstanceOf(ApiException.class);
+    }
+
+    @Test
+    void returnsRevisionEtagAndHonorsConditionalReads() {
+        ChapterCatalogOperations operations =
+                mock(ChapterCatalogOperations.class);
+        when(operations.detail("chapter")).thenReturn(detail());
+        var controller = new ChapterCatalogController(operations);
+
+        var fresh = controller.detail("chapter", null);
+        var unchanged = controller.detail(
+                "chapter",
+                "\"" + "a".repeat(64) + "\""
+        );
+
+        assertThat(fresh.getStatusCode().value()).isEqualTo(200);
+        assertThat(fresh.getHeaders().getETag())
+                .isEqualTo("\"" + "a".repeat(64) + "\"");
+        assertThat(unchanged.getStatusCode().value()).isEqualTo(304);
+        assertThat(unchanged.getBody()).isNull();
+    }
+
+    private static ChapterCatalogOperations.ChapterDetail detail() {
+        return new ChapterCatalogOperations.ChapterDetail(
+                "20000000-0000-4000-8000-000000000001",
+                "10000000-0000-4000-8000-000000000001",
+                1,
+                "chapter-1",
+                "Chapter",
+                "30000000-0000-4000-8000-000000000001",
+                2,
+                "<p>Evidence</p>",
+                1,
+                Instant.parse("2026-07-24T00:00:00Z"),
+                3,
+                "a".repeat(64),
+                null,
+                null
+        );
     }
 }

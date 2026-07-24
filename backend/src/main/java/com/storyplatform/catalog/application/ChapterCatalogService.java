@@ -6,6 +6,7 @@ import com.storyplatform.catalog.application.port.StoryRepository;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 public final class ChapterCatalogService implements ChapterCatalogOperations {
 
@@ -79,6 +80,71 @@ public final class ChapterCatalogService implements ChapterCatalogOperations {
             ));
         }
         return new ChapterPage(items, next, hasMore);
+    }
+
+    @Override
+    public ChapterDetail detail(String chapterId) {
+        String id;
+        try {
+            id = UUID.fromString(chapterId).toString();
+        } catch (RuntimeException exception) {
+            throw rejected(
+                    "CHAPTER_IDENTIFIER_INVALID",
+                    "chapter identifier is invalid"
+            );
+        }
+        ChapterRepository.StoredChapter stored = chapters
+                .findPublishedDetail(id)
+                .orElseThrow(() -> rejected(
+                        "CHAPTER_NOT_FOUND",
+                        "published chapter was not found"
+                ));
+        PublicChapterProjection chapter = stored.chapter();
+        if (stories.findPublishedByIdOrSlug(chapter.storyId()).isEmpty()) {
+            throw rejected(
+                    "CHAPTER_NOT_FOUND",
+                    "published chapter was not found"
+            );
+        }
+        return new ChapterDetail(
+                chapter.id(),
+                chapter.storyId(),
+                chapter.number(),
+                chapter.slug(),
+                chapter.title(),
+                stored.revisionId(),
+                stored.revisionNo(),
+                stored.contentHtml(),
+                wordCount(stored.plainText()),
+                chapter.publishedAt(),
+                chapter.version(),
+                stored.checksum(),
+                chapters.previous(
+                        chapter.storyId(),
+                        chapter.number(),
+                        chapter.id()
+                ).map(ChapterCatalogService::link).orElse(null),
+                chapters.next(
+                        chapter.storyId(),
+                        chapter.number(),
+                        chapter.id()
+                ).map(ChapterCatalogService::link).orElse(null)
+        );
+    }
+
+    private static ChapterLink link(PublicChapterProjection chapter) {
+        return new ChapterLink(
+                chapter.id(),
+                chapter.number(),
+                chapter.slug(),
+                chapter.title()
+        );
+    }
+
+    private static int wordCount(String plainText) {
+        return plainText == null || plainText.isBlank()
+                ? 0
+                : plainText.trim().split("\\s+").length;
     }
 
     private static CatalogRequestException rejected(
