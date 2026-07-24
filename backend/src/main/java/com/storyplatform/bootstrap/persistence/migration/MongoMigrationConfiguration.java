@@ -287,6 +287,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    WithdrawalIndexes withdrawalIndexes() {
+        return new WithdrawalIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

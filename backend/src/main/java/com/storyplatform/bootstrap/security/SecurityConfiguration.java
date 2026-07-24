@@ -187,6 +187,7 @@ public class SecurityConfiguration {
                                 "/teams/*/members",
                                 "/teams/*/members/*",
                                 "/teams/*/members/*/permissions",
+                                "/teams/*/withdrawals",
                                 "/teams/*/follow",
                                 "/team-invitations/*/accept"
                         ).authenticated()

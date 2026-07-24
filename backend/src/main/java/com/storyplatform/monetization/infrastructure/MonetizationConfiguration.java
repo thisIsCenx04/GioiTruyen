@@ -10,6 +10,8 @@ import com.storyplatform.monetization.application.RewardService;
 import com.storyplatform.monetization.application.ReferralOperations;
 import com.storyplatform.monetization.application.ReferralRule;
 import com.storyplatform.monetization.application.ReferralService;
+import com.storyplatform.monetization.application.WithdrawalOperations;
+import com.storyplatform.monetization.application.WithdrawalService;
 import com.storyplatform.monetization.application.ManualTopupOperations;
 import com.storyplatform.monetization.application.ManualTopupService;
 import com.storyplatform.monetization.application.port.LedgerRepository;
@@ -17,6 +19,11 @@ import com.storyplatform.monetization.application.port.DonationRepository;
 import com.storyplatform.monetization.application.port.RewardRepository;
 import com.storyplatform.monetization.application.port.ReferralCodeCodec;
 import com.storyplatform.monetization.application.port.ReferralRepository;
+import com.storyplatform.monetization.application.port
+        .WithdrawalCursorCodec;
+import com.storyplatform.monetization.application.port
+        .WithdrawalDestinationDirectory;
+import com.storyplatform.monetization.application.port.WithdrawalRepository;
 import com.storyplatform.monetization.application.port.ManualTopupAuthorizer;
 import com.storyplatform.monetization.application.port.ManualTopupRepository;
 import com.storyplatform.monetization.application.WalletBalanceProjector;
@@ -50,8 +57,14 @@ import com.storyplatform.monetization.infrastructure.persistence
         .MongoRewardRepository;
 import com.storyplatform.monetization.infrastructure.persistence
         .MongoReferralRepository;
+import com.storyplatform.monetization.infrastructure.persistence
+        .MongoWithdrawalDestinationDirectory;
+import com.storyplatform.monetization.infrastructure.persistence
+        .MongoWithdrawalRepository;
 import com.storyplatform.monetization.infrastructure.security
         .HmacReferralCodeCodec;
+import com.storyplatform.monetization.infrastructure.security
+        .HmacWithdrawalCursorCodec;
 import com.storyplatform.analytics.application.contract
         .RewardViewAggregateDirectory;
 import com.storyplatform.monetization.infrastructure.persistence
@@ -193,6 +206,60 @@ public class MonetizationConfiguration {
             ReferralOperations referrals
     ) {
         return new ReferralRewardWorker(referrals);
+    }
+
+    @Bean
+    WithdrawalRepository withdrawalRepository(MongoTemplate mongo) {
+        return new MongoWithdrawalRepository(mongo);
+    }
+
+    @Bean
+    WithdrawalDestinationDirectory withdrawalDestinationDirectory(
+            MongoTemplate mongo
+    ) {
+        return new MongoWithdrawalDestinationDirectory(mongo);
+    }
+
+    @Bean
+    WithdrawalCursorCodec withdrawalCursorCodec(
+            @Value("${app.identity.login-risk.hmac-key}")
+            String encodedKey
+    ) {
+        try {
+            return new HmacWithdrawalCursorCodec(
+                    Base64.getDecoder().decode(encodedKey)
+            );
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalStateException(
+                    "LOGIN_RISK_HMAC_KEY must be Base64 with 32 bytes",
+                    exception
+            );
+        }
+    }
+
+    @Bean
+    WithdrawalOperations withdrawalOperations(
+            WithdrawalRepository repository,
+            WithdrawalDestinationDirectory destinations,
+            WithdrawalCursorCodec cursors,
+            TeamPermissionAuthorizer permissions,
+            WalletOperations wallets,
+            LedgerOperations ledger,
+            OutboxAppender outbox
+    ) {
+        return new TransactionalWithdrawalOperations(
+                new WithdrawalService(
+                        repository,
+                        destinations,
+                        cursors,
+                        permissions,
+                        wallets,
+                        ledger,
+                        outbox,
+                        Clock.systemUTC(),
+                        UUID::randomUUID
+                )
+        );
     }
 
     @Bean

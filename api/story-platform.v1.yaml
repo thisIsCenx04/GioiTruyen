@@ -3066,6 +3066,111 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /teams/{teamId}/withdrawals:
+    post:
+      operationId: createTeamWithdrawal
+      summary: Reserve gross XU for a verified team withdrawal destination
+      description: |
+        Moves the complete gross amount from the team wallet's available
+        bucket to its reserved bucket in one transaction. Destination details
+        are snapshotted encrypted; only a masked label is returned.
+      tags: [Monetization]
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 16
+            maxLength: 128
+            pattern: '^[A-Za-z0-9._:-]+$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWithdrawalRequest"
+      responses:
+        "201":
+          description: Gross XU reserved for finance review
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WithdrawalReceipt"
+        "200":
+          description: Idempotent replay of the withdrawal request
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WithdrawalReceipt"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          description: Destination unavailable or available XU insufficient
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    get:
+      operationId: listTeamWithdrawals
+      summary: List the authorized team's private withdrawal history
+      tags: [Monetization]
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: cursor
+          in: query
+          schema:
+            type: string
+            maxLength: 512
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Private keyset-paginated withdrawal history
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WithdrawalPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /referrals/me:
     get:
       operationId: getMyReferralSummary
@@ -6414,6 +6519,67 @@ components:
           type: integer
           format: int64
           minimum: 0
+    CreateWithdrawalRequest:
+      type: object
+      additionalProperties: false
+      required: [grossAmountXu, destinationId]
+      properties:
+        grossAmountXu:
+          type: integer
+          format: int64
+          minimum: 100000
+          maximum: 1000000000
+        destinationId:
+          type: string
+          format: uuid
+    WithdrawalReceipt:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - teamId
+        - grossAmountXu
+        - destinationMasked
+        - state
+        - replayed
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        grossAmountXu:
+          type: integer
+          format: int64
+          minimum: 100000
+          maximum: 1000000000
+        destinationMasked:
+          type: string
+          minLength: 1
+          maxLength: 128
+        state:
+          type: string
+          const: PENDING_REVIEW
+        replayed:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+    WithdrawalPage:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/WithdrawalReceipt"
+        nextCursor:
+          type: string
+          maxLength: 512
     RejectTopupRequest:
       type: object
       additionalProperties: false
