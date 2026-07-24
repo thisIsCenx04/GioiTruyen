@@ -56,7 +56,8 @@ class ReadingCompletionServiceTest {
                 .isEqualTo("reading.session.completed");
         assertThat(event.getValue().payload())
                 .isInstanceOf(
-                        ReadingCompletionService
+                        com.storyplatform.reading.application.contract
+                                .ReadingSessionEvents
                                 .ReadingSessionCompleted.class
                 );
     }

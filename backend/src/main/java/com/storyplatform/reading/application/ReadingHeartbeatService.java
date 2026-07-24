@@ -2,6 +2,7 @@ package com.storyplatform.reading.application;
 
 import com.storyplatform.reading.application.port.ReadingHeartbeatRepository;
 import com.storyplatform.reading.application.port.ReadingSessionTokenCodec;
+import com.storyplatform.reading.application.contract.ReadingSessionEvents;
 import com.storyplatform.shared.events.IntegrationEvent;
 import com.storyplatform.shared.events.persistence.OutboxAppender;
 import org.springframework.transaction.annotation.Transactional;
@@ -87,7 +88,7 @@ public class ReadingHeartbeatService
         }
         outbox.append(new IntegrationEvent(
                 UUID.fromString(batchId),
-                "reading.session.heartbeat",
+                ReadingSessionEvents.HEARTBEAT_ACCEPTED,
                 1,
                 now,
                 batchId,
@@ -95,12 +96,20 @@ public class ReadingHeartbeatService
                 sessionId,
                 null,
                 null,
-                new HeartbeatBatchAccepted(
+                new ReadingSessionEvents.HeartbeatBatchAccepted(
                         sessionId,
                         claims.storyId(),
                         claims.chapterId(),
                         batchId,
-                        heartbeats
+                        heartbeats.stream()
+                                .map(heartbeat ->
+                                        new ReadingSessionEvents.Heartbeat(
+                                                heartbeat.sequence(),
+                                                heartbeat.occurredAt(),
+                                                heartbeat.position(),
+                                                heartbeat.activeSeconds()
+                                        ))
+                                .toList()
                 )
         ));
         return new HeartbeatReceipt(batchId, last + 1, false);
@@ -167,15 +176,4 @@ public class ReadingHeartbeatService
         );
     }
 
-    public record HeartbeatBatchAccepted(
-            String sessionId,
-            String storyId,
-            String chapterId,
-            String batchId,
-            List<Heartbeat> heartbeats
-    ) {
-        public HeartbeatBatchAccepted {
-            heartbeats = List.copyOf(heartbeats);
-        }
-    }
 }

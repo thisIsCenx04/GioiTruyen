@@ -217,6 +217,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    RawReadingEventIndexes rawReadingEventIndexes() {
+        return new RawReadingEventIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

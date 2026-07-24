@@ -2,6 +2,7 @@ package com.storyplatform.reading.application;
 
 import com.storyplatform.reading.application.port.ReadingCompletionRepository;
 import com.storyplatform.reading.application.port.ReadingSessionTokenCodec;
+import com.storyplatform.reading.application.contract.ReadingSessionEvents;
 import com.storyplatform.shared.events.IntegrationEvent;
 import com.storyplatform.shared.events.persistence.OutboxAppender;
 import org.springframework.transaction.annotation.Transactional;
@@ -93,7 +94,7 @@ public class ReadingCompletionService
         }
         outbox.append(new IntegrationEvent(
                 UUID.fromString(completionId),
-                "reading.session.completed",
+                ReadingSessionEvents.COMPLETED,
                 1,
                 now,
                 completionId,
@@ -101,7 +102,7 @@ public class ReadingCompletionService
                 sessionId,
                 null,
                 null,
-                new ReadingSessionCompleted(
+                new ReadingSessionEvents.ReadingSessionCompleted(
                         sessionId,
                         claims.storyId(),
                         claims.chapterId(),
@@ -134,14 +135,4 @@ public class ReadingCompletionService
         );
     }
 
-    public record ReadingSessionCompleted(
-            String sessionId,
-            String storyId,
-            String chapterId,
-            String completionId,
-            long finalSequence,
-            Instant occurredAt,
-            double position
-    ) {
-    }
 }
