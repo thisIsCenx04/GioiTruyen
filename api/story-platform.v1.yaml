@@ -2930,6 +2930,46 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /rankings/stories:
+    get:
+      operationId: rankStories
+      summary: Rank published stories from precomputed valid-view aggregates
+      tags: [Catalog]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/RankingPeriod"
+        - $ref: "#/components/parameters/RankingMetric"
+        - $ref: "#/components/parameters/RankingAsOf"
+        - $ref: "#/components/parameters/RankingLimit"
+      responses:
+        "200":
+          description: Snapshot ranking with explicit fallback metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RankingPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /rankings/teams:
+    get:
+      operationId: rankTeams
+      summary: Rank active teams from precomputed valid-view aggregates
+      tags: [Catalog]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/RankingPeriod"
+        - $ref: "#/components/parameters/RankingMetric"
+        - $ref: "#/components/parameters/RankingAsOf"
+        - $ref: "#/components/parameters/RankingLimit"
+      responses:
+        "200":
+          description: Snapshot ranking with explicit fallback metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RankingPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
   /notifications:
     get:
       operationId: listNotifications
@@ -3147,6 +3187,34 @@ components:
         minLength: 8
         maxLength: 128
         pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]+$"
+    RankingPeriod:
+      name: period
+      in: query
+      schema:
+        type: string
+        enum: [DAY, WEEK, MONTH]
+        default: WEEK
+    RankingMetric:
+      name: metric
+      in: query
+      schema:
+        type: string
+        enum: [VALID_VIEWS, COMPLETION_RATE, QUALITY_RATE]
+        default: VALID_VIEWS
+    RankingAsOf:
+      name: asOf
+      in: query
+      schema:
+        type: string
+        format: date-time
+    RankingLimit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
     CopyrightCaseId:
       name: caseId
       in: path
@@ -4022,6 +4090,68 @@ components:
         decidedAt:
           type: [string, "null"]
           format: date-time
+    RankingPage:
+      type: object
+      additionalProperties: false
+      required: [subject, period, metric, asOf, fallback, items]
+      properties:
+        subject:
+          type: string
+          enum: [STORY, TEAM]
+        period:
+          type: string
+          enum: [DAY, WEEK, MONTH]
+        metric:
+          type: string
+          enum: [VALID_VIEWS, COMPLETION_RATE, QUALITY_RATE]
+        asOf:
+          type: string
+          format: date-time
+        fallback:
+          type: boolean
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/RankingItem"
+    RankingItem:
+      type: object
+      additionalProperties: false
+      required:
+        - rank
+        - id
+        - name
+        - teamId
+        - validViews
+        - completedViews
+        - invalidViews
+        - score
+      properties:
+        rank:
+          type: integer
+          minimum: 1
+        id:
+          type: string
+        name:
+          type: string
+        teamId:
+          type: string
+        validViews:
+          type: integer
+          format: int64
+          minimum: 0
+        completedViews:
+          type: integer
+          format: int64
+          minimum: 0
+        invalidViews:
+          type: integer
+          format: int64
+          minimum: 0
+        score:
+          type: number
+          format: double
+          minimum: 0
     Notification:
       type: object
       additionalProperties: false

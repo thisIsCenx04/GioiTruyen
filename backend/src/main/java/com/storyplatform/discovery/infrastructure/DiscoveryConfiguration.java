@@ -7,18 +7,23 @@ import com.storyplatform.discovery.application.SearchOperations;
 import com.storyplatform.discovery.application.StorySearchService;
 import com.storyplatform.discovery.application.SuggestionOperations;
 import com.storyplatform.discovery.application.SuggestionService;
+import com.storyplatform.discovery.application.RankingOperations;
+import com.storyplatform.discovery.application.RankingService;
 import com.storyplatform.discovery.application.port.HomeReadModelRepository;
 import com.storyplatform.discovery.application.port.HomeStorySource;
 import com.storyplatform.discovery.application.port.SearchCursorCodec;
 import com.storyplatform.discovery.application.port.StorySearchRepository;
 import com.storyplatform.discovery.application.port.SuggestionRateLimiter;
 import com.storyplatform.discovery.application.port.SuggestionRepository;
+import com.storyplatform.discovery.application.port.RankingRepository;
 import com.storyplatform.discovery.infrastructure.persistence
         .AtlasSuggestionRepository;
 import com.storyplatform.discovery.infrastructure.persistence
         .AtlasStorySearchRepository;
 import com.storyplatform.discovery.infrastructure.persistence
         .TextStorySearchRepository;
+import com.storyplatform.discovery.infrastructure.persistence
+        .MongoRankingRepository;
 import com.storyplatform.discovery.infrastructure.persistence
         .DisabledSuggestionRepository;
 import com.storyplatform.discovery.infrastructure.security
@@ -38,6 +43,16 @@ import java.util.Base64;
 
 @Configuration(proxyBeanMethods = false)
 public class DiscoveryConfiguration {
+
+    @Bean
+    RankingRepository rankingRepository(MongoTemplate mongo) {
+        return new MongoRankingRepository(mongo);
+    }
+
+    @Bean
+    RankingOperations rankingOperations(RankingRepository repository) {
+        return new RankingService(repository, Clock.systemUTC());
+    }
 
     @Bean
     HomeOperations homeOperations(
