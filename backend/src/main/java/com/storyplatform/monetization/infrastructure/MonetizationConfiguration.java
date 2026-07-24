@@ -7,11 +7,16 @@ import com.storyplatform.monetization.application.DonationService;
 import com.storyplatform.monetization.application.RewardOperations;
 import com.storyplatform.monetization.application.RewardRule;
 import com.storyplatform.monetization.application.RewardService;
+import com.storyplatform.monetization.application.ReferralOperations;
+import com.storyplatform.monetization.application.ReferralRule;
+import com.storyplatform.monetization.application.ReferralService;
 import com.storyplatform.monetization.application.ManualTopupOperations;
 import com.storyplatform.monetization.application.ManualTopupService;
 import com.storyplatform.monetization.application.port.LedgerRepository;
 import com.storyplatform.monetization.application.port.DonationRepository;
 import com.storyplatform.monetization.application.port.RewardRepository;
+import com.storyplatform.monetization.application.port.ReferralCodeCodec;
+import com.storyplatform.monetization.application.port.ReferralRepository;
 import com.storyplatform.monetization.application.port.ManualTopupAuthorizer;
 import com.storyplatform.monetization.application.port.ManualTopupRepository;
 import com.storyplatform.monetization.application.WalletBalanceProjector;
@@ -43,6 +48,10 @@ import com.storyplatform.monetization.infrastructure.persistence
         .MongoDonationRepository;
 import com.storyplatform.monetization.infrastructure.persistence
         .MongoRewardRepository;
+import com.storyplatform.monetization.infrastructure.persistence
+        .MongoReferralRepository;
+import com.storyplatform.monetization.infrastructure.security
+        .HmacReferralCodeCodec;
 import com.storyplatform.analytics.application.contract
         .RewardViewAggregateDirectory;
 import com.storyplatform.monetization.infrastructure.persistence
@@ -58,6 +67,8 @@ import com.storyplatform.monetization.infrastructure.persistence
 import com.storyplatform.monetization.infrastructure.persistence
         .MongoTopupSettlementRepository;
 import com.storyplatform.identity.application.contract
+        .IdentityUserDirectory;
+import com.storyplatform.identity.application.contract
         .ReauthenticationVerifier;
 import com.storyplatform.shared.events.persistence.OutboxAppender;
 import com.storyplatform.teams.application.contract.TeamStatusDirectory;
@@ -70,6 +81,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import java.time.Clock;
 import java.time.Duration;
 import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.UUID;
 
 @Configuration(proxyBeanMethods = false)
@@ -114,6 +126,73 @@ public class MonetizationConfiguration {
             RewardOperations rewards
     ) {
         return new RewardSettlementWorker(rewards, Clock.systemUTC());
+    }
+
+    @Bean
+    ReferralRepository referralRepository(MongoTemplate mongo) {
+        return new MongoReferralRepository(mongo);
+    }
+
+    @Bean
+    ReferralCodeCodec referralCodeCodec(
+            @Value("${app.monetization.referrals.code-hmac-key}")
+            String encodedKey
+    ) {
+        try {
+            return new HmacReferralCodeCodec(
+                    Base64.getDecoder().decode(encodedKey)
+            );
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalStateException(
+                    "REFERRAL_CODE_HMAC_KEY must be Base64 with 32 bytes",
+                    exception
+            );
+        }
+    }
+
+    @Bean
+    ReferralOperations referralOperations(
+            ReferralRepository repository,
+            ReferralCodeCodec codes,
+            IdentityUserDirectory users,
+            WalletOperations wallets,
+            LedgerOperations ledger,
+            @Value("${app.monetization.referrals.rule-version}")
+            String ruleVersion,
+            @Value("${app.monetization.referrals.reward-xu}")
+            long rewardXu,
+            @Value("${app.monetization.referrals.attribution-window}")
+            Duration attributionWindow,
+            @Value("${app.monetization.referrals.referrer-minimum-age}")
+            Duration referrerMinimumAge,
+            @Value("${app.monetization.referrals.reward-delay}")
+            Duration rewardDelay,
+            @Value("${app.monetization.referrals.maximum-recent}")
+            int maximumRecent
+    ) {
+        return new TransactionalReferralOperations(new ReferralService(
+                repository,
+                codes,
+                users,
+                wallets,
+                ledger,
+                new ReferralRule(
+                        ruleVersion,
+                        rewardXu,
+                        attributionWindow,
+                        referrerMinimumAge,
+                        rewardDelay,
+                        maximumRecent
+                ),
+                Clock.systemUTC()
+        ));
+    }
+
+    @Bean
+    ReferralRewardWorker referralRewardWorker(
+            ReferralOperations referrals
+    ) {
+        return new ReferralRewardWorker(referrals);
     }
 
     @Bean

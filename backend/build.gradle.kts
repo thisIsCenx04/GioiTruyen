@@ -100,6 +100,10 @@ tasks.withType<Test>().configureEach {
 		"C".repeat(43) + "="
 	)
 	systemProperty(
+		"app.monetization.referrals.code-hmac-key",
+		"E".repeat(43) + "="
+	)
+	systemProperty(
 		"app.identity.mfa.encryption-key",
 		"D".repeat(43) + "="
 	)

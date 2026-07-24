@@ -282,6 +282,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    ReferralIndexes referralIndexes() {
+        return new ReferralIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

@@ -3066,6 +3066,83 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /referrals/me:
+    get:
+      operationId: getMyReferralSummary
+      summary: Get the caller's signed referral code and reward summary
+      description: |
+        Returns only caller-owned attribution state and bounded aggregate
+        counts. The signed code does not expose a sequential account ID.
+      tags: [Monetization]
+      responses:
+        "200":
+          description: Private referral state and aggregate reward summary
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReferralSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /referrals/me/attribution:
+    post:
+      operationId: attributeMyReferral
+      summary: Attribute a new account to one eligible referrer
+      description: |
+        Attribution is immutable per referee. The reward remains pending until
+        the configured delay expires and both accounts pass active-state
+        checks. Self-referrals, canonical mailbox aliases and referral rings
+        are rejected.
+      tags: [Monetization]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 16
+            maxLength: 128
+            pattern: '^[A-Za-z0-9._:-]+$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReferralAttributionRequest"
+      responses:
+        "201":
+          description: Pending immutable referral attribution created
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReferralAttribution"
+        "200":
+          description: Idempotent replay of the existing attribution
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReferralAttribution"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /webhooks/payments:
     post:
       operationId: receivePaymentWebhook
@@ -6266,6 +6343,77 @@ components:
         createdAt:
           type: string
           format: date-time
+    CreateReferralAttributionRequest:
+      type: object
+      additionalProperties: false
+      required: [code]
+      properties:
+        code:
+          type: string
+          minLength: 32
+          maxLength: 64
+          pattern: '^[A-Za-z0-9_-]+$'
+    ReferralAttribution:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - state
+        - attributedAt
+        - eligibleAt
+        - replayed
+      properties:
+        id:
+          type: string
+          format: uuid
+        state:
+          type: string
+          enum: [PENDING, REWARDED]
+        attributedAt:
+          type: string
+          format: date-time
+        eligibleAt:
+          type: string
+          format: date-time
+        replayed:
+          type: boolean
+    ReferralSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - referredCount
+        - pendingCount
+        - rewardedCount
+        - rewardedXu
+      properties:
+        code:
+          type: string
+          minLength: 32
+          maxLength: 64
+          pattern: '^[A-Za-z0-9_-]+$'
+        attributedBy:
+          type: string
+          format: uuid
+        attributionState:
+          type: string
+          enum: [PENDING, REWARDED]
+        referredCount:
+          type: integer
+          format: int64
+          minimum: 0
+        pendingCount:
+          type: integer
+          format: int64
+          minimum: 0
+        rewardedCount:
+          type: integer
+          format: int64
+          minimum: 0
+        rewardedXu:
+          type: integer
+          format: int64
+          minimum: 0
     RejectTopupRequest:
       type: object
       additionalProperties: false

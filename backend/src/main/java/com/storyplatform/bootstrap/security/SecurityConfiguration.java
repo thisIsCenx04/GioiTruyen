@@ -122,6 +122,7 @@ public class SecurityConfiguration {
                         .requestMatchers("/wallets/**").authenticated()
                         .requestMatchers("/donations").authenticated()
                         .requestMatchers("/teams/*/rewards").authenticated()
+                        .requestMatchers("/referrals/**").authenticated()
                         .requestMatchers("/admin/topups/**").authenticated()
                         .requestMatchers(
                                 "/admin/configuration/topup-discount"

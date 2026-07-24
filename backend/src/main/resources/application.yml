@@ -90,6 +90,15 @@ app:
       xu-per-thousand: ${REWARD_XU_PER_THOUSAND_VALID_VIEWS:100}
       team-daily-cap: ${REWARD_TEAM_DAILY_CAP_XU:100000}
       cron: "${REWARD_SETTLEMENT_CRON:0 */5 * * * *}"
+    referrals:
+      code-hmac-key: ${REFERRAL_CODE_HMAC_KEY}
+      rule-version: ${REFERRAL_RULE_VERSION:referral-2026.1}
+      reward-xu: ${REFERRAL_REWARD_XU:100}
+      attribution-window: ${REFERRAL_ATTRIBUTION_WINDOW:7d}
+      referrer-minimum-age: ${REFERRAL_REFERRER_MINIMUM_AGE:7d}
+      reward-delay: ${REFERRAL_REWARD_DELAY:7d}
+      maximum-recent: ${REFERRAL_MAXIMUM_RECENT:100}
+      poll-interval: ${REFERRAL_REWARD_POLL_INTERVAL:5m}
   analytics:
     raw-events:
       retention: ${ANALYTICS_RAW_EVENT_RETENTION:90d}
