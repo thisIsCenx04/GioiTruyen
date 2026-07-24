@@ -1630,6 +1630,99 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /teams/{teamId}/stories/{storyId}/visibility:
+    post:
+      operationId: changeTeamStoryVisibility
+      summary: Hide or reinstate a published Team story
+      tags: [Publishing]
+      parameters:
+        - $ref: "#/components/parameters/TeamId"
+        - name: storyId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: If-Match
+          in: header
+          required: true
+          schema: { type: string, pattern: '^"[1-9][0-9]*"$' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentVisibilityRequest"
+      responses:
+        "200":
+          description: Visibility changed atomically with audit and outbox
+          headers:
+            ETag:
+              schema: { type: string, pattern: '^"[1-9][0-9]*"$' }
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentVisibility"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: Visibility transition is not allowed
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "412":
+          description: If-Match version is stale
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+  /moderation/stories/{storyId}/visibility:
+    post:
+      operationId: moderateStoryVisibility
+      summary: Suspend or reinstate a published story
+      tags: [Moderation]
+      parameters:
+        - name: storyId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: If-Match
+          in: header
+          required: true
+          schema: { type: string, pattern: '^"[1-9][0-9]*"$' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentVisibilityRequest"
+      responses:
+        "200":
+          description: Moderation visibility changed with immutable reason
+          headers:
+            ETag:
+              schema: { type: string, pattern: '^"[1-9][0-9]*"$' }
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentVisibility"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: Visibility transition is not allowed
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "412":
+          description: If-Match version is stale
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
   /moderation/cases:
     get:
       operationId: listModerationCases
@@ -2156,6 +2249,41 @@ components:
           type: string
           format: date-time
         updatedAt:
+          type: string
+          format: date-time
+    ContentVisibilityRequest:
+      type: object
+      additionalProperties: false
+      required: [action, reasonCode]
+      properties:
+        action:
+          type: string
+          enum: [HIDE, SUSPEND, REINSTATE]
+        reasonCode:
+          type: string
+          pattern: "^[A-Z][A-Z0-9_]{2,63}$"
+        note:
+          type: [string, "null"]
+          maxLength: 1000
+    ContentVisibility:
+      type: object
+      additionalProperties: false
+      required: [storyId, teamId, state, version, changedAt]
+      properties:
+        storyId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        state:
+          type: string
+          enum: [PUBLISHED, HIDDEN, SUSPENDED]
+        version:
+          type: integer
+          format: int64
+          minimum: 1
+        changedAt:
           type: string
           format: date-time
     FrozenChapterRevision:
