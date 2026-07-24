@@ -142,6 +142,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    PublishingDueIndexes publishingDueIndexes() {
+        return new PublishingDueIndexes();
+    }
+
+    @Bean
     ModerationQueueIndexes moderationQueueIndexes() {
         return new ModerationQueueIndexes();
     }

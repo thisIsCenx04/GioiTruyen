@@ -75,7 +75,8 @@ public record PublishingSchedule(
 
     public enum State {
         SCHEDULED,
-        CANCELLED
+        CANCELLED,
+        PUBLISHED
     }
 
     private static String uuid(String value, String field) {

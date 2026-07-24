@@ -84,6 +84,11 @@ app:
       lease-duration: ${PUBLISHING_PRECHECK_LEASE_DURATION:30s}
       timeout: ${PUBLISHING_PRECHECK_TIMEOUT:5s}
       poll-interval: ${PUBLISHING_PRECHECK_POLL_INTERVAL:2s}
+    due-worker:
+      enabled: ${PUBLISHING_DUE_WORKER_ENABLED:false}
+      lease-duration: ${PUBLISHING_DUE_LEASE_DURATION:30s}
+      inactive-retry-delay: ${PUBLISHING_DUE_INACTIVE_RETRY_DELAY:5m}
+      poll-interval: ${PUBLISHING_DUE_POLL_INTERVAL:2s}
   media:
     cloudinary:
       enabled: ${CLOUDINARY_UPLOAD_SIGNING_ENABLED:false}
