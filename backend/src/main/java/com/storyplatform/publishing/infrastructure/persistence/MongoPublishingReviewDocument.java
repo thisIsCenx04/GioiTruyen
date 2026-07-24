@@ -1,6 +1,7 @@
 package com.storyplatform.publishing.infrastructure.persistence;
 
 import com.storyplatform.publishing.domain.PublishingReview;
+import com.storyplatform.publishing.application.PublishingPrecheckEngine;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -18,7 +19,11 @@ public record MongoPublishingReviewDocument(
         long submittedVersion,
         List<PublishingReview.ChapterRevisionRef> chapterRevisions,
         PublishingReview.State state,
-        List<Map<String, Object>> checks,
+        List<PublishingPrecheckEngine.CheckResult> checks,
+        boolean manualFallback,
+        String leaseOwner,
+        Instant leaseUntil,
+        Instant checkedAt,
         String assigneeId,
         Map<String, Object> decision,
         String submittedBy,
@@ -44,6 +49,10 @@ public record MongoPublishingReviewDocument(
                 review.chapterRevisions(),
                 review.state(),
                 List.of(),
+                false,
+                null,
+                null,
+                null,
                 null,
                 null,
                 review.submittedBy(),

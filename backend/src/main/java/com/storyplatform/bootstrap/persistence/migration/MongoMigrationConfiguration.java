@@ -132,6 +132,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    PublishingPrecheckIndexes publishingPrecheckIndexes() {
+        return new PublishingPrecheckIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

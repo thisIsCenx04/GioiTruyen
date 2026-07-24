@@ -38,7 +38,6 @@ public record PublishingReview(
         );
         chapterRevisions = List.copyOf(chapterRevisions);
         if (targetType != TargetType.STORY
-                || state != State.AUTOMATED_CHECK_PENDING
                 || submittedVersion < 1
                 || version != 1
                 || chapterRevisions.isEmpty()
@@ -83,7 +82,9 @@ public record PublishingReview(
     }
 
     public enum State {
-        AUTOMATED_CHECK_PENDING
+        AUTOMATED_CHECK_PENDING,
+        AUTOMATED_CHECK_RUNNING,
+        OPEN
     }
 
     private static String uuid(String value, String field) {

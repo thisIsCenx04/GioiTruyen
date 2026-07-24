@@ -1752,7 +1752,7 @@ components:
             $ref: "#/components/schemas/FrozenChapterRevision"
         state:
           type: string
-          const: AUTOMATED_CHECK_PENDING
+          enum: [AUTOMATED_CHECK_PENDING, AUTOMATED_CHECK_RUNNING, OPEN]
         version:
           type: integer
           format: int64
