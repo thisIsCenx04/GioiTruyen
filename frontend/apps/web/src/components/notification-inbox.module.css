@@ -97,6 +97,14 @@
   width: fit-content;
 }
 
+.settingsLink {
+  color: #5269d7;
+  font-size: 0.78rem;
+  font-weight: 800;
+  margin-top: 1rem;
+  width: fit-content;
+}
+
 .summary button:disabled,
 .more:disabled {
   cursor: default;

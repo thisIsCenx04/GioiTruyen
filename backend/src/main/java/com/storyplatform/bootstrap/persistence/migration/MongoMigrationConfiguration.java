@@ -212,6 +212,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    NotificationDeliveryIndexes notificationDeliveryIndexes() {
+        return new NotificationDeliveryIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

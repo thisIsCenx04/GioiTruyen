@@ -373,6 +373,17 @@ export type NotificationPage = Readonly<{
   unreadCount: number;
 }>;
 
+export type NotificationPreference = Readonly<{
+  userId: string;
+  emailEnabled: boolean;
+  pushEnabled: boolean;
+  categories: readonly string[];
+  consentVersion: string;
+  consentedAt: string | null;
+  updatedAt: string;
+  version: number;
+}>;
+
 export type BrowserTeamClientOptions = Readonly<{
   baseUrl?: string;
   fetchImplementation?: typeof fetch;
@@ -843,6 +854,40 @@ export function createBrowserNotificationClient({
       return request<{ readBefore: string; unreadCount: number }>(
         "/notifications/read-all",
         { method: "POST" },
+      );
+    },
+    preferences() {
+      return request<NotificationPreference>("/notification-preferences");
+    },
+    updatePreferences(
+      version: number,
+      input: {
+        emailEnabled: boolean;
+        pushEnabled: boolean;
+        categories: readonly string[];
+        consentGranted: boolean;
+      },
+    ) {
+      return request<NotificationPreference>("/notification-preferences", {
+        body: input,
+        headers: { "If-Match": `"${version}"` },
+        method: "PATCH",
+      });
+    },
+    registerPush(input: {
+      endpoint: string;
+      p256dh: string;
+      auth: string;
+    }) {
+      return request<{ id: string; createdAt: string; updatedAt: string }>(
+        "/notification-push-subscriptions",
+        { body: input, method: "POST" },
+      );
+    },
+    removePush(subscriptionId: string) {
+      return request<void>(
+        `/notification-push-subscriptions/${encodeURIComponent(subscriptionId)}`,
+        { method: "DELETE" },
       );
     },
   });

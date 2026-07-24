@@ -3002,6 +3002,120 @@ paths:
                 $ref: "#/components/schemas/NotificationReadWatermark"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /notification-preferences:
+    get:
+      operationId: getNotificationPreferences
+      summary: Get consent and external delivery preferences
+      tags: [Notifications]
+      responses:
+        "200":
+          description: Current preferences, with external channels off by default
+          headers:
+            ETag:
+              description: Quoted preference version required for updates
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationPreference"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      operationId: updateNotificationPreferences
+      summary: Update external delivery consent using optimistic concurrency
+      tags: [Notifications]
+      parameters:
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: '^"[0-9]+"$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationPreferenceRequest"
+      responses:
+        "200":
+          description: Updated preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationPreference"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /notification-unsubscribe:
+    post:
+      operationId: unsubscribeNotificationChannel
+      summary: Disable the channel authorized by a signed unsubscribe token
+      tags: [Notifications]
+      security: []
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+            maxLength: 1024
+      responses:
+        "200":
+          description: Updated preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationPreference"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /notification-push-subscriptions:
+    post:
+      operationId: registerNotificationPushSubscription
+      summary: Register an owned Web Push subscription
+      tags: [Notifications]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushSubscriptionRequest"
+      responses:
+        "201":
+          description: Registered or refreshed subscription
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PushSubscription"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /notification-push-subscriptions/{subscriptionId}:
+    delete:
+      operationId: removeNotificationPushSubscription
+      summary: Disable an owned Web Push subscription
+      tags: [Notifications]
+      parameters:
+        - name: subscriptionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Subscription disabled
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
 components:
   securitySchemes:
     bearerAuth:
@@ -3967,6 +4081,99 @@ components:
           type: integer
           format: int64
           minimum: 0
+    NotificationPreference:
+      type: object
+      additionalProperties: false
+      required:
+        - userId
+        - emailEnabled
+        - pushEnabled
+        - categories
+        - consentVersion
+        - consentedAt
+        - updatedAt
+        - version
+      properties:
+        userId:
+          type: string
+          format: uuid
+        emailEnabled:
+          type: boolean
+        pushEnabled:
+          type: boolean
+        categories:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum: [STORY_UPDATES, COMMUNITY, MODERATION, ACCOUNT]
+        consentVersion:
+          type: [string, "null"]
+          maxLength: 64
+        consentedAt:
+          type: [string, "null"]
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+    NotificationPreferenceRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - emailEnabled
+        - pushEnabled
+        - categories
+        - consentGranted
+      properties:
+        emailEnabled:
+          type: boolean
+        pushEnabled:
+          type: boolean
+        categories:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum: [STORY_UPDATES, COMMUNITY, MODERATION, ACCOUNT]
+        consentGranted:
+          type: boolean
+    PushSubscriptionRequest:
+      type: object
+      additionalProperties: false
+      required: [endpoint, p256dh, auth]
+      properties:
+        endpoint:
+          type: string
+          format: uri
+          maxLength: 2048
+        p256dh:
+          type: string
+          minLength: 43
+          maxLength: 128
+          pattern: "^[A-Za-z0-9_-]+$"
+        auth:
+          type: string
+          minLength: 16
+          maxLength: 64
+          pattern: "^[A-Za-z0-9_-]+$"
+    PushSubscription:
+      type: object
+      additionalProperties: false
+      required: [id, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
     UploadSignatureRequest:
       type: object
       additionalProperties: false

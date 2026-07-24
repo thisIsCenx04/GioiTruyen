@@ -136,6 +136,9 @@ export function NotificationInbox() {
           >
             Đánh dấu tất cả đã đọc
           </button>
+          <a className={styles.settingsLink} href="/notifications/settings">
+            Chọn cách nhận thông báo
+          </a>
         </div>
 
         <div className={styles.stream}>

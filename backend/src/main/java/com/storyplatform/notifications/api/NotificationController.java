@@ -4,7 +4,6 @@ import com.storyplatform.notifications.application.NotificationException;
 import com.storyplatform.notifications.application.NotificationOperations;
 import com.storyplatform.shared.api.ApiException;
 import org.springframework.http.CacheControl;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -74,13 +73,6 @@ public final class NotificationController {
     }
 
     private static ApiException problem(NotificationException exception) {
-        return new ApiException(
-                exception.kind() == NotificationException.Kind.INVALID
-                        ? HttpStatus.BAD_REQUEST
-                        : HttpStatus.NOT_FOUND,
-                exception.code(),
-                "Notification request rejected",
-                exception.getMessage()
-        );
+        return NotificationPreferenceController.problem(exception);
     }
 }

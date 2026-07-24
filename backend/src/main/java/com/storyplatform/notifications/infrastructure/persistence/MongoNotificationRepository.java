@@ -179,6 +179,9 @@ public final class MongoNotificationRepository
                         createdAt
                 )
                 : existing;
+        if (existing == null) {
+            MongoNotificationDeliveryRepository.enqueue(mongo, stored);
+        }
         return new SaveResult(
                 view(stored, watermark(recipientId)),
                 existing == null

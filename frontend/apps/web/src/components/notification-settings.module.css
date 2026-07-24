@@ -1,0 +1,153 @@
+.settings {
+  background: #f3f6ff;
+  color: #151a2d;
+  min-height: 100vh;
+  overflow: auto;
+  padding: 0 clamp(1.2rem, 4vw, 4.5rem) 5rem;
+}
+
+.settings > header {
+  align-items: end;
+  border-bottom: 0.08rem solid #aeb9d5;
+  display: grid;
+  gap: 2rem;
+  grid-template-columns: minmax(10rem, 0.55fr) minmax(18rem, 1.45fr) auto;
+  margin: 0 auto;
+  max-width: 88rem;
+  padding: 2rem 0 2.6rem;
+}
+
+.settings > header a {
+  font-size: 0.78rem;
+  font-weight: 800;
+  justify-self: end;
+  text-decoration: none;
+}
+
+.settings > header > a:first-child {
+  align-self: start;
+  justify-self: start;
+}
+
+.settings > header span,
+.intro small,
+.controls legend {
+  color: #66708d;
+  font: 800 0.68rem/1 var(--utility);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.settings h1 {
+  font: 600 clamp(2.8rem, 6vw, 6.2rem)/0.88 var(--serif);
+  letter-spacing: -0.06em;
+  margin: 0.7rem 0 0;
+}
+
+.settings h1 em {
+  color: #5269d7;
+  font-weight: 500;
+}
+
+.settings form {
+  display: grid;
+  gap: clamp(3rem, 7vw, 8rem);
+  grid-template-columns: minmax(12rem, 0.45fr) minmax(0, 1.55fr);
+  margin: 0 auto;
+  max-width: 88rem;
+  padding-top: clamp(3rem, 6vw, 5.5rem);
+}
+
+.intro p {
+  color: #515b78;
+  line-height: 1.7;
+  margin: 0 0 1rem;
+  max-width: 20rem;
+}
+
+.controls {
+  display: grid;
+  gap: 2.5rem;
+}
+
+.controls fieldset {
+  border: 0;
+  border-top: 0.08rem solid #aeb9d5;
+  display: grid;
+  margin: 0;
+  padding: 0;
+}
+
+.controls legend {
+  padding: 0 0 1rem;
+}
+
+.controls label {
+  align-items: center;
+  border-bottom: 0.08rem solid #c9d1e8;
+  cursor: pointer;
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: auto 1fr;
+  padding: 1.25rem 0;
+}
+
+.controls input {
+  accent-color: #5269d7;
+  height: 1.25rem;
+  width: 1.25rem;
+}
+
+.controls label span {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.controls label strong {
+  font: 600 1.25rem/1.1 var(--serif);
+}
+
+.controls label small {
+  color: #66708d;
+  line-height: 1.45;
+}
+
+.controls > button {
+  background: #111a3a;
+  border: 0;
+  color: white;
+  cursor: pointer;
+  font-weight: 800;
+  padding: 1rem 1.3rem;
+  width: fit-content;
+}
+
+.controls > button:disabled {
+  opacity: 0.5;
+}
+
+.error,
+.notice {
+  border-left: 0.28rem solid #df4c3f;
+  padding: 0.8rem 1rem;
+}
+
+.notice {
+  border-color: #27756e;
+}
+
+@media (max-width: 48rem) {
+  .settings > header {
+    align-items: start;
+    grid-template-columns: 1fr auto;
+  }
+
+  .settings > header > div {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .settings form {
+    grid-template-columns: 1fr;
+  }
+}

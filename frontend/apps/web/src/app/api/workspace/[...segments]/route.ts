@@ -107,6 +107,19 @@ function allowed(method: string, path: string) {
   if (new RegExp(`^notifications/${uuid}/read$`, "u").test(path)) {
     return method === "POST";
   }
+  if (path === "notification-preferences") {
+    return method === "GET" || method === "PATCH";
+  }
+  if (path === "notification-push-subscriptions") {
+    return method === "POST";
+  }
+  if (
+    new RegExp(`^notification-push-subscriptions/${uuid}$`, "u").test(
+      path,
+    )
+  ) {
+    return method === "DELETE";
+  }
   if (
     new RegExp(`^me/reading-progress/${uuid}$`, "u").test(path)
   ) {

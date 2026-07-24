@@ -54,6 +54,10 @@ public class SecurityConfiguration {
                         "/copyright/cases/*/decisions",
                         "/notifications/*/read",
                         "/notifications/read-all",
+                        "/notification-preferences",
+                        "/notification-unsubscribe",
+                        "/notification-push-subscriptions",
+                        "/notification-push-subscriptions/*",
                         "/reading-sessions",
                         "/reading-sessions/*/heartbeats",
                         "/reading-sessions/*/complete",
@@ -111,6 +115,14 @@ public class SecurityConfiguration {
                                 "/auth/reauth/grants"
                         ).authenticated()
                         .requestMatchers("/notifications/**")
+                        .authenticated()
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/notification-unsubscribe"
+                        ).permitAll()
+                        .requestMatchers("/notification-preferences")
+                        .authenticated()
+                        .requestMatchers("/notification-push-subscriptions/**")
                         .authenticated()
                         .requestMatchers("/me").authenticated()
                         .requestMatchers(

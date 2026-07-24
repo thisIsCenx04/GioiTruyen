@@ -21,6 +21,7 @@ public final class NotificationException extends RuntimeException {
 
     public enum Kind {
         INVALID,
-        NOT_FOUND
+        NOT_FOUND,
+        CONFLICT
     }
 }
