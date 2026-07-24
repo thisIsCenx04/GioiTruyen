@@ -21,6 +21,9 @@ function allowed(method: string, path: string) {
   if (new RegExp(`^teams/${uuid}/stories$`, "u").test(path)) {
     return method === "GET" || method === "POST";
   }
+  if (new RegExp(`^teams/${uuid}/analytics/views$`, "u").test(path)) {
+    return method === "GET";
+  }
   if (new RegExp(`^teams/${uuid}/stories/${uuid}$`, "u").test(path)) {
     return method === "GET" || method === "PATCH";
   }

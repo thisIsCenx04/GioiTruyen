@@ -214,6 +214,32 @@ export type TeamFollow = Readonly<{
   followerCount: number;
 }>;
 
+export type TeamAnalyticsReport = Readonly<{
+  teamId: string;
+  period: "7D" | "30D" | "90D";
+  from: string;
+  to: string;
+  totals: Readonly<{
+    rawEvents: number;
+    completedViews: number;
+    validViews: number;
+    invalidViews: number;
+    qualityRate: number;
+  }>;
+  series: readonly Readonly<{
+    start: string;
+    rawEvents: number;
+    completedViews: number;
+    validViews: number;
+    invalidViews: number;
+    qualityRate: number;
+  }>[];
+  reasons: readonly Readonly<{
+    code: string;
+    count: number;
+  }>[];
+}>;
+
 export type PublishingStory = Readonly<{
   id: string;
   teamId: string;
@@ -456,6 +482,11 @@ export function createBrowserTeamClient({
     },
     getTeam(teamId: string) {
       return request<Team>(`/teams/${encodeURIComponent(teamId)}`);
+    },
+    analytics(teamId: string, period: "7D" | "30D" | "90D" = "30D") {
+      return request<TeamAnalyticsReport>(
+        `/teams/${encodeURIComponent(teamId)}/analytics/views?period=${period}`,
+      );
     },
     inviteMember(
       teamId: string,

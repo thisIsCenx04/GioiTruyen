@@ -1643,6 +1643,43 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /teams/{teamId}/analytics/views:
+    get:
+      operationId: getTeamViewAnalytics
+      summary: Get private view-quality analytics for an authorized Team
+      description: |
+        Requires an active Team membership with analytics:read. Reads bounded
+        daily projections rather than raw reading events. The quality rate is
+        validViews divided by validViews plus invalidViews.
+      tags: [Analytics]
+      parameters:
+        - $ref: "#/components/parameters/TeamId"
+        - name: period
+          in: query
+          required: false
+          description: Bounded rolling reporting period.
+          schema:
+            type: string
+            enum: [7D, 30D, 90D]
+            default: 30D
+      responses:
+        "200":
+          description: Aggregated Team view-quality report
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamAnalyticsReport"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /teams/{teamId}/members:
     get:
       operationId: listTeamMembers
@@ -5684,6 +5721,113 @@ components:
         following:
           type: boolean
         followerCount:
+          type: integer
+          format: int64
+          minimum: 0
+    TeamAnalyticsReport:
+      type: object
+      additionalProperties: false
+      required: [teamId, period, from, to, totals, series, reasons]
+      properties:
+        teamId:
+          type: string
+          format: uuid
+        period:
+          type: string
+          enum: [7D, 30D, 90D]
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        totals:
+          $ref: "#/components/schemas/ViewAnalyticsTotals"
+        series:
+          type: array
+          maxItems: 90
+          items:
+            $ref: "#/components/schemas/ViewAnalyticsBucket"
+        reasons:
+          type: array
+          items:
+            $ref: "#/components/schemas/ViewAnalyticsReason"
+    ViewAnalyticsTotals:
+      type: object
+      additionalProperties: false
+      required:
+        - rawEvents
+        - completedViews
+        - validViews
+        - invalidViews
+        - qualityRate
+      properties:
+        rawEvents:
+          type: integer
+          format: int64
+          minimum: 0
+        completedViews:
+          type: integer
+          format: int64
+          minimum: 0
+        validViews:
+          type: integer
+          format: int64
+          minimum: 0
+        invalidViews:
+          type: integer
+          format: int64
+          minimum: 0
+        qualityRate:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+    ViewAnalyticsBucket:
+      type: object
+      additionalProperties: false
+      required:
+        - start
+        - rawEvents
+        - completedViews
+        - validViews
+        - invalidViews
+        - qualityRate
+      properties:
+        start:
+          type: string
+          format: date-time
+        rawEvents:
+          type: integer
+          format: int64
+          minimum: 0
+        completedViews:
+          type: integer
+          format: int64
+          minimum: 0
+        validViews:
+          type: integer
+          format: int64
+          minimum: 0
+        invalidViews:
+          type: integer
+          format: int64
+          minimum: 0
+        qualityRate:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+    ViewAnalyticsReason:
+      type: object
+      additionalProperties: false
+      required: [code, count]
+      properties:
+        code:
+          type: string
+          minLength: 1
+          maxLength: 80
+        count:
           type: integer
           format: int64
           minimum: 0

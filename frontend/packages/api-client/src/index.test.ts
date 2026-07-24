@@ -84,6 +84,26 @@ describe("story API client", () => {
 });
 
 describe("browser reading client", () => {
+  it("loads the caller's private reading progress", async () => {
+    apiMockServer.use(
+      http.get(
+        "/api/workspace/me/reading-progress/story-01",
+        () => HttpResponse.json({
+          chapterId: "chapter-03",
+          deviceUpdatedAt: "2026-07-24T00:00:00Z",
+          position: 62.5,
+          storyId: "story-01",
+          updatedAt: "2026-07-24T00:00:01Z",
+          version: 5,
+        }),
+      ),
+    );
+
+    await expect(
+      createBrowserReadingClient().progress("story-01"),
+    ).resolves.toMatchObject({ position: 62.5, version: 5 });
+  });
+
   it("synchronizes cross-device progress with If-Match", async () => {
     apiMockServer.use(
       http.put(
@@ -142,6 +162,38 @@ describe("browser reading client", () => {
       client.history({ cursor: "signed-cursor", limit: 25 }),
     ).resolves.toMatchObject({ hasMore: false, items: [] });
     await expect(client.deleteHistory("story-01")).resolves.toBeUndefined();
+  });
+});
+
+describe("browser Team analytics client", () => {
+  it("requests a bounded period from the private workspace", async () => {
+    apiMockServer.use(
+      http.get(
+        "/api/workspace/teams/team-01/analytics/views",
+        ({ request }) => {
+          expect(new URL(request.url).searchParams.get("period")).toBe("90D");
+          return HttpResponse.json({
+            from: "2026-05-01T00:00:00Z",
+            period: "90D",
+            reasons: [],
+            series: [],
+            teamId: "team-01",
+            to: "2026-07-25T00:00:00Z",
+            totals: {
+              completedViews: 0,
+              invalidViews: 0,
+              qualityRate: 0,
+              rawEvents: 0,
+              validViews: 0,
+            },
+          });
+        },
+      ),
+    );
+
+    await expect(
+      createBrowserTeamClient().analytics("team-01", "90D"),
+    ).resolves.toMatchObject({ period: "90D", teamId: "team-01" });
   });
 });
 

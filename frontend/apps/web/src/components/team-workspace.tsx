@@ -408,6 +408,9 @@ export function TeamWorkspace({ teamId }: Readonly<{ teamId: string }>) {
           <Link href={`/teams/${teamId}/stories` as Route}>
             Bàn bản thảo
           </Link>
+          <Link href={`/teams/${teamId}/analytics` as Route}>
+            Chất lượng lượt đọc
+          </Link>
           {canManage && <a href="#settings">Thông tin nhóm</a>}
           {canManage && <a href="#members">Sổ thành viên</a>}
           {canManage && <a href="#invite">Mời cộng sự</a>}

@@ -27,6 +27,12 @@ import com.storyplatform.analytics.infrastructure.persistence
 import com.storyplatform.analytics.application.port.ViewAggregateRepository;
 import com.storyplatform.analytics.infrastructure.persistence
         .MongoViewAggregateRepository;
+import com.storyplatform.analytics.application.TeamAnalyticsOperations;
+import com.storyplatform.analytics.application.TeamAnalyticsService;
+import com.storyplatform.analytics.application.port.TeamAnalyticsRepository;
+import com.storyplatform.analytics.infrastructure.persistence
+        .MongoTeamAnalyticsRepository;
+import com.storyplatform.teams.application.contract.TeamPermissionAuthorizer;
 import com.storyplatform.analytics.infrastructure.security
         .HmacReadingSessionPseudonymizer;
 import org.springframework.beans.factory.annotation.Value;
@@ -43,6 +49,23 @@ import java.util.Base64;
 
 @Configuration(proxyBeanMethods = false)
 public class AnalyticsConfiguration {
+
+    @Bean
+    TeamAnalyticsRepository teamAnalyticsRepository(MongoTemplate mongo) {
+        return new MongoTeamAnalyticsRepository(mongo);
+    }
+
+    @Bean
+    TeamAnalyticsOperations teamAnalyticsOperations(
+            TeamPermissionAuthorizer permissions,
+            TeamAnalyticsRepository repository
+    ) {
+        return new TeamAnalyticsService(
+                permissions,
+                repository,
+                Clock.systemUTC()
+        );
+    }
 
     @Bean
     ViewAggregateRepository viewAggregateRepository(MongoTemplate mongo) {
