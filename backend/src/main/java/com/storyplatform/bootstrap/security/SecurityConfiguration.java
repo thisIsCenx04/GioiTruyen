@@ -45,6 +45,7 @@ public class SecurityConfiguration {
                         "/stories/*/follow",
                         "/comments",
                         "/comments/*",
+                        "/reactions/*/*",
                         "/reading-sessions",
                         "/reading-sessions/*/heartbeats",
                         "/reading-sessions/*/complete",
@@ -122,6 +123,9 @@ public class SecurityConfiguration {
                         .requestMatchers(
                                 HttpMethod.DELETE,
                                 "/comments/*"
+                        ).authenticated()
+                        .requestMatchers(
+                                "/reactions/*/*"
                         ).authenticated()
                         .requestMatchers(
                                 HttpMethod.POST,

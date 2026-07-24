@@ -187,6 +187,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    ReactionIndexes reactionIndexes() {
+        return new ReactionIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

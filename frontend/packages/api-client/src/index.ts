@@ -816,6 +816,43 @@ export type CommentPage = Readonly<{
   hasMore: boolean;
 }>;
 
+export type ReactionTargetType = "STORY" | "CHAPTER" | "COMMENT";
+
+export type CommunityReaction = Readonly<{
+  targetType: ReactionTargetType;
+  targetId: string;
+  active: boolean;
+  count: number;
+}>;
+
+export function createBrowserReactionClient({
+  baseUrl = "/api/workspace",
+  fetchImplementation = fetch,
+}: BrowserTeamClientOptions = {}) {
+  const client = createStoryApiClient({ baseUrl, fetchImplementation });
+  const path = (
+    targetType: ReactionTargetType,
+    targetId: string,
+  ): `/${string}` =>
+    `/reactions/${targetType.toLowerCase()}/${encodeURIComponent(targetId)}`;
+  const request = (
+    targetType: ReactionTargetType,
+    targetId: string,
+    method = "GET",
+  ) => client.request<CommunityReaction>(path(targetType, targetId), {
+    credentials: "same-origin",
+    method,
+  });
+  return Object.freeze({
+    status: (targetType: ReactionTargetType, targetId: string) =>
+      request(targetType, targetId),
+    add: (targetType: ReactionTargetType, targetId: string) =>
+      request(targetType, targetId, "PUT"),
+    remove: (targetType: ReactionTargetType, targetId: string) =>
+      request(targetType, targetId, "DELETE"),
+  });
+}
+
 export function createBrowserCommentClient({
   fetchImplementation = fetch,
 }: Pick<BrowserTeamClientOptions, "fetchImplementation"> = {}) {

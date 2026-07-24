@@ -77,6 +77,12 @@ function allowed(method: string, path: string) {
     return method === "DELETE" || method === "PATCH";
   }
   if (
+    new RegExp(`^reactions/(story|chapter|comment)/${uuid}$`, "u")
+      .test(path)
+  ) {
+    return ["DELETE", "GET", "PUT"].includes(method);
+  }
+  if (
     new RegExp(`^me/reading-progress/${uuid}$`, "u").test(path)
   ) {
     return method === "GET" || method === "PUT";

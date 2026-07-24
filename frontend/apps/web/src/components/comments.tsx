@@ -2,6 +2,7 @@
 
 import {
   createBrowserCommentClient,
+  createBrowserReactionClient,
   StoryApiError,
   type CommunityComment,
   type CommentTargetType,
@@ -16,6 +17,50 @@ type Props = Readonly<{
   targetId: string;
   targetType: CommentTargetType;
 }>;
+
+function ReactionButton({ commentId }: Readonly<{ commentId: string }>) {
+  const api = useMemo(() => createBrowserReactionClient(), []);
+  const [reaction, setReaction] = useState<{
+    active: boolean;
+    count: number;
+  } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    api.status("COMMENT", commentId)
+      .then((value) => {
+        if (active) setReaction(value);
+      })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, [api, commentId]);
+
+  async function toggle() {
+    if (!reaction || busy) return;
+    setBusy(true);
+    try {
+      setReaction(reaction.active
+        ? await api.remove("COMMENT", commentId)
+        : await api.add("COMMENT", commentId));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!reaction) return null;
+  return (
+    <button
+      aria-label={`${reaction.active ? "Bỏ thích" : "Thích"} · ${reaction.count}`}
+      aria-pressed={reaction.active}
+      disabled={busy}
+      onClick={() => void toggle()}
+      type="button"
+    >
+      ♥ {reaction.count}
+    </button>
+  );
+}
 
 export function Comments({ targetId, targetType }: Props) {
   const api = useMemo(() => createBrowserCommentClient(), []);
@@ -194,6 +239,7 @@ export function Comments({ targetId, targetType }: Props) {
               ) : <p>{comment.body}</p>}
               {comment.status !== "DELETED" && (
                 <footer>
+                  <ReactionButton commentId={comment.id} />
                   {comment.depth < 2 && (
                     <button onClick={() => setReplyTo(comment)} type="button">
                       Trả lời

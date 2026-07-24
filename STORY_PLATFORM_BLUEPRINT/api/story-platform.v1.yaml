@@ -690,6 +690,55 @@ paths:
           $ref: '#/components/responses/NotFoundProblem'
         '409':
           $ref: '#/components/responses/ConflictProblem'
+  /reactions/{targetType}/{targetId}:
+    parameters:
+      - in: path
+        name: targetType
+        required: true
+        schema: { type: string, enum: [story, chapter, comment] }
+      - in: path
+        name: targetId
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Community]
+      operationId: getMyReaction
+      summary: Lấy reaction của người dùng và tổng reaction
+      responses:
+        '200':
+          description: Trạng thái reaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reaction'
+        '404':
+          $ref: '#/components/responses/NotFoundProblem'
+    put:
+      tags: [Community]
+      operationId: addReaction
+      summary: Thêm reaction idempotent
+      responses:
+        '200':
+          description: Đã thêm hoặc đã tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reaction'
+        '404':
+          $ref: '#/components/responses/NotFoundProblem'
+    delete:
+      tags: [Community]
+      operationId: removeReaction
+      summary: Xóa reaction idempotent
+      responses:
+        '200':
+          description: Đã xóa hoặc vốn không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reaction'
+        '404':
+          $ref: '#/components/responses/NotFoundProblem'
   /reports:
     post:
       tags: [Moderation]
@@ -1535,6 +1584,15 @@ components:
           items: { $ref: '#/components/schemas/Comment' }
         nextCursor: { type: [string, 'null'] }
         hasMore: { type: boolean }
+    Reaction:
+      type: object
+      additionalProperties: false
+      required: [targetType, targetId, active, count]
+      properties:
+        targetType: { type: string, enum: [STORY, CHAPTER, COMMENT] }
+        targetId: { type: string, format: uuid }
+        active: { type: boolean }
+        count: { type: integer, format: int64, minimum: 0 }
     PublicUser:
       type: object
       additionalProperties: false

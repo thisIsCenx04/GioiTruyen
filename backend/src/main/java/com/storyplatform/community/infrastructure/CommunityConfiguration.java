@@ -4,12 +4,17 @@ import com.storyplatform.community.application.CommentOperations;
 import com.storyplatform.community.application.CommentRateLimiter;
 import com.storyplatform.community.application.CommentSanitizer;
 import com.storyplatform.community.application.CommentService;
+import com.storyplatform.community.application.ReactionOperations;
+import com.storyplatform.community.application.ReactionService;
 import com.storyplatform.community.application.port.CommentRepository;
+import com.storyplatform.community.application.port.ReactionRepository;
 import com.storyplatform.community.application.StoryRelationOperations;
 import com.storyplatform.community.application.StoryRelationService;
 import com.storyplatform.community.application.port.StoryRelationRepository;
 import com.storyplatform.community.infrastructure.persistence
         .MongoCommentRepository;
+import com.storyplatform.community.infrastructure.persistence
+        .MongoReactionRepository;
 import com.storyplatform.community.infrastructure.persistence
         .MongoStoryRelationRepository;
 import com.storyplatform.shared.cache.RedisKeyFactory;
@@ -64,6 +69,34 @@ public class CommunityConfiguration {
                 new CommentSanitizer(),
                 Clock.systemUTC()
         );
+    }
+
+    @Bean
+    ReactionRepository reactionRepository(MongoTemplate mongo) {
+        return new MongoReactionRepository(mongo);
+    }
+
+    @Bean
+    ReactionOperations reactionOperations(
+            ReactionRepository repository,
+            OutboxAppender outbox
+    ) {
+        return new TransactionalReactionOperations(
+                new ReactionService(repository, outbox, Clock.systemUTC())
+        );
+    }
+
+    @Bean
+    ReactionCounterStore reactionCounterStore(MongoTemplate mongo) {
+        return new ReactionCounterStore(mongo, Clock.systemUTC());
+    }
+
+    @Bean
+    ReactionCounterProjector reactionCounterProjector(
+            ReactionCounterStore counters,
+            ObjectMapper mapper
+    ) {
+        return new ReactionCounterProjector(counters, mapper);
     }
 
     @Bean

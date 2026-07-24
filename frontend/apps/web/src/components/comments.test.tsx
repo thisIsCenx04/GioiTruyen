@@ -36,6 +36,20 @@ describe("comments", () => {
           }],
           nextCursor: null,
         })),
+      http.get("/api/workspace/reactions/comment/:commentId", ({ params }) =>
+        HttpResponse.json({
+          active: false,
+          count: 4,
+          targetId: params.commentId,
+          targetType: "COMMENT",
+        })),
+      http.put("/api/workspace/reactions/comment/:commentId", ({ params }) =>
+        HttpResponse.json({
+          active: true,
+          count: 5,
+          targetId: params.commentId,
+          targetType: "COMMENT",
+        })),
       http.post("/api/workspace/comments", async ({ request }) => {
         const input = await request.json() as { body: string };
         return HttpResponse.json({
@@ -107,6 +121,12 @@ describe("comments", () => {
     render(<Comments targetId={targetId} targetType="STORY" />);
 
     expect(await screen.findByText("Chương này rất hay.")).toBeVisible();
+    const reaction = await screen.findByRole("button", {
+      name: "Thích · 4",
+    });
+    await user.click(reaction);
+    expect(await screen.findByRole("button", { name: "Bỏ thích · 5" }))
+      .toHaveAttribute("aria-pressed", "true");
     await user.type(
       screen.getByLabelText("Chia sẻ cảm nhận"),
       "Mình cũng thích chương này.",

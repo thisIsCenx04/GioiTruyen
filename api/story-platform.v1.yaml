@@ -1212,6 +1212,59 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /reactions/{targetType}/{targetId}:
+    parameters:
+      - name: targetType
+        in: path
+        required: true
+        schema:
+          type: string
+          enum: [story, chapter, comment]
+      - name: targetId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getMyReaction
+      summary: Get the caller reaction and authoritative target count
+      tags: [Community]
+      responses:
+        "200":
+          $ref: "#/components/responses/Reaction"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: addReaction
+      summary: Idempotently add a reaction to a visible target
+      tags: [Community]
+      responses:
+        "200":
+          $ref: "#/components/responses/Reaction"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: removeReaction
+      summary: Idempotently remove the caller reaction
+      tags: [Community]
+      responses:
+        "200":
+          $ref: "#/components/responses/Reaction"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /reading-sessions/{sessionId}/heartbeats:
     post:
       operationId: ingestReadingHeartbeats
@@ -4511,6 +4564,23 @@ components:
           maxLength: 512
         hasMore:
           type: boolean
+    Reaction:
+      type: object
+      additionalProperties: false
+      required: [targetType, targetId, active, count]
+      properties:
+        targetType:
+          type: string
+          enum: [STORY, CHAPTER, COMMENT]
+        targetId:
+          type: string
+          format: uuid
+        active:
+          type: boolean
+        count:
+          type: integer
+          format: int64
+          minimum: 0
     Team:
       type: object
       additionalProperties: false
@@ -4668,6 +4738,17 @@ components:
           type: string
           format: uri-reference
   responses:
+    Reaction:
+      description: Caller reaction state and authoritative target count
+      headers:
+        Cache-Control:
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Reaction"
     StoryRelation:
       description: Caller relation state and source-of-truth count
       headers:
