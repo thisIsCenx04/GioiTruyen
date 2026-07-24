@@ -117,6 +117,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    StoryDraftIndexes storyDraftIndexes() {
+        return new StoryDraftIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

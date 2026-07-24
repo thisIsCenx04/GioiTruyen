@@ -13,6 +13,7 @@ import com.storyplatform.teams.application.TeamMembershipOperations;
 import com.storyplatform.teams.application.TeamMembershipUseCase;
 import com.storyplatform.teams.application.TeamOperations;
 import com.storyplatform.teams.application.TeamUseCase;
+import com.storyplatform.teams.application.contract.TeamStatusDirectory;
 import com.storyplatform.teams.application.port.TeamInvitationRepository;
 import com.storyplatform.teams.application.port.TeamInvitationTokenCodec;
 import com.storyplatform.teams.application.port.TeamMembershipRepository;
@@ -94,6 +95,14 @@ public class TeamsConfiguration {
             TeamMembershipCache cache
     ) {
         return new TeamAuthorizationUseCase(memberships, cache);
+    }
+
+    @Bean
+    TeamStatusDirectory teamStatusDirectory(TeamRepository teams) {
+        return teamId -> teams.findById(teamId)
+                .filter(team -> team.state() ==
+                        com.storyplatform.teams.domain.Team.State.ACTIVE)
+                .isPresent();
     }
 
     @Bean

@@ -11,6 +11,7 @@ import com.storyplatform.catalog.application.port.CatalogCursorCodec;
 import com.storyplatform.catalog.application.port.ChapterCursorCodec;
 import com.storyplatform.catalog.application.port.ChapterRepository;
 import com.storyplatform.catalog.application.port.StoryRepository;
+import com.storyplatform.catalog.application.contract.ActiveCategoryDirectory;
 import com.storyplatform.catalog.infrastructure.security
         .HmacCatalogCursorCodec;
 import com.storyplatform.catalog.infrastructure.security
@@ -22,6 +23,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.util.Base64;
+import java.util.stream.Collectors;
 
 @Configuration(proxyBeanMethods = false)
 public class CatalogConfiguration {
@@ -34,6 +36,16 @@ public class CatalogConfiguration {
     ) {
         CategoryOperations source = new CategoryQueryService(categories);
         return new CachedCategoryOperations(source, cache, keys);
+    }
+
+    @Bean
+    ActiveCategoryDirectory activeCategoryDirectory(
+            CategoryOperations categories
+    ) {
+        return () -> categories.getTaxonomy().groups().stream()
+                .flatMap(group -> group.categories().stream())
+                .map(CategoryOperations.CategoryView::id)
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     @Bean
