@@ -3121,6 +3121,58 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /admin/topups/{topupId}/approve:
+    post:
+      operationId: approveManualTopup
+      summary: Manually approve a payment event pending review
+      description: |
+        Requires FINANCE_REVIEW and a single-use TOPUP_MANUAL_APPROVAL
+        reauthentication grant bound to the top-up request. The immutable
+        discount snapshot is credited through the same ledger CAS as
+        automated settlement.
+      tags: [Monetization]
+      parameters:
+        - name: topupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: Scoped-Reauthentication
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 20
+            maxLength: 512
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApproveManualTopupRequest"
+      responses:
+        "200":
+          description: Top-up credited with an immutable manual audit
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManualTopupApproval"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /admin/configuration/topup-discount:
     get:
       operationId: getTopupDiscountConfiguration
@@ -5976,6 +6028,45 @@ components:
           type: string
           minLength: 10
           maxLength: 500
+    ApproveManualTopupRequest:
+      type: object
+      additionalProperties: false
+      required: [reason, evidenceReference]
+      properties:
+        reason:
+          type: string
+          minLength: 10
+          maxLength: 500
+        evidenceReference:
+          type: string
+          minLength: 3
+          maxLength: 512
+          pattern: '^[A-Za-z0-9][A-Za-z0-9._:/-]{2,511}$'
+    ManualTopupApproval:
+      type: object
+      additionalProperties: false
+      required:
+        - topupId
+        - paymentEventId
+        - ledgerTransactionId
+        - status
+        - decidedAt
+      properties:
+        topupId:
+          type: string
+          format: uuid
+        paymentEventId:
+          type: string
+          format: uuid
+        ledgerTransactionId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          const: CREDITED
+        decidedAt:
+          type: string
+          format: date-time
     PaymentWebhookPayload:
       type: object
       additionalProperties: false

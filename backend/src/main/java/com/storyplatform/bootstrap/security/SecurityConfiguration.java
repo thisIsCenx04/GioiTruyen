@@ -120,6 +120,7 @@ public class SecurityConfiguration {
                         .authenticated()
                         .requestMatchers("/rankings/**").permitAll()
                         .requestMatchers("/wallets/**").authenticated()
+                        .requestMatchers("/admin/topups/**").authenticated()
                         .requestMatchers(
                                 "/admin/configuration/topup-discount"
                         ).authenticated()

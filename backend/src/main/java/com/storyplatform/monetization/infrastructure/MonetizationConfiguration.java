@@ -2,7 +2,11 @@ package com.storyplatform.monetization.infrastructure;
 
 import com.storyplatform.monetization.application.LedgerOperations;
 import com.storyplatform.monetization.application.LedgerService;
+import com.storyplatform.monetization.application.ManualTopupOperations;
+import com.storyplatform.monetization.application.ManualTopupService;
 import com.storyplatform.monetization.application.port.LedgerRepository;
+import com.storyplatform.monetization.application.port.ManualTopupAuthorizer;
+import com.storyplatform.monetization.application.port.ManualTopupRepository;
 import com.storyplatform.monetization.application.WalletBalanceProjector;
 import com.storyplatform.monetization.application.WalletOperations;
 import com.storyplatform.monetization.application.WalletService;
@@ -24,6 +28,8 @@ import com.storyplatform.monetization.application.port
         .TopupSettlementRepository;
 import com.storyplatform.monetization.infrastructure.persistence
         .MongoLedgerRepository;
+import com.storyplatform.monetization.infrastructure.persistence
+        .MongoManualTopupRepository;
 import com.storyplatform.monetization.infrastructure.persistence
         .MongoWalletRepository;
 import com.storyplatform.monetization.infrastructure.persistence
@@ -47,6 +53,39 @@ import java.util.UUID;
 
 @Configuration(proxyBeanMethods = false)
 public class MonetizationConfiguration {
+
+    @Bean
+    ManualTopupRepository manualTopupRepository(MongoTemplate mongo) {
+        return new MongoManualTopupRepository(mongo);
+    }
+
+    @Bean
+    ManualTopupAuthorizer manualTopupAuthorizer(
+            ReauthenticationVerifier reauthentication
+    ) {
+        return new ScopedManualTopupAuthorizer(reauthentication);
+    }
+
+    @Bean
+    ManualTopupOperations manualTopupOperations(
+            ManualTopupRepository repository,
+            ManualTopupAuthorizer authorizer,
+            WalletOperations wallets,
+            LedgerOperations ledger,
+            OutboxAppender outbox
+    ) {
+        return new TransactionalManualTopupOperations(
+                new ManualTopupService(
+                        repository,
+                        authorizer,
+                        wallets,
+                        ledger,
+                        outbox,
+                        Clock.systemUTC(),
+                        UUID::randomUUID
+                )
+        );
+    }
 
     @Bean
     TopupSettlementRepository topupSettlementRepository(
