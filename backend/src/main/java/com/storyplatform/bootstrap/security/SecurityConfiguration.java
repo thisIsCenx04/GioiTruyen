@@ -56,6 +56,7 @@ public class SecurityConfiguration {
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/categories",
+                                "/home",
                                 "/stories",
                                 "/stories/*",
                                 "/stories/*/chapters",

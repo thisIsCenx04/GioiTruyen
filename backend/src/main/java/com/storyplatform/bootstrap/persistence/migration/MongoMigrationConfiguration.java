@@ -97,6 +97,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    HomeReadModelIndexes homeReadModelIndexes() {
+        return new HomeReadModelIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }
