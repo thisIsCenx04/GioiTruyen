@@ -1035,6 +1035,52 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
+  /reading-sessions/{sessionId}/complete:
+    post:
+      operationId: completeReadingSession
+      summary: Idempotently queue a reading session for completion
+      description: |
+        A successful request only transitions the session to
+        COMPLETION_PENDING and emits a transactional outbox event. View
+        qualification and counters are processed asynchronously.
+      security: []
+      tags: [Reading]
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: X-Reading-Session-Token
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 80
+            maxLength: 1024
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReadingCompletionRequest"
+      responses:
+        "202":
+          description: Completion queued or safely recognized as a retry
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadingCompletionReceipt"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /me/reading-progress/{storyId}:
     get:
       operationId: getReadingProgress
@@ -4029,6 +4075,38 @@ components:
           type: integer
           format: int64
           minimum: 2
+        duplicate:
+          type: boolean
+    ReadingCompletionRequest:
+      type: object
+      additionalProperties: false
+      required: [completionId, finalSequence, occurredAt, position]
+      properties:
+        completionId:
+          type: string
+          format: uuid
+        finalSequence:
+          type: integer
+          format: int64
+          minimum: 0
+        occurredAt:
+          type: string
+          format: date-time
+        position:
+          type: number
+          minimum: 0
+          maximum: 100
+    ReadingCompletionReceipt:
+      type: object
+      additionalProperties: false
+      required: [completionId, status, duplicate]
+      properties:
+        completionId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          const: COMPLETION_PENDING
         duplicate:
           type: boolean
     ReadingProgress:

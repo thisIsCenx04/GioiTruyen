@@ -2,6 +2,7 @@ package com.storyplatform.unit.reading.infrastructure;
 
 import com.storyplatform.reading.application.port.ReadingSessionRepository;
 import com.storyplatform.reading.application.port.ReadingHeartbeatRepository;
+import com.storyplatform.reading.application.port.ReadingCompletionRepository;
 import com.storyplatform.reading.infrastructure.persistence
         .MongoReadingSessionRepository;
 import com.storyplatform.reading.infrastructure.persistence
@@ -160,5 +161,46 @@ class MongoReadingSessionRepositoryTest {
                 null,
                 Instant.EPOCH
         ).processedBatchIds()).isEmpty();
+    }
+
+    @Test
+    void completionIsAtomicRetrySafeAndTimeoutAware() {
+        var mongo = mock(MongoTemplate.class);
+        Instant now = Instant.parse("2026-07-24T00:00:00Z");
+        String sessionId = "40000000-0000-4000-8000-000000000001";
+        SessionDocument active = document(
+                sessionId,
+                now,
+                java.util.List.of()
+        );
+        when(mongo.findAndModify(
+                any(),
+                any(),
+                any(),
+                eq(SessionDocument.class),
+                eq(MongoReadingSessionRepository.COLLECTION)
+        )).thenReturn(active, null, null, null);
+        when(mongo.exists(
+                any(Query.class),
+                eq(MongoReadingSessionRepository.COLLECTION)
+        )).thenReturn(true, false, true, false, false);
+        var repository = new MongoReadingSessionRepository(mongo);
+
+        assertThat(repository.complete(
+                sessionId, "actor", "completion", 1, now, now
+        )).isEqualTo(ReadingCompletionRepository.CompleteResult.APPLIED);
+        assertThat(repository.complete(
+                sessionId, "actor", "completion", 1, now, now
+        )).isEqualTo(ReadingCompletionRepository.CompleteResult.DUPLICATE);
+        assertThat(repository.complete(
+                sessionId, "actor", "completion", 2, now, now
+        )).isEqualTo(
+                ReadingCompletionRepository.CompleteResult.SEQUENCE_CONFLICT
+        );
+        assertThat(repository.complete(
+                sessionId, "actor", "completion", 1, now, now
+        )).isEqualTo(
+                ReadingCompletionRepository.CompleteResult.NOT_ACTIVE
+        );
     }
 }

@@ -220,6 +220,44 @@ describe("browser reading session client", () => {
       ),
     ).resolves.toMatchObject({ duplicate: false, nextSequence: 2 });
   });
+
+  it("queues idempotent completion without incrementing views", async () => {
+    apiMockServer.use(
+      http.post(
+        "/api/reading-sessions/session-01/complete",
+        async ({ request }) => {
+          expect(request.headers.get("x-reading-session-token")).toBe(
+            "signed-token",
+          );
+          await expect(request.json()).resolves.toMatchObject({
+            completionId: "completion-01",
+            finalSequence: 1,
+          });
+          return HttpResponse.json(
+            {
+              completionId: "completion-01",
+              duplicate: false,
+              status: "COMPLETION_PENDING",
+            },
+            { status: 202 },
+          );
+        },
+      ),
+    );
+
+    await expect(
+      createBrowserReadingSessionClient().complete(
+        "session-01",
+        "signed-token",
+        {
+          completionId: "completion-01",
+          finalSequence: 1,
+          occurredAt: "2026-07-24T00:00:00Z",
+          position: 100,
+        },
+      ),
+    ).resolves.toMatchObject({ status: "COMPLETION_PENDING" });
+  });
 });
 
 describe("browser publishing client", () => {

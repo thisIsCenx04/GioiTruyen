@@ -6,6 +6,8 @@ import com.storyplatform.reading.application.ReadingHistoryOperations;
 import com.storyplatform.reading.application.ReadingHistoryService;
 import com.storyplatform.reading.application.ReadingHeartbeatOperations;
 import com.storyplatform.reading.application.ReadingHeartbeatService;
+import com.storyplatform.reading.application.ReadingCompletionOperations;
+import com.storyplatform.reading.application.ReadingCompletionService;
 import com.storyplatform.reading.application.ReadingSessionOperations;
 import com.storyplatform.reading.application.ReadingSessionService;
 import com.storyplatform.reading.application.port.ReadingHistoryCursorCodec;
@@ -146,6 +148,20 @@ public class ReadingConfiguration {
             OutboxAppender outbox
     ) {
         return new ReadingHeartbeatService(
+                repository,
+                tokens,
+                outbox,
+                Clock.systemUTC()
+        );
+    }
+
+    @Bean
+    ReadingCompletionOperations readingCompletionOperations(
+            MongoReadingSessionRepository repository,
+            ReadingSessionTokenCodec tokens,
+            OutboxAppender outbox
+    ) {
+        return new ReadingCompletionService(
                 repository,
                 tokens,
                 outbox,

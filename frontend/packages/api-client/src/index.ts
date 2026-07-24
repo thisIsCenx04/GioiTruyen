@@ -776,6 +776,12 @@ export type ReadingHeartbeatReceipt = Readonly<{
   duplicate: boolean;
 }>;
 
+export type ReadingCompletionReceipt = Readonly<{
+  completionId: string;
+  status: "COMPLETION_PENDING";
+  duplicate: boolean;
+}>;
+
 export function createBrowserReadingSessionClient({
   baseUrl = "/api",
   fetchImplementation = fetch,
@@ -808,6 +814,26 @@ export function createBrowserReadingSessionClient({
     ) {
       return client.request<ReadingHeartbeatReceipt>(
         `/reading-sessions/${encodeURIComponent(sessionId)}/heartbeats`,
+        {
+          body: input,
+          credentials: "same-origin",
+          headers: { "X-Reading-Session-Token": sessionToken },
+          method: "POST",
+        },
+      );
+    },
+    complete(
+      sessionId: string,
+      sessionToken: string,
+      input: {
+        completionId: string;
+        finalSequence: number;
+        occurredAt: string;
+        position: number;
+      },
+    ) {
+      return client.request<ReadingCompletionReceipt>(
+        `/reading-sessions/${encodeURIComponent(sessionId)}/complete`,
         {
           body: input,
           credentials: "same-origin",
