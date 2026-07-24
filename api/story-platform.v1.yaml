@@ -939,6 +939,56 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
+  /reading-sessions:
+    post:
+      operationId: startReadingSession
+      summary: Start a signed, privacy-bounded reading session
+      description: |
+        Supports authenticated and anonymous readers. Anonymous callers must
+        provide a device-local random UUID. Raw user, anonymous and network
+        identifiers are never stored in the reading session.
+      security:
+        - {}
+        - bearerAuth: []
+      tags: [Reading]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartReadingSessionRequest"
+      responses:
+        "201":
+          description: Short-lived session grant for heartbeat ingestion
+          headers:
+            Location:
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadingSessionGrant"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          description: Reading session start quota exceeded
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /me/reading-progress/{storyId}:
     get:
       operationId: getReadingProgress
@@ -3849,6 +3899,44 @@ components:
         deviceUpdatedAt:
           type: string
           format: date-time
+    StartReadingSessionRequest:
+      type: object
+      additionalProperties: false
+      required: [storyId, chapterId]
+      properties:
+        storyId:
+          type: string
+          format: uuid
+        chapterId:
+          type: string
+          format: uuid
+        anonymousId:
+          type: string
+          format: uuid
+          description: Required only when no bearer identity is present.
+    ReadingSessionGrant:
+      type: object
+      additionalProperties: false
+      required:
+        - sessionId
+        - sessionToken
+        - expiresAt
+        - heartbeatIntervalSeconds
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+        sessionToken:
+          type: string
+          minLength: 80
+          maxLength: 1024
+        expiresAt:
+          type: string
+          format: date-time
+        heartbeatIntervalSeconds:
+          type: integer
+          minimum: 5
+          maximum: 60
     ReadingProgress:
       type: object
       additionalProperties: false
@@ -4068,6 +4156,12 @@ components:
             $ref: "#/components/schemas/Problem"
     Forbidden:
       description: The authenticated actor lacks the required Team ownership.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    ServiceUnavailable:
+      description: A required fail-closed dependency is unavailable.
       content:
         application/problem+json:
           schema:

@@ -6,6 +6,7 @@ import {
   createBrowserAuthClient,
   createBrowserPublishingClient,
   createBrowserReadingClient,
+  createBrowserReadingSessionClient,
   createBrowserTeamClient,
   createPublicCatalogClient,
   createStoryApiClient,
@@ -141,6 +142,40 @@ describe("browser reading client", () => {
       client.history({ cursor: "signed-cursor", limit: 25 }),
     ).resolves.toMatchObject({ hasMore: false, items: [] });
     await expect(client.deleteHistory("story-01")).resolves.toBeUndefined();
+  });
+});
+
+describe("browser reading session client", () => {
+  it("starts an anonymous privacy-bounded session", async () => {
+    apiMockServer.use(
+      http.post("/api/reading-sessions", async ({ request }) => {
+        await expect(request.json()).resolves.toMatchObject({
+          anonymousId: "anonymous-01",
+          chapterId: "chapter-01",
+          storyId: "story-01",
+        });
+        return HttpResponse.json(
+          {
+            expiresAt: "2026-07-24T00:30:00Z",
+            heartbeatIntervalSeconds: 15,
+            sessionId: "session-01",
+            sessionToken: "signed-token",
+          },
+          { status: 201 },
+        );
+      }),
+    );
+
+    await expect(
+      createBrowserReadingSessionClient().start({
+        anonymousId: "anonymous-01",
+        chapterId: "chapter-01",
+        storyId: "story-01",
+      }),
+    ).resolves.toMatchObject({
+      heartbeatIntervalSeconds: 15,
+      sessionToken: "signed-token",
+    });
   });
 });
 

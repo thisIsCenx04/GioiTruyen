@@ -38,6 +38,10 @@ public class SecurityConfiguration {
                         "/teams",
                         "/teams/*",
                         "/media/upload-signatures",
+                        "/me/reading-history",
+                        "/me/reading-history/*",
+                        "/me/reading-progress/*",
+                        "/reading-sessions",
                         "/webhooks/cloudinary"
                 ))
                 .oauth2ResourceServer(resourceServer -> resourceServer
@@ -64,6 +68,7 @@ public class SecurityConfiguration {
                                 "/stories",
                                 "/stories/*",
                                 "/stories/*/chapters",
+                                "/chapters/*",
                                 "/users/*",
                                 "/teams",
                                 "/teams/*"
@@ -76,6 +81,7 @@ public class SecurityConfiguration {
                                 "/auth/refresh",
                                 "/auth/password/forgot",
                                 "/auth/password/reset",
+                                "/reading-sessions",
                                 "/webhooks/cloudinary"
                         ).permitAll()
                         .requestMatchers(
@@ -87,6 +93,11 @@ public class SecurityConfiguration {
                                 "/auth/reauth/grants"
                         ).authenticated()
                         .requestMatchers("/me").authenticated()
+                        .requestMatchers(
+                                "/me/reading-history",
+                                "/me/reading-history/*",
+                                "/me/reading-progress/*"
+                        ).authenticated()
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/teams"

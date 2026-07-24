@@ -172,6 +172,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    ReadingSessionIndexes readingSessionIndexes() {
+        return new ReadingSessionIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

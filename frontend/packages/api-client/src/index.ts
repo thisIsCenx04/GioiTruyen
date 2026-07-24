@@ -763,6 +763,33 @@ export type ReadingHistoryPage = Readonly<{
   hasMore: boolean;
 }>;
 
+export type ReadingSessionGrant = Readonly<{
+  sessionId: string;
+  sessionToken: string;
+  expiresAt: string;
+  heartbeatIntervalSeconds: number;
+}>;
+
+export function createBrowserReadingSessionClient({
+  baseUrl = "/api",
+  fetchImplementation = fetch,
+}: BrowserTeamClientOptions = {}) {
+  const client = createStoryApiClient({ baseUrl, fetchImplementation });
+  return Object.freeze({
+    start(input: {
+      storyId: string;
+      chapterId: string;
+      anonymousId?: string;
+    }) {
+      return client.request<ReadingSessionGrant>("/reading-sessions", {
+        body: input,
+        credentials: "same-origin",
+        method: "POST",
+      });
+    },
+  });
+}
+
 export function createBrowserReadingClient({
   baseUrl = "/api/workspace",
   fetchImplementation = fetch,
