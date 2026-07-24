@@ -79,6 +79,9 @@ app:
     search:
       backend: ${SEARCH_BACKEND:text}
       atlas-index: ${ATLAS_SEARCH_INDEX:story_search_v1}
+    suggestions:
+      maximum: ${SUGGESTION_RATE_LIMIT_MAXIMUM:30}
+      window: ${SUGGESTION_RATE_LIMIT_WINDOW:1m}
   identity:
     registration:
       current-consent-version: ${REGISTRATION_CONSENT_VERSION:2026-07-24}

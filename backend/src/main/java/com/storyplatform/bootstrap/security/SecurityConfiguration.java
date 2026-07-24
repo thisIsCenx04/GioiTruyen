@@ -58,6 +58,7 @@ public class SecurityConfiguration {
                                 "/categories",
                                 "/home",
                                 "/search",
+                                "/search/suggestions",
                                 "/stories",
                                 "/stories/*",
                                 "/stories/*/chapters",

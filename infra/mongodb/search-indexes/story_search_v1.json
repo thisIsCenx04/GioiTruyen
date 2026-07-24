@@ -24,9 +24,18 @@
         "synopsis": {
           "type": "string"
         },
-        "title": {
-          "type": "string"
-        },
+        "title": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "autocomplete",
+            "foldDiacritics": true,
+            "maxGrams": 15,
+            "minGrams": 2,
+            "tokenization": "edgeGram"
+          }
+        ],
         "workflowStatus": {
           "type": "token"
         }
