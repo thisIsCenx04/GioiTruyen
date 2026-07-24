@@ -54,6 +54,7 @@ jobs:
           set -euo pipefail
           roots=(
             "infra/bootstrap/state"
+            "infra/modules/edge-cache"
             "infra/modules/environment"
             "infra/environments/dev"
             "infra/environments/staging"
@@ -68,6 +69,7 @@ jobs:
         run: |
           set -euo pipefail
           tofu -chdir=infra/bootstrap/state test
+          tofu -chdir=infra/modules/edge-cache test
           tofu -chdir=infra/modules/environment test
 
       - name: Install checksum-verified Trivy
