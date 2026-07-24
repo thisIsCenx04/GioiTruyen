@@ -2967,6 +2967,28 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /wallets/me:
+    get:
+      operationId: getMyWalletBalance
+      summary: Get the caller's XU available and reserved balance
+      description: |
+        Returns a zero balance before the caller's wallet is opened. The
+        projection is updated atomically with immutable ledger postings.
+      tags: [Monetization]
+      responses:
+        "200":
+          description: Private XU balance projection
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalletBalance"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /rankings/stories:
     get:
       operationId: rankStories
@@ -5724,6 +5746,34 @@ components:
           type: integer
           format: int64
           minimum: 0
+    WalletBalance:
+      type: object
+      additionalProperties: false
+      required:
+        - currency
+        - availableXu
+        - reservedXu
+        - version
+        - asOf
+      properties:
+        currency:
+          type: string
+          const: XU
+        availableXu:
+          type: integer
+          format: int64
+          minimum: 0
+        reservedXu:
+          type: integer
+          format: int64
+          minimum: 0
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+        asOf:
+          type: string
+          format: date-time
     TeamAnalyticsReport:
       type: object
       additionalProperties: false

@@ -6,8 +6,13 @@ import java.util.UUID;
 public record LedgerEntry(
         String accountId,
         Side side,
+        Bucket bucket,
         long amountXu
 ) {
+    public LedgerEntry(String accountId, Side side, long amountXu) {
+        this(accountId, side, Bucket.AVAILABLE, amountXu);
+    }
+
     public LedgerEntry {
         try {
             accountId = UUID.fromString(accountId).toString();
@@ -18,6 +23,7 @@ public record LedgerEntry(
             );
         }
         Objects.requireNonNull(side, "side");
+        Objects.requireNonNull(bucket, "bucket");
         if (amountXu <= 0) {
             throw new IllegalArgumentException(
                     "Ledger entry amount must be positive."
@@ -26,7 +32,7 @@ public record LedgerEntry(
     }
 
     public LedgerEntry reverse() {
-        return new LedgerEntry(accountId, side.opposite(), amountXu);
+        return new LedgerEntry(accountId, side.opposite(), bucket, amountXu);
     }
 
     public enum Side {
@@ -36,5 +42,10 @@ public record LedgerEntry(
         Side opposite() {
             return this == DEBIT ? CREDIT : DEBIT;
         }
+    }
+
+    public enum Bucket {
+        AVAILABLE,
+        RESERVED
     }
 }

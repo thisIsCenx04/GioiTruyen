@@ -247,6 +247,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    WalletIndexes walletIndexes() {
+        return new WalletIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

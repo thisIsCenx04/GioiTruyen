@@ -57,12 +57,14 @@ public record MongoLedgerTransactionDocument(
     public record EntryDocument(
             String accountId,
             String side,
+            String bucket,
             long amountXu
     ) {
         static EntryDocument from(LedgerEntry entry) {
             return new EntryDocument(
                     entry.accountId(),
                     entry.side().name(),
+                    entry.bucket().name(),
                     entry.amountXu()
             );
         }
@@ -71,6 +73,9 @@ public record MongoLedgerTransactionDocument(
             return new LedgerEntry(
                     accountId,
                     LedgerEntry.Side.valueOf(side),
+                    bucket == null
+                            ? LedgerEntry.Bucket.AVAILABLE
+                            : LedgerEntry.Bucket.valueOf(bucket),
                     amountXu
             );
         }

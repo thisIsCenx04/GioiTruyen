@@ -37,7 +37,7 @@ public record LedgerTransaction(
         }
         entries = List.copyOf(entries);
         if (new HashSet<>(entries.stream()
-                .map(LedgerEntry::accountId)
+                .map(entry -> entry.accountId() + ":" + entry.bucket())
                 .toList()).size() != entries.size()) {
             throw new IllegalArgumentException(
                     "A ledger account may appear only once per transaction."

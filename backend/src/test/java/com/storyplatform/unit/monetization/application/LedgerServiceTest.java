@@ -4,6 +4,7 @@ import com.storyplatform.monetization.application.LedgerConflictException;
 import com.storyplatform.monetization.application.LedgerOperations;
 import com.storyplatform.monetization.application.LedgerService;
 import com.storyplatform.monetization.application.port.LedgerRepository;
+import com.storyplatform.monetization.application.port.LedgerBalanceProjector;
 import com.storyplatform.monetization.domain.LedgerEntry;
 import com.storyplatform.monetization.domain.LedgerTransaction;
 import com.storyplatform.shared.events.IntegrationEvent;
@@ -36,9 +37,12 @@ class LedgerServiceTest {
             "10000000-0000-4000-8000-000000000002";
     private final LedgerRepository repository = mock(LedgerRepository.class);
     private final OutboxAppender outbox = mock(OutboxAppender.class);
+    private final LedgerBalanceProjector balances =
+            mock(LedgerBalanceProjector.class);
     private final LedgerService service = new LedgerService(
             repository,
             outbox,
+            balances,
             Clock.fixed(NOW, ZoneOffset.UTC),
             new SequentialIds()
     );
@@ -61,6 +65,7 @@ class LedgerServiceTest {
         assertThat(result.transaction().createdAt()).isEqualTo(NOW);
         verify(repository).insert(transaction.capture());
         assertThat(transaction.getValue().amountXu()).isEqualTo(100);
+        verify(balances).project(transaction.getValue());
         verify(outbox).append(event.capture());
         assertThat(event.getValue().eventType())
                 .isEqualTo("monetization.ledger.posted");
@@ -79,6 +84,7 @@ class LedgerServiceTest {
         assertThat(result.replayed()).isTrue();
         assertThat(result.transaction()).isEqualTo(existing);
         verify(repository, never()).insert(any());
+        verify(balances, never()).project(any());
         verify(outbox, never()).append(any());
     }
 
@@ -90,6 +96,7 @@ class LedgerServiceTest {
         assertThatThrownBy(() -> service.post(command(entries(101))))
                 .isInstanceOf(LedgerConflictException.class);
         verify(repository, never()).insert(any());
+        verify(balances, never()).project(any());
         verify(outbox, never()).append(any());
     }
 

@@ -3,8 +3,15 @@ package com.storyplatform.monetization.infrastructure;
 import com.storyplatform.monetization.application.LedgerOperations;
 import com.storyplatform.monetization.application.LedgerService;
 import com.storyplatform.monetization.application.port.LedgerRepository;
+import com.storyplatform.monetization.application.WalletBalanceProjector;
+import com.storyplatform.monetization.application.WalletOperations;
+import com.storyplatform.monetization.application.WalletService;
+import com.storyplatform.monetization.application.port.LedgerBalanceProjector;
+import com.storyplatform.monetization.application.port.WalletRepository;
 import com.storyplatform.monetization.infrastructure.persistence
         .MongoLedgerRepository;
+import com.storyplatform.monetization.infrastructure.persistence
+        .MongoWalletRepository;
 import com.storyplatform.shared.events.persistence.OutboxAppender;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,13 +31,37 @@ public class MonetizationConfiguration {
     @Bean
     LedgerOperations ledgerOperations(
             LedgerRepository repository,
-            OutboxAppender outbox
+            OutboxAppender outbox,
+            LedgerBalanceProjector balances
     ) {
         return new TransactionalLedgerOperations(new LedgerService(
                 repository,
                 outbox,
+                balances,
                 Clock.systemUTC(),
                 UUID::randomUUID
         ));
+    }
+
+    @Bean
+    WalletRepository walletRepository(MongoTemplate mongo) {
+        return new MongoWalletRepository(mongo);
+    }
+
+    @Bean
+    LedgerBalanceProjector ledgerBalanceProjector(
+            WalletRepository repository
+    ) {
+        return new WalletBalanceProjector(
+                repository,
+                Clock.systemUTC()
+        );
+    }
+
+    @Bean
+    WalletOperations walletOperations(WalletRepository repository) {
+        return new TransactionalWalletOperations(
+                new WalletService(repository, Clock.systemUTC())
+        );
     }
 }
