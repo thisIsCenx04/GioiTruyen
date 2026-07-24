@@ -757,6 +757,12 @@ export type ReadingProgress = Readonly<{
   version: number;
 }>;
 
+export type ReadingHistoryPage = Readonly<{
+  items: readonly ReadingProgress[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}>;
+
 export function createBrowserReadingClient({
   baseUrl = "/api/workspace",
   fetchImplementation = fetch,
@@ -770,6 +776,27 @@ export function createBrowserReadingClient({
       return client.request<ReadingProgress>(path(storyId), {
         credentials: "same-origin",
       });
+    },
+    history(options: { cursor?: string; limit?: number } = {}) {
+      const query = new URLSearchParams();
+      if (options.cursor) query.set("cursor", options.cursor);
+      if (options.limit !== undefined) {
+        query.set("limit", String(options.limit));
+      }
+      const suffix = query.size > 0 ? `?${query.toString()}` : "";
+      return client.request<ReadingHistoryPage>(
+        `/me/reading-history${suffix}`,
+        { credentials: "same-origin" },
+      );
+    },
+    deleteHistory(storyId: string) {
+      return client.request<void>(
+        `/me/reading-history/${encodeURIComponent(storyId)}`,
+        {
+          credentials: "same-origin",
+          method: "DELETE",
+        },
+      );
     },
     synchronize(
       storyId: string,

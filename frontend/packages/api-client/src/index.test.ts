@@ -117,6 +117,31 @@ describe("browser reading client", () => {
       ),
     ).resolves.toMatchObject({ position: 62.5, version: 5 });
   });
+
+  it("paginates and deletes private reading history", async () => {
+    apiMockServer.use(
+      http.get("/api/workspace/me/reading-history", ({ request }) => {
+        const url = new URL(request.url);
+        expect(url.searchParams.get("cursor")).toBe("signed-cursor");
+        expect(url.searchParams.get("limit")).toBe("25");
+        return HttpResponse.json({
+          hasMore: false,
+          items: [],
+          nextCursor: null,
+        });
+      }),
+      http.delete(
+        "/api/workspace/me/reading-history/story-01",
+        () => new HttpResponse(null, { status: 204 }),
+      ),
+    );
+    const client = createBrowserReadingClient();
+
+    await expect(
+      client.history({ cursor: "signed-cursor", limit: 25 }),
+    ).resolves.toMatchObject({ hasMore: false, items: [] });
+    await expect(client.deleteHistory("story-01")).resolves.toBeUndefined();
+  });
 });
 
 describe("browser publishing client", () => {

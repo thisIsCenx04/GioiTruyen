@@ -1028,6 +1028,65 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /me/reading-history:
+    get:
+      operationId: listReadingHistory
+      summary: List the caller's private reading history using a signed cursor
+      tags: [Reading]
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 512
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Private reading history ordered by latest activity
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadingHistoryPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /me/reading-history/{storyId}:
+    delete:
+      operationId: deleteReadingHistoryItem
+      summary: Delete one story from the caller's private reading history
+      tags: [Reading]
+      parameters:
+        - name: storyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: History item deleted or already absent
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /teams:
     get:
       operationId: listTeams
@@ -3821,6 +3880,23 @@ components:
           type: integer
           format: int64
           minimum: 1
+    ReadingHistoryPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor, hasMore]
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/ReadingProgress"
+        nextCursor:
+          type:
+            - string
+            - "null"
+          maxLength: 512
+        hasMore:
+          type: boolean
     Team:
       type: object
       additionalProperties: false

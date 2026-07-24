@@ -1,19 +1,22 @@
 package com.storyplatform.reading.infrastructure.persistence;
 
 import com.storyplatform.reading.application.ReadingProgressOperations;
+import com.storyplatform.reading.application.port.ReadingHistoryRepository;
 import com.storyplatform.reading.application.port.ReadingProgressRepository;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.List;
 
 public final class MongoReadingProgressRepository
-        implements ReadingProgressRepository {
+        implements ReadingProgressRepository, ReadingHistoryRepository {
 
     public static final String COLLECTION = "reading_progress";
     private final MongoTemplate mongo;
@@ -96,6 +99,58 @@ public final class MongoReadingProgressRepository
                 COLLECTION
         );
         return result.getModifiedCount() == 1;
+    }
+
+    @Override
+    public List<ReadingProgressOperations.ProgressView> list(
+            String userId,
+            Instant beforeUpdatedAt,
+            String beforeStoryId,
+            int limit
+    ) {
+        Criteria criteria = Criteria.where("userId").is(userId);
+        if (beforeUpdatedAt != null) {
+            criteria = new Criteria().andOperator(
+                    criteria,
+                    new Criteria().orOperator(
+                            Criteria.where("updatedAt").lt(
+                                    beforeUpdatedAt
+                            ),
+                            new Criteria().andOperator(
+                                    Criteria.where("updatedAt").is(
+                                            beforeUpdatedAt
+                                    ),
+                                    Criteria.where("storyId").lt(
+                                            beforeStoryId
+                                    )
+                            )
+                    )
+            );
+        }
+        return mongo.find(
+                        Query.query(criteria)
+                                .with(Sort.by(
+                                        Sort.Order.desc("updatedAt"),
+                                        Sort.Order.desc("storyId")
+                                ))
+                                .limit(limit),
+                        ProgressDocument.class,
+                        COLLECTION
+                ).stream()
+                .map(MongoReadingProgressRepository::stored)
+                .map(StoredProgress::progress)
+                .toList();
+    }
+
+    @Override
+    public void delete(String userId, String storyId) {
+        mongo.remove(
+                Query.query(new Criteria().andOperator(
+                        Criteria.where("userId").is(userId),
+                        Criteria.where("storyId").is(storyId)
+                )),
+                COLLECTION
+        );
     }
 
     private static ProgressDocument document(

@@ -6,6 +6,7 @@ import com.storyplatform.reading.infrastructure.persistence
         .MongoReadingProgressRepository;
 import com.storyplatform.reading.infrastructure.persistence
         .MongoReadingProgressRepository.ProgressDocument;
+import org.bson.Document;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
@@ -17,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class MongoReadingProgressRepositoryTest {
@@ -69,5 +71,50 @@ class MongoReadingProgressRepositoryTest {
 
         assertThat(new MongoReadingProgressRepository(mongo)
                 .chapterIsPublished("story", "chapter")).isFalse();
+    }
+
+    @Test
+    void historyQueriesAndDeletesAreAlwaysScopedToTheUser() {
+        MongoTemplate mongo = mock(MongoTemplate.class);
+        when(mongo.find(
+                any(Query.class),
+                eq(ProgressDocument.class),
+                eq(MongoReadingProgressRepository.COLLECTION)
+        )).thenReturn(java.util.List.of());
+        var repository = new MongoReadingProgressRepository(mongo);
+        String user = "10000000-0000-4000-8000-000000000001";
+        String story = "20000000-0000-4000-8000-000000000001";
+
+        repository.list(
+                user,
+                Instant.parse("2026-07-24T00:00:00Z"),
+                story,
+                21
+        );
+        repository.delete(user, story);
+
+        org.mockito.ArgumentCaptor<Query> query =
+                org.mockito.ArgumentCaptor.forClass(Query.class);
+        verify(mongo).find(
+                query.capture(),
+                eq(ProgressDocument.class),
+                eq(MongoReadingProgressRepository.COLLECTION)
+        );
+        var listAnd = query.getValue().getQueryObject()
+                .getList("$and", Document.class);
+        assertThat(listAnd.getFirst().getString("userId"))
+                .isEqualTo(user);
+        assertThat(listAnd.get(1))
+                .containsKey("$or");
+        verify(mongo).remove(
+                query.capture(),
+                eq(MongoReadingProgressRepository.COLLECTION)
+        );
+        var deleteAnd = query.getValue().getQueryObject()
+                .getList("$and", Document.class);
+        assertThat(deleteAnd.getFirst().getString("userId"))
+                .isEqualTo(user);
+        assertThat(deleteAnd.get(1).getString("storyId"))
+                .isEqualTo(story);
     }
 }

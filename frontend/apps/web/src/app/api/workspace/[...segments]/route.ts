@@ -70,6 +70,12 @@ function allowed(method: string, path: string) {
   ) {
     return method === "GET" || method === "PUT";
   }
+  if (path === "me/reading-history") {
+    return method === "GET";
+  }
+  if (new RegExp(`^me/reading-history/${uuid}$`, "u").test(path)) {
+    return method === "DELETE";
+  }
   return (
     method === "POST" &&
     new RegExp(`^team-invitations/${token}/accept$`, "u").test(path)

@@ -167,6 +167,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    ReadingHistoryIndexes readingHistoryIndexes() {
+        return new ReadingHistoryIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }
