@@ -79,6 +79,16 @@ public final class ModerationQueueService
     }
 
     @Override
+    public ReviewDetail detail(String reviewId) {
+        return repository.find(uuid(reviewId, "reviewId"))
+                .orElseThrow(() -> new ModerationQueueException(
+                        "MODERATION_REVIEW_NOT_FOUND",
+                        "The moderation review does not exist.",
+                        ModerationQueueException.Kind.NOT_FOUND
+                ));
+    }
+
+    @Override
     public ReviewCase claim(
             String reviewerId,
             String reviewId,

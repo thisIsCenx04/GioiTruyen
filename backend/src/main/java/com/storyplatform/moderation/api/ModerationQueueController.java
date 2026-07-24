@@ -83,6 +83,21 @@ public final class ModerationQueueController {
         }
     }
 
+    @GetMapping("/moderation/cases/{reviewId}")
+    public ResponseEntity<ModerationQueueOperations.ReviewDetail> detail(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable String reviewId
+    ) {
+        authorize(jwt, PrivilegedCapability.MODERATION_QUEUE_READ);
+        try {
+            return ResponseEntity.ok()
+                    .cacheControl(CacheControl.noStore())
+                    .body(queue.detail(reviewId));
+        } catch (ModerationQueueException exception) {
+            throw problem(exception);
+        }
+    }
+
     private void authorize(
             Jwt jwt,
             PrivilegedCapability capability

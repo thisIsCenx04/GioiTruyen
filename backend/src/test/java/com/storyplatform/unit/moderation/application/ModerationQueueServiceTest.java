@@ -91,6 +91,35 @@ class ModerationQueueServiceTest {
     }
 
     @Test
+    void loadsFrozenEvidenceAndRejectsMissingReviews() {
+        var detail = new ModerationQueueOperations.ReviewDetail(
+                review(REVIEW, 90, NOW),
+                new ModerationQueueOperations.StoryEvidence(
+                        "50000000-0000-4000-8000-000000000001",
+                        2,
+                        "Story",
+                        "Synopsis",
+                        "ORIGINAL",
+                        "vi",
+                        List.of(),
+                        null,
+                        "a".repeat(64)
+                ),
+                List.of()
+        );
+        when(repository.find(REVIEW)).thenReturn(Optional.of(detail));
+
+        assertThat(service().detail(REVIEW)).isEqualTo(detail);
+        assertThatThrownBy(() -> service().detail(
+                "80000000-0000-4000-8000-000000000002"
+        )).isInstanceOf(ModerationQueueException.class)
+                .extracting("code")
+                .isEqualTo("MODERATION_REVIEW_NOT_FOUND");
+        assertThatThrownBy(() -> service().detail("invalid"))
+                .isInstanceOf(ModerationQueueException.class);
+    }
+
+    @Test
     void rejectsInvalidPageCursorVersionAndClaimRace() {
         assertThatThrownBy(() -> service().list(0, null))
                 .isInstanceOf(ModerationQueueException.class);

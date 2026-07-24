@@ -21,4 +21,6 @@ public interface ModerationQueueRepository {
             Instant now,
             Instant leaseUntil
     );
+
+    Optional<ModerationQueueOperations.ReviewDetail> find(String reviewId);
 }

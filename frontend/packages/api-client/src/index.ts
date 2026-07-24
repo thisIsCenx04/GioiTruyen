@@ -262,6 +262,63 @@ export type PublishingSchedule = Readonly<{
   updatedAt: string;
 }>;
 
+export type ModerationCheck = Readonly<{
+  rule: string;
+  outcome: "PASS" | "FLAG" | "MANUAL" | "FAIL" | "TIMEOUT";
+  code: string;
+  policyVersion: string;
+}>;
+
+export type ModerationCase = Readonly<{
+  id: string;
+  targetType: "STORY";
+  targetId: string;
+  teamId: string;
+  state: "OPEN" | "CLAIMED";
+  priority: number;
+  manualFallback: boolean;
+  checks: readonly ModerationCheck[];
+  assigneeId: string | null;
+  leaseUntil: string | null;
+  submittedAt: string;
+  version: number;
+}>;
+
+export type ModerationReviewDetail = Readonly<{
+  review: ModerationCase;
+  story: Readonly<{
+    revisionId: string;
+    revisionNo: number;
+    title: string;
+    synopsis: string;
+    origin: string;
+    language: string;
+    categoryIds: readonly string[];
+    coverAssetId: string | null;
+    checksum: string;
+  }>;
+  chapters: readonly Readonly<{
+    chapterId: string;
+    revisionId: string;
+    number: number;
+    revisionNo: number;
+    contentHtml: string;
+    plainText: string;
+    checksum: string;
+  }>[];
+}>;
+
+export type ModerationDecision = Readonly<{
+  reviewId: string;
+  state: "APPROVED" | "CHANGES_REQUESTED" | "REJECTED";
+  decision: "APPROVE" | "REQUEST_CHANGES" | "REJECT";
+  reasonCode: string;
+  policyVersion: string;
+  reviewerId: string;
+  decidedAt: string;
+  version: number;
+}>;
+
 export type BrowserTeamClientOptions = Readonly<{
   baseUrl?: string;
   fetchImplementation?: typeof fetch;
@@ -535,6 +592,88 @@ export function createBrowserPublishingClient({
       return request<PublishingSchedule>(
         `${storyPath(teamId, storyId)}/schedule`,
         { body: input, method: "POST" },
+      );
+    },
+  });
+}
+
+export function createBrowserModerationClient({
+  baseUrl = "/api/moderation",
+  fetchImplementation = fetch,
+}: BrowserTeamClientOptions = {}) {
+  const client = createStoryApiClient({ baseUrl, fetchImplementation });
+  const casePath = (reviewId: string) =>
+    `/cases/${encodeURIComponent(reviewId)}` as const;
+  async function request<Response>(
+    path: `/${string}`,
+    options: RequestOptions = {},
+  ) {
+    try {
+      return await client.request<Response>(path, {
+        credentials: "same-origin",
+        ...options,
+      });
+    } catch (error) {
+      if (
+        !(error instanceof StoryApiError) ||
+        error.problem.status !== 401
+      ) {
+        throw error;
+      }
+      await createStoryApiClient({
+        baseUrl: "/api/auth",
+        fetchImplementation,
+      }).request("/refresh", {
+        credentials: "same-origin",
+        method: "POST",
+      });
+      return client.request<Response>(path, {
+        credentials: "same-origin",
+        ...options,
+      });
+    }
+  }
+
+  return Object.freeze({
+    list(cursor?: string) {
+      const query = new URLSearchParams({
+        limit: "20",
+        state: "OPEN",
+        type: "PUBLISHING",
+      });
+      if (cursor) query.set("cursor", cursor);
+      return request<{
+        items: ModerationCase[];
+        nextCursor: string | null;
+      }>(`/cases?${query.toString()}`);
+    },
+    detail(reviewId: string) {
+      return request<ModerationReviewDetail>(casePath(reviewId));
+    },
+    claim(reviewId: string, version: number) {
+      return request<ModerationCase>(casePath(reviewId), {
+        headers: { "If-Match": `"${version}"` },
+        method: "PATCH",
+      });
+    },
+    decide(
+      reviewId: string,
+      version: number,
+      input: {
+        decision: "APPROVE" | "REQUEST_CHANGES" | "REJECT";
+        reasonCode: string;
+        note: string | null;
+        evidenceRefs: readonly string[];
+        policyVersion: string;
+      },
+    ) {
+      return request<ModerationDecision>(
+        `${casePath(reviewId)}/decisions`,
+        {
+          body: input,
+          headers: { "If-Match": `"${version}"` },
+          method: "POST",
+        },
       );
     },
   });

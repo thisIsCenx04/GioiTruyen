@@ -7,6 +7,12 @@ import com.storyplatform.moderation.infrastructure.persistence
         .MongoModerationQueueRepository;
 import com.storyplatform.moderation.infrastructure.persistence
         .MongoModerationReviewDocument;
+import com.storyplatform.moderation.infrastructure.persistence
+        .MongoModerationQueueRepository.ChapterRevisionProjection;
+import com.storyplatform.moderation.infrastructure.persistence
+        .MongoModerationQueueRepository.StoryRevisionProjection;
+import com.storyplatform.moderation.infrastructure.persistence
+        .MongoModerationQueueRepository.StorySnapshotProjection;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
@@ -91,6 +97,95 @@ class MongoModerationQueueRepositoryTest {
 
         assertThat(first).isPresent();
         assertThat(second).isEmpty();
+    }
+
+    @Test
+    void loadsOnlyTheStoryAndChapterRevisionsFrozenAtSubmission() {
+        MongoTemplate mongo = mock(MongoTemplate.class);
+        when(mongo.findById(
+                document().id(),
+                MongoModerationReviewDocument.class
+        )).thenReturn(document());
+        when(mongo.findById(
+                document().submittedRevision(),
+                StoryRevisionProjection.class,
+                "story_revisions"
+        )).thenReturn(new StoryRevisionProjection(
+                document().submittedRevision(),
+                2,
+                new StorySnapshotProjection(
+                        "Story",
+                        "Synopsis",
+                        "ORIGINAL",
+                        "vi",
+                        List.of(),
+                        null
+                ),
+                "a".repeat(64)
+        ));
+        when(mongo.find(
+                any(Query.class),
+                eq(ChapterRevisionProjection.class),
+                eq("chapter_revisions")
+        )).thenReturn(List.of(new ChapterRevisionProjection(
+                document().chapterRevisions().getFirst().revisionId(),
+                3,
+                "<p>Evidence</p>",
+                "Evidence",
+                "b".repeat(64)
+        )));
+
+        var detail = new MongoModerationQueueRepository(mongo)
+                .find(document().id());
+
+        assertThat(detail).isPresent();
+        assertThat(detail.orElseThrow().story().title())
+                .isEqualTo("Story");
+        assertThat(detail.orElseThrow().chapters())
+                .singleElement()
+                .satisfies(chapter -> {
+                    assertThat(chapter.number()).isEqualTo(1);
+                    assertThat(chapter.plainText()).isEqualTo("Evidence");
+                });
+    }
+
+    @Test
+    void rejectsIncompleteFrozenEvidenceInsteadOfShowingPartialContent() {
+        MongoTemplate mongo = mock(MongoTemplate.class);
+        var repository = new MongoModerationQueueRepository(mongo);
+
+        assertThat(repository.find(document().id())).isEmpty();
+
+        when(mongo.findById(
+                document().id(),
+                MongoModerationReviewDocument.class
+        )).thenReturn(document());
+        assertThat(repository.find(document().id())).isEmpty();
+
+        when(mongo.findById(
+                document().submittedRevision(),
+                StoryRevisionProjection.class,
+                "story_revisions"
+        )).thenReturn(new StoryRevisionProjection(
+                document().submittedRevision(),
+                2,
+                new StorySnapshotProjection(
+                        "Story",
+                        "Synopsis",
+                        "ORIGINAL",
+                        "vi",
+                        null,
+                        null
+                ),
+                "a".repeat(64)
+        ));
+        when(mongo.find(
+                any(Query.class),
+                eq(ChapterRevisionProjection.class),
+                eq("chapter_revisions")
+        )).thenReturn(List.of());
+
+        assertThat(repository.find(document().id())).isEmpty();
     }
 
     private static MongoModerationReviewDocument document() {

@@ -4,8 +4,8 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Bàn biên tập · Giới Truyện",
-  description: "Không gian vận hành xuất bản và kiểm duyệt Giới Truyện.",
+  title: "Bàn kiểm duyệt · Giới Truyện",
+  description: "Không gian kiểm duyệt xuất bản và lưu vết quyết định.",
 };
 
 export default function AdminLayout({
