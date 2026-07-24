@@ -2,6 +2,8 @@ package com.storyplatform.moderation.infrastructure;
 
 import com.storyplatform.moderation.application.CommunityReportOperations;
 import com.storyplatform.moderation.application.CommunityReportService;
+import com.storyplatform.moderation.application.ModerationAppealOperations;
+import com.storyplatform.moderation.application.ModerationAppealService;
 import com.storyplatform.moderation.application.ModerationQueueOperations;
 import com.storyplatform.moderation.application.ModerationQueueService;
 import com.storyplatform.moderation.application.ModerationDecisionOperations;
@@ -10,6 +12,8 @@ import com.storyplatform.moderation.application.ReportRateLimiter;
 import com.storyplatform.moderation.application.port
         .CommunityReportRepository;
 import com.storyplatform.moderation.application.port
+        .ModerationAppealRepository;
+import com.storyplatform.moderation.application.port
         .ModerationDecisionRepository;
 import com.storyplatform.moderation.application.port
         .ModerationQueueCursorCodec;
@@ -17,6 +21,8 @@ import com.storyplatform.moderation.application.port
         .ModerationQueueRepository;
 import com.storyplatform.moderation.infrastructure.persistence
         .MongoCommunityReportRepository;
+import com.storyplatform.moderation.infrastructure.persistence
+        .MongoModerationAppealRepository;
 import com.storyplatform.moderation.infrastructure.persistence
         .MongoModerationQueueRepository;
 import com.storyplatform.moderation.infrastructure.persistence
@@ -39,6 +45,28 @@ import java.util.UUID;
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(ModerationQueueProperties.class)
 public class ModerationConfiguration {
+
+    @Bean
+    ModerationAppealRepository moderationAppealRepository(
+            MongoTemplate mongo
+    ) {
+        return new MongoModerationAppealRepository(mongo);
+    }
+
+    @Bean
+    ModerationAppealOperations moderationAppealOperations(
+            ModerationAppealRepository repository,
+            @Value("${app.moderation.appeals.window}") Duration window
+    ) {
+        return new TransactionalModerationAppealOperations(
+                new ModerationAppealService(
+                        repository,
+                        Clock.systemUTC(),
+                        window,
+                        () -> UUID.randomUUID().toString()
+                )
+        );
+    }
 
     @Bean
     CommunityReportRepository communityReportRepository(

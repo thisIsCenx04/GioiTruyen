@@ -47,6 +47,8 @@ public class SecurityConfiguration {
                         "/comments/*",
                         "/reactions/*/*",
                         "/reports",
+                        "/moderation/cases/*/appeals",
+                        "/moderation/cases/*/appeals/*/decisions",
                         "/reading-sessions",
                         "/reading-sessions/*/heartbeats",
                         "/reading-sessions/*/complete",
@@ -131,6 +133,11 @@ public class SecurityConfiguration {
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/reports"
+                        ).authenticated()
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/moderation/cases/*/appeals",
+                                "/moderation/cases/*/appeals/*/decisions"
                         ).authenticated()
                         .requestMatchers(
                                 HttpMethod.POST,

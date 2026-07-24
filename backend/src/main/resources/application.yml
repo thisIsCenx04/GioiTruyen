@@ -83,6 +83,8 @@ app:
         maximum: ${READING_SESSION_START_MAXIMUM:60}
         window: ${READING_SESSION_START_WINDOW:1m}
   moderation:
+    appeals:
+      window: ${MODERATION_APPEAL_WINDOW:7d}
     queue:
       claim-lease: ${MODERATION_QUEUE_CLAIM_LEASE:15m}
     reports:

@@ -2717,6 +2717,106 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /moderation/cases/{reviewId}/appeals:
+    post:
+      operationId: createModerationAppeal
+      summary: Appeal an eligible moderation decision
+      description: |
+        An active member of the affected team may create one appeal during
+        the configured window. The statement is sanitized and the original
+        reviewer is frozen for reviewer-separation enforcement.
+      tags: [Moderation]
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateModerationAppealRequest"
+      responses:
+        "201":
+          description: Appeal created
+          headers:
+            Location:
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModerationAppeal"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Appeal window expired or an appeal already exists
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /moderation/cases/{reviewId}/appeals/{appealId}/decisions:
+    post:
+      operationId: decideModerationAppeal
+      summary: Make the immutable final appeal decision
+      description: |
+        Requires Moderator or Admin. The caller must differ from both the
+        original reviewer and appellant. A final appeal cannot be changed.
+      tags: [Moderation]
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: appealId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModerationAppealDecisionRequest"
+      responses:
+        "200":
+          description: Final appeal decision committed
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModerationAppeal"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Appeal final or reviewer separation failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
 components:
   securitySchemes:
     bearerAuth:
@@ -3428,6 +3528,80 @@ components:
           type: integer
           format: int64
           minimum: 1
+    CreateModerationAppealRequest:
+      type: object
+      additionalProperties: false
+      required: [statement]
+      properties:
+        statement:
+          type: string
+          minLength: 1
+          maxLength: 4000
+    ModerationAppealDecisionRequest:
+      type: object
+      additionalProperties: false
+      required: [decision, reasonCode, note]
+      properties:
+        decision:
+          type: string
+          enum: [UPHOLD, OVERTURN]
+        reasonCode:
+          type: string
+          pattern: "^[A-Z][A-Z0-9_]{2,63}$"
+        note:
+          type: string
+          minLength: 1
+          maxLength: 2000
+    ModerationAppeal:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - reviewId
+        - appellantId
+        - originalReviewerId
+        - statement
+        - status
+        - createdAt
+        - deadline
+      properties:
+        id:
+          type: string
+          format: uuid
+        reviewId:
+          type: string
+          format: uuid
+        appellantId:
+          type: string
+          format: uuid
+        originalReviewerId:
+          type: string
+          format: uuid
+        statement:
+          type: string
+          maxLength: 4000
+        status:
+          type: string
+          enum: [PENDING, UPHELD, OVERTURNED]
+        decision:
+          type: [string, "null"]
+          enum: [UPHOLD, OVERTURN, null]
+        decisionReasonCode:
+          type: [string, "null"]
+        decisionNote:
+          type: [string, "null"]
+        appealReviewerId:
+          type: [string, "null"]
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        deadline:
+          type: string
+          format: date-time
+        decidedAt:
+          type: [string, "null"]
+          format: date-time
     UploadSignatureRequest:
       type: object
       additionalProperties: false

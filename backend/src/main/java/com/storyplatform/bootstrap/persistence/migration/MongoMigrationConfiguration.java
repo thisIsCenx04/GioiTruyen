@@ -197,6 +197,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    ModerationAppealIndexes moderationAppealIndexes() {
+        return new ModerationAppealIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

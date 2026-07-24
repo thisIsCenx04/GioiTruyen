@@ -15,6 +15,14 @@ function allowed(method: string, path: string) {
   if (new RegExp(`^cases/${uuid}$`, "u").test(path)) {
     return method === "GET" || method === "PATCH";
   }
+  if (
+    new RegExp(
+      `^cases/${uuid}/appeals/${uuid}/decisions$`,
+      "u",
+    ).test(path)
+  ) {
+    return method === "POST";
+  }
   return (
     method === "POST" &&
     new RegExp(`^cases/${uuid}/decisions$`, "u").test(path)

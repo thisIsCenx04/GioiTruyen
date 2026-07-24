@@ -86,6 +86,11 @@ function allowed(method: string, path: string) {
     return method === "POST";
   }
   if (
+    new RegExp(`^moderation/cases/${uuid}/appeals$`, "u").test(path)
+  ) {
+    return method === "POST";
+  }
+  if (
     new RegExp(`^me/reading-progress/${uuid}$`, "u").test(path)
   ) {
     return method === "GET" || method === "PUT";

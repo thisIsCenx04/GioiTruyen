@@ -319,6 +319,22 @@ export type ModerationDecision = Readonly<{
   version: number;
 }>;
 
+export type ModerationAppeal = Readonly<{
+  id: string;
+  reviewId: string;
+  appellantId: string;
+  originalReviewerId: string;
+  statement: string;
+  status: "PENDING" | "UPHELD" | "OVERTURNED";
+  decision: "UPHOLD" | "OVERTURN" | null;
+  decisionReasonCode: string | null;
+  decisionNote: string | null;
+  appealReviewerId: string | null;
+  createdAt: string;
+  deadline: string;
+  decidedAt: string | null;
+}>;
+
 export type BrowserTeamClientOptions = Readonly<{
   baseUrl?: string;
   fetchImplementation?: typeof fetch;
@@ -672,6 +688,40 @@ export function createBrowserModerationClient({
         {
           body: input,
           headers: { "If-Match": `"${version}"` },
+          method: "POST",
+        },
+      );
+    },
+    decideAppeal(
+      reviewId: string,
+      appealId: string,
+      input: {
+        decision: "UPHOLD" | "OVERTURN";
+        reasonCode: string;
+        note: string;
+      },
+    ) {
+      return request<ModerationAppeal>(
+        `${casePath(reviewId)}/appeals/${encodeURIComponent(appealId)}/decisions`,
+        { body: input, method: "POST" },
+      );
+    },
+  });
+}
+
+export function createBrowserAppealClient({
+  baseUrl = "/api/workspace",
+  fetchImplementation = fetch,
+}: BrowserTeamClientOptions = {}) {
+  const client = createStoryApiClient({ baseUrl, fetchImplementation });
+
+  return Object.freeze({
+    create(reviewId: string, statement: string) {
+      return client.request<ModerationAppeal>(
+        `/moderation/cases/${encodeURIComponent(reviewId)}/appeals`,
+        {
+          body: { statement },
+          credentials: "same-origin",
           method: "POST",
         },
       );
