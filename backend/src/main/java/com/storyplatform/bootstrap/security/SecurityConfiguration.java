@@ -55,6 +55,7 @@ public class SecurityConfiguration {
                         ).permitAll()
                         .requestMatchers(
                                 HttpMethod.GET,
+                                "/categories",
                                 "/users/*",
                                 "/teams",
                                 "/teams/*"

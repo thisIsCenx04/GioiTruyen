@@ -77,6 +77,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    CategoryTaxonomyMigration categoryTaxonomyMigration() {
+        return new CategoryTaxonomyMigration();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }
