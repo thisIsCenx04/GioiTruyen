@@ -104,6 +104,7 @@ public class ReadingCompletionService
                 null,
                 new ReadingSessionEvents.ReadingSessionCompleted(
                         sessionId,
+                        claims.actorRef(),
                         claims.storyId(),
                         claims.chapterId(),
                         completionId,

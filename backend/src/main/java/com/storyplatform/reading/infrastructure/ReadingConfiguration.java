@@ -14,6 +14,7 @@ import com.storyplatform.reading.application.port.ReadingHistoryCursorCodec;
 import com.storyplatform.reading.application.port.ReadingProgressRepository;
 import com.storyplatform.reading.application.port.ReadingSessionQuota;
 import com.storyplatform.reading.application.port.ReadingSessionTokenCodec;
+import com.storyplatform.reading.application.contract.ReadingActorReferences;
 import com.storyplatform.reading.infrastructure.persistence
         .MongoReadingProgressRepository;
 import com.storyplatform.reading.infrastructure.persistence
@@ -102,6 +103,15 @@ public class ReadingConfiguration {
                     exception
             );
         }
+    }
+
+    @Bean
+    ReadingActorReferences readingActorReferences(
+            ReadingSessionTokenCodec tokens
+    ) {
+        return userId -> tokens.fingerprint("user:" + UUID.fromString(
+                userId
+        ));
     }
 
     @Bean

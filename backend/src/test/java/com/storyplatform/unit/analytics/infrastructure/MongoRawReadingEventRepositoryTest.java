@@ -123,6 +123,7 @@ class MongoRawReadingEventRepositoryTest {
                 "event:" + sequence,
                 RawReadingEvent.Kind.HEARTBEAT,
                 sessionRef,
+                "actor-reference",
                 "20000000-0000-4000-8000-000000000001",
                 "30000000-0000-4000-8000-000000000001",
                 sequence,

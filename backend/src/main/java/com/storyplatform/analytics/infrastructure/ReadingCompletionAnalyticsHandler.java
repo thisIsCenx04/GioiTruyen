@@ -67,6 +67,7 @@ public final class ReadingCompletionAnalyticsHandler
                     payload.completionId(),
                     RawReadingEvent.Kind.COMPLETION,
                     pseudonyms.pseudonymize(payload.sessionId()),
+                    payload.actorRef(),
                     payload.storyId(),
                     payload.chapterId(),
                     payload.finalSequence(),

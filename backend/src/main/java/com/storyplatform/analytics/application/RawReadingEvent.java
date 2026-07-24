@@ -7,6 +7,7 @@ public record RawReadingEvent(
         String eventId,
         Kind kind,
         String sessionRef,
+        String actorRef,
         String storyId,
         String chapterId,
         long sequence,
@@ -19,6 +20,7 @@ public record RawReadingEvent(
         Objects.requireNonNull(eventId, "eventId");
         Objects.requireNonNull(kind, "kind");
         Objects.requireNonNull(sessionRef, "sessionRef");
+        Objects.requireNonNull(actorRef, "actorRef");
         Objects.requireNonNull(storyId, "storyId");
         Objects.requireNonNull(chapterId, "chapterId");
         Objects.requireNonNull(occurredAt, "occurredAt");

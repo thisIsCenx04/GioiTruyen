@@ -68,6 +68,7 @@ public final class ReadingHeartbeatAnalyticsHandler
                             payload.batchId() + ":" + heartbeat.sequence(),
                             RawReadingEvent.Kind.HEARTBEAT,
                             sessionRef,
+                            payload.actorRef(),
                             payload.storyId(),
                             payload.chapterId(),
                             heartbeat.sequence(),

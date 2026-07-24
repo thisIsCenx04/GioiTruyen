@@ -55,6 +55,7 @@ class ReadingAnalyticsHandlerTest {
         );
         var payload = new ReadingSessionEvents.HeartbeatBatchAccepted(
                 SESSION,
+                "actor-reference",
                 STORY,
                 CHAPTER,
                 EVENT,
@@ -100,6 +101,7 @@ class ReadingAnalyticsHandlerTest {
         );
         var payload = new ReadingSessionEvents.ReadingSessionCompleted(
                 SESSION,
+                "actor-reference",
                 STORY,
                 CHAPTER,
                 EVENT,
@@ -142,6 +144,7 @@ class ReadingAnalyticsHandlerTest {
         );
         var payload = new ReadingSessionEvents.HeartbeatBatchAccepted(
                 SESSION,
+                "actor-reference",
                 STORY,
                 CHAPTER,
                 EVENT,

@@ -14,6 +14,7 @@ public final class ReadingSessionEvents {
 
     public record HeartbeatBatchAccepted(
             String sessionId,
+            String actorRef,
             String storyId,
             String chapterId,
             String batchId,
@@ -34,6 +35,7 @@ public final class ReadingSessionEvents {
 
     public record ReadingSessionCompleted(
             String sessionId,
+            String actorRef,
             String storyId,
             String chapterId,
             String completionId,

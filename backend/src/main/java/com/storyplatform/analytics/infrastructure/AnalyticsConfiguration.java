@@ -4,8 +4,18 @@ import com.storyplatform.analytics.application.port
         .RawReadingEventRepository;
 import com.storyplatform.analytics.application.port
         .ReadingSessionPseudonymizer;
+import com.storyplatform.analytics.application
+        .ReadingViewClassifier;
+import com.storyplatform.analytics.application
+        .ReadingViewValidationOperations;
+import com.storyplatform.analytics.application
+        .ReadingViewValidationService;
+import com.storyplatform.analytics.application.port
+        .ReadingViewValidationRepository;
 import com.storyplatform.analytics.infrastructure.persistence
         .MongoRawReadingEventRepository;
+import com.storyplatform.analytics.infrastructure.persistence
+        .MongoReadingViewValidationRepository;
 import com.storyplatform.analytics.infrastructure.security
         .HmacReadingSessionPseudonymizer;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,12 +23,49 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import tools.jackson.databind.ObjectMapper;
+import com.storyplatform.reading.application.contract
+        .ReadingActorReferences;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.util.Base64;
 
 @Configuration(proxyBeanMethods = false)
 public class AnalyticsConfiguration {
+
+    @Bean
+    ReadingViewValidationRepository readingViewValidationRepository(
+            MongoTemplate mongo,
+            ReadingActorReferences actorReferences,
+            @Value("${app.analytics.raw-events.retention:90d}")
+            Duration retention
+    ) {
+        return new MongoReadingViewValidationRepository(
+                mongo,
+                actorReferences,
+                retention
+        );
+    }
+
+    @Bean
+    ReadingViewValidationOperations readingViewValidationOperations(
+            ReadingViewValidationRepository repository,
+            @Value("${app.analytics.validation.readiness-delay:2m}")
+            Duration readinessDelay,
+            @Value("${app.analytics.validation.lease:1m}")
+            Duration lease,
+            @Value("${app.analytics.validation.retry-delay:30s}")
+            Duration retryDelay
+    ) {
+        return new ReadingViewValidationService(
+                repository,
+                new ReadingViewClassifier(),
+                Clock.systemUTC(),
+                readinessDelay,
+                lease,
+                retryDelay
+        );
+    }
 
     @Bean
     RawReadingEventRepository rawReadingEventRepository(

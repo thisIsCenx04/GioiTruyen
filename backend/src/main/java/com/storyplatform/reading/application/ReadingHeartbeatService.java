@@ -98,6 +98,7 @@ public class ReadingHeartbeatService
                 null,
                 new ReadingSessionEvents.HeartbeatBatchAccepted(
                         sessionId,
+                        claims.actorRef(),
                         claims.storyId(),
                         claims.chapterId(),
                         batchId,

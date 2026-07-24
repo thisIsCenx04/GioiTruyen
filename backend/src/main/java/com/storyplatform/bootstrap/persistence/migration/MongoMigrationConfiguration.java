@@ -222,6 +222,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    ReadingViewValidationIndexes readingViewValidationIndexes() {
+        return new ReadingViewValidationIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

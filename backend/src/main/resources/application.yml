@@ -78,6 +78,11 @@ app:
   analytics:
     raw-events:
       retention: ${ANALYTICS_RAW_EVENT_RETENTION:90d}
+    validation:
+      enabled: ${ANALYTICS_VALIDATION_ENABLED:false}
+      readiness-delay: ${ANALYTICS_VALIDATION_READINESS_DELAY:2m}
+      lease: ${ANALYTICS_VALIDATION_LEASE:1m}
+      retry-delay: ${ANALYTICS_VALIDATION_RETRY_DELAY:30s}
   notifications:
     delivery:
       enabled: ${NOTIFICATION_DELIVERY_ENABLED:false}
