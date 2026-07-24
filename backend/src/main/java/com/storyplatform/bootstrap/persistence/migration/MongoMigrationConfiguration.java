@@ -102,6 +102,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    StoryTextSearchIndex storyTextSearchIndex() {
+        return new StoryTextSearchIndex();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

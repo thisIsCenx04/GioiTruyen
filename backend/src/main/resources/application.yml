@@ -75,6 +75,10 @@ management:
         step: ${OTEL_METRICS_EXPORT_INTERVAL:30s}
 
 app:
+  discovery:
+    search:
+      backend: ${SEARCH_BACKEND:text}
+      atlas-index: ${ATLAS_SEARCH_INDEX:story_search_v1}
   identity:
     registration:
       current-consent-version: ${REGISTRATION_CONSENT_VERSION:2026-07-24}

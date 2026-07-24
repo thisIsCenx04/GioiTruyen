@@ -710,6 +710,59 @@ paths:
           description: The supplied ETag represents the current version.
         "400":
           $ref: "#/components/responses/BadRequest"
+  /search:
+    get:
+      operationId: searchPublishedStories
+      summary: Search published stories with highlights and facets
+      description: |
+        Uses Atlas Search when enabled and a bounded MongoDB text-index
+        fallback otherwise. Raw regex and MongoDB operators are never accepted.
+      security: []
+      tags: [Catalog]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 200
+        - name: categoryId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ongoing, completed, hiatus]
+        - name: origin
+          in: query
+          schema:
+            type: string
+            enum: [original, translated]
+        - name: cursor
+          in: query
+          schema:
+            type: string
+            maxLength: 2048
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        "200":
+          description: Ranked published story search results.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
   /stories/{idOrSlug}:
     get:
       operationId: getPublishedStory
@@ -1630,6 +1683,50 @@ components:
         publishedAt:
           type: string
           format: date-time
+    SearchResponse:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor, hasMore, facets, tookMs]
+      properties:
+        items:
+          type: array
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/SearchHit"
+        nextCursor:
+          type: [string, "null"]
+          maxLength: 2048
+        hasMore:
+          type: boolean
+        facets:
+          type: object
+          additionalProperties:
+            type: object
+            additionalProperties:
+              type: integer
+              format: int64
+              minimum: 0
+        tookMs:
+          type: integer
+          format: int64
+          minimum: 0
+    SearchHit:
+      type: object
+      additionalProperties: false
+      required: [story, score, highlights]
+      properties:
+        story:
+          $ref: "#/components/schemas/HomeStorySummary"
+        score:
+          type: number
+          format: double
+          minimum: 0
+        highlights:
+          type: array
+          maxItems: 5
+          items:
+            type: string
+            maxLength: 200
     PublicStory:
       type: object
       additionalProperties: false

@@ -57,6 +57,7 @@ public class SecurityConfiguration {
                                 HttpMethod.GET,
                                 "/categories",
                                 "/home",
+                                "/search",
                                 "/stories",
                                 "/stories/*",
                                 "/stories/*/chapters",
