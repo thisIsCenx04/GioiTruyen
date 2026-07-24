@@ -12,6 +12,9 @@ public record CloudinaryProperties(
         String apiSecret,
         String uploadPreset,
         String rootFolder,
-        Duration signatureTtl
+        Duration signatureTtl,
+        boolean webhookEnabled,
+        String webhookSecret,
+        Duration webhookMaxAge
 ) {
 }

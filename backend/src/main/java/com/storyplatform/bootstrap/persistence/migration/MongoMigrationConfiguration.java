@@ -107,6 +107,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    MediaAssetIndexes mediaAssetIndexes() {
+        return new MediaAssetIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

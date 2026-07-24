@@ -1218,6 +1218,43 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /webhooks/cloudinary:
+    post:
+      operationId: receiveCloudinaryWebhook
+      summary: Verify and ingest a Cloudinary asset notification
+      description: |
+        Verifies X-Cld-Signature against the untouched request body before
+        parsing, enforces a bounded X-Cld-Timestamp age, and deduplicates the
+        delivery before creating a pending-moderation asset.
+      tags: [Media]
+      security: []
+      parameters:
+        - name: X-Cld-Timestamp
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: "^[0-9]{10,}$"
+        - name: X-Cld-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "204":
+          description: Notification accepted or already processed
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 components:
   securitySchemes:
     bearerAuth:

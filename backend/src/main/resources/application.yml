@@ -84,6 +84,9 @@ app:
       upload-preset: ${CLOUDINARY_UPLOAD_PRESET:}
       root-folder: ${CLOUDINARY_ROOT_FOLDER:gioitruyen/local}
       signature-ttl: ${CLOUDINARY_SIGNATURE_TTL:55m}
+      webhook-enabled: ${CLOUDINARY_WEBHOOK_ENABLED:false}
+      webhook-secret: ${CLOUDINARY_WEBHOOK_SECRET:}
+      webhook-max-age: ${CLOUDINARY_WEBHOOK_MAX_AGE:2h}
   discovery:
     search:
       backend: ${SEARCH_BACKEND:text}

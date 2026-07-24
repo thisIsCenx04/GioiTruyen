@@ -37,7 +37,8 @@ public class SecurityConfiguration {
                         "/me",
                         "/teams",
                         "/teams/*",
-                        "/media/upload-signatures"
+                        "/media/upload-signatures",
+                        "/webhooks/cloudinary"
                 ))
                 .oauth2ResourceServer(resourceServer -> resourceServer
                         .jwt(Customizer.withDefaults())
@@ -74,7 +75,8 @@ public class SecurityConfiguration {
                                 "/auth/login",
                                 "/auth/refresh",
                                 "/auth/password/forgot",
-                                "/auth/password/reset"
+                                "/auth/password/reset",
+                                "/webhooks/cloudinary"
                         ).permitAll()
                         .requestMatchers(
                                 "/auth/logout",
