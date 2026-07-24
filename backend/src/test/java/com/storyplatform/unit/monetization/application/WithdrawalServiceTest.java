@@ -213,7 +213,8 @@ class WithdrawalServiceTest {
                 LEDGER,
                 "c".repeat(64),
                 "d".repeat(64),
-                NOW.minusSeconds(1)
+                NOW.minusSeconds(1),
+                null, null, null, null, null, null, null, null
         );
         when(repository.findByTeam(TEAM, null, 2))
                 .thenReturn(List.of(first, second));
@@ -300,7 +301,8 @@ class WithdrawalServiceTest {
                 LEDGER,
                 "a".repeat(64),
                 "b".repeat(64),
-                createdAt
+                createdAt,
+                null, null, null, null, null, null, null, null
         );
     }
 

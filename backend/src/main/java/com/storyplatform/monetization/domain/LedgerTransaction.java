@@ -174,6 +174,7 @@ public record LedgerTransaction(
         DONATION,
         REWARD,
         WITHDRAWAL_RESERVE,
+        WITHDRAWAL_RELEASE,
         WITHDRAWAL_SETTLEMENT,
         ADJUSTMENT,
         REVERSAL

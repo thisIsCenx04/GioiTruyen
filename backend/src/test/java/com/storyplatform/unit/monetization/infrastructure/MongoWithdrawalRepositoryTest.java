@@ -16,6 +16,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
+import com.mongodb.client.result.UpdateResult;
 
 import java.time.Instant;
 import java.util.List;
@@ -76,6 +78,44 @@ class MongoWithdrawalRepositoryTest {
     }
 
     @Test
+    void findsAndAtomicallyDecidesPendingReview() {
+        MongoTemplate mongo = mock(MongoTemplate.class);
+        when(mongo.findById(
+                withdrawal().id(),
+                MongoWithdrawalDocument.class
+        )).thenReturn(document());
+        when(mongo.findOne(
+                any(Query.class),
+                eq(MongoWithdrawalDocument.class)
+        )).thenReturn(document());
+        when(mongo.updateFirst(
+                any(Query.class),
+                any(Update.class),
+                eq(MongoWithdrawalDocument.class)
+        )).thenReturn(
+                UpdateResult.acknowledged(1, 1L, null),
+                UpdateResult.acknowledged(0, 0L, null)
+        );
+        var repository = new MongoWithdrawalRepository(mongo);
+        Withdrawal approved = withdrawal().approved(
+                "70000000-0000-4000-8000-000000000001",
+                "Verified finance approval.",
+                "STANDARD",
+                "withdrawal-risk-2026.1",
+                "e".repeat(64),
+                "f".repeat(64),
+                NOW.plusSeconds(1)
+        );
+
+        assertThat(repository.findById(withdrawal().id()))
+                .contains(withdrawal());
+        assertThat(repository.findByReviewKeyHash("key"))
+                .contains(withdrawal());
+        assertThat(repository.decide(approved)).isTrue();
+        assertThat(repository.decide(approved)).isFalse();
+    }
+
+    @Test
     void readsOnlyVerifiedAvailableDestinationOwnedByTeam() {
         MongoTemplate mongo = mock(MongoTemplate.class);
         when(mongo.findOne(
@@ -121,7 +161,8 @@ class MongoWithdrawalRepositoryTest {
                 "60000000-0000-4000-8000-000000000001",
                 "a".repeat(64),
                 "b".repeat(64),
-                NOW
+                NOW,
+                null, null, null, null, null, null, null, null
         );
     }
 
@@ -147,7 +188,8 @@ class MongoWithdrawalRepositoryTest {
                 value.reserveTransactionId(),
                 value.idempotencyKeyHash(),
                 value.requestHash(),
-                value.createdAt()
+                value.createdAt(),
+                null, null, null, null, null, null, null, null
         );
     }
 }

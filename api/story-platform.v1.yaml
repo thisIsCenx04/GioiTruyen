@@ -3171,6 +3171,116 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /admin/withdrawals/{withdrawalId}/approve:
+    post:
+      operationId: approveWithdrawalReview
+      summary: Approve a withdrawal after separated finance review
+      description: |
+        Requires FINANCE_REVIEW and a one-time reauthentication grant scoped
+        to this withdrawal. The original requester cannot approve it.
+      tags: [Monetization]
+      parameters:
+        - name: withdrawalId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: Scoped-Reauthentication
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 16
+            maxLength: 128
+            pattern: '^[A-Za-z0-9._:-]+$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewWithdrawalRequest"
+      responses:
+        "200":
+          description: Approval committed or idempotently replayed
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WithdrawalDecision"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /admin/withdrawals/{withdrawalId}/reject:
+    post:
+      operationId: rejectWithdrawalReview
+      summary: Reject a withdrawal and release reserved XU once
+      description: |
+        Commits a compensating ledger posting from reserved back to available
+        and the terminal rejection through one MongoDB transaction.
+      tags: [Monetization]
+      parameters:
+        - name: withdrawalId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: Scoped-Reauthentication
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 16
+            maxLength: 128
+            pattern: '^[A-Za-z0-9._:-]+$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewWithdrawalRequest"
+      responses:
+        "200":
+          description: Rejection and reserve release committed or replayed
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WithdrawalDecision"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /referrals/me:
     get:
       operationId: getMyReferralSummary
@@ -6576,7 +6686,7 @@ components:
           maxLength: 128
         state:
           type: string
-          const: PENDING_REVIEW
+          enum: [PENDING_REVIEW, APPROVED, REJECTED]
         replayed:
           type: boolean
         createdAt:
@@ -6595,6 +6705,56 @@ components:
         nextCursor:
           type: string
           maxLength: 512
+    ReviewWithdrawalRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 10
+          maxLength: 500
+    WithdrawalDecision:
+      type: object
+      additionalProperties: false
+      required:
+        - withdrawalId
+        - state
+        - reviewerId
+        - reason
+        - riskLevel
+        - riskRuleVersion
+        - replayed
+        - reviewedAt
+      properties:
+        withdrawalId:
+          type: string
+          format: uuid
+        state:
+          type: string
+          enum: [APPROVED, REJECTED]
+        reviewerId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          minLength: 10
+          maxLength: 500
+        riskLevel:
+          type: string
+          enum: [STANDARD, HIGH_VALUE]
+        riskRuleVersion:
+          type: string
+          minLength: 3
+          maxLength: 64
+        releaseTransactionId:
+          type: string
+          format: uuid
+        replayed:
+          type: boolean
+        reviewedAt:
+          type: string
+          format: date-time
     RejectTopupRequest:
       type: object
       additionalProperties: false

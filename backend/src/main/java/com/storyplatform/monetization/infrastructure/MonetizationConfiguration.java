@@ -13,6 +13,9 @@ import com.storyplatform.monetization.application.ReferralService;
 import com.storyplatform.monetization.application.WithdrawalOperations;
 import com.storyplatform.monetization.application.WithdrawalFeePolicy;
 import com.storyplatform.monetization.application.WithdrawalService;
+import com.storyplatform.monetization.application
+        .WithdrawalReviewOperations;
+import com.storyplatform.monetization.application.WithdrawalReviewService;
 import com.storyplatform.monetization.application.ManualTopupOperations;
 import com.storyplatform.monetization.application.ManualTopupService;
 import com.storyplatform.monetization.application.port.LedgerRepository;
@@ -25,6 +28,8 @@ import com.storyplatform.monetization.application.port
 import com.storyplatform.monetization.application.port
         .WithdrawalDestinationDirectory;
 import com.storyplatform.monetization.application.port.WithdrawalRepository;
+import com.storyplatform.monetization.application.port
+        .WithdrawalReviewAuthorizer;
 import com.storyplatform.monetization.application.port.ManualTopupAuthorizer;
 import com.storyplatform.monetization.application.port.ManualTopupRepository;
 import com.storyplatform.monetization.application.WalletBalanceProjector;
@@ -274,6 +279,32 @@ public class MonetizationConfiguration {
                                 flatFeeXu,
                                 maximumGrossXu
                         ),
+                        Clock.systemUTC(),
+                        UUID::randomUUID
+                )
+        );
+    }
+
+    @Bean
+    WithdrawalReviewAuthorizer withdrawalReviewAuthorizer(
+            ReauthenticationVerifier reauthentication
+    ) {
+        return new ScopedWithdrawalReviewAuthorizer(reauthentication);
+    }
+
+    @Bean
+    WithdrawalReviewOperations withdrawalReviewOperations(
+            WithdrawalRepository repository,
+            WithdrawalReviewAuthorizer authorizer,
+            LedgerOperations ledger,
+            OutboxAppender outbox
+    ) {
+        return new TransactionalWithdrawalReviewOperations(
+                new WithdrawalReviewService(
+                        repository,
+                        authorizer,
+                        ledger,
+                        outbox,
                         Clock.systemUTC(),
                         UUID::randomUUID
                 )

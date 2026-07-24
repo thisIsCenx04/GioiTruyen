@@ -70,6 +70,7 @@ class WithdrawalControllerTest {
     void mapsEveryWithdrawalFailureToStableHttpStatus() {
         assertFailure(WithdrawalException.Kind.INVALID, HttpStatus.BAD_REQUEST);
         assertFailure(WithdrawalException.Kind.FORBIDDEN, HttpStatus.FORBIDDEN);
+        assertFailure(WithdrawalException.Kind.NOT_FOUND, HttpStatus.NOT_FOUND);
         assertFailure(
                 WithdrawalException.Kind.DESTINATION_UNAVAILABLE,
                 HttpStatus.UNPROCESSABLE_CONTENT

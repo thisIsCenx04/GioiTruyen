@@ -10,6 +10,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 
 import java.util.List;
 import java.util.Objects;
@@ -35,6 +36,22 @@ public final class MongoWithdrawalRepository
     }
 
     @Override
+    public Optional<Withdrawal> findById(String withdrawalId) {
+        return Optional.ofNullable(mongo.findById(
+                withdrawalId,
+                MongoWithdrawalDocument.class
+        )).map(MongoWithdrawalDocument::toDomain);
+    }
+
+    @Override
+    public Optional<Withdrawal> findByReviewKeyHash(String keyHash) {
+        return Optional.ofNullable(mongo.findOne(
+                Query.query(Criteria.where("reviewKeyHash").is(keyHash)),
+                MongoWithdrawalDocument.class
+        )).map(MongoWithdrawalDocument::toDomain);
+    }
+
+    @Override
     public Withdrawal insert(Withdrawal withdrawal) {
         try {
             return mongo.insert(
@@ -46,6 +63,37 @@ public final class MongoWithdrawalRepository
                     WithdrawalException.Kind.CONFLICT
             );
         }
+    }
+
+    @Override
+    public boolean decide(Withdrawal decision) {
+        return mongo.updateFirst(
+                Query.query(Criteria.where("_id").is(decision.id())
+                        .and("state").is("PENDING_REVIEW")),
+                new Update()
+                        .set("state", decision.state().name())
+                        .set("reviewedBy", decision.reviewedBy())
+                        .set("reviewReason", decision.reviewReason())
+                        .set(
+                                "reviewRiskLevel",
+                                decision.reviewRiskLevel()
+                        )
+                        .set(
+                                "reviewRiskRuleVersion",
+                                decision.reviewRiskRuleVersion()
+                        )
+                        .set("reviewKeyHash", decision.reviewKeyHash())
+                        .set(
+                                "reviewRequestHash",
+                                decision.reviewRequestHash()
+                        )
+                        .set(
+                                "releaseTransactionId",
+                                decision.releaseTransactionId()
+                        )
+                        .set("reviewedAt", decision.reviewedAt()),
+                MongoWithdrawalDocument.class
+        ).getModifiedCount() == 1;
     }
 
     @Override

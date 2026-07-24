@@ -38,6 +38,70 @@ class WithdrawalTest {
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
+    @Test
+    void reviewTransitionsAreTerminalAndRequireReleaseOnReject() {
+        Withdrawal pending = withdrawal(100_000);
+        Withdrawal approved = pending.approved(
+                "70000000-0000-4000-8000-000000000001",
+                "Verified finance approval.",
+                "STANDARD",
+                "withdrawal-risk-2026.1",
+                "c".repeat(64),
+                "d".repeat(64),
+                NOW.plusSeconds(1)
+        );
+        Withdrawal rejected = pending.rejected(
+                "70000000-0000-4000-8000-000000000001",
+                "Verified finance rejection.",
+                "STANDARD",
+                "withdrawal-risk-2026.1",
+                "e".repeat(64),
+                "f".repeat(64),
+                "80000000-0000-4000-8000-000000000001",
+                NOW.plusSeconds(1)
+        );
+
+        assertThat(approved.state()).isEqualTo(Withdrawal.State.APPROVED);
+        assertThat(rejected.state()).isEqualTo(Withdrawal.State.REJECTED);
+        assertThatThrownBy(() -> approved.approved(
+                "70000000-0000-4000-8000-000000000001",
+                "Cannot review twice.",
+                "STANDARD",
+                "withdrawal-risk-2026.1",
+                "c".repeat(64),
+                "d".repeat(64),
+                NOW.plusSeconds(2)
+        )).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> pending.approved(
+                "70000000-0000-4000-8000-000000000001",
+                "Review timestamp cannot be null.",
+                "STANDARD",
+                "withdrawal-risk-2026.1",
+                "c".repeat(64),
+                "d".repeat(64),
+                null
+        )).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> pending.approved(
+                "70000000-0000-4000-8000-000000000001",
+                "Review timestamp cannot precede request.",
+                "STANDARD",
+                "withdrawal-risk-2026.1",
+                "c".repeat(64),
+                "d".repeat(64),
+                NOW.minusSeconds(1)
+        )).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> pending.rejected(
+                "70000000-0000-4000-8000-000000000001",
+                "Rejection must reference its release.",
+                "STANDARD",
+                "withdrawal-risk-2026.1",
+                "e".repeat(64),
+                "f".repeat(64),
+                null,
+                NOW.plusSeconds(1)
+        )).isInstanceOf(IllegalArgumentException.class);
+    }
+
     private static Withdrawal withdrawal(long gross) {
         return new Withdrawal(
                 "10000000-0000-4000-8000-000000000001",
@@ -59,7 +123,8 @@ class WithdrawalTest {
                 "60000000-0000-4000-8000-000000000001",
                 "a".repeat(64),
                 "b".repeat(64),
-                NOW
+                NOW,
+                null, null, null, null, null, null, null, null
         );
     }
 }

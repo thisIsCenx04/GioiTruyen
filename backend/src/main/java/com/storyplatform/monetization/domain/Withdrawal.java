@@ -17,7 +17,15 @@ public record Withdrawal(
         String reserveTransactionId,
         String idempotencyKeyHash,
         String requestHash,
-        Instant createdAt
+        Instant createdAt,
+        String reviewedBy,
+        String reviewReason,
+        String reviewRiskLevel,
+        String reviewRiskRuleVersion,
+        String reviewKeyHash,
+        String reviewRequestHash,
+        String releaseTransactionId,
+        Instant reviewedAt
 ) {
     public static final long MINIMUM_GROSS_XU = 100_000;
     public static final long MAXIMUM_GROSS_XU = 1_000_000_000;
@@ -40,14 +48,150 @@ public record Withdrawal(
                 || feeRuleVersion == null
                 || !feeRuleVersion.matches("[a-z0-9][a-z0-9._-]{2,63}")
                 || destination == null
-                || state != State.PENDING_REVIEW
+                || state == null
                 || idempotencyKeyHash == null
                 || !idempotencyKeyHash.matches("[0-9a-f]{64}")
                 || requestHash == null
                 || !requestHash.matches("[0-9a-f]{64}")
-                || createdAt == null) {
+                || createdAt == null
+                || !validReviewState(
+                state,
+                reviewedBy,
+                reviewReason,
+                reviewRiskLevel,
+                reviewRiskRuleVersion,
+                reviewKeyHash,
+                reviewRequestHash,
+                releaseTransactionId,
+                reviewedAt
+        )) {
             throw new IllegalArgumentException("Withdrawal is invalid.");
         }
+        if (reviewedBy != null) {
+            reviewedBy = uuid(reviewedBy, "Withdrawal reviewer id");
+        }
+        if (releaseTransactionId != null) {
+            releaseTransactionId = uuid(
+                    releaseTransactionId,
+                    "Withdrawal release transaction id"
+            );
+        }
+    }
+
+    public Withdrawal approved(
+            String reviewerId,
+            String reason,
+            String riskLevel,
+            String riskRuleVersion,
+            String keyHash,
+            String reviewHash,
+            Instant at
+    ) {
+        requirePending(at);
+        return reviewed(
+                State.APPROVED,
+                reviewerId,
+                reason,
+                riskLevel,
+                riskRuleVersion,
+                keyHash,
+                reviewHash,
+                null,
+                at
+        );
+    }
+
+    public Withdrawal rejected(
+            String reviewerId,
+            String reason,
+            String riskLevel,
+            String riskRuleVersion,
+            String keyHash,
+            String reviewHash,
+            String releaseId,
+            Instant at
+    ) {
+        requirePending(at);
+        return reviewed(
+                State.REJECTED,
+                reviewerId,
+                reason,
+                riskLevel,
+                riskRuleVersion,
+                keyHash,
+                reviewHash,
+                releaseId,
+                at
+        );
+    }
+
+    private Withdrawal reviewed(
+            State newState,
+            String reviewerId,
+            String reason,
+            String riskLevel,
+            String riskRuleVersion,
+            String keyHash,
+            String reviewHash,
+            String releaseId,
+            Instant at
+    ) {
+        return new Withdrawal(
+                id, teamId, accountId, grossAmountXu, feeXu,
+                netAmountXu, feeRuleVersion, destination, newState,
+                requestedBy, reserveTransactionId, idempotencyKeyHash,
+                requestHash, createdAt, reviewerId, reason, riskLevel,
+                riskRuleVersion, keyHash, reviewHash, releaseId, at
+        );
+    }
+
+    private void requirePending(Instant at) {
+        if (state != State.PENDING_REVIEW
+                || at == null
+                || at.isBefore(createdAt)) {
+            throw new IllegalStateException(
+                    "Withdrawal is not reviewable."
+            );
+        }
+    }
+
+    private static boolean validReviewState(
+            State value,
+            String reviewer,
+            String reason,
+            String riskLevel,
+            String riskRuleVersion,
+            String keyHash,
+            String requestHash,
+            String releaseId,
+            Instant at
+    ) {
+        boolean decision = reviewer != null
+                && reason != null
+                && !reason.isBlank()
+                && reason.length() <= 500
+                && riskLevel != null
+                && riskLevel.matches("[A-Z_]{3,32}")
+                && riskRuleVersion != null
+                && riskRuleVersion.matches("[a-z0-9][a-z0-9._-]{2,63}")
+                && keyHash != null
+                && keyHash.matches("[0-9a-f]{64}")
+                && requestHash != null
+                && requestHash.matches("[0-9a-f]{64}")
+                && at != null;
+        return switch (value) {
+            case PENDING_REVIEW -> !decision
+                    && reviewer == null
+                    && reason == null
+                    && riskLevel == null
+                    && riskRuleVersion == null
+                    && keyHash == null
+                    && requestHash == null
+                    && releaseId == null
+                    && at == null;
+            case APPROVED -> decision && releaseId == null;
+            case REJECTED -> decision && releaseId != null;
+        };
     }
 
     private static String uuid(String value, String field) {
@@ -62,7 +206,9 @@ public record Withdrawal(
     }
 
     public enum State {
-        PENDING_REVIEW
+        PENDING_REVIEW,
+        APPROVED,
+        REJECTED
     }
 
     public record DestinationSnapshot(

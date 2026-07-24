@@ -16,6 +16,7 @@ public final class WithdrawalException extends RuntimeException {
     public enum Kind {
         INVALID,
         FORBIDDEN,
+        NOT_FOUND,
         DESTINATION_UNAVAILABLE,
         INSUFFICIENT_BALANCE,
         CONFLICT

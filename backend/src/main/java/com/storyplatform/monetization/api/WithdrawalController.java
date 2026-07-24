@@ -85,6 +85,7 @@ public final class WithdrawalController {
         HttpStatus status = switch (exception.kind()) {
             case INVALID -> HttpStatus.BAD_REQUEST;
             case FORBIDDEN -> HttpStatus.FORBIDDEN;
+            case NOT_FOUND -> HttpStatus.NOT_FOUND;
             case DESTINATION_UNAVAILABLE -> HttpStatus.UNPROCESSABLE_CONTENT;
             case INSUFFICIENT_BALANCE -> HttpStatus.UNPROCESSABLE_CONTENT;
             case CONFLICT -> HttpStatus.CONFLICT;

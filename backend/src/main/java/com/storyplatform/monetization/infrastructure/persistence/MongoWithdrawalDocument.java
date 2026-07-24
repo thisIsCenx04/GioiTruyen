@@ -21,7 +21,15 @@ public record MongoWithdrawalDocument(
         String reserveTransactionId,
         String idempotencyKeyHash,
         String requestHash,
-        Instant createdAt
+        Instant createdAt,
+        String reviewedBy,
+        String reviewReason,
+        String reviewRiskLevel,
+        String reviewRiskRuleVersion,
+        String reviewKeyHash,
+        String reviewRequestHash,
+        String releaseTransactionId,
+        Instant reviewedAt
 ) {
     public static final String COLLECTION = "withdrawals";
 
@@ -40,7 +48,15 @@ public record MongoWithdrawalDocument(
                 value.reserveTransactionId(),
                 value.idempotencyKeyHash(),
                 value.requestHash(),
-                value.createdAt()
+                value.createdAt(),
+                value.reviewedBy(),
+                value.reviewReason(),
+                value.reviewRiskLevel(),
+                value.reviewRiskRuleVersion(),
+                value.reviewKeyHash(),
+                value.reviewRequestHash(),
+                value.releaseTransactionId(),
+                value.reviewedAt()
         );
     }
 
@@ -59,7 +75,15 @@ public record MongoWithdrawalDocument(
                 reserveTransactionId,
                 idempotencyKeyHash,
                 requestHash,
-                createdAt
+                createdAt,
+                reviewedBy,
+                reviewReason,
+                reviewRiskLevel,
+                reviewRiskRuleVersion,
+                reviewKeyHash,
+                reviewRequestHash,
+                releaseTransactionId,
+                reviewedAt
         );
     }
 

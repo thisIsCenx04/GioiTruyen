@@ -151,7 +151,15 @@ public final class WithdrawalService implements WithdrawalOperations {
                 posting.transaction().id(),
                 keyHash,
                 requestHash,
-                now
+                now,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
         ));
         outbox.append(new IntegrationEvent(
                 ids.get(),
