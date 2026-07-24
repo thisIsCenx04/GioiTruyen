@@ -1,0 +1,62 @@
+package com.storyplatform.moderation.infrastructure;
+
+import com.storyplatform.moderation.application.ModerationQueueOperations;
+import com.storyplatform.moderation.application.ModerationQueueService;
+import com.storyplatform.moderation.application.port
+        .ModerationQueueCursorCodec;
+import com.storyplatform.moderation.application.port
+        .ModerationQueueRepository;
+import com.storyplatform.moderation.infrastructure.persistence
+        .MongoModerationQueueRepository;
+import com.storyplatform.moderation.infrastructure.security
+        .HmacModerationQueueCursorCodec;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.mongodb.core.MongoTemplate;
+
+import java.time.Clock;
+import java.util.Base64;
+
+@Configuration(proxyBeanMethods = false)
+@EnableConfigurationProperties(ModerationQueueProperties.class)
+public class ModerationConfiguration {
+
+    @Bean
+    ModerationQueueRepository moderationQueueRepository(
+            MongoTemplate mongo
+    ) {
+        return new MongoModerationQueueRepository(mongo);
+    }
+
+    @Bean
+    ModerationQueueCursorCodec moderationQueueCursorCodec(
+            @Value("${app.identity.login-risk.hmac-key}") String encodedKey
+    ) {
+        try {
+            return new HmacModerationQueueCursorCodec(
+                    Base64.getDecoder().decode(encodedKey)
+            );
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalStateException(
+                    "LOGIN_RISK_HMAC_KEY must be Base64 with 32 bytes",
+                    exception
+            );
+        }
+    }
+
+    @Bean
+    ModerationQueueOperations moderationQueueOperations(
+            ModerationQueueRepository repository,
+            ModerationQueueCursorCodec cursors,
+            ModerationQueueProperties properties
+    ) {
+        return new ModerationQueueService(
+                repository,
+                cursors,
+                Clock.systemUTC(),
+                properties.claimLease()
+        );
+    }
+}

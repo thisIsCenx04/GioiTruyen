@@ -1479,6 +1479,108 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /moderation/cases:
+    get:
+      operationId: listModerationCases
+      summary: List the prioritized claimable publishing review queue
+      description: |
+        Requires Moderator or Admin. The HMAC-signed keyset cursor preserves
+        priority-descending and oldest-first order. Private chapter content is
+        not returned by this queue endpoint.
+      tags: [Moderation]
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            const: PUBLISHING
+            default: PUBLISHING
+        - name: state
+          in: query
+          schema:
+            type: string
+            const: OPEN
+            default: OPEN
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: cursor
+          in: query
+          schema:
+            type: string
+            maxLength: 512
+      responses:
+        "200":
+          description: Prioritized claimable review cases
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModerationReviewPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /moderation/cases/{reviewId}:
+    patch:
+      operationId: claimModerationCase
+      summary: Atomically claim an open or lease-expired review case
+      description: |
+        Requires Moderator or Admin. If-Match and an atomic state/lease
+        predicate guarantee that concurrent reviewers cannot both claim the
+        same case.
+      tags: [Moderation]
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: '^"[1-9][0-9]*"$'
+      responses:
+        "200":
+          description: Review lease acquired
+          headers:
+            ETag:
+              schema:
+                type: string
+                pattern: '^"[1-9][0-9]*"$'
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModerationReviewCase"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Review changed, is actively leased, or is no longer open
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
 components:
   securitySchemes:
     bearerAuth:
@@ -1774,6 +1876,90 @@ components:
         number:
           type: integer
           minimum: 1
+    ModerationReviewPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/ModerationReviewCase"
+        nextCursor:
+          type: [string, "null"]
+          maxLength: 512
+    ModerationReviewCase:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - targetType
+        - targetId
+        - teamId
+        - state
+        - priority
+        - manualFallback
+        - checks
+        - submittedAt
+        - version
+      properties:
+        id:
+          type: string
+          format: uuid
+        targetType:
+          type: string
+          const: STORY
+        targetId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        state:
+          type: string
+          enum: [OPEN, CLAIMED]
+        priority:
+          type: integer
+          minimum: 0
+          maximum: 100
+        manualFallback:
+          type: boolean
+        checks:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/ModerationCheckSummary"
+        assigneeId:
+          type: [string, "null"]
+          format: uuid
+        leaseUntil:
+          type: [string, "null"]
+          format: date-time
+        submittedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+          minimum: 1
+    ModerationCheckSummary:
+      type: object
+      additionalProperties: false
+      required: [rule, outcome, code, policyVersion]
+      properties:
+        rule:
+          type: string
+          enum: [SCHEMA, MEDIA, LINK_POLICY, QR_POLICY, SPAM]
+        outcome:
+          type: string
+          enum: [PASS, FLAG, MANUAL, FAIL, TIMEOUT]
+        code:
+          type: string
+          pattern: "^[A-Z][A-Z0-9_]{2,63}$"
+        policyVersion:
+          type: string
+          maxLength: 64
     UploadSignatureRequest:
       type: object
       additionalProperties: false

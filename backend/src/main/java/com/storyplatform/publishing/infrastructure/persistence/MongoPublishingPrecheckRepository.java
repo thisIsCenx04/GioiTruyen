@@ -130,6 +130,7 @@ public final class MongoPublishingPrecheckRepository
                         .set("state", PublishingReview.State.OPEN)
                         .set("checks", checks)
                         .set("manualFallback", manualFallback)
+                        .set("priority", priority(checks))
                         .set("checkedAt", completedAt)
                         .set("updatedAt", completedAt)
                         .unset("leaseOwner")
@@ -138,6 +139,32 @@ public final class MongoPublishingPrecheckRepository
                 MongoPublishingReviewDocument.class
         );
         return result.getModifiedCount() == 1;
+    }
+
+    private static int priority(
+            List<PublishingPrecheckEngine.CheckResult> checks
+    ) {
+        if (checks.stream().anyMatch(value ->
+                value.outcome()
+                        == PublishingPrecheckEngine.Outcome.FAIL)) {
+            return 90;
+        }
+        if (checks.stream().anyMatch(value ->
+                value.outcome()
+                        == PublishingPrecheckEngine.Outcome.TIMEOUT)) {
+            return 80;
+        }
+        if (checks.stream().anyMatch(value ->
+                value.outcome()
+                        == PublishingPrecheckEngine.Outcome.FLAG)) {
+            return 70;
+        }
+        if (checks.stream().anyMatch(value ->
+                value.outcome()
+                        == PublishingPrecheckEngine.Outcome.MANUAL)) {
+            return 50;
+        }
+        return 10;
     }
 
     private ClaimedReview claimed(

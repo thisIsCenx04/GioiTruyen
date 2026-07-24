@@ -137,6 +137,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    ModerationQueueIndexes moderationQueueIndexes() {
+        return new ModerationQueueIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

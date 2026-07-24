@@ -84,7 +84,8 @@ public record PublishingReview(
     public enum State {
         AUTOMATED_CHECK_PENDING,
         AUTOMATED_CHECK_RUNNING,
-        OPEN
+        OPEN,
+        CLAIMED
     }
 
     private static String uuid(String value, String field) {
