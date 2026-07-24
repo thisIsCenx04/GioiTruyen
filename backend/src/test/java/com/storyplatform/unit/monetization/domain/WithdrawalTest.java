@@ -44,6 +44,9 @@ class WithdrawalTest {
                 "20000000-0000-4000-8000-000000000001",
                 "30000000-0000-4000-8000-000000000001",
                 gross,
+                20_000,
+                gross - 20_000,
+                "withdrawal-fee-2026.1",
                 new Withdrawal.DestinationSnapshot(
                         "40000000-0000-4000-8000-000000000001",
                         "VCB •••• 1234",

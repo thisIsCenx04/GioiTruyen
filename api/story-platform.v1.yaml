@@ -6539,6 +6539,9 @@ components:
         - id
         - teamId
         - grossAmountXu
+        - feeXu
+        - netAmountXu
+        - feeRuleVersion
         - destinationMasked
         - state
         - replayed
@@ -6555,6 +6558,18 @@ components:
           format: int64
           minimum: 100000
           maximum: 1000000000
+        feeXu:
+          type: integer
+          format: int64
+          enum: [0, 20000]
+        netAmountXu:
+          type: integer
+          format: int64
+          minimum: 1
+        feeRuleVersion:
+          type: string
+          minLength: 3
+          maxLength: 64
         destinationMasked:
           type: string
           minLength: 1

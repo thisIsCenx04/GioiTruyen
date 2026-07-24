@@ -35,6 +35,7 @@ public final class WithdrawalService implements WithdrawalOperations {
     private final WalletOperations wallets;
     private final LedgerOperations ledger;
     private final OutboxAppender outbox;
+    private final WithdrawalFeePolicy feePolicy;
     private final Clock clock;
     private final Supplier<UUID> ids;
 
@@ -46,6 +47,7 @@ public final class WithdrawalService implements WithdrawalOperations {
             WalletOperations wallets,
             LedgerOperations ledger,
             OutboxAppender outbox,
+            WithdrawalFeePolicy feePolicy,
             Clock clock,
             Supplier<UUID> ids
     ) {
@@ -56,6 +58,7 @@ public final class WithdrawalService implements WithdrawalOperations {
         this.wallets = Objects.requireNonNull(wallets);
         this.ledger = Objects.requireNonNull(ledger);
         this.outbox = Objects.requireNonNull(outbox);
+        this.feePolicy = Objects.requireNonNull(feePolicy);
         this.clock = Objects.requireNonNull(clock);
         this.ids = Objects.requireNonNull(ids);
     }
@@ -75,7 +78,6 @@ public final class WithdrawalService implements WithdrawalOperations {
                 "Withdrawal destination is invalid."
         );
         authorize(actorId, teamId);
-        requireAmount(grossAmountXu);
         String keyHash = hash(
                 actorId + "\n" + ROUTE + "\n" + teamId + "\n"
                         + requireKey(idempotencyKey)
@@ -99,6 +101,7 @@ public final class WithdrawalService implements WithdrawalOperations {
             }
             return receipt(existing, true);
         }
+        WithdrawalFeePolicy.Quote quote = feePolicy.quote(grossAmountXu);
         Instant now = clock.instant();
         Withdrawal.DestinationSnapshot destination = destinations
                 .findEligible(teamId, destinationId, now)
@@ -139,6 +142,9 @@ public final class WithdrawalService implements WithdrawalOperations {
                         teamId
                 ),
                 grossAmountXu,
+                quote.feeXu(),
+                quote.netAmountXu(),
+                quote.version(),
                 destination,
                 Withdrawal.State.PENDING_REVIEW,
                 actorId,
@@ -240,17 +246,6 @@ public final class WithdrawalService implements WithdrawalOperations {
         );
     }
 
-    private static void requireAmount(long amount) {
-        if (amount < Withdrawal.MINIMUM_GROSS_XU
-                || amount > Withdrawal.MAXIMUM_GROSS_XU) {
-            throw failure(
-                    "Withdrawal gross amount must be 100000 to "
-                            + "1000000000 XU.",
-                    WithdrawalException.Kind.INVALID
-            );
-        }
-    }
-
     private static String requireKey(String value) {
         if (value == null
                 || !value.matches("[A-Za-z0-9._:-]{16,128}")) {
@@ -278,6 +273,9 @@ public final class WithdrawalService implements WithdrawalOperations {
                 value.id(),
                 value.teamId(),
                 value.grossAmountXu(),
+                value.feeXu(),
+                value.netAmountXu(),
+                value.feeRuleVersion(),
                 value.destination().maskedLabel(),
                 value.state().name(),
                 replayed,

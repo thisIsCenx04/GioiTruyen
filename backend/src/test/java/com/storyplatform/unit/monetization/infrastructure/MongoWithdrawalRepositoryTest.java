@@ -106,6 +106,9 @@ class MongoWithdrawalRepositoryTest {
                 "20000000-0000-4000-8000-000000000001",
                 "30000000-0000-4000-8000-000000000001",
                 100_000,
+                20_000,
+                80_000,
+                "withdrawal-fee-2026.1",
                 new Withdrawal.DestinationSnapshot(
                         "40000000-0000-4000-8000-000000000001",
                         "VCB •••• 1234",
@@ -129,6 +132,9 @@ class MongoWithdrawalRepositoryTest {
                 value.teamId(),
                 value.accountId(),
                 value.grossAmountXu(),
+                value.feeXu(),
+                value.netAmountXu(),
+                value.feeRuleVersion(),
                 new MongoWithdrawalDocument.DestinationSnapshot(
                         value.destination().id(),
                         value.destination().maskedLabel(),

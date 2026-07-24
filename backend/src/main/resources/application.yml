@@ -99,6 +99,12 @@ app:
       reward-delay: ${REFERRAL_REWARD_DELAY:7d}
       maximum-recent: ${REFERRAL_MAXIMUM_RECENT:100}
       poll-interval: ${REFERRAL_REWARD_POLL_INTERVAL:5m}
+    withdrawals:
+      fee-rule-version: ${WITHDRAWAL_FEE_RULE_VERSION:withdrawal-fee-2026.1}
+      minimum-gross-xu: ${WITHDRAWAL_MINIMUM_GROSS_XU:100000}
+      free-from-gross-xu: ${WITHDRAWAL_FREE_FROM_GROSS_XU:1000000}
+      flat-fee-xu: ${WITHDRAWAL_FLAT_FEE_XU:20000}
+      maximum-gross-xu: ${WITHDRAWAL_MAXIMUM_GROSS_XU:1000000000}
   analytics:
     raw-events:
       retention: ${ANALYTICS_RAW_EVENT_RETENTION:90d}

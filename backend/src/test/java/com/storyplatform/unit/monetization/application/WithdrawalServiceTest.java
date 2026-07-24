@@ -5,6 +5,7 @@ import com.storyplatform.monetization.application
 import com.storyplatform.monetization.application.LedgerOperations;
 import com.storyplatform.monetization.application.WalletOperations;
 import com.storyplatform.monetization.application.WithdrawalException;
+import com.storyplatform.monetization.application.WithdrawalFeePolicy;
 import com.storyplatform.monetization.application.WithdrawalService;
 import com.storyplatform.monetization.application.port
         .WithdrawalCursorCodec;
@@ -106,6 +107,10 @@ class WithdrawalServiceTest {
         assertThat(replayed.replayed()).isTrue();
         assertThat(created.destinationMasked())
                 .isEqualTo("VCB •••• 1234");
+        assertThat(created.feeXu()).isEqualTo(20_000);
+        assertThat(created.netAmountXu()).isEqualTo(80_000);
+        assertThat(created.feeRuleVersion())
+                .isEqualTo("withdrawal-fee-2026.1");
         verify(ledger).post(command.capture());
         assertThat(command.getValue().type())
                 .isEqualTo(LedgerTransaction.Type.WITHDRAWAL_RESERVE);
@@ -199,6 +204,9 @@ class WithdrawalServiceTest {
                 TEAM,
                 first.accountId(),
                 200_000,
+                20_000,
+                180_000,
+                "withdrawal-fee-2026.1",
                 destination(),
                 Withdrawal.State.PENDING_REVIEW,
                 ACTOR,
@@ -240,6 +248,7 @@ class WithdrawalServiceTest {
                 wallets,
                 ledger,
                 outbox,
+                WithdrawalFeePolicy.defaults(),
                 Clock.fixed(NOW, ZoneOffset.UTC),
                 ids::next
         );
@@ -282,6 +291,9 @@ class WithdrawalServiceTest {
                         TEAM
                 ),
                 100_000,
+                20_000,
+                80_000,
+                "withdrawal-fee-2026.1",
                 destination(),
                 Withdrawal.State.PENDING_REVIEW,
                 ACTOR,

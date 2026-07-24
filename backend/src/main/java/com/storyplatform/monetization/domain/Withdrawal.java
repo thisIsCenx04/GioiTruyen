@@ -8,6 +8,9 @@ public record Withdrawal(
         String teamId,
         String accountId,
         long grossAmountXu,
+        long feeXu,
+        long netAmountXu,
+        String feeRuleVersion,
         DestinationSnapshot destination,
         State state,
         String requestedBy,
@@ -30,6 +33,12 @@ public record Withdrawal(
         );
         if (grossAmountXu < MINIMUM_GROSS_XU
                 || grossAmountXu > MAXIMUM_GROSS_XU
+                || feeXu < 0
+                || feeXu > grossAmountXu
+                || netAmountXu < 1
+                || netAmountXu != grossAmountXu - feeXu
+                || feeRuleVersion == null
+                || !feeRuleVersion.matches("[a-z0-9][a-z0-9._-]{2,63}")
                 || destination == null
                 || state != State.PENDING_REVIEW
                 || idempotencyKeyHash == null

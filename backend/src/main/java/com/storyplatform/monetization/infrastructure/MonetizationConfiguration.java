@@ -11,6 +11,7 @@ import com.storyplatform.monetization.application.ReferralOperations;
 import com.storyplatform.monetization.application.ReferralRule;
 import com.storyplatform.monetization.application.ReferralService;
 import com.storyplatform.monetization.application.WithdrawalOperations;
+import com.storyplatform.monetization.application.WithdrawalFeePolicy;
 import com.storyplatform.monetization.application.WithdrawalService;
 import com.storyplatform.monetization.application.ManualTopupOperations;
 import com.storyplatform.monetization.application.ManualTopupService;
@@ -245,7 +246,17 @@ public class MonetizationConfiguration {
             TeamPermissionAuthorizer permissions,
             WalletOperations wallets,
             LedgerOperations ledger,
-            OutboxAppender outbox
+            OutboxAppender outbox,
+            @Value("${app.monetization.withdrawals.fee-rule-version}")
+            String feeRuleVersion,
+            @Value("${app.monetization.withdrawals.minimum-gross-xu}")
+            long minimumGrossXu,
+            @Value("${app.monetization.withdrawals.free-from-gross-xu}")
+            long freeFromGrossXu,
+            @Value("${app.monetization.withdrawals.flat-fee-xu}")
+            long flatFeeXu,
+            @Value("${app.monetization.withdrawals.maximum-gross-xu}")
+            long maximumGrossXu
     ) {
         return new TransactionalWithdrawalOperations(
                 new WithdrawalService(
@@ -256,6 +267,13 @@ public class MonetizationConfiguration {
                         wallets,
                         ledger,
                         outbox,
+                        new WithdrawalFeePolicy(
+                                feeRuleVersion,
+                                minimumGrossXu,
+                                freeFromGrossXu,
+                                flatFeeXu,
+                                maximumGrossXu
+                        ),
                         Clock.systemUTC(),
                         UUID::randomUUID
                 )
