@@ -60,11 +60,20 @@ public final class MongoMediaAssetRepository
                 .setOnInsert("resourceType", event.resourceType())
                 .setOnInsert("deliveryType", event.deliveryType())
                 .setOnInsert("format", event.format())
+                .setOnInsert(
+                        "cloudinaryVersion",
+                        event.cloudinaryVersion()
+                )
+                .setOnInsert(
+                        "declaredSha256",
+                        event.declaredSha256()
+                )
                 .setOnInsert("bytes", event.bytes())
                 .setOnInsert("width", event.width())
                 .setOnInsert("height", event.height())
                 .setOnInsert("state", "PENDING_MODERATION")
                 .setOnInsert("receivedAt", event.receivedAt())
-                .setOnInsert("version", 0L);
+                .setOnInsert("version", 0L)
+                .setOnInsert("processingAttempts", 0);
     }
 }

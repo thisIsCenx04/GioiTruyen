@@ -51,7 +51,14 @@ public final class CloudinaryNotificationJsonDecoder
             );
             String ownerId = uuid(text(context, "owner_id"));
             String intentId = uuid(text(context, "intent_id"));
+            String declaredSha256 = sha256(
+                    text(context, "declared_sha256")
+            );
             long bytes = positive(root.path("bytes").asLong(-1), "bytes");
+            long version = positive(
+                    root.path("version").asLong(-1),
+                    "version"
+            );
             int width = positiveInt(root.path("width").asInt(-1), "width");
             int height = positiveInt(
                     root.path("height").asInt(-1),
@@ -74,6 +81,8 @@ public final class CloudinaryNotificationJsonDecoder
                     exact(root, "resource_type", "image"),
                     exact(root, "type", "authenticated"),
                     format(text(root, "format")),
+                    version,
+                    declaredSha256,
                     bytes,
                     width,
                     height,
@@ -171,6 +180,13 @@ public final class CloudinaryNotificationJsonDecoder
             throw invalid("format is not allowed.");
         }
         return normalized;
+    }
+
+    private static String sha256(String value) {
+        if (!value.matches("[0-9a-f]{64}")) {
+            throw invalid("declared_sha256 is invalid.");
+        }
+        return value;
     }
 
     private static MediaRequestException invalid(String detail) {

@@ -66,6 +66,7 @@ class CloudinaryNotificationJsonDecoderTest {
                   "resource_type": "image",
                   "type": "authenticated",
                   "format": "png",
+                  "version": 42,
                   "bytes": %d,
                   "width": 128,
                   "height": 128,
@@ -76,7 +77,9 @@ class CloudinaryNotificationJsonDecoderTest {
                       "owner_type": "user",
                       "owner_id":
                         "00000000-0000-4000-8000-000000000001",
-                      "purpose": "avatar"
+                      "purpose": "avatar",
+                      "declared_sha256":
+                        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                     }
                   }
                 }

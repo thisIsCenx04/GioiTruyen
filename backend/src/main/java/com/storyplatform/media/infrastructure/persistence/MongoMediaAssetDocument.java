@@ -16,12 +16,21 @@ public record MongoMediaAssetDocument(
         String resourceType,
         String deliveryType,
         String format,
+        long cloudinaryVersion,
+        String declaredSha256,
         long bytes,
         int width,
         int height,
         String state,
         Instant receivedAt,
-        long version
+        long version,
+        String leaseOwner,
+        Instant leaseUntil,
+        Instant nextAttemptAt,
+        int processingAttempts,
+        String normalizedPublicId,
+        Long normalizedVersion,
+        String rejectionCode
 ) {
     public static final String COLLECTION = "media_assets";
 }

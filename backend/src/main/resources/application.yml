@@ -87,6 +87,12 @@ app:
       webhook-enabled: ${CLOUDINARY_WEBHOOK_ENABLED:false}
       webhook-secret: ${CLOUDINARY_WEBHOOK_SECRET:}
       webhook-max-age: ${CLOUDINARY_WEBHOOK_MAX_AGE:2h}
+      processing-enabled: ${CLOUDINARY_PROCESSING_ENABLED:false}
+      processing-lease-duration: ${CLOUDINARY_PROCESSING_LEASE_DURATION:30s}
+      processing-retry-delay: ${CLOUDINARY_PROCESSING_RETRY_DELAY:30s}
+      processing-poll-interval: ${CLOUDINARY_PROCESSING_POLL_INTERVAL:2s}
+      processing-timeout: ${CLOUDINARY_PROCESSING_TIMEOUT:15s}
+      processing-max-attempts: ${CLOUDINARY_PROCESSING_MAX_ATTEMPTS:5}
   discovery:
     search:
       backend: ${SEARCH_BACKEND:text}

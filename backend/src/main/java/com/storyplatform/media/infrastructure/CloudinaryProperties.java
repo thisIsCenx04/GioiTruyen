@@ -15,6 +15,12 @@ public record CloudinaryProperties(
         Duration signatureTtl,
         boolean webhookEnabled,
         String webhookSecret,
-        Duration webhookMaxAge
+        Duration webhookMaxAge,
+        boolean processingEnabled,
+        Duration processingLeaseDuration,
+        Duration processingRetryDelay,
+        Duration processingPollInterval,
+        Duration processingTimeout,
+        int processingMaxAttempts
 ) {
 }

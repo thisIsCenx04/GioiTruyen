@@ -25,6 +25,8 @@ public interface MediaWebhookOperations {
             String resourceType,
             String deliveryType,
             String format,
+            long cloudinaryVersion,
+            String declaredSha256,
             long bytes,
             int width,
             int height,

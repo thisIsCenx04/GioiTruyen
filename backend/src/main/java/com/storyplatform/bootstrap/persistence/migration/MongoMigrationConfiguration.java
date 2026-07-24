@@ -112,6 +112,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    MediaProcessingIndexes mediaProcessingIndexes() {
+        return new MediaProcessingIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

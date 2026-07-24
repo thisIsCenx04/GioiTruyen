@@ -73,6 +73,8 @@ class MongoMediaAssetRepositoryTest {
                 "image",
                 "authenticated",
                 "png",
+                42,
+                "a".repeat(64),
                 100,
                 10,
                 10,
