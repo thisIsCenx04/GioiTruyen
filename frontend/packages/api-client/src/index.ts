@@ -188,3 +188,158 @@ export function createBrowserAuthClient({
     },
   });
 }
+
+export type Team = Readonly<{
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  state: "ACTIVE" | "SUSPENDED" | "ARCHIVED";
+  version: number;
+}>;
+
+export type TeamMembership = Readonly<{
+  teamId: string;
+  userId: string;
+  role: "OWNER" | "MEMBER";
+  permissions: readonly string[];
+  state: "INVITED" | "ACTIVE" | "REVOKED";
+  joinedAt: string;
+  version: number;
+}>;
+
+export type TeamFollow = Readonly<{
+  teamId: string;
+  following: boolean;
+  followerCount: number;
+}>;
+
+export type BrowserTeamClientOptions = Readonly<{
+  baseUrl?: string;
+  fetchImplementation?: typeof fetch;
+}>;
+
+export function createBrowserTeamClient({
+  baseUrl = "/api/workspace",
+  fetchImplementation = fetch,
+}: BrowserTeamClientOptions = {}) {
+  const client = createStoryApiClient({
+    baseUrl,
+    fetchImplementation,
+  });
+
+  async function request<Response>(
+    path: `/${string}`,
+    options: RequestOptions = {},
+  ): Promise<Response> {
+    try {
+      return await client.request<Response>(path, {
+        credentials: "same-origin",
+        ...options,
+      });
+    } catch (error) {
+      if (
+        !(error instanceof StoryApiError) ||
+        error.problem.status !== 401
+      ) {
+        throw error;
+      }
+      const refresh = createStoryApiClient({
+        baseUrl: "/api/auth",
+        fetchImplementation,
+      });
+      await refresh.request("/refresh", {
+        credentials: "same-origin",
+        method: "POST",
+      });
+      return client.request<Response>(path, {
+        credentials: "same-origin",
+        ...options,
+      });
+    }
+  }
+
+  return Object.freeze({
+    acceptInvitation(token: string) {
+      return request<TeamMembership>(
+        `/team-invitations/${encodeURIComponent(token)}/accept`,
+        { method: "POST" },
+      );
+    },
+    createTeam(input: {
+      slug: string;
+      name: string;
+      description: string;
+    }) {
+      return request<Team>("/teams", { body: input, method: "POST" });
+    },
+    follow(teamId: string) {
+      return request<TeamFollow>(
+        `/teams/${encodeURIComponent(teamId)}/follow`,
+        { method: "PUT" },
+      );
+    },
+    followStatus(teamId: string) {
+      return request<TeamFollow>(
+        `/teams/${encodeURIComponent(teamId)}/follow`,
+      );
+    },
+    getTeam(teamId: string) {
+      return request<Team>(`/teams/${encodeURIComponent(teamId)}`);
+    },
+    inviteMember(
+      teamId: string,
+      input: { userId: string; permissions: readonly string[] },
+      idempotencyKey: string,
+    ) {
+      return request<TeamMembership>(
+        `/teams/${encodeURIComponent(teamId)}/members`,
+        {
+          body: input,
+          headers: { "Idempotency-Key": idempotencyKey },
+          method: "POST",
+        },
+      );
+    },
+    listMembers(teamId: string) {
+      return request<TeamMembership[]>(
+        `/teams/${encodeURIComponent(teamId)}/members`,
+      );
+    },
+    listTeams() {
+      return request<Team[]>("/teams");
+    },
+    removeMember(teamId: string, userId: string, version: number) {
+      return request<void>(
+        `/teams/${encodeURIComponent(teamId)}/members/${encodeURIComponent(userId)}?version=${version}`,
+        { method: "DELETE" },
+      );
+    },
+    unfollow(teamId: string) {
+      return request<TeamFollow>(
+        `/teams/${encodeURIComponent(teamId)}/follow`,
+        { method: "DELETE" },
+      );
+    },
+    updateMemberPermissions(
+      teamId: string,
+      userId: string,
+      version: number,
+      permissions: readonly string[],
+    ) {
+      return request<TeamMembership>(
+        `/teams/${encodeURIComponent(teamId)}/members/${encodeURIComponent(userId)}/permissions`,
+        { body: { permissions, version }, method: "PATCH" },
+      );
+    },
+    updateTeam(
+      teamId: string,
+      input: { name: string; description: string; version: number },
+    ) {
+      return request<Team>(
+        `/teams/${encodeURIComponent(teamId)}`,
+        { body: input, method: "PATCH" },
+      );
+    },
+  });
+}

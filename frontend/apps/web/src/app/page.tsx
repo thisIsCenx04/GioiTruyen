@@ -1,4 +1,5 @@
 import { BrandMark, StatusPill, StoryCard } from "@gioitruyen/ui";
+import Link from "next/link";
 
 const chapters = [
   { number: "128", title: "Dưới chân thành cũ", time: "7 phút trước" },
@@ -43,7 +44,7 @@ export default function HomePage() {
         <nav aria-label="Điều hướng chính">
           <a href="#featured">Khám phá</a>
           <a href="#reading">Tủ truyện</a>
-          <a href="#teams">Nhóm xuất bản</a>
+          <Link href="/teams">Nhóm xuất bản</Link>
         </nav>
         <a className="quietAction" href="/auth/login">
           Đăng nhập

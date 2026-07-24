@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { apiMockServer } from "../../../test/msw/server";
 import {
   createBrowserAuthClient,
+  createBrowserTeamClient,
   createStoryApiClient,
   StoryApiError,
 } from "./index";
@@ -211,5 +212,99 @@ describe("browser authentication client", () => {
     await expect(client.revokeSession("session-01")).resolves.toBeUndefined();
     await expect(client.revokeAllSessions()).resolves.toBeUndefined();
     await expect(client.logout()).resolves.toBeUndefined();
+  });
+});
+
+describe("browser team client", () => {
+  it("maps membership permission updates to the workspace BFF", async () => {
+    apiMockServer.use(
+      http.patch(
+        "/api/workspace/teams/team-01/members/user-02/permissions",
+        async ({ request }) => {
+          await expect(request.json()).resolves.toEqual({
+            permissions: ["story:edit"],
+            version: 3,
+          });
+          return HttpResponse.json({
+            joinedAt: "2026-07-24T00:00:00Z",
+            permissions: ["story:edit"],
+            role: "MEMBER",
+            state: "ACTIVE",
+            teamId: "team-01",
+            userId: "user-02",
+            version: 4,
+          });
+        },
+      ),
+    );
+
+    await expect(
+      createBrowserTeamClient().updateMemberPermissions(
+        "team-01",
+        "user-02",
+        3,
+        ["story:edit"],
+      ),
+    ).resolves.toMatchObject({ permissions: ["story:edit"], version: 4 });
+  });
+
+  it("carries an idempotency key when inviting a member", async () => {
+    apiMockServer.use(
+      http.post(
+        "/api/workspace/teams/team-01/members",
+        async ({ request }) => {
+          expect(request.headers.get("idempotency-key")).toBe("invite-01");
+          return HttpResponse.json(
+            {
+              joinedAt: "2026-07-24T00:00:00Z",
+              permissions: ["story:create"],
+              role: "MEMBER",
+              state: "INVITED",
+              teamId: "team-01",
+              userId: "user-02",
+              version: 1,
+            },
+            { status: 201 },
+          );
+        },
+      ),
+    );
+
+    await expect(
+      createBrowserTeamClient().inviteMember(
+        "team-01",
+        { permissions: ["story:create"], userId: "user-02" },
+        "invite-01",
+      ),
+    ).resolves.toMatchObject({ state: "INVITED" });
+  });
+
+  it("refreshes once and retries a protected team request", async () => {
+    let attempts = 0;
+    let refreshes = 0;
+    apiMockServer.use(
+      http.get("/api/workspace/teams", () => {
+        attempts += 1;
+        return attempts === 1
+          ? HttpResponse.json(
+              {
+                code: "AUTHENTICATION_REQUIRED",
+                status: 401,
+                title: "Authentication required",
+                type: "about:blank",
+              },
+              { status: 401 },
+            )
+          : HttpResponse.json([]);
+      }),
+      http.post("/api/auth/refresh", () => {
+        refreshes += 1;
+        return HttpResponse.json({ status: "AUTHENTICATED" });
+      }),
+    );
+
+    await expect(createBrowserTeamClient().listTeams()).resolves.toEqual([]);
+    expect(attempts).toBe(2);
+    expect(refreshes).toBe(1);
   });
 });
