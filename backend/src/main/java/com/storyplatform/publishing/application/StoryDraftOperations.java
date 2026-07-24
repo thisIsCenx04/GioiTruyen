@@ -14,6 +14,14 @@ public interface StoryDraftOperations {
             CreateCommand command
     );
 
+    DraftView update(
+            String actorId,
+            String teamId,
+            String storyId,
+            long expectedVersion,
+            UpdateCommand command
+    );
+
     record CreateCommand(
             String title,
             String synopsis,
@@ -23,6 +31,20 @@ public interface StoryDraftOperations {
             String coverAssetId
     ) {
         public CreateCommand {
+            categoryIds = categoryIds == null
+                    ? null
+                    : List.copyOf(categoryIds);
+        }
+    }
+
+    record UpdateCommand(
+            String title,
+            String synopsis,
+            List<String> categoryIds,
+            String coverAssetId,
+            StoryDraft.CompletionStatus completionStatus
+    ) {
+        public UpdateCommand {
             categoryIds = categoryIds == null
                     ? null
                     : List.copyOf(categoryIds);

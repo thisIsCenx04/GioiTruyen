@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 public final class StoryDraftService implements StoryDraftOperations {
 
     public static final String CREATE_PERMISSION = "story:create";
+    public static final String EDIT_PERMISSION = "story:edit";
     public static final String EVENT_TYPE =
             "publishing.story.draftcreated";
 
@@ -161,6 +162,104 @@ public final class StoryDraftService implements StoryDraftOperations {
         return view(story, 1);
     }
 
+    @Override
+    public DraftView update(
+            String actorId,
+            String teamId,
+            String storyId,
+            long expectedVersion,
+            UpdateCommand command
+    ) {
+        if (expectedVersion < 1 || command == null) {
+            throw invalid("A valid version and patch body are required.");
+        }
+        if (!teams.isActive(teamId)
+                || !permissions.allows(
+                actorId,
+                teamId,
+                EDIT_PERMISSION
+        )) {
+            throw rejected(
+                    "STORY_EDIT_FORBIDDEN",
+                    "An active Team membership with story:edit is required.",
+                    StoryDraftException.Kind.FORBIDDEN
+            );
+        }
+        StoryDraftRepository.StoredDraft stored = drafts.findOwned(
+                teamId,
+                storyId
+        ).orElseThrow(() -> rejected(
+                "STORY_DRAFT_NOT_FOUND",
+                "The requested Team story does not exist.",
+                StoryDraftException.Kind.NOT_FOUND
+        ));
+        StoryDraft current = stored.story();
+        if (current.version() != expectedVersion) {
+            throw stale();
+        }
+        if (command.title() == null
+                && command.synopsis() == null
+                && command.categoryIds() == null
+                && command.coverAssetId() == null
+                && command.completionStatus() == null) {
+            throw invalid("At least one editable field is required.");
+        }
+
+        String title = command.title() == null
+                ? current.title()
+                : normalizedText(command.title(), 200, "title");
+        String synopsis = command.synopsis() == null
+                ? current.synopsis()
+                : normalizedText(command.synopsis(), 5000, "synopsis");
+        List<String> categoryIds = command.categoryIds() == null
+                ? current.categoryIds()
+                : normalizeCategories(command.categoryIds());
+        String coverAssetId = command.coverAssetId() == null
+                ? current.coverAssetId()
+                : uuid(command.coverAssetId(), "coverAssetId");
+        StoryDraft.CompletionStatus completion =
+                command.completionStatus() == null
+                        ? current.completionStatus()
+                        : command.completionStatus();
+        Instant now = clock.instant();
+        String revisionId = uuid(
+                identifiers.get(),
+                "revisionId"
+        );
+        StoryDraft updated = new StoryDraft(
+                current.id(),
+                current.teamId(),
+                current.slug(),
+                title,
+                synopsis,
+                categoryIds,
+                current.origin(),
+                current.language(),
+                completion,
+                StoryDraft.WorkflowStatus.DRAFT,
+                revisionId,
+                coverAssetId,
+                current.createdAt(),
+                now,
+                expectedVersion + 1
+        );
+        long revisionNo = stored.revisionNo() + 1;
+        StoryRevision.Snapshot snapshot = snapshot(updated);
+        StoryRevision revision = new StoryRevision(
+                revisionId,
+                updated.id(),
+                revisionNo,
+                snapshot,
+                actorId,
+                checksum(snapshot),
+                now
+        );
+        if (!drafts.update(updated, revision, expectedVersion)) {
+            throw stale();
+        }
+        return view(updated, revisionNo);
+    }
+
     private Normalized normalize(CreateCommand command) {
         if (command == null) {
             throw invalid("Story draft body is required.");
@@ -185,18 +284,7 @@ public final class StoryDraftService implements StoryDraftOperations {
                 || command.categoryIds().size() > 30) {
             throw invalid("Story origin and taxonomy are required.");
         }
-        List<String> requested = command.categoryIds().stream()
-                .map(value -> uuid(value, "categoryId"))
-                .distinct()
-                .sorted()
-                .toList();
-        if (requested.size() != command.categoryIds().size()) {
-            throw invalid("Story taxonomy contains duplicates.");
-        }
-        var active = categories.activeCategoryIds();
-        if (!active.containsAll(requested)) {
-            throw invalid("Story taxonomy contains an inactive category.");
-        }
+        List<String> requested = normalizeCategories(command.categoryIds());
         String cover = command.coverAssetId() == null
                 ? null
                 : uuid(command.coverAssetId(), "coverAssetId");
@@ -208,6 +296,27 @@ public final class StoryDraftService implements StoryDraftOperations {
                 requested,
                 cover
         );
+    }
+
+    private List<String> normalizeCategories(List<String> values) {
+        if (values == null
+                || values.isEmpty()
+                || values.size() > 30) {
+            throw invalid("Story taxonomy is required.");
+        }
+        List<String> requested = values.stream()
+                .map(value -> uuid(value, "categoryId"))
+                .distinct()
+                .sorted()
+                .toList();
+        if (requested.size() != values.size()) {
+            throw invalid("Story taxonomy contains duplicates.");
+        }
+        var active = categories.activeCategoryIds();
+        if (!active.containsAll(requested)) {
+            throw invalid("Story taxonomy contains an inactive category.");
+        }
+        return requested;
     }
 
     private static String slug(String title, String storyId) {
@@ -239,6 +348,17 @@ public final class StoryDraftService implements StoryDraftOperations {
                 value.categoryIds(),
                 value.coverAssetId()
         )));
+    }
+
+    private static StoryRevision.Snapshot snapshot(StoryDraft story) {
+        return new StoryRevision.Snapshot(
+                story.title(),
+                story.synopsis(),
+                story.origin(),
+                story.language(),
+                story.categoryIds(),
+                story.coverAssetId()
+        );
     }
 
     private static String canonical(Normalized value) {
@@ -330,6 +450,14 @@ public final class StoryDraftService implements StoryDraftOperations {
                 "STORY_DRAFT_INVALID",
                 message,
                 StoryDraftException.Kind.INVALID
+        );
+    }
+
+    private static StoryDraftException stale() {
+        return rejected(
+                "STORY_VERSION_STALE",
+                "The story changed after the supplied If-Match version.",
+                StoryDraftException.Kind.PRECONDITION
         );
     }
 

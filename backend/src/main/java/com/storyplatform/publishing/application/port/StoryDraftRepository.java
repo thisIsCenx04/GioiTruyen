@@ -9,12 +9,20 @@ public interface StoryDraftRepository {
 
     Optional<StoredDraft> findReplay(String teamId, String idempotencyKey);
 
+    Optional<StoredDraft> findOwned(String teamId, String storyId);
+
     void insert(
             StoryDraft story,
             StoryRevision revision,
             String createdBy,
             String idempotencyKey,
             String idempotencyFingerprint
+    );
+
+    boolean update(
+            StoryDraft updated,
+            StoryRevision revision,
+            long expectedVersion
     );
 
     record StoredDraft(

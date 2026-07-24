@@ -31,4 +31,22 @@ public class TransactionalStoryDraftOperations
                 command
         );
     }
+
+    @Override
+    @Transactional
+    public DraftView update(
+            String actorId,
+            String teamId,
+            String storyId,
+            long expectedVersion,
+            UpdateCommand command
+    ) {
+        return delegate.update(
+                actorId,
+                teamId,
+                storyId,
+                expectedVersion,
+                command
+        );
+    }
 }

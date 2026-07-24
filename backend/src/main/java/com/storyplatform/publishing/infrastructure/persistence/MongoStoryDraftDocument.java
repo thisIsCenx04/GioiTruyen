@@ -21,6 +21,7 @@ public record MongoStoryDraftDocument(
         StoryDraft.CompletionStatus completionStatus,
         StoryDraft.WorkflowStatus workflowStatus,
         String currentRevision,
+        long currentRevisionNo,
         String coverAssetId,
         Instant publishedAt,
         Instant createdAt,

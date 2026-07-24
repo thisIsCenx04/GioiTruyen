@@ -22,6 +22,8 @@ public final class StoryDraftException extends RuntimeException {
     public enum Kind {
         INVALID,
         FORBIDDEN,
-        CONFLICT
+        CONFLICT,
+        NOT_FOUND,
+        PRECONDITION
     }
 }

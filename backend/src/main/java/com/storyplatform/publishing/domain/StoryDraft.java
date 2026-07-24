@@ -65,7 +65,7 @@ public record StoryDraft(
             throw new IllegalArgumentException("taxonomy is invalid");
         }
         categoryIds.forEach(value -> uuid(value, "categoryId"));
-        if (version != 1
+        if (version < 1
                 || updatedAt.isBefore(createdAt)) {
             throw new IllegalArgumentException("draft state is invalid");
         }
@@ -88,10 +88,13 @@ public record StoryDraft(
     }
 
     public enum CompletionStatus {
-        ONGOING
+        ONGOING,
+        COMPLETED,
+        HIATUS
     }
 
     public enum WorkflowStatus {
-        DRAFT
+        DRAFT,
+        CHANGES_REQUESTED
     }
 }

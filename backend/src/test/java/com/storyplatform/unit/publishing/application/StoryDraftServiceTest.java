@@ -46,6 +46,8 @@ class StoryDraftServiceTest {
             "40000000-0000-4000-8000-000000000001";
     private static final String REVISION =
             "50000000-0000-4000-8000-000000000001";
+    private static final String REVISION_TWO =
+            "50000000-0000-4000-8000-000000000002";
     private static final String EVENT =
             "60000000-0000-4000-8000-000000000001";
     private static final String KEY = "draft-request-001";
@@ -64,6 +66,11 @@ class StoryDraftServiceTest {
                 ACTOR,
                 TEAM,
                 StoryDraftService.CREATE_PERMISSION
+        )).thenReturn(true);
+        when(permissions.allows(
+                ACTOR,
+                TEAM,
+                StoryDraftService.EDIT_PERMISSION
         )).thenReturn(true);
     }
 
@@ -327,7 +334,201 @@ class StoryDraftServiceTest {
         assertThat(fallback.slug()).isEqualTo("story-40000000");
     }
 
+    @Test
+    void updatesEditableDraftIntoImmutableRevisionTwo() {
+        StoryDraft current = story(
+                view(),
+                StoryDraft.WorkflowStatus.CHANGES_REQUESTED
+        );
+        when(drafts.findOwned(TEAM, STORY)).thenReturn(Optional.of(
+                new StoryDraftRepository.StoredDraft(
+                        current,
+                        1,
+                        "a".repeat(64)
+                )
+        ));
+        when(drafts.update(any(), any(), org.mockito.ArgumentMatchers.eq(1L)))
+                .thenReturn(true);
+        ArrayDeque<String> updateIds = new ArrayDeque<>(
+                List.of(REVISION_TWO)
+        );
+        StoryDraftService service = service(updateIds);
+        ArgumentCaptor<StoryDraft> updated =
+                ArgumentCaptor.forClass(StoryDraft.class);
+        ArgumentCaptor<StoryRevision> revision =
+                ArgumentCaptor.forClass(StoryRevision.class);
+
+        StoryDraftOperations.DraftView result = service.update(
+                ACTOR,
+                TEAM,
+                STORY,
+                1,
+                new StoryDraftOperations.UpdateCommand(
+                        "Truyện Hai",
+                        null,
+                        null,
+                        null,
+                        StoryDraft.CompletionStatus.COMPLETED
+                )
+        );
+
+        verify(drafts).update(
+                updated.capture(),
+                revision.capture(),
+                org.mockito.ArgumentMatchers.eq(1L)
+        );
+        assertThat(result.version()).isEqualTo(2);
+        assertThat(result.revisionNo()).isEqualTo(2);
+        assertThat(result.title()).isEqualTo("Truyện Hai");
+        assertThat(result.synopsis()).isEqualTo(current.synopsis());
+        assertThat(result.completionStatus())
+                .isEqualTo(StoryDraft.CompletionStatus.COMPLETED);
+        assertThat(updated.getValue().workflowStatus())
+                .isEqualTo(StoryDraft.WorkflowStatus.DRAFT);
+        assertThat(revision.getValue().revisionNo()).isEqualTo(2);
+        assertThat(revision.getValue().checksum())
+                .matches("[0-9a-f]{64}");
+    }
+
+    @Test
+    void conditionalWriteLossReturnsPreconditionFailure() {
+        when(drafts.findOwned(TEAM, STORY)).thenReturn(Optional.of(
+                new StoryDraftRepository.StoredDraft(
+                        story(view()),
+                        1,
+                        "a".repeat(64)
+                )
+        ));
+        when(drafts.update(any(), any(), org.mockito.ArgumentMatchers.eq(1L)))
+                .thenReturn(false);
+        StoryDraftService service = service(new ArrayDeque<>(
+                List.of(REVISION_TWO)
+        ));
+
+        assertThatThrownBy(() -> service.update(
+                ACTOR,
+                TEAM,
+                STORY,
+                1,
+                new StoryDraftOperations.UpdateCommand(
+                        "Truyện Hai",
+                        null,
+                        null,
+                        null,
+                        null
+                )
+        ))
+                .isInstanceOf(StoryDraftException.class)
+                .extracting("code")
+                .isEqualTo("STORY_VERSION_STALE");
+    }
+
+    @Test
+    void staleReadAndCrossTeamStoryAreRejectedBeforeMutation() {
+        when(drafts.findOwned(TEAM, STORY)).thenReturn(Optional.of(
+                new StoryDraftRepository.StoredDraft(
+                        story(view()),
+                        1,
+                        "a".repeat(64)
+                )
+        ));
+
+        assertThatThrownBy(() -> service().update(
+                ACTOR,
+                TEAM,
+                STORY,
+                2,
+                new StoryDraftOperations.UpdateCommand(
+                        "Truyện Hai", null, null, null, null
+                )
+        )).extracting("code").isEqualTo("STORY_VERSION_STALE");
+        assertThatThrownBy(() -> service().update(
+                ACTOR,
+                TEAM,
+                "40000000-0000-4000-8000-000000000099",
+                1,
+                new StoryDraftOperations.UpdateCommand(
+                        "Truyện Hai", null, null, null, null
+                )
+        )).extracting("code").isEqualTo("STORY_DRAFT_NOT_FOUND");
+
+        verify(drafts, never()).update(any(), any(), any(Long.class));
+    }
+
+    @Test
+    void rejectsEmptyPatchAndInvalidExpectedVersion() {
+        when(drafts.findOwned(TEAM, STORY)).thenReturn(Optional.of(
+                new StoryDraftRepository.StoredDraft(
+                        story(view()),
+                        1,
+                        "a".repeat(64)
+                )
+        ));
+
+        assertThatThrownBy(() -> service().update(
+                ACTOR,
+                TEAM,
+                STORY,
+                1,
+                new StoryDraftOperations.UpdateCommand(
+                        null, null, null, null, null
+                )
+        )).extracting("code").isEqualTo("STORY_DRAFT_INVALID");
+        assertThatThrownBy(() -> service().update(
+                ACTOR,
+                TEAM,
+                STORY,
+                0,
+                new StoryDraftOperations.UpdateCommand(
+                        "Truyện Hai", null, null, null, null
+                )
+        )).extracting("code").isEqualTo("STORY_DRAFT_INVALID");
+    }
+
+    @Test
+    void updatesSynopsisTaxonomyAndCoverWhileKeepingOtherFields() {
+        StoryDraft current = story(view());
+        when(drafts.findOwned(TEAM, STORY)).thenReturn(Optional.of(
+                new StoryDraftRepository.StoredDraft(
+                        current,
+                        1,
+                        "a".repeat(64)
+                )
+        ));
+        when(drafts.update(any(), any(), org.mockito.ArgumentMatchers.eq(1L)))
+                .thenReturn(true);
+        StoryDraftService service = service(new ArrayDeque<>(
+                List.of(REVISION_TWO)
+        ));
+        String cover = "70000000-0000-4000-8000-000000000001";
+
+        StoryDraftOperations.DraftView result = service.update(
+                ACTOR,
+                TEAM,
+                STORY,
+                1,
+                new StoryDraftOperations.UpdateCommand(
+                        null,
+                        "Tóm tắt mới",
+                        List.of(CATEGORY),
+                        cover,
+                        null
+                )
+        );
+
+        assertThat(result.title()).isEqualTo(current.title());
+        assertThat(result.synopsis()).isEqualTo("Tóm tắt mới");
+        assertThat(result.categoryIds()).containsExactly(CATEGORY);
+        assertThat(result.coverAssetId()).isEqualTo(cover);
+        assertThat(result.completionStatus())
+                .isEqualTo(current.completionStatus());
+    }
+
     private StoryDraftService service() {
+        return service(ids);
+    }
+
+    private StoryDraftService service(ArrayDeque<String> sourceIds) {
         ActiveCategoryDirectory taxonomy = () ->
                 java.util.Set.of(CATEGORY);
         return new StoryDraftService(
@@ -337,7 +538,7 @@ class StoryDraftServiceTest {
                 taxonomy,
                 drafts,
                 outbox,
-                ids::removeFirst,
+                sourceIds::removeFirst,
                 Clock.fixed(NOW, ZoneOffset.UTC)
         );
     }
@@ -356,6 +557,13 @@ class StoryDraftServiceTest {
     }
 
     private static StoryDraft story(StoryDraftOperations.DraftView view) {
+        return story(view, view.workflowStatus());
+    }
+
+    private static StoryDraft story(
+            StoryDraftOperations.DraftView view,
+            StoryDraft.WorkflowStatus status
+    ) {
         return new StoryDraft(
                 view.id(),
                 view.teamId(),
@@ -366,7 +574,7 @@ class StoryDraftServiceTest {
                 view.origin(),
                 view.language(),
                 view.completionStatus(),
-                view.workflowStatus(),
+                status,
                 view.currentRevision(),
                 view.coverAssetId(),
                 view.createdAt(),

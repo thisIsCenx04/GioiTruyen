@@ -76,7 +76,7 @@ class StoryDraftTest {
         ));
         assertInvalid(() -> draft(
                 "valid", "Truyện", "Tóm tắt", "vi",
-                List.of(CATEGORY), null, NOW, 2
+                List.of(CATEGORY), null, NOW, 0
         ));
     }
 
