@@ -707,6 +707,50 @@ paths:
           description: The supplied ETag still represents the current version.
         "404":
           $ref: "#/components/responses/NotFound"
+  /stories/{idOrSlug}/chapters:
+    get:
+      operationId: listPublishedChapters
+      summary: List published chapter summaries with signed keyset pagination
+      description: |
+        Returns public metadata only. Draft, scheduled, hidden, and archived
+        chapters and revision content are never exposed by this endpoint.
+      security: []
+      tags: [Catalog]
+      parameters:
+        - name: idOrSlug
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+        - name: cursor
+          in: query
+          schema:
+            type: string
+            maxLength: 512
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Published chapter page ordered by chapter number.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicChapterPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /teams:
     get:
       operationId: listTeams
@@ -1531,6 +1575,57 @@ components:
           type: string
           format: date-time
         updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+          minimum: 1
+    PublicChapterPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor, hasMore]
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/PublicChapter"
+        nextCursor:
+          type: [string, "null"]
+          maxLength: 512
+        hasMore:
+          type: boolean
+    PublicChapter:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - storyId
+        - number
+        - slug
+        - title
+        - publishedAt
+        - version
+      properties:
+        id:
+          type: string
+          format: uuid
+        storyId:
+          type: string
+          format: uuid
+        number:
+          type: integer
+          minimum: 1
+        slug:
+          type: string
+          pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          maxLength: 100
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        publishedAt:
           type: string
           format: date-time
         version:
