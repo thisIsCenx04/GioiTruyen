@@ -4,6 +4,8 @@ import com.storyplatform.reading.application.ReadingProgressOperations;
 import com.storyplatform.reading.application.ReadingProgressService;
 import com.storyplatform.reading.application.ReadingHistoryOperations;
 import com.storyplatform.reading.application.ReadingHistoryService;
+import com.storyplatform.reading.application.ReadingHeartbeatOperations;
+import com.storyplatform.reading.application.ReadingHeartbeatService;
 import com.storyplatform.reading.application.ReadingSessionOperations;
 import com.storyplatform.reading.application.ReadingSessionService;
 import com.storyplatform.reading.application.port.ReadingHistoryCursorCodec;
@@ -26,6 +28,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import com.storyplatform.shared.cache.RedisKeyFactory;
+import com.storyplatform.shared.events.persistence.OutboxAppender;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -133,6 +136,20 @@ public class ReadingConfiguration {
                 ttl,
                 heartbeatInterval,
                 UUID::randomUUID
+        );
+    }
+
+    @Bean
+    ReadingHeartbeatOperations readingHeartbeatOperations(
+            MongoReadingSessionRepository repository,
+            ReadingSessionTokenCodec tokens,
+            OutboxAppender outbox
+    ) {
+        return new ReadingHeartbeatService(
+                repository,
+                tokens,
+                outbox,
+                Clock.systemUTC()
         );
     }
 }

@@ -770,6 +770,12 @@ export type ReadingSessionGrant = Readonly<{
   heartbeatIntervalSeconds: number;
 }>;
 
+export type ReadingHeartbeatReceipt = Readonly<{
+  batchId: string;
+  nextSequence: number;
+  duplicate: boolean;
+}>;
+
 export function createBrowserReadingSessionClient({
   baseUrl = "/api",
   fetchImplementation = fetch,
@@ -786,6 +792,29 @@ export function createBrowserReadingSessionClient({
         credentials: "same-origin",
         method: "POST",
       });
+    },
+    heartbeat(
+      sessionId: string,
+      sessionToken: string,
+      input: {
+        batchId: string;
+        heartbeats: readonly {
+          sequence: number;
+          occurredAt: string;
+          position: number;
+          activeSeconds: number;
+        }[];
+      },
+    ) {
+      return client.request<ReadingHeartbeatReceipt>(
+        `/reading-sessions/${encodeURIComponent(sessionId)}/heartbeats`,
+        {
+          body: input,
+          credentials: "same-origin",
+          headers: { "X-Reading-Session-Token": sessionToken },
+          method: "POST",
+        },
+      );
     },
   });
 }

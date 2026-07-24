@@ -1,6 +1,7 @@
 package com.storyplatform.unit.reading.infrastructure;
 
 import com.storyplatform.reading.application.port.ReadingSessionRepository;
+import com.storyplatform.reading.application.port.ReadingHeartbeatRepository;
 import com.storyplatform.reading.infrastructure.persistence
         .MongoReadingSessionRepository;
 import com.storyplatform.reading.infrastructure.persistence
@@ -57,7 +58,9 @@ class MongoReadingSessionRepositoryTest {
                         session.expiresAt(),
                         session.purgeAt(),
                         "ACTIVE",
-                        0
+                        0,
+                        java.util.List.of(),
+                        now
                 ),
                 MongoReadingSessionRepository.COLLECTION
         );
@@ -73,5 +76,89 @@ class MongoReadingSessionRepositoryTest {
 
         assertThat(new MongoReadingSessionRepository(mongo)
                 .chapterIsPublished("story", "chapter")).isFalse();
+    }
+
+    @Test
+    void advancesOnceAndClassifiesReplayConflictAndInactiveState() {
+        var mongo = mock(MongoTemplate.class);
+        Instant now = Instant.parse("2026-07-24T00:00:00Z");
+        String sessionId = "40000000-0000-4000-8000-000000000001";
+        String batchId = "50000000-0000-4000-8000-000000000001";
+        SessionDocument active = document(
+                sessionId,
+                now,
+                java.util.List.of(batchId)
+        );
+        when(mongo.findAndModify(
+                any(),
+                any(),
+                any(),
+                eq(SessionDocument.class),
+                eq(MongoReadingSessionRepository.COLLECTION)
+        )).thenReturn(active, null, null, null);
+        when(mongo.findById(
+                sessionId,
+                SessionDocument.class,
+                MongoReadingSessionRepository.COLLECTION
+        )).thenReturn(
+                active,
+                document(sessionId, now, java.util.List.of()),
+                null
+        );
+        var repository = new MongoReadingSessionRepository(mongo);
+
+        assertThat(repository.apply(
+                sessionId, "actor", batchId, 0, 1, now
+        )).isEqualTo(ReadingHeartbeatRepository.ApplyResult.APPLIED);
+        assertThat(repository.apply(
+                sessionId, "actor", batchId, 0, 1, now
+        )).isEqualTo(ReadingHeartbeatRepository.ApplyResult.DUPLICATE);
+        assertThat(repository.apply(
+                sessionId, "actor", batchId, 0, 1, now
+        )).isEqualTo(
+                ReadingHeartbeatRepository.ApplyResult.SEQUENCE_CONFLICT
+        );
+        assertThat(repository.apply(
+                sessionId, "actor", batchId, 0, 1, now
+        )).isEqualTo(ReadingHeartbeatRepository.ApplyResult.NOT_ACTIVE);
+    }
+
+    private static SessionDocument document(
+            String sessionId,
+            Instant now,
+            java.util.List<String> batches
+    ) {
+        return new SessionDocument(
+                sessionId,
+                "20000000-0000-4000-8000-000000000001",
+                "30000000-0000-4000-8000-000000000001",
+                "ANONYMOUS",
+                "actor",
+                now.minusSeconds(60),
+                now.plusSeconds(60),
+                now.plusSeconds(604800),
+                "ACTIVE",
+                1,
+                batches,
+                now
+        );
+    }
+
+    @Test
+    void normalizesLegacyNullBatchReceipts() {
+        assertThat(new SessionDocument(
+                "id",
+                "story",
+                "chapter",
+                "ANONYMOUS",
+                "actor",
+                Instant.EPOCH,
+                Instant.EPOCH.plusSeconds(60),
+                Instant.EPOCH.plusSeconds(120),
+                "ACTIVE",
+                0,
+                null,
+                Instant.EPOCH
+        ).processedBatchIds()).isEmpty();
     }
 }

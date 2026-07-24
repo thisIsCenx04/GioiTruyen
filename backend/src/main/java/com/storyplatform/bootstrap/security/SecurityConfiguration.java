@@ -42,6 +42,7 @@ public class SecurityConfiguration {
                         "/me/reading-history/*",
                         "/me/reading-progress/*",
                         "/reading-sessions",
+                        "/reading-sessions/*/heartbeats",
                         "/webhooks/cloudinary"
                 ))
                 .oauth2ResourceServer(resourceServer -> resourceServer
@@ -82,6 +83,7 @@ public class SecurityConfiguration {
                                 "/auth/password/forgot",
                                 "/auth/password/reset",
                                 "/reading-sessions",
+                                "/reading-sessions/*/heartbeats",
                                 "/webhooks/cloudinary"
                         ).permitAll()
                         .requestMatchers(

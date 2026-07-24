@@ -177,6 +177,49 @@ describe("browser reading session client", () => {
       sessionToken: "signed-token",
     });
   });
+
+  it("sends signed sequenced heartbeat batches", async () => {
+    apiMockServer.use(
+      http.post(
+        "/api/reading-sessions/session-01/heartbeats",
+        async ({ request }) => {
+          expect(request.headers.get("x-reading-session-token")).toBe(
+            "signed-token",
+          );
+          await expect(request.json()).resolves.toMatchObject({
+            batchId: "batch-01",
+            heartbeats: [{ sequence: 1 }],
+          });
+          return HttpResponse.json(
+            {
+              batchId: "batch-01",
+              duplicate: false,
+              nextSequence: 2,
+            },
+            { status: 202 },
+          );
+        },
+      ),
+    );
+
+    await expect(
+      createBrowserReadingSessionClient().heartbeat(
+        "session-01",
+        "signed-token",
+        {
+          batchId: "batch-01",
+          heartbeats: [
+            {
+              activeSeconds: 15,
+              occurredAt: "2026-07-24T00:00:00Z",
+              position: 25,
+              sequence: 1,
+            },
+          ],
+        },
+      ),
+    ).resolves.toMatchObject({ duplicate: false, nextSequence: 2 });
+  });
 });
 
 describe("browser publishing client", () => {

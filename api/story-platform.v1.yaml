@@ -989,6 +989,52 @@ paths:
                 $ref: "#/components/schemas/Problem"
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
+  /reading-sessions/{sessionId}/heartbeats:
+    post:
+      operationId: ingestReadingHeartbeats
+      summary: Ingest a contiguous, replay-safe heartbeat batch
+      description: |
+        Batch IDs and sequence numbers make retries idempotent. Accepted
+        batches are emitted through the transactional outbox; this endpoint
+        never increments public view counters directly.
+      security: []
+      tags: [Reading]
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: X-Reading-Session-Token
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 80
+            maxLength: 1024
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReadingHeartbeatBatch"
+      responses:
+        "202":
+          description: Batch accepted or safely recognized as a replay
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadingHeartbeatReceipt"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /me/reading-progress/{storyId}:
     get:
       operationId: getReadingProgress
@@ -3937,6 +3983,54 @@ components:
           type: integer
           minimum: 5
           maximum: 60
+    ReadingHeartbeatBatch:
+      type: object
+      additionalProperties: false
+      required: [batchId, heartbeats]
+      properties:
+        batchId:
+          type: string
+          format: uuid
+        heartbeats:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/ReadingHeartbeat"
+    ReadingHeartbeat:
+      type: object
+      additionalProperties: false
+      required: [sequence, occurredAt, position, activeSeconds]
+      properties:
+        sequence:
+          type: integer
+          format: int64
+          minimum: 1
+        occurredAt:
+          type: string
+          format: date-time
+        position:
+          type: number
+          minimum: 0
+          maximum: 100
+        activeSeconds:
+          type: integer
+          minimum: 0
+          maximum: 60
+    ReadingHeartbeatReceipt:
+      type: object
+      additionalProperties: false
+      required: [batchId, nextSequence, duplicate]
+      properties:
+        batchId:
+          type: string
+          format: uuid
+        nextSequence:
+          type: integer
+          format: int64
+          minimum: 2
+        duplicate:
+          type: boolean
     ReadingProgress:
       type: object
       additionalProperties: false
