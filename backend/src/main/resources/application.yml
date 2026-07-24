@@ -81,6 +81,10 @@ app:
       bank-bin: ${TOPUP_BANK_BIN:970436}
       account-number: ${TOPUP_BANK_ACCOUNT:0000000000}
       account-name: ${TOPUP_BANK_NAME:GIOI TRUYEN}
+      provider: ${TOPUP_PAYMENT_PROVIDER:local-bank}
+      webhook-enabled: ${TOPUP_WEBHOOK_ENABLED:false}
+      webhook-secret: ${TOPUP_WEBHOOK_SECRET:not-configured-payment-webhook-secret}
+      webhook-max-age: ${TOPUP_WEBHOOK_MAX_AGE:10m}
   analytics:
     raw-events:
       retention: ${ANALYTICS_RAW_EVENT_RETENTION:90d}

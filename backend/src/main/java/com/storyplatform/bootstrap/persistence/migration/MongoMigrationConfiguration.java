@@ -262,6 +262,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    PaymentEventIndexes paymentEventIndexes() {
+        return new PaymentEventIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }
