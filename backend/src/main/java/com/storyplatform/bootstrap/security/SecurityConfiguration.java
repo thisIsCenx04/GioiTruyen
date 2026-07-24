@@ -36,7 +36,8 @@ public class SecurityConfiguration {
                         "/auth/reauth/grants",
                         "/me",
                         "/teams",
-                        "/teams/*"
+                        "/teams/*",
+                        "/media/upload-signatures"
                 ))
                 .oauth2ResourceServer(resourceServer -> resourceServer
                         .jwt(Customizer.withDefaults())
@@ -98,6 +99,10 @@ public class SecurityConfiguration {
                                 "/teams/*/members/*/permissions",
                                 "/teams/*/follow",
                                 "/team-invitations/*/accept"
+                        ).authenticated()
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/media/upload-signatures"
                         ).authenticated()
                         .anyRequest().denyAll())
                 .build();

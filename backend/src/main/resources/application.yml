@@ -75,6 +75,15 @@ management:
         step: ${OTEL_METRICS_EXPORT_INTERVAL:30s}
 
 app:
+  media:
+    cloudinary:
+      enabled: ${CLOUDINARY_UPLOAD_SIGNING_ENABLED:false}
+      cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+      api-key: ${CLOUDINARY_API_KEY:}
+      api-secret: ${CLOUDINARY_API_SECRET:}
+      upload-preset: ${CLOUDINARY_UPLOAD_PRESET:}
+      root-folder: ${CLOUDINARY_ROOT_FOLDER:gioitruyen/local}
+      signature-ttl: ${CLOUDINARY_SIGNATURE_TTL:55m}
   discovery:
     search:
       backend: ${SEARCH_BACKEND:text}

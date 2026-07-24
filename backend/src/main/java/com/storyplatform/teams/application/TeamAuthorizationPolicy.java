@@ -1,6 +1,6 @@
 package com.storyplatform.teams.application;
 
-public interface TeamAuthorizationPolicy {
+import com.storyplatform.teams.application.contract.TeamPermissionAuthorizer;
 
-    boolean allows(String userId, String teamId, String permission);
+public interface TeamAuthorizationPolicy extends TeamPermissionAuthorizer {
 }

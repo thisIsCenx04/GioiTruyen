@@ -22,6 +22,8 @@ tags:
     description: Public team profiles and owner-managed settings.
   - name: Catalog
     description: Public story metadata and grouped discovery taxonomy.
+  - name: Media
+    description: Restricted direct-upload grants and asset processing.
 security:
   - bearerAuth: []
 paths:
@@ -1183,6 +1185,39 @@ paths:
                 $ref: "#/components/schemas/TeamFollow"
         "404":
           $ref: "#/components/responses/NotFound"
+  /media/upload-signatures:
+    post:
+      operationId: issueMediaUploadSignature
+      summary: Issue a short-lived restricted Cloudinary upload signature
+      description: |
+        Verifies user or Team ownership and binds the server-selected folder,
+        purpose, MIME type, declared byte size, and SHA-256 digest into signed
+        upload parameters. The API secret is never returned.
+      tags: [Media]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadSignatureRequest"
+      responses:
+        "200":
+          description: Restricted direct-upload grant
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadSignatureGrant"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
 components:
   securitySchemes:
     bearerAuth:
@@ -1208,6 +1243,84 @@ components:
         maxLength: 128
         pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]+$"
   schemas:
+    UploadSignatureRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - ownerType
+        - ownerId
+        - purpose
+        - contentType
+        - sizeBytes
+        - sha256
+      properties:
+        ownerType:
+          type: string
+          enum: [USER, TEAM]
+        ownerId:
+          type: string
+          format: uuid
+        purpose:
+          type: string
+          enum: [AVATAR, TEAM_LOGO, STORY_COVER, CHAPTER_IMAGE]
+        contentType:
+          type: string
+          enum: [image/jpeg, image/png, image/webp]
+        sizeBytes:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 15728640
+        sha256:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+          description: Lowercase SHA-256 digest computed before upload.
+    UploadSignatureGrant:
+      type: object
+      additionalProperties: false
+      required:
+        - intentId
+        - uploadUrl
+        - apiKey
+        - signature
+        - expiresAt
+        - maximumBytes
+        - allowedContentTypes
+        - parameters
+      properties:
+        intentId:
+          type: string
+          format: uuid
+        uploadUrl:
+          type: string
+          format: uri
+          pattern: "^https://api\\.cloudinary\\.com/"
+        apiKey:
+          type: string
+          minLength: 2
+        signature:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+          description: SHA-256 Cloudinary request signature.
+        expiresAt:
+          type: string
+          format: date-time
+        maximumBytes:
+          type: integer
+          format: int64
+          minimum: 1
+        allowedContentTypes:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            enum: [image/jpeg, image/png, image/webp]
+        parameters:
+          type: object
+          description: Exact immutable parameter set covered by the signature.
+          additionalProperties:
+            type: string
     RegistrationRequest:
       type: object
       additionalProperties: false
