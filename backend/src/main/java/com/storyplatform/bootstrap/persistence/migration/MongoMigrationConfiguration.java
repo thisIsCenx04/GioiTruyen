@@ -137,6 +137,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    PublishingScheduleIndexes publishingScheduleIndexes() {
+        return new PublishingScheduleIndexes();
+    }
+
+    @Bean
     ModerationQueueIndexes moderationQueueIndexes() {
         return new ModerationQueueIndexes();
     }

@@ -8,16 +8,21 @@ import com.storyplatform.publishing.application.ChapterDraftOperations;
 import com.storyplatform.publishing.application.ChapterDraftService;
 import com.storyplatform.publishing.application.PublishingSubmissionOperations;
 import com.storyplatform.publishing.application.PublishingSubmissionService;
+import com.storyplatform.publishing.application.PublishingScheduleOperations;
+import com.storyplatform.publishing.application.PublishingScheduleService;
 import com.storyplatform.publishing.application.port.ChapterDraftRepository;
 import com.storyplatform.publishing.application.port
         .PublishingSubmissionRepository;
 import com.storyplatform.publishing.application.port.StoryDraftRepository;
+import com.storyplatform.publishing.application.port.PublishingScheduleRepository;
 import com.storyplatform.publishing.infrastructure.persistence
         .MongoChapterDraftRepository;
 import com.storyplatform.publishing.infrastructure.persistence
         .MongoPublishingSubmissionRepository;
 import com.storyplatform.publishing.infrastructure.persistence
         .MongoStoryDraftRepository;
+import com.storyplatform.publishing.infrastructure.persistence
+        .MongoPublishingScheduleRepository;
 import com.storyplatform.shared.events.persistence.OutboxAppender;
 import com.storyplatform.teams.application.contract.TeamPermissionAuthorizer;
 import com.storyplatform.teams.application.contract.TeamStatusDirectory;
@@ -46,6 +51,13 @@ public class PublishingConfiguration {
             MongoTemplate mongo
     ) {
         return new MongoPublishingSubmissionRepository(mongo);
+    }
+
+    @Bean
+    PublishingScheduleRepository publishingScheduleRepository(
+            MongoTemplate mongo
+    ) {
+        return new MongoPublishingScheduleRepository(mongo);
     }
 
     @Bean
@@ -104,5 +116,21 @@ public class PublishingConfiguration {
                         Clock.systemUTC()
                 );
         return new TransactionalPublishingSubmissionOperations(service);
+    }
+
+    @Bean
+    PublishingScheduleOperations publishingScheduleOperations(
+            TeamPermissionAuthorizer permissions,
+            TeamStatusDirectory teams,
+            PublishingScheduleRepository schedules
+    ) {
+        PublishingScheduleService service = new PublishingScheduleService(
+                permissions,
+                teams,
+                schedules,
+                () -> UUID.randomUUID().toString(),
+                Clock.systemUTC()
+        );
+        return new TransactionalPublishingScheduleOperations(service);
     }
 }

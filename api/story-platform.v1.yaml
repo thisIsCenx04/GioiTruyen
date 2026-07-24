@@ -1479,6 +1479,157 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /teams/{teamId}/stories/{storyId}/schedule:
+    post:
+      operationId: scheduleApprovedStory
+      summary: Schedule an approved frozen revision for publication
+      description: |
+        Requires story:publish on the active owning Team. The approved story
+        revision and its approved frozen chapter revisions are pinned in one
+        transaction. publishAt is stored in UTC while the IANA time zone is
+        retained for display and audit.
+      tags: [Publishing]
+      parameters:
+        - $ref: "#/components/parameters/TeamId"
+        - name: storyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScheduleStoryRequest"
+      responses:
+        "201":
+          description: Approved revisions scheduled or safely replayed
+          headers:
+            Location:
+              schema:
+                type: string
+            ETag:
+              schema:
+                type: string
+                pattern: '^"[1-9][0-9]*"$'
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublishingSchedule"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Another active schedule or revision transition won
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    patch:
+      operationId: rescheduleApprovedStory
+      summary: Reschedule a pinned approved revision
+      tags: [Publishing]
+      parameters:
+        - $ref: "#/components/parameters/TeamId"
+        - name: storyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: '^"[1-9][0-9]*"$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RescheduleStoryRequest"
+      responses:
+        "200":
+          description: Schedule updated with optimistic concurrency
+          headers:
+            ETag:
+              schema:
+                type: string
+                pattern: '^"[1-9][0-9]*"$'
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublishingSchedule"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "412":
+          description: If-Match schedule version is stale
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    delete:
+      operationId: cancelStorySchedule
+      summary: Cancel a schedule and restore its pinned revisions to approved
+      tags: [Publishing]
+      parameters:
+        - $ref: "#/components/parameters/TeamId"
+        - name: storyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: '^"[1-9][0-9]*"$'
+      responses:
+        "204":
+          description: Schedule cancelled
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "412":
+          description: If-Match schedule version is stale
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
   /moderation/cases:
     get:
       operationId: listModerationCases
@@ -1924,6 +2075,87 @@ components:
           format: int64
           const: 1
         submittedAt:
+          type: string
+          format: date-time
+    ScheduleStoryRequest:
+      type: object
+      additionalProperties: false
+      required: [publishAt, timeZone, revision]
+      properties:
+        publishAt:
+          type: string
+          format: date-time
+        timeZone:
+          type: string
+          minLength: 1
+          maxLength: 64
+          examples: [Asia/Ho_Chi_Minh]
+        revision:
+          type: string
+          format: uuid
+    RescheduleStoryRequest:
+      type: object
+      additionalProperties: false
+      required: [publishAt, timeZone]
+      properties:
+        publishAt:
+          type: string
+          format: date-time
+        timeZone:
+          type: string
+          minLength: 1
+          maxLength: 64
+          examples: [Asia/Ho_Chi_Minh]
+    PublishingSchedule:
+      type: object
+      additionalProperties: false
+      required:
+        - scheduleId
+        - storyId
+        - teamId
+        - revision
+        - chapterCount
+        - state
+        - publishAt
+        - timeZone
+        - version
+        - createdAt
+        - updatedAt
+      properties:
+        scheduleId:
+          type: string
+          format: uuid
+        storyId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        revision:
+          type: string
+          format: uuid
+        chapterCount:
+          type: integer
+          minimum: 1
+        state:
+          type: string
+          const: SCHEDULED
+        publishAt:
+          type: string
+          format: date-time
+          description: UTC publication instant.
+        timeZone:
+          type: string
+          maxLength: 64
+          description: IANA time zone retained for display and audit.
+        version:
+          type: integer
+          format: int64
+          minimum: 1
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
           type: string
           format: date-time
     FrozenChapterRevision:
