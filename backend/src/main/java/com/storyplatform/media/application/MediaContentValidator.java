@@ -8,6 +8,8 @@ import java.util.Map;
 
 public final class MediaContentValidator {
 
+    private static final int MAXIMUM_DIMENSION = 16_384;
+    private static final long MAXIMUM_PIXELS = 64_000_000;
     private static final Map<String, byte[]> MAGIC = Map.of(
             "jpg", new byte[]{(byte) 0xff, (byte) 0xd8, (byte) 0xff},
             "jpeg", new byte[]{(byte) 0xff, (byte) 0xd8, (byte) 0xff},
@@ -43,6 +45,20 @@ public final class MediaContentValidator {
             throw rejected(
                     "MEDIA_HASH_MISMATCH",
                     "Downloaded content does not match the upload intent."
+            );
+        }
+        MediaContainerInspector.Dimensions dimensions =
+                MediaContainerInspector.inspect(format, content);
+        if (dimensions.width() != candidate.width()
+                || dimensions.height() != candidate.height()
+                || dimensions.width() > MAXIMUM_DIMENSION
+                || dimensions.height() > MAXIMUM_DIMENSION
+                || (long) dimensions.width() * dimensions.height()
+                > MAXIMUM_PIXELS) {
+            throw rejected(
+                    "MEDIA_DIMENSIONS_INVALID",
+                    "Decoded image dimensions differ from the webhook "
+                            + "or exceed the safety budget."
             );
         }
     }

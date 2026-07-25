@@ -31,9 +31,7 @@ class MediaProcessingServiceTest {
     private static final Instant NOW =
             Instant.parse("2026-07-24T00:00:00Z");
     private static final String WORKER = "worker-12345678";
-    private static final byte[] JPEG = {
-            (byte) 0xff, (byte) 0xd8, (byte) 0xff, 0x01
-    };
+    private static final byte[] JPEG = MediaTestImages.jpeg(10, 10);
 
     @Test
     void claimsValidSourceAndPublishesNormalizedAsset() {
@@ -67,7 +65,7 @@ class MediaProcessingServiceTest {
         var repository = mock(MediaProcessingOperations.Repository.class);
         var gateway = mock(MediaProcessingGateway.class);
         byte[] html = "<x/>".getBytes();
-        var candidate = candidate(1, sha256(html));
+        var candidate = candidate(1, sha256(html), html.length);
         when(repository.claim(any(), any(), any(), eq(5)))
                 .thenReturn(Optional.of(candidate));
         when(gateway.downloadOriginal(any(), any(Long.class)))
@@ -197,8 +195,16 @@ class MediaProcessingServiceTest {
             int attempt,
             String hash
     ) {
+        return candidate(attempt, hash, JPEG.length);
+    }
+
+    private static MediaProcessingOperations.Candidate candidate(
+            int attempt,
+            String hash,
+            long bytes
+    ) {
         return new MediaProcessingOperations.Candidate(
-                "asset", "source", 1, "jpg", hash, JPEG.length,
+                "asset", "source", 1, "jpg", hash, bytes,
                 10, 10, MediaOwnerType.USER, "owner",
                 UploadPurpose.AVATAR, attempt, NOW.plusSeconds(30)
         );

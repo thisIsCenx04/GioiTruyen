@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import java.security.MessageDigest;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.List;
 
@@ -107,6 +108,45 @@ class MaliciousMediaCorpusTest {
                 .isInstanceOf(MediaPolicyException.class)
                 .extracting("code")
                 .isEqualTo("MEDIA_SIZE_MISMATCH");
+    }
+
+    @Test
+    void rejectsPolyglotsWithValidImageContainersAndActiveSuffixes() {
+        byte[] activeSuffix =
+                "<svg onload=alert(document.domain)>".getBytes(UTF_8);
+        Object[][] images = {
+                {"jpg", MediaTestImages.jpeg(1, 1)},
+                {"png", MediaTestImages.png(1, 1)},
+                {"webp", MediaTestImages.webpLossless(1, 1)}
+        };
+
+        for (Object[] image : images) {
+            String format = (String) image[0];
+            byte[] valid = (byte[]) image[1];
+            byte[] polyglot = Arrays.copyOf(
+                    valid,
+                    valid.length + activeSuffix.length
+            );
+            System.arraycopy(
+                    activeSuffix,
+                    0,
+                    polyglot,
+                    valid.length,
+                    activeSuffix.length
+            );
+
+            assertThatThrownBy(() -> validator.validate(
+                    candidate(
+                            format,
+                            hash(polyglot),
+                            polyglot.length
+                    ),
+                    polyglot
+            ))
+                    .isInstanceOf(MediaPolicyException.class)
+                    .extracting("code")
+                    .isEqualTo("MEDIA_CONTAINER_INVALID");
+        }
     }
 
     private void assertRejected(

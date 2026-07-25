@@ -22,11 +22,9 @@ class MediaContentValidatorTest {
     @Test
     void acceptsMatchingJpegPngAndWebpSignatures() {
         byte[][] images = {
-                {(byte) 0xff, (byte) 0xd8, (byte) 0xff, 0x01},
-                {(byte) 0x89, 0x50, 0x4e, 0x47,
-                        0x0d, 0x0a, 0x1a, 0x0a, 0x01},
-                {0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0,
-                        0x57, 0x45, 0x42, 0x50, 0x01}
+                MediaTestImages.jpeg(1, 1),
+                MediaTestImages.png(1, 1),
+                MediaTestImages.webpLossless(1, 1)
         };
         String[] formats = {"jpg", "png", "webp"};
 
@@ -105,6 +103,39 @@ class MediaContentValidatorTest {
                 candidate("gif", unknown),
                 unknown
         )).extracting("code").isEqualTo("MEDIA_MAGIC_INVALID");
+    }
+
+    @Test
+    void rejectsDimensionMismatchAndDecompressionBombBudget() {
+        byte[] png = MediaTestImages.png(2, 3);
+        byte[] oversized = MediaTestImages.webpLossless(16_384, 16_384);
+
+        assertThatThrownBy(() -> validator.validate(
+                candidate("png", png),
+                png
+        ))
+                .extracting("code")
+                .isEqualTo("MEDIA_DIMENSIONS_INVALID");
+        assertThatThrownBy(() -> validator.validate(
+                new MediaProcessingOperations.Candidate(
+                        "asset",
+                        "source",
+                        1,
+                        "webp",
+                        sha256(oversized),
+                        oversized.length,
+                        16_384,
+                        16_384,
+                        MediaOwnerType.USER,
+                        "owner",
+                        UploadPurpose.AVATAR,
+                        1,
+                        Instant.MAX
+                ),
+                oversized
+        ))
+                .extracting("code")
+                .isEqualTo("MEDIA_DIMENSIONS_INVALID");
     }
 
     private static MediaProcessingOperations.Candidate candidate(
