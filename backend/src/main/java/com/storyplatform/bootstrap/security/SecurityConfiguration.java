@@ -168,6 +168,8 @@ public class SecurityConfiguration {
                                 HttpMethod.POST,
                                 "/reports"
                         ).authenticated()
+                        .requestMatchers("/moderation/**")
+                        .authenticated()
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/moderation/cases/*/appeals",

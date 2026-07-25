@@ -69,7 +69,10 @@ class MongoNotificationRepositoryTest {
                 any(FindAndModifyOptions.class),
                 eq(MongoNotificationRepository.NotificationDocument.class),
                 eq(MongoNotificationRepository.COLLECTION)
-        )).thenReturn(document("id", NOW), null);
+        )).thenReturn(
+                document("id", NOW),
+                (MongoNotificationRepository.NotificationDocument) null
+        );
         when(mongo.findOne(
                 any(Query.class),
                 eq(MongoNotificationRepository.NotificationDocument.class),

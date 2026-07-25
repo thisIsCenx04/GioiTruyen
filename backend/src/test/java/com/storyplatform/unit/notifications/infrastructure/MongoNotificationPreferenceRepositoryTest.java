@@ -35,7 +35,10 @@ class MongoNotificationPreferenceRepositoryTest {
                 eq(MongoNotificationPreferenceRepository
                         .PreferenceDocument.class),
                 eq(MongoNotificationPreferenceRepository.COLLECTION)
-        )).thenReturn(document(null), null);
+        )).thenReturn(
+                document(null),
+                (MongoNotificationPreferenceRepository.PreferenceDocument) null
+        );
         var repository = new MongoNotificationPreferenceRepository(mongo);
 
         assertThat(repository.find("user").orElseThrow().categories())
@@ -53,7 +56,10 @@ class MongoNotificationPreferenceRepositoryTest {
                 eq(MongoNotificationPreferenceRepository
                         .PreferenceDocument.class),
                 eq(MongoNotificationPreferenceRepository.COLLECTION)
-        )).thenReturn(document(Set.of("ACCOUNT")), null)
+        )).thenReturn(
+                document(Set.of("ACCOUNT")),
+                (MongoNotificationPreferenceRepository.PreferenceDocument) null
+        )
                 .thenThrow(new DuplicateKeyException("race"));
         var repository = new MongoNotificationPreferenceRepository(mongo);
         var preference = view();

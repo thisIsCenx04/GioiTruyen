@@ -628,7 +628,7 @@ describe("browser authentication client", () => {
   it("maps the remaining identity journeys to the BFF contract", async () => {
     apiMockServer.use(
       http.post("/api/auth/register", () =>
-        HttpResponse.json({ status: "PENDING_VERIFICATION" }),
+        HttpResponse.json({ status: "REGISTRATION_ACCEPTED" }),
       ),
       http.post("/api/auth/password/forgot", () =>
         HttpResponse.json({ status: "ACCEPTED" }),
@@ -664,7 +664,7 @@ describe("browser authentication client", () => {
 
     await expect(
       client.register("reader@example.test", "a long safe password", true),
-    ).resolves.toEqual({ status: "PENDING_VERIFICATION" });
+    ).resolves.toEqual({ status: "REGISTRATION_ACCEPTED" });
     await expect(
       client.forgotPassword("reader@example.test"),
     ).resolves.toEqual({ status: "ACCEPTED" });

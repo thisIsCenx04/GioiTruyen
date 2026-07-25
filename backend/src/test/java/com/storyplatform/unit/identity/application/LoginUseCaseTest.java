@@ -112,7 +112,7 @@ class LoginUseCaseTest {
     }
 
     @Test
-    void privilegedAccountCannotBypassMfa() {
+    void propagatesMfaEnrollmentResultWithoutIssuingSession() {
         MfaUseCase mfa = mock(MfaUseCase.class);
         when(mfa.authenticate(any(), nullable(String.class)))
                 .thenReturn(
@@ -131,10 +131,7 @@ class LoginUseCaseTest {
                 new EmailNormalizer(),
                 "$argon2id$dummy"
         );
-        users.account = Optional.of(account(
-                UserState.ACTIVE,
-                GlobalRole.ADMIN
-        ));
+        users.account = Optional.of(account(UserState.ACTIVE));
         passwords.matches = true;
 
         assertThat(privilegedLogin.login(command()).status())

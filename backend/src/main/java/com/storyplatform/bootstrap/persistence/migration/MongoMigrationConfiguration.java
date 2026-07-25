@@ -27,81 +27,6 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
-    OutboxInboxIndexes outboxInboxIndexes() {
-        return new OutboxInboxIndexes();
-    }
-
-    @Bean
-    UserIndexes userIndexes() {
-        return new UserIndexes();
-    }
-
-    @Bean
-    EmailVerificationIndexes emailVerificationIndexes() {
-        return new EmailVerificationIndexes();
-    }
-
-    @Bean
-    RefreshSessionIndexes refreshSessionIndexes() {
-        return new RefreshSessionIndexes();
-    }
-
-    @Bean
-    PasswordResetIndexes passwordResetIndexes() {
-        return new PasswordResetIndexes();
-    }
-
-    @Bean
-    MfaFactorIndexes mfaFactorIndexes() {
-        return new MfaFactorIndexes();
-    }
-
-    @Bean
-    ReauthenticationGrantIndexes reauthenticationGrantIndexes() {
-        return new ReauthenticationGrantIndexes();
-    }
-
-    @Bean
-    TeamIndexes teamIndexes() {
-        return new TeamIndexes();
-    }
-
-    @Bean
-    TeamInvitationIndexes teamInvitationIndexes() {
-        return new TeamInvitationIndexes();
-    }
-
-    @Bean
-    TeamFollowIndexes teamFollowIndexes() {
-        return new TeamFollowIndexes();
-    }
-
-    @Bean
-    CategoryTaxonomyMigration categoryTaxonomyMigration() {
-        return new CategoryTaxonomyMigration();
-    }
-
-    @Bean
-    StoryIndexes storyIndexes() {
-        return new StoryIndexes();
-    }
-
-    @Bean
-    StoryCatalogIndexes storyCatalogIndexes() {
-        return new StoryCatalogIndexes();
-    }
-
-    @Bean
-    ChapterIndexes chapterIndexes() {
-        return new ChapterIndexes();
-    }
-
-    @Bean
-    HomeReadModelIndexes homeReadModelIndexes() {
-        return new HomeReadModelIndexes();
-    }
-
-    @Bean
     StoryTextSearchIndex storyTextSearchIndex() {
         return new StoryTextSearchIndex();
     }
@@ -159,21 +84,6 @@ public class MongoMigrationConfiguration {
     @Bean
     ModerationAuditIndexes moderationAuditIndexes() {
         return new ModerationAuditIndexes();
-    }
-
-    @Bean
-    ReadingProgressIndexes readingProgressIndexes() {
-        return new ReadingProgressIndexes();
-    }
-
-    @Bean
-    ReadingHistoryIndexes readingHistoryIndexes() {
-        return new ReadingHistoryIndexes();
-    }
-
-    @Bean
-    ReadingSessionIndexes readingSessionIndexes() {
-        return new ReadingSessionIndexes();
     }
 
     @Bean

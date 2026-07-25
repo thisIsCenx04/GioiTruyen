@@ -22,7 +22,7 @@ import com.storyplatform.teams.application.port.TeamMembershipRepository;
 import com.storyplatform.teams.application.port.TeamMembershipCache;
 import com.storyplatform.teams.application.port.TeamFollowRepository;
 import com.storyplatform.teams.application.port.TeamRepository;
-import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import com.storyplatform.teams.application.port.UserProfileRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -126,9 +126,9 @@ public class TeamsConfiguration {
 
     @Bean
     TeamFollowCounterStore teamFollowCounterStore(
-            MongoTemplate mongo
+            JdbcClient jdbc
     ) {
-        return new TeamFollowCounterStore(mongo, Clock.systemUTC());
+        return new TeamFollowCounterStore(jdbc, Clock.systemUTC());
     }
 
     @Bean

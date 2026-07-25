@@ -1,15 +1,12 @@
 package com.storyplatform.shared.events.persistence;
 
 import com.storyplatform.shared.events.IntegrationEvent;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 import java.util.Map;
 
-@Document(collection = OutboxMessage.COLLECTION)
 public record OutboxMessage(
-        @Id String id,
+        String id,
         String eventType,
         int eventVersion,
         Instant occurredAt,
@@ -31,7 +28,6 @@ public record OutboxMessage(
         Instant processedAt
 ) {
 
-    public static final String COLLECTION = "outbox_messages";
     public static final String JSON_CONTENT_TYPE = "application/json";
 
     static OutboxMessage pending(

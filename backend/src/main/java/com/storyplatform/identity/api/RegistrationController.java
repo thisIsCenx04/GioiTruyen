@@ -46,7 +46,7 @@ public class RegistrationController {
         return switch (outcome) {
             case ACCEPTED -> ResponseEntity
                     .status(HttpStatus.ACCEPTED)
-                    .body(RegistrationResponse.pendingVerification());
+                    .body(RegistrationResponse.accepted());
             case INVALID_EMAIL -> throw invalidRequest(
                     "EMAIL_INVALID",
                     "The email address is invalid."

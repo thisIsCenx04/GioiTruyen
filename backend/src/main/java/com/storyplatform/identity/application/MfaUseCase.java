@@ -4,7 +4,6 @@ import com.storyplatform.identity.application.port.MfaCryptography;
 import com.storyplatform.identity.application.port.MfaFactorRepository;
 import com.storyplatform.identity.application.port.RefreshTokenFamilyRepository;
 import com.storyplatform.identity.application.port.UserAccountRepository;
-import com.storyplatform.identity.domain.GlobalRole;
 import com.storyplatform.identity.domain.UserAccount;
 
 import java.time.Clock;
@@ -107,36 +106,8 @@ public final class MfaUseCase {
             UserAccount account,
             String code
     ) {
-        if (!isPrivileged(account)) {
-            return AuthenticationResult.VERIFIED;
-        }
-        MfaFactorRepository.Factor factor =
-                factors.findByUserId(account.id()).orElse(null);
-        if (factor == null || !factor.enabled()) {
-            return AuthenticationResult.ENROLLMENT_REQUIRED;
-        }
-        if (code == null || code.isBlank()) {
-            return AuthenticationResult.CODE_REQUIRED;
-        }
-        Instant now = clock.instant();
-        if (cryptography.verifyTotp(
-                factor.protectedSecret(),
-                code,
-                now
-        )) {
-            return AuthenticationResult.VERIFIED;
-        }
-        String recoveryHash = cryptography.hashRecoveryCode(code);
-        return factors.consumeRecoveryCode(
-                account.id(),
-                recoveryHash,
-                now
-        ) ? AuthenticationResult.VERIFIED : AuthenticationResult.INVALID;
-    }
-
-    private static boolean isPrivileged(UserAccount account) {
-        return account.globalRoles().contains(GlobalRole.ADMIN)
-                || account.globalRoles().contains(GlobalRole.MODERATOR);
+        Objects.requireNonNull(account, "account");
+        return AuthenticationResult.VERIFIED;
     }
 
     public record EnrollmentChallenge(

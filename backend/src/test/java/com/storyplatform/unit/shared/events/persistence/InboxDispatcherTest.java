@@ -3,12 +3,10 @@ package com.storyplatform.unit.shared.events.persistence;
 import com.storyplatform.shared.events.IntegrationEventHandler;
 import com.storyplatform.shared.events.OutboxDelivery;
 import com.storyplatform.shared.events.persistence.InboxDispatcher;
-import com.storyplatform.shared.events.persistence.InboxReceipt;
 import com.storyplatform.shared.events.persistence.OutboxMessage;
 import com.storyplatform.shared.events.persistence.OutboxStatus;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.jdbc.core.simple.JdbcClient;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -17,6 +15,8 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -28,10 +28,13 @@ class InboxDispatcherTest {
             "2026-01-01T00:00:00Z"
     );
 
-    private final MongoTemplate mongoTemplate = mock(MongoTemplate.class);
+    private final JdbcClient jdbc = mock(
+            JdbcClient.class,
+            RETURNS_DEEP_STUBS
+    );
     private final IntegrationEventHandler handler = handler();
     private final InboxDispatcher dispatcher = new InboxDispatcher(
-            mongoTemplate,
+            jdbc,
             List.of(handler),
             Clock.fixed(NOW, ZoneOffset.UTC)
     );
@@ -39,41 +42,37 @@ class InboxDispatcherTest {
     @Test
     void firstDeliveryRecordsReceiptThenInvokesHandler() {
         OutboxMessage message = message();
-        when(mongoTemplate.exists(
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.eq(InboxReceipt.class)
-        )).thenReturn(false);
+        when(jdbc.sql(anyString())
+                .param("id", "search-indexer:event-1")
+                .query(Long.class)
+                .single()).thenReturn(0L);
 
         InboxDispatcher.DispatchResult result = dispatcher.dispatch(message);
 
         assertThat(result).isEqualTo(
                 InboxDispatcher.DispatchResult.PROCESSED
         );
-        ArgumentCaptor<InboxReceipt> receipt = ArgumentCaptor.forClass(
-                InboxReceipt.class
-        );
-        verify(mongoTemplate).insert(receipt.capture());
-        assertThat(receipt.getValue().id()).isEqualTo(
-                "search-indexer:event-1"
-        );
+        verify(jdbc).sql(org.mockito.ArgumentMatchers.contains(
+                "INSERT INTO inbox_receipts"
+        ));
         verify(handler).handle(OutboxDelivery.from(message));
     }
 
     @Test
     void replayWithExistingReceiptDoesNotInvokeHandlerAgain() {
-        when(mongoTemplate.exists(
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.eq(InboxReceipt.class)
-        )).thenReturn(true);
+        when(jdbc.sql(anyString())
+                .param("id", "search-indexer:event-1")
+                .query(Long.class)
+                .single()).thenReturn(1L);
 
         InboxDispatcher.DispatchResult result = dispatcher.dispatch(message());
 
         assertThat(result).isEqualTo(
                 InboxDispatcher.DispatchResult.DUPLICATE
         );
-        verify(mongoTemplate, never()).insert(
-                org.mockito.ArgumentMatchers.any(InboxReceipt.class)
-        );
+        verify(jdbc, never()).sql(org.mockito.ArgumentMatchers.contains(
+                "INSERT INTO inbox_receipts"
+        ));
         verify(handler, never()).handle(
                 org.mockito.ArgumentMatchers.any()
         );
@@ -85,14 +84,17 @@ class InboxDispatcherTest {
                 "notification-sender"
         );
         InboxDispatcher fanout = new InboxDispatcher(
-                mongoTemplate,
+                jdbc,
                 List.of(handler, notification),
                 Clock.fixed(NOW, ZoneOffset.UTC)
         );
-        when(mongoTemplate.exists(
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.eq(InboxReceipt.class)
-        )).thenReturn(false);
+        when(jdbc.sql(anyString())
+                .param(
+                        org.mockito.ArgumentMatchers.eq("id"),
+                        org.mockito.ArgumentMatchers.anyString()
+                )
+                .query(Long.class)
+                .single()).thenReturn(0L);
         OutboxMessage message = message();
 
         assertThat(fanout.dispatch(message)).isEqualTo(
@@ -107,7 +109,7 @@ class InboxDispatcherTest {
     void duplicateHandlerContractIsRejectedAtStartup() {
         assertThatIllegalArgumentException().isThrownBy(() ->
                 new InboxDispatcher(
-                        mongoTemplate,
+                        jdbc,
                         List.of(handler, handler()),
                         Clock.fixed(NOW, ZoneOffset.UTC)
                 )

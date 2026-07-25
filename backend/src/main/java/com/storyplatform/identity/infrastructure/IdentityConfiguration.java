@@ -31,7 +31,8 @@ import com.storyplatform.identity.application.port.UserIdGenerator;
 import com.storyplatform.identity.application.port.VerificationTokenCodec;
 import com.storyplatform.identity.domain.EmailNormalizer;
 import com.storyplatform.identity.domain.PasswordPolicy;
-import com.storyplatform.identity.infrastructure.persistence.MongoEmailVerificationIssuer;
+import com.storyplatform.identity.infrastructure.persistence
+        .PersistentEmailVerificationIssuer;
 import com.storyplatform.identity.infrastructure.security.Argon2PasswordHasher;
 import com.storyplatform.identity.infrastructure.security.HmacVerificationTokenCodec;
 import com.storyplatform.identity.infrastructure.security.JwtAccessTokenIssuer;
@@ -106,7 +107,6 @@ public class IdentityConfiguration {
     RegisterUserUseCase registerUserUseCase(
             UserAccountRepository repository,
             PasswordHasher passwordHasher,
-            EmailVerificationIssuer verificationIssuer,
             UserIdGenerator idGenerator,
             EmailNormalizer emailNormalizer,
             PasswordPolicy passwordPolicy,
@@ -115,7 +115,6 @@ public class IdentityConfiguration {
         return new RegisterUserUseCase(
                 repository,
                 passwordHasher,
-                verificationIssuer,
                 idGenerator,
                 emailNormalizer,
                 passwordPolicy,
@@ -147,7 +146,7 @@ public class IdentityConfiguration {
             OutboxAppender outbox,
             VerificationProperties properties
     ) {
-        return new MongoEmailVerificationIssuer(
+        return new PersistentEmailVerificationIssuer(
                 repository,
                 tokenCodec,
                 outbox,

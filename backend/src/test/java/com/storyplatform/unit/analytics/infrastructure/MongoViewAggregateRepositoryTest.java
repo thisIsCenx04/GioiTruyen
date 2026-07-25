@@ -41,7 +41,10 @@ class MongoViewAggregateRepositoryTest {
                         .AggregateCandidateDocument.class),
                 eq(MongoReadingViewValidationRepository
                         .CLASSIFICATION_COLLECTION)
-        )).thenReturn(document(null), null);
+        )).thenReturn(
+                document(null),
+                (MongoViewAggregateRepository.AggregateCandidateDocument) null
+        );
         var repository = new MongoViewAggregateRepository(mongo);
 
         var claimed = repository.claim(

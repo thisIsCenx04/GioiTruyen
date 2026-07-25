@@ -10,6 +10,19 @@ spring:
       fail-on-unknown-properties: true
   lifecycle:
     timeout-per-shutdown-phase: 20s
+  datasource:
+    url: ${MYSQL_URL:jdbc:mysql://127.0.0.1:3306/gioitruyen?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&serverTimezone=UTC}
+    username: ${MYSQL_USER:gioitruyen}
+    password: ${MYSQL_PASSWORD:gioitruyen_local}
+    hikari:
+      minimum-idle: ${MYSQL_MIN_POOL_SIZE:2}
+      maximum-pool-size: ${MYSQL_MAX_POOL_SIZE:20}
+      connection-timeout: ${MYSQL_CONNECTION_TIMEOUT_MS:3000}
+      validation-timeout: ${MYSQL_VALIDATION_TIMEOUT_MS:1000}
+  flyway:
+    enabled: ${MYSQL_MIGRATIONS_ENABLED:false}
+    locations: classpath:db/migration
+    validate-migration-naming: true
   mongodb:
     uri: ${MONGODB_URI:mongodb://127.0.0.1:27017/story_platform?replicaSet=rs0}
     database: ${MONGODB_DATABASE:story_platform}
@@ -269,6 +282,8 @@ app:
         max-attempts: ${OUTBOX_WORKER_MAX_ATTEMPTS:8}
         initial-backoff: ${OUTBOX_WORKER_INITIAL_BACKOFF:1s}
         max-backoff: ${OUTBOX_WORKER_MAX_BACKOFF:15m}
+  seed:
+    enabled: ${APP_SEED_ENABLED:false}
   mongodb:
     min-pool-size: ${MONGODB_MIN_POOL_SIZE:2}
     max-pool-size: ${MONGODB_MAX_POOL_SIZE:50}

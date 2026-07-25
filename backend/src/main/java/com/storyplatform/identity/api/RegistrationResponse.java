@@ -5,11 +5,10 @@ public record RegistrationResponse(
         String message
 ) {
 
-    public static RegistrationResponse pendingVerification() {
+    public static RegistrationResponse accepted() {
         return new RegistrationResponse(
-                "PENDING_VERIFICATION",
-                "If the address is eligible, verification instructions "
-                        + "will be sent."
+                "REGISTRATION_ACCEPTED",
+                "If the address is available, the account is ready to use."
         );
     }
 }

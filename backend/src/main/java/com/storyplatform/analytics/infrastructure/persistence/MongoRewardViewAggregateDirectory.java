@@ -3,8 +3,6 @@ package com.storyplatform.analytics.infrastructure.persistence;
 import com.mongodb.client.MongoCollection;
 import com.storyplatform.analytics.application.contract
         .RewardViewAggregateDirectory;
-import com.storyplatform.catalog.infrastructure.persistence
-        .MongoStoryDocument;
 import org.bson.Document;
 import org.springframework.data.mongodb.core.MongoTemplate;
 
@@ -58,7 +56,7 @@ public final class MongoRewardViewAggregateDirectory
                                 "$gte", Date.from(from)
                         ).append("$lt", Date.from(to)))),
                 new Document("$lookup", new Document()
-                        .append("from", MongoStoryDocument.COLLECTION)
+                        .append("from", "stories")
                         .append("localField", "storyId")
                         .append("foreignField", "_id")
                         .append("as", "story")),

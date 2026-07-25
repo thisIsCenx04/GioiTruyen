@@ -17,15 +17,11 @@ import com.storyplatform.discovery.application.port.SuggestionRateLimiter;
 import com.storyplatform.discovery.application.port.SuggestionRepository;
 import com.storyplatform.discovery.application.port.RankingRepository;
 import com.storyplatform.discovery.infrastructure.persistence
-        .AtlasSuggestionRepository;
+        .JdbcStorySearchRepository;
 import com.storyplatform.discovery.infrastructure.persistence
-        .AtlasStorySearchRepository;
-import com.storyplatform.discovery.infrastructure.persistence
-        .TextStorySearchRepository;
+        .JdbcSuggestionRepository;
 import com.storyplatform.discovery.infrastructure.persistence
         .MongoRankingRepository;
-import com.storyplatform.discovery.infrastructure.persistence
-        .DisabledSuggestionRepository;
 import com.storyplatform.discovery.infrastructure.security
         .HmacSearchCursorCodec;
 import com.storyplatform.discovery.infrastructure.security
@@ -36,6 +32,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.jdbc.core.simple.JdbcClient;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -104,17 +101,9 @@ public class DiscoveryConfiguration {
 
     @Bean
     StorySearchRepository storySearchRepository(
-            MongoTemplate mongo,
-            @Value("${app.discovery.search.backend}") String backend,
-            @Value("${app.discovery.search.atlas-index}") String index
+            JdbcClient jdbc
     ) {
-        return switch (backend) {
-            case "atlas" -> new AtlasStorySearchRepository(mongo, index);
-            case "text" -> new TextStorySearchRepository(mongo);
-            default -> throw new IllegalStateException(
-                    "SEARCH_BACKEND must be atlas or text"
-            );
-        };
+        return new JdbcStorySearchRepository(jdbc);
     }
 
     @Bean
@@ -127,13 +116,9 @@ public class DiscoveryConfiguration {
 
     @Bean
     SuggestionRepository suggestionRepository(
-            MongoTemplate mongo,
-            @Value("${app.discovery.search.backend}") String backend,
-            @Value("${app.discovery.search.atlas-index}") String index
+            JdbcClient jdbc
     ) {
-        return "atlas".equals(backend)
-                ? new AtlasSuggestionRepository(mongo, index)
-                : new DisabledSuggestionRepository();
+        return new JdbcSuggestionRepository(jdbc);
     }
 
     @Bean
