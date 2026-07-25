@@ -39,7 +39,8 @@ public record WalletAccount(
     public enum OwnerType {
         USER,
         TEAM,
-        PLATFORM
+        PLATFORM,
+        PLATFORM_LIABILITY
     }
 
     public enum Status {

@@ -97,6 +97,37 @@ public final class MongoWithdrawalRepository
     }
 
     @Override
+    public Optional<Withdrawal> findOldestApproved() {
+        return Optional.ofNullable(mongo.findOne(
+                Query.query(Criteria.where("state").is("APPROVED"))
+                        .with(Sort.by(
+                                Sort.Order.asc("reviewedAt"),
+                                Sort.Order.asc("_id")
+                        )),
+                MongoWithdrawalDocument.class
+        )).map(MongoWithdrawalDocument::toDomain);
+    }
+
+    @Override
+    public boolean transition(
+            String withdrawalId,
+            Withdrawal.State expected,
+            Withdrawal.State target,
+            String releaseTransactionId
+    ) {
+        Update update = new Update().set("state", target.name());
+        if (releaseTransactionId != null) {
+            update.set("releaseTransactionId", releaseTransactionId);
+        }
+        return mongo.updateFirst(
+                Query.query(Criteria.where("_id").is(withdrawalId)
+                        .and("state").is(expected.name())),
+                update,
+                MongoWithdrawalDocument.class
+        ).getModifiedCount() == 1;
+    }
+
+    @Override
     public List<Withdrawal> findByTeam(
             String teamId,
             WithdrawalCursorCodec.Position after,

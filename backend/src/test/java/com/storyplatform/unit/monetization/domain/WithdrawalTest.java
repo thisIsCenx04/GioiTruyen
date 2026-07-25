@@ -102,6 +102,33 @@ class WithdrawalTest {
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
+    @Test
+    void approvedWithdrawalProcessesThenReachesOnePayoutOutcome() {
+        Withdrawal approved = withdrawal(100_000).approved(
+                "70000000-0000-4000-8000-000000000001",
+                "Verified finance approval.",
+                "STANDARD",
+                "withdrawal-risk-2026.1",
+                "c".repeat(64),
+                "d".repeat(64),
+                NOW.plusSeconds(1)
+        );
+        Withdrawal processing = approved.processing();
+
+        assertThat(processing.paid().state())
+                .isEqualTo(Withdrawal.State.PAID);
+        assertThat(processing.failed(
+                "80000000-0000-4000-8000-000000000001"
+        ).state()).isEqualTo(Withdrawal.State.FAILED);
+        assertThatThrownBy(withdrawal(100_000)::processing)
+                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(approved::paid)
+                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> approved.failed(
+                "80000000-0000-4000-8000-000000000001"
+        )).isInstanceOf(IllegalStateException.class);
+    }
+
     private static Withdrawal withdrawal(long gross) {
         return new Withdrawal(
                 "10000000-0000-4000-8000-000000000001",

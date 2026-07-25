@@ -62,7 +62,8 @@ public class SecurityConfiguration {
                         "/reading-sessions/*/heartbeats",
                         "/reading-sessions/*/complete",
                         "/webhooks/cloudinary",
-                        "/webhooks/payments"
+                        "/webhooks/payments",
+                        "/webhooks/withdrawal-payouts"
                 ))
                 .oauth2ResourceServer(resourceServer -> resourceServer
                         .jwt(Customizer.withDefaults())
@@ -106,7 +107,8 @@ public class SecurityConfiguration {
                                 "/reading-sessions/*/heartbeats",
                                 "/reading-sessions/*/complete",
                                 "/webhooks/cloudinary",
-                                "/webhooks/payments"
+                                "/webhooks/payments",
+                                "/webhooks/withdrawal-payouts"
                         ).permitAll()
                         .requestMatchers(
                                 "/auth/logout",

@@ -125,6 +125,47 @@ public record Withdrawal(
         );
     }
 
+    public Withdrawal processing() {
+        if (state != State.APPROVED) {
+            throw new IllegalStateException(
+                    "Withdrawal is not approved for processing."
+            );
+        }
+        return withState(State.PROCESSING, null);
+    }
+
+    public Withdrawal paid() {
+        if (state != State.PROCESSING) {
+            throw new IllegalStateException(
+                    "Withdrawal is not processing."
+            );
+        }
+        return withState(State.PAID, null);
+    }
+
+    public Withdrawal failed(String releaseId) {
+        if (state != State.PROCESSING) {
+            throw new IllegalStateException(
+                    "Withdrawal is not processing."
+            );
+        }
+        return withState(State.FAILED, releaseId);
+    }
+
+    private Withdrawal withState(
+            State newState,
+            String releaseId
+    ) {
+        return new Withdrawal(
+                id, teamId, accountId, grossAmountXu, feeXu,
+                netAmountXu, feeRuleVersion, destination, newState,
+                requestedBy, reserveTransactionId, idempotencyKeyHash,
+                requestHash, createdAt, reviewedBy, reviewReason,
+                reviewRiskLevel, reviewRiskRuleVersion, reviewKeyHash,
+                reviewRequestHash, releaseId, reviewedAt
+        );
+    }
+
     private Withdrawal reviewed(
             State newState,
             String reviewerId,
@@ -189,8 +230,9 @@ public record Withdrawal(
                     && requestHash == null
                     && releaseId == null
                     && at == null;
-            case APPROVED -> decision && releaseId == null;
-            case REJECTED -> decision && releaseId != null;
+            case APPROVED, PROCESSING, PAID ->
+                    decision && releaseId == null;
+            case REJECTED, FAILED -> decision && releaseId != null;
         };
     }
 
@@ -208,7 +250,10 @@ public record Withdrawal(
     public enum State {
         PENDING_REVIEW,
         APPROVED,
-        REJECTED
+        REJECTED,
+        PROCESSING,
+        PAID,
+        FAILED
     }
 
     public record DestinationSnapshot(

@@ -105,6 +105,18 @@ app:
       free-from-gross-xu: ${WITHDRAWAL_FREE_FROM_GROSS_XU:1000000}
       flat-fee-xu: ${WITHDRAWAL_FLAT_FEE_XU:20000}
       maximum-gross-xu: ${WITHDRAWAL_MAXIMUM_GROSS_XU:1000000000}
+      payout:
+        enabled: ${WITHDRAWAL_PAYOUT_ENABLED:false}
+        provider: ${WITHDRAWAL_PAYOUT_PROVIDER:bank-provider}
+        endpoint: ${WITHDRAWAL_PAYOUT_ENDPOINT:https://provider.invalid/payouts}
+        token: ${WITHDRAWAL_PAYOUT_TOKEN:not-configured-secret}
+        webhook-secret: ${WITHDRAWAL_PAYOUT_WEBHOOK_SECRET:not-configured-withdrawal-webhook-secret}
+        webhook-max-age: ${WITHDRAWAL_PAYOUT_WEBHOOK_MAX_AGE:10m}
+        timeout: ${WITHDRAWAL_PAYOUT_TIMEOUT:10s}
+        lease-duration: ${WITHDRAWAL_PAYOUT_LEASE_DURATION:30s}
+        retry-delay: ${WITHDRAWAL_PAYOUT_RETRY_DELAY:30s}
+        poll-interval: ${WITHDRAWAL_PAYOUT_POLL_INTERVAL:5s}
+        batch-size: ${WITHDRAWAL_PAYOUT_BATCH_SIZE:25}
   analytics:
     raw-events:
       retention: ${ANALYTICS_RAW_EVENT_RETENTION:90d}
