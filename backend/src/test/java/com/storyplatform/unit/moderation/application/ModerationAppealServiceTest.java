@@ -161,7 +161,7 @@ class ModerationAppealServiceTest {
     void validatesIdentifiersTextReasonAndWindow() {
         assertThatThrownBy(() -> new ModerationAppealService(
                 repository,
-                Clock.systemUTC(),
+                Clock.fixed(NOW, ZoneOffset.UTC),
                 Duration.ZERO,
                 () -> APPEAL
         )).isInstanceOf(IllegalArgumentException.class);

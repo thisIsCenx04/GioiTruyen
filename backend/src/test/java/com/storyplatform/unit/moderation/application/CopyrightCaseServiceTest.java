@@ -137,7 +137,7 @@ class CopyrightCaseServiceTest {
     void validatesDurationsIdentifiersTextEvidenceAndDecision() {
         assertThatThrownBy(() -> new CopyrightCaseService(
                 repository,
-                Clock.systemUTC(),
+                Clock.fixed(NOW, ZoneOffset.UTC),
                 Duration.ZERO,
                 Duration.ofDays(1),
                 () -> CASE
