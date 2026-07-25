@@ -123,7 +123,7 @@ class ReadingViewValidationServiceTest {
             assertThatThrownBy(() -> new ReadingViewValidationService(
                     repository,
                     new ReadingViewClassifier(),
-                    Clock.systemUTC(),
+                    Clock.fixed(NOW, ZoneOffset.UTC),
                     duration,
                     Duration.ofSeconds(1),
                     Duration.ofSeconds(1)

@@ -1,0 +1,11 @@
+vulnerabilities:
+  - id: CVE-2026-14257
+    paths:
+      - "frontend/pnpm-lock.yaml"
+    purls:
+      - "pkg:npm/brace-expansion@1.1.16"
+    expired_at: 2026-08-25
+    statement: >-
+      ESLint 9 depends on minimatch 3, which cannot use brace-expansion 5.
+      Remove this temporary exception when the React ESLint plugin stack
+      supports ESLint 10.

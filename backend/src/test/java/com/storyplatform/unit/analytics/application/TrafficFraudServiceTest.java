@@ -83,7 +83,7 @@ class TrafficFraudServiceTest {
             assertThatThrownBy(() -> new TrafficFraudService(
                     repository,
                     new TrafficFraudScorer(),
-                    Clock.systemUTC(),
+                    Clock.fixed(NOW, ZoneOffset.UTC),
                     duration,
                     Duration.ofSeconds(1)
             )).isInstanceOf(IllegalArgumentException.class);

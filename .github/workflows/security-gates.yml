@@ -190,6 +190,7 @@ jobs:
           set -euo pipefail
           trivy rootfs \
             --exit-code 1 \
+            --ignorefile .trivyignore.yaml \
             --ignore-unfixed \
             --no-progress \
             --scanners vuln \
@@ -197,6 +198,7 @@ jobs:
             backend/build/libs
           trivy fs \
             --exit-code 1 \
+            --ignorefile .trivyignore.yaml \
             --ignore-unfixed \
             --include-dev-deps \
             --no-progress \

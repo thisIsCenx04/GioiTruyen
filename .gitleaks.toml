@@ -8,3 +8,7 @@ id = "gioitruyen-seeded-secret"
 description = "Deterministic negative-control secret used to verify the gate"
 regex = '''GIOITRUYEN_TEST_SECRET_[A-Za-z0-9]{32}'''
 keywords = ["gioitruyen_test_secret_"]
+
+[[allowlists]]
+description = "Known synthetic withdrawal idempotency key used by unit tests"
+regexes = ['''withdrawal-key-0001''']

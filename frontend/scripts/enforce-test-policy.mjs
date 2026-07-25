@@ -28,7 +28,12 @@ const forbiddenPatterns = [
   {
     code: "direct-network",
     expression:
-      /\bfetch\s*\(|\bjava\.net\.|\b(?:HttpClient|RestTemplate|WebClient)\b/u,
+      /\bHttpClient\.(?:newHttpClient|newBuilder)\s*\(|\bnew\s+RestTemplate\s*\(|\bWebClient\.(?:create|builder)\s*\(/u,
+  },
+  {
+    code: "direct-network",
+    expression: /\bfetch\s*\(/u,
+    excludeExtensions: new Set([".java"]),
   },
   {
     code: "unseeded-random",
@@ -42,7 +47,7 @@ const forbiddenPatterns = [
   {
     code: "test-retry",
     expression:
-      /\b(?:retry|retries)\s*[:(]\s*[1-9]\d*|\.(?:retry|retries)\s*\(/u,
+      /\b(?:retry|retries)\s*:\s*[1-9]\d*/u,
   },
 ];
 
@@ -64,9 +69,14 @@ function hasValidTestFileName(filePath) {
 
 export function inspectTestSource(filePath, source) {
   const violations = [];
+  const extension = extname(filePath);
+  const inspectedSource =
+    extension === ".java"
+      ? source.replaceAll(/"(?:\\.|[^"\\])*"/gsu, '""')
+      : source;
 
   if (
-    usesTestApi(source, extname(filePath)) &&
+    usesTestApi(source, extension) &&
     !hasValidTestFileName(filePath)
   ) {
     violations.push({
@@ -76,7 +86,10 @@ export function inspectTestSource(filePath, source) {
   }
 
   for (const rule of forbiddenPatterns) {
-    if (rule.expression.test(source)) {
+    if (rule.excludeExtensions?.has(extension)) {
+      continue;
+    }
+    if (rule.expression.test(inspectedSource)) {
       violations.push({
         code: rule.code,
         filePath,

@@ -125,7 +125,7 @@ class ModerationAppealControllerTest {
     }
 
     private static Jwt jwt(String role) {
-        Instant now = Instant.now();
+        Instant now = Instant.parse("2026-07-25T00:00:00Z");
         return new Jwt(
                 "token",
                 now,

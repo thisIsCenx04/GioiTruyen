@@ -125,7 +125,7 @@ class ViewAggregateServiceTest {
         }) {
             assertThatThrownBy(() -> new ViewAggregateService(
                     repository,
-                    Clock.systemUTC(),
+                    Clock.fixed(NOW, ZoneOffset.UTC),
                     duration,
                     Duration.ofSeconds(1)
             )).isInstanceOf(IllegalArgumentException.class);

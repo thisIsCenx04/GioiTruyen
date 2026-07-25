@@ -134,7 +134,7 @@ class ReadingSessionServiceTest {
                 repository,
                 tokens,
                 quota,
-                Clock.systemUTC(),
+                Clock.fixed(NOW, ZoneOffset.UTC),
                 Duration.ZERO,
                 15,
                 () -> SESSION

@@ -1,4 +1,8 @@
 spring:
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:../.env[.properties]
   application:
     name: ${APP_NAME:story-platform}
   jackson:
@@ -21,6 +25,11 @@ spring:
     multipart:
       max-file-size: 2MB
       max-request-size: 2MB
+  web:
+    error:
+      include-message: never
+      include-binding-errors: never
+      include-stacktrace: never
 
 server:
   address: ${API_HOST:127.0.0.1}
@@ -28,10 +37,6 @@ server:
   servlet:
     context-path: /api/v1
   shutdown: graceful
-  error:
-    include-message: never
-    include-binding-errors: never
-    include-stacktrace: never
   tomcat:
     max-http-form-post-size: 1MB
     max-swallow-size: 2MB
