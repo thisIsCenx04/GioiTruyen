@@ -129,6 +129,7 @@ blob-report/
 dependency-check-report/
 trivy-report/
 zap-report/
+performance/results/
 
 # Local databases, dumps and backups
 *.db
