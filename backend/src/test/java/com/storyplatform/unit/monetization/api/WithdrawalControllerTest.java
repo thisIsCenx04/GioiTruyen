@@ -4,6 +4,9 @@ import com.storyplatform.monetization.api.CreateWithdrawalRequest;
 import com.storyplatform.monetization.api.WithdrawalController;
 import com.storyplatform.monetization.application.WithdrawalException;
 import com.storyplatform.monetization.application.WithdrawalOperations;
+import com.storyplatform.monetization.application
+        .MonetizationSuspendedException;
+import com.storyplatform.monetization.domain.MonetizationKillSwitch;
 import com.storyplatform.shared.api.ApiException;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -80,6 +83,27 @@ class WithdrawalControllerTest {
                 HttpStatus.UNPROCESSABLE_CONTENT
         );
         assertFailure(WithdrawalException.Kind.CONFLICT, HttpStatus.CONFLICT);
+    }
+
+    @Test
+    void mapsEngagedRequestSwitchToServiceUnavailable() {
+        doThrow(new MonetizationSuspendedException(
+                MonetizationKillSwitch.Operation.WITHDRAWAL_REQUEST
+        )).when(operations).create(
+                ACTOR, TEAM, KEY, 100_000, DESTINATION
+        );
+
+        assertThatThrownBy(() -> controller.create(
+                jwt,
+                TEAM,
+                KEY,
+                new CreateWithdrawalRequest(100_000, DESTINATION)
+        )).isInstanceOf(ApiException.class)
+                .extracting("status", "code")
+                .containsExactly(
+                        HttpStatus.SERVICE_UNAVAILABLE,
+                        "MONETIZATION_SUSPENDED"
+                );
     }
 
     private void assertFailure(

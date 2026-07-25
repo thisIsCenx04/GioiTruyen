@@ -3,6 +3,7 @@ package com.storyplatform.monetization.infrastructure.persistence;
 import com.storyplatform.monetization.application.port.TopupSettlementRepository;
 import com.storyplatform.monetization.domain.PaymentEvent;
 import com.storyplatform.monetization.domain.TopupRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -40,6 +41,19 @@ public final class MongoTopupSettlementRepository
                         .is(transferReference)),
                 MongoTopupRequestDocument.class
         )).map(MongoTopupRequestDocument::toDomain);
+    }
+
+    @Override
+    public Optional<PaymentEvent> findOldestReceived(String provider) {
+        return Optional.ofNullable(mongo.findOne(
+                Query.query(Criteria.where("provider").is(provider)
+                                .and("status").is("RECEIVED"))
+                        .with(Sort.by(
+                                Sort.Order.asc("receivedAt"),
+                                Sort.Order.asc("_id")
+                        )),
+                MongoPaymentEventDocument.class
+        )).map(MongoPaymentEventDocument::toDomain);
     }
 
     @Override

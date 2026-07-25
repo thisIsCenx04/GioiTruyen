@@ -4,6 +4,9 @@ import com.storyplatform.monetization.api.ApproveManualTopupRequest;
 import com.storyplatform.monetization.api.ManualTopupController;
 import com.storyplatform.monetization.application.ManualTopupException;
 import com.storyplatform.monetization.application.ManualTopupOperations;
+import com.storyplatform.monetization.application
+        .MonetizationSuspendedException;
+import com.storyplatform.monetization.domain.MonetizationKillSwitch;
 import com.storyplatform.shared.api.ApiException;
 import com.storyplatform.shared.security.JwtPrivilegeEvaluator;
 import com.storyplatform.shared.security.PrivilegedCapability;
@@ -130,5 +133,33 @@ class ManualTopupControllerTest {
                     .extracting("status")
                     .isEqualTo(status);
         }
+    }
+
+    @Test
+    void mapsEngagedCreditSwitchToServiceUnavailable() {
+        String topupId = "20000000-0000-4000-8000-000000000001";
+        var request = new ApproveManualTopupRequest(
+                "Verified settlement statement",
+                "evidence/bank-statement-1"
+        );
+        when(privileges.allows(
+                jwt,
+                PrivilegedCapability.FINANCE_REVIEW
+        )).thenReturn(true);
+        when(operations.approve(
+                "admin",
+                topupId,
+                "grant",
+                request.reason(),
+                request.evidenceReference()
+        )).thenThrow(new MonetizationSuspendedException(
+                MonetizationKillSwitch.Operation.TOPUP_CREDIT
+        ));
+
+        assertThatThrownBy(() -> controller.approve(
+                jwt, topupId, "grant", request
+        )).isInstanceOf(ApiException.class)
+                .extracting("status")
+                .isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
     }
 }

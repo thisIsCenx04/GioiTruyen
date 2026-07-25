@@ -18,6 +18,12 @@ import com.storyplatform.monetization.application
 import com.storyplatform.monetization.application.WithdrawalReviewService;
 import com.storyplatform.monetization.application.ManualTopupOperations;
 import com.storyplatform.monetization.application.ManualTopupService;
+import com.storyplatform.monetization.application
+        .MonetizationKillSwitchGuard;
+import com.storyplatform.monetization.application
+        .MonetizationKillSwitchOperations;
+import com.storyplatform.monetization.application
+        .MonetizationKillSwitchService;
 import com.storyplatform.monetization.application.port.LedgerRepository;
 import com.storyplatform.monetization.application.port.DonationRepository;
 import com.storyplatform.monetization.application.port.RewardRepository;
@@ -32,6 +38,10 @@ import com.storyplatform.monetization.application.port
         .WithdrawalReviewAuthorizer;
 import com.storyplatform.monetization.application.port.ManualTopupAuthorizer;
 import com.storyplatform.monetization.application.port.ManualTopupRepository;
+import com.storyplatform.monetization.application.port
+        .MonetizationKillSwitchAuthorizer;
+import com.storyplatform.monetization.application.port
+        .MonetizationKillSwitchRepository;
 import com.storyplatform.monetization.application.WalletBalanceProjector;
 import com.storyplatform.monetization.application.WalletOperations;
 import com.storyplatform.monetization.application.WalletService;
@@ -76,6 +86,8 @@ import com.storyplatform.analytics.application.contract
 import com.storyplatform.monetization.infrastructure.persistence
         .MongoManualTopupRepository;
 import com.storyplatform.monetization.infrastructure.persistence
+        .MongoMonetizationKillSwitchRepository;
+import com.storyplatform.monetization.infrastructure.persistence
         .MongoWalletRepository;
 import com.storyplatform.monetization.infrastructure.persistence
         .MongoTopupDiscountRepository;
@@ -105,6 +117,46 @@ import java.util.UUID;
 
 @Configuration(proxyBeanMethods = false)
 public class MonetizationConfiguration {
+
+    @Bean
+    MonetizationKillSwitchRepository monetizationKillSwitchRepository(
+            MongoTemplate mongo
+    ) {
+        return new MongoMonetizationKillSwitchRepository(mongo);
+    }
+
+    @Bean
+    MonetizationKillSwitchAuthorizer monetizationKillSwitchAuthorizer(
+            ReauthenticationVerifier reauthentication
+    ) {
+        return new ScopedMonetizationKillSwitchAuthorizer(
+                reauthentication
+        );
+    }
+
+    @Bean
+    MonetizationKillSwitchOperations monetizationKillSwitchOperations(
+            MonetizationKillSwitchRepository repository,
+            MonetizationKillSwitchAuthorizer authorizer,
+            OutboxAppender outbox
+    ) {
+        return new TransactionalMonetizationKillSwitchOperations(
+                new MonetizationKillSwitchService(
+                        repository,
+                        authorizer,
+                        outbox,
+                        Clock.systemUTC(),
+                        UUID::randomUUID
+                )
+        );
+    }
+
+    @Bean
+    MonetizationKillSwitchGuard monetizationKillSwitchGuard(
+            MonetizationKillSwitchRepository repository
+    ) {
+        return new MonetizationKillSwitchGuard(repository);
+    }
 
     @Bean
     RewardRepository rewardRepository(MongoTemplate mongo) {
@@ -252,6 +304,7 @@ public class MonetizationConfiguration {
             WalletOperations wallets,
             LedgerOperations ledger,
             OutboxAppender outbox,
+            MonetizationKillSwitchGuard killSwitch,
             @Value("${app.monetization.withdrawals.fee-rule-version}")
             String feeRuleVersion,
             @Value("${app.monetization.withdrawals.minimum-gross-xu}")
@@ -263,7 +316,8 @@ public class MonetizationConfiguration {
             @Value("${app.monetization.withdrawals.maximum-gross-xu}")
             long maximumGrossXu
     ) {
-        return new TransactionalWithdrawalOperations(
+        return new GuardedWithdrawalOperations(
+                new TransactionalWithdrawalOperations(
                 new WithdrawalService(
                         repository,
                         destinations,
@@ -281,7 +335,8 @@ public class MonetizationConfiguration {
                         ),
                         Clock.systemUTC(),
                         UUID::randomUUID
-                )
+                )),
+                killSwitch
         );
     }
 
@@ -375,9 +430,11 @@ public class MonetizationConfiguration {
             ManualTopupAuthorizer authorizer,
             WalletOperations wallets,
             LedgerOperations ledger,
-            OutboxAppender outbox
+            OutboxAppender outbox,
+            MonetizationKillSwitchGuard killSwitch
     ) {
-        return new TransactionalManualTopupOperations(
+        return new GuardedManualTopupOperations(
+                new TransactionalManualTopupOperations(
                 new ManualTopupService(
                         repository,
                         authorizer,
@@ -386,7 +443,8 @@ public class MonetizationConfiguration {
                         outbox,
                         Clock.systemUTC(),
                         UUID::randomUUID
-                )
+                )),
+                killSwitch
         );
     }
 
@@ -401,15 +459,35 @@ public class MonetizationConfiguration {
     TopupSettlementOperations topupSettlementOperations(
             TopupSettlementRepository repository,
             WalletOperations wallets,
-            LedgerOperations ledger
+            LedgerOperations ledger,
+            MonetizationKillSwitchGuard killSwitch
     ) {
-        return new TransactionalTopupSettlementOperations(
+        return new GuardedTopupSettlementOperations(
+                new TransactionalTopupSettlementOperations(
                 new TopupSettlementService(
                         repository,
                         wallets,
                         ledger,
                         Clock.systemUTC()
-                )
+                )),
+                killSwitch
+        );
+    }
+
+    @Bean
+    TopupSettlementRecoveryWorker topupSettlementRecoveryWorker(
+            TopupSettlementRepository repository,
+            TopupSettlementOperations settlements,
+            @Value("${app.monetization.topup.provider}")
+            String provider,
+            @Value("${app.monetization.topup.recovery-batch-size:25}")
+            int batchSize
+    ) {
+        return new TopupSettlementRecoveryWorker(
+                repository,
+                settlements,
+                provider,
+                batchSize
         );
     }
 

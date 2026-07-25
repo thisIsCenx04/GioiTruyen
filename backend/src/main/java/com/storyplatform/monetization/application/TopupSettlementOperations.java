@@ -7,6 +7,7 @@ public interface TopupSettlementOperations {
     enum Result {
         CREDITED,
         PENDING_REVIEW,
+        SUSPENDED,
         REPLAYED
     }
 }

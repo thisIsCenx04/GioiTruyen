@@ -1,6 +1,8 @@
 package com.storyplatform.monetization.infrastructure;
 
 import com.storyplatform.monetization.application.LedgerOperations;
+import com.storyplatform.monetization.application
+        .MonetizationKillSwitchGuard;
 import com.storyplatform.monetization.application.WalletOperations;
 import com.storyplatform.monetization.application
         .WithdrawalPayoutClaimOperations;
@@ -69,19 +71,22 @@ public class WithdrawalPayoutConfiguration {
     WithdrawalPayoutClaimOperations withdrawalPayoutClaims(
             WithdrawalRepository withdrawals,
             WithdrawalPayoutRepository payouts,
+            MonetizationKillSwitchGuard killSwitch,
             @Value("${app.monetization.withdrawals.payout.provider}")
             String provider,
             @Value("${app.monetization.withdrawals.payout.lease-duration}")
             Duration leaseDuration
     ) {
-        return new TransactionalWithdrawalPayoutClaimOperations(
+        return new GuardedWithdrawalPayoutClaimOperations(
+                new TransactionalWithdrawalPayoutClaimOperations(
                 new WithdrawalPayoutClaimService(
                         withdrawals,
                         payouts,
                         provider,
                         leaseDuration,
                         Clock.systemUTC()
-                )
+                )),
+                killSwitch
         );
     }
 

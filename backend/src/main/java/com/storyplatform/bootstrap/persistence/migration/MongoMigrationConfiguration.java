@@ -308,6 +308,11 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    MonetizationKillSwitchIndexes monetizationKillSwitchIndexes() {
+        return new MonetizationKillSwitchIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }

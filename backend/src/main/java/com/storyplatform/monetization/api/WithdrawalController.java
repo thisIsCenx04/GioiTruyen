@@ -2,6 +2,8 @@ package com.storyplatform.monetization.api;
 
 import com.storyplatform.monetization.application.WithdrawalException;
 import com.storyplatform.monetization.application.WithdrawalOperations;
+import com.storyplatform.monetization.application
+        .MonetizationSuspendedException;
 import com.storyplatform.shared.api.ApiException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -56,6 +58,13 @@ public final class WithdrawalController {
                     .body(result);
         } catch (WithdrawalException exception) {
             throw api(exception);
+        } catch (MonetizationSuspendedException exception) {
+            throw new ApiException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "MONETIZATION_SUSPENDED",
+                    "Withdrawal requests temporarily unavailable",
+                    exception.getMessage()
+            );
         }
     }
 

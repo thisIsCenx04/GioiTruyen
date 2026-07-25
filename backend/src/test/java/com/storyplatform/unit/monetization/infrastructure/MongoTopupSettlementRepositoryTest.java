@@ -70,6 +70,7 @@ class MongoTopupSettlementRepositoryTest {
 
         assertThat(repository.findEvent("bank", "event-1")).isPresent();
         assertThat(repository.findTopup("GT12345678901234")).isPresent();
+        assertThat(repository.findOldestReceived("bank")).isPresent();
     }
 
     @Test

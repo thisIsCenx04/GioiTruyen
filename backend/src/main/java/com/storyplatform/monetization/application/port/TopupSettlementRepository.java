@@ -12,6 +12,8 @@ public interface TopupSettlementRepository {
 
     Optional<TopupRequest> findTopup(String transferReference);
 
+    Optional<PaymentEvent> findOldestReceived(String provider);
+
     boolean complete(
             String eventId,
             String topupId,

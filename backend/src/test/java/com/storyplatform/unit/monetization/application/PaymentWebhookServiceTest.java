@@ -95,6 +95,22 @@ class PaymentWebhookServiceTest {
         verify(settlements).settle("local-bank", "event-1");
     }
 
+    @Test
+    void acknowledgesAndRetainsEvidenceWhileCreditIsSuspended() {
+        when(verifier.verify(
+                "local-bank", BODY, "timestamp", "signature"
+        )).thenReturn(true);
+        when(decoder.decode(BODY)).thenReturn(decoded());
+        when(repository.insertIfAbsent(any())).thenReturn(true);
+        when(settlements.settle("local-bank", "event-1"))
+                .thenReturn(TopupSettlementOperations.Result.SUSPENDED);
+
+        assertThat(service.accept(
+                "local-bank", BODY, "timestamp", "signature"
+        )).isEqualTo(PaymentWebhookOperations.Result.ACCEPTED);
+        verify(repository).insertIfAbsent(any());
+    }
+
     private static PaymentEventDecoder.DecodedPayment decoded() {
         return new PaymentEventDecoder.DecodedPayment(
                 "event-1",

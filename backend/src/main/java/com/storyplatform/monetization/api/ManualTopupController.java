@@ -2,6 +2,8 @@ package com.storyplatform.monetization.api;
 
 import com.storyplatform.monetization.application.ManualTopupException;
 import com.storyplatform.monetization.application.ManualTopupOperations;
+import com.storyplatform.monetization.application
+        .MonetizationSuspendedException;
 import com.storyplatform.shared.api.ApiException;
 import com.storyplatform.shared.security.JwtPrivilegeEvaluator;
 import com.storyplatform.shared.security.PrivilegedCapability;
@@ -62,6 +64,8 @@ public final class ManualTopupController {
                     ));
         } catch (ManualTopupException exception) {
             throw apiException(exception);
+        } catch (MonetizationSuspendedException exception) {
+            throw suspended(exception);
         }
     }
 
@@ -78,6 +82,17 @@ public final class ManualTopupController {
                 status,
                 "MANUAL_TOPUP_" + exception.kind(),
                 "Manual top-up approval rejected",
+                exception.getMessage()
+        );
+    }
+
+    private static ApiException suspended(
+            MonetizationSuspendedException exception
+    ) {
+        return new ApiException(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "MONETIZATION_SUSPENDED",
+                "Manual top-up approval temporarily unavailable",
                 exception.getMessage()
         );
     }

@@ -85,6 +85,8 @@ app:
       webhook-enabled: ${TOPUP_WEBHOOK_ENABLED:false}
       webhook-secret: ${TOPUP_WEBHOOK_SECRET:not-configured-payment-webhook-secret}
       webhook-max-age: ${TOPUP_WEBHOOK_MAX_AGE:10m}
+      recovery-poll-interval: ${TOPUP_SETTLEMENT_RECOVERY_POLL_INTERVAL:30s}
+      recovery-batch-size: ${TOPUP_SETTLEMENT_RECOVERY_BATCH_SIZE:25}
     rewards:
       rule-version: ${REWARD_RULE_VERSION:reward-2026.1}
       xu-per-thousand: ${REWARD_XU_PER_THOUSAND_VALID_VIEWS:100}

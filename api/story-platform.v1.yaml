@@ -3131,6 +3131,8 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
     get:
       operationId: listTeamWithdrawals
       summary: List the authorized team's private withdrawal history
@@ -3608,6 +3610,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /admin/topups/{topupId}/reject:
     post:
       operationId: rejectTopupReview
@@ -3707,6 +3711,95 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TopupDiscountConfiguration"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /admin/configuration/monetization-kill-switches:
+    get:
+      operationId: listMonetizationKillSwitches
+      summary: List current transaction kill switch states
+      description: Requires Administrator SYSTEM_CONFIGURE capability.
+      tags: [Monetization]
+      responses:
+        "200":
+          description: All current kill switch states, including defaults
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                type: array
+                minItems: 3
+                maxItems: 3
+                items:
+                  $ref: "#/components/schemas/MonetizationKillSwitch"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/configuration/monetization-kill-switches/{operation}:
+    patch:
+      operationId: updateMonetizationKillSwitch
+      summary: Engage or release a transaction kill switch
+      description: |
+        Requires SYSTEM_CONFIGURE and a single-use
+        MONETIZATION_KILL_SWITCH reauthentication grant bound to the
+        operation. Provider evidence ingestion and reconciliation remain
+        active while credit, withdrawal request or payout is suspended.
+      tags: [Monetization]
+      parameters:
+        - name: operation
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - topup-credit
+              - withdrawal-request
+              - withdrawal-payout
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: '^"[0-9]+"$'
+        - name: Scoped-Reauthentication
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 20
+            maxLength: 512
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMonetizationKillSwitchRequest"
+      responses:
+        "200":
+          description: Versioned switch state changed or safely replayed
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+            ETag:
+              schema:
+                type: string
+                pattern: '^"[0-9]+"$'
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonetizationKillSwitch"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -5390,6 +5483,7 @@ components:
             - TOPUP_MANUAL_APPROVAL
             - WITHDRAWAL_APPROVAL
             - SYSTEM_CONFIG_CHANGE
+            - MONETIZATION_KILL_SWITCH
         targetType:
           type: string
           pattern: '^[a-z][a-z0-9_-]{0,63}$'
@@ -6503,6 +6597,41 @@ components:
           minimum: 0
           maximum: 100
           multipleOf: 0.01
+        reason:
+          type: string
+          minLength: 10
+          maxLength: 500
+    MonetizationKillSwitch:
+      type: object
+      additionalProperties: false
+      required: [operation, engaged, version, changedBy, changedAt]
+      properties:
+        operation:
+          type: string
+          enum:
+            - TOPUP_CREDIT
+            - WITHDRAWAL_REQUEST
+            - WITHDRAWAL_PAYOUT
+        engaged:
+          type: boolean
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+        changedBy:
+          type: string
+          minLength: 1
+          maxLength: 128
+        changedAt:
+          type: string
+          format: date-time
+    UpdateMonetizationKillSwitchRequest:
+      type: object
+      additionalProperties: false
+      required: [engaged, reason]
+      properties:
+        engaged:
+          type: boolean
         reason:
           type: string
           minLength: 10
