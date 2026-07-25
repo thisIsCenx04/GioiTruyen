@@ -76,6 +76,13 @@ export type AuthSession = Readonly<{
   current: boolean;
 }>;
 
+export type ReauthenticationGrant = Readonly<{
+  grantToken: string;
+  grantType: "Scoped-Reauthentication";
+  expiresIn: number;
+  expiresAt: string;
+}>;
+
 export type BrowserAuthClientOptions = Readonly<{
   baseUrl?: string;
   fetchImplementation?: typeof fetch;
@@ -185,6 +192,22 @@ export function createBrowserAuthClient({
         { method: "DELETE" },
         true,
       );
+    },
+    reauthenticate(input: {
+      password: string;
+      mfaCode?: string;
+      scope:
+        | "TOPUP_MANUAL_APPROVAL"
+        | "WITHDRAWAL_APPROVAL"
+        | "MONETIZATION_KILL_SWITCH"
+        | "SYSTEM_CONFIG_CHANGE";
+      targetType: string;
+      targetId: string;
+    }) {
+      return request<ReauthenticationGrant>("/reauth/grants", {
+        body: input,
+        method: "POST",
+      }, true);
     },
   });
 }
@@ -472,6 +495,41 @@ export type WithdrawalReceipt = Readonly<{
 export type WithdrawalPage = Readonly<{
   items: readonly WithdrawalReceipt[];
   nextCursor?: string;
+}>;
+
+export type WithdrawalDecision = Readonly<{
+  withdrawalId: string;
+  state: "APPROVED" | "REJECTED";
+  reviewerId: string;
+  reason: string;
+  riskLevel: "STANDARD" | "HIGH_VALUE";
+  riskRuleVersion: string;
+  releaseTransactionId?: string;
+  replayed: boolean;
+  reviewedAt: string;
+}>;
+
+export type ManualTopupApproval = Readonly<{
+  topupId: string;
+  paymentEventId: string;
+  ledgerTransactionId: string;
+  status: "CREDITED";
+  decidedAt: string;
+}>;
+
+export type TopupRejection = Readonly<{
+  topupId: string;
+  paymentEventId: string;
+  status: "REJECTED";
+  replayed: boolean;
+}>;
+
+export type MonetizationKillSwitch = Readonly<{
+  operation: "TOPUP_CREDIT" | "WITHDRAWAL_REQUEST" | "WITHDRAWAL_PAYOUT";
+  engaged: boolean;
+  version: number;
+  changedBy: string;
+  changedAt: string;
 }>;
 
 export type BrowserTeamClientOptions = Readonly<{
@@ -1590,6 +1648,102 @@ export function createBrowserWalletClient({
       if (cursor) query.set("cursor", cursor);
       return request<WithdrawalPage>(
         `/teams/${encodeURIComponent(teamId)}/withdrawals?${query}`,
+      );
+    },
+  });
+}
+
+export function createBrowserAdminMonetizationClient({
+  baseUrl = "/api/monetization",
+  fetchImplementation = fetch,
+}: BrowserTeamClientOptions = {}) {
+  const client = createStoryApiClient({ baseUrl, fetchImplementation });
+
+  async function request<Response>(
+    path: `/${string}`,
+    options: RequestOptions = {},
+  ): Promise<Response> {
+    try {
+      return await client.request<Response>(path, {
+        credentials: "same-origin",
+        ...options,
+      });
+    } catch (error) {
+      if (
+        !(error instanceof StoryApiError) ||
+        error.problem.status !== 401
+      ) {
+        throw error;
+      }
+      await createStoryApiClient({
+        baseUrl: "/api/auth",
+        fetchImplementation,
+      }).request("/refresh", {
+        credentials: "same-origin",
+        method: "POST",
+      });
+      return client.request<Response>(path, {
+        credentials: "same-origin",
+        ...options,
+      });
+    }
+  }
+
+  return Object.freeze({
+    approveTopup(
+      topupId: string,
+      input: { reason: string; evidenceReference: string },
+      grantToken: string,
+    ) {
+      return request<ManualTopupApproval>(
+        `/admin/topups/${encodeURIComponent(topupId)}/approve`,
+        {
+          body: input,
+          headers: { "Scoped-Reauthentication": grantToken },
+          method: "POST",
+        },
+      );
+    },
+    rejectTopup(
+      topupId: string,
+      input: {
+        reasonCode:
+          | "AMOUNT_MISMATCH"
+          | "REFERENCE_UNVERIFIABLE"
+          | "DUPLICATE_PAYMENT"
+          | "FRAUD_SUSPECTED"
+          | "OTHER";
+        reason: string;
+        evidenceReference: string;
+      },
+    ) {
+      return request<TopupRejection>(
+        `/admin/topups/${encodeURIComponent(topupId)}/reject`,
+        { body: input, method: "POST" },
+      );
+    },
+    reviewWithdrawal(
+      withdrawalId: string,
+      decision: "approve" | "reject",
+      reason: string,
+      grantToken: string,
+      idempotencyKey: string,
+    ) {
+      return request<WithdrawalDecision>(
+        `/admin/withdrawals/${encodeURIComponent(withdrawalId)}/${decision}`,
+        {
+          body: { reason },
+          headers: {
+            "Idempotency-Key": idempotencyKey,
+            "Scoped-Reauthentication": grantToken,
+          },
+          method: "POST",
+        },
+      );
+    },
+    killSwitches() {
+      return request<MonetizationKillSwitch[]>(
+        "/admin/configuration/monetization-kill-switches",
       );
     },
   });

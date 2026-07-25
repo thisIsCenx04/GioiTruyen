@@ -23,7 +23,7 @@ function cookie(name: string, value: string, maxAge: number) {
 async function proxy(request: NextRequest, context: RouteContext) {
   const { segments } = await context.params;
   const path = segments.join("/");
-  if (!["login", "logout", "refresh"].includes(path)) {
+  if (!["login", "logout", "refresh", "reauth/grants"].includes(path)) {
     return NextResponse.json(
       {
         code: "ROUTE_NOT_ALLOWED",
@@ -50,9 +50,20 @@ async function proxy(request: NextRequest, context: RouteContext) {
       );
     }
     body = JSON.stringify({ refreshToken });
-  } else if (path === "logout") {
+  } else if (path === "logout" || path === "reauth/grants") {
     const accessToken = request.cookies.get("access_token")?.value;
     if (!accessToken) {
+      if (path === "reauth/grants") {
+        return NextResponse.json(
+          {
+            code: "AUTHENTICATION_REQUIRED",
+            status: 401,
+            title: "Authentication required",
+            type: "about:blank",
+          },
+          { status: 401 },
+        );
+      }
       return new NextResponse(null, { status: 204 });
     }
     headers.set("Authorization", `Bearer ${accessToken}`);

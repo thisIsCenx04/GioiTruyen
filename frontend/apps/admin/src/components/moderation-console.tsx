@@ -257,6 +257,9 @@ export function ModerationConsole() {
             Tải thêm hồ sơ
           </button>
         )}
+        <a className="financeLink" href="/finance">
+          Mở bàn kiểm soát tài chính
+        </a>
         <div className="operator">
           <span>GT</span>
           <div>
