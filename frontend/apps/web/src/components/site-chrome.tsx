@@ -1,4 +1,5 @@
 import { BrandMark } from "@gioitruyen/ui";
+import { UserRound } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -14,8 +15,13 @@ export function SiteHeader() {
         <Link href="/teams">Nhóm xuất bản</Link>
         <Link href="/wallet">Ví XU</Link>
       </nav>
-      <Link className="quietAction" href="/auth/login">
-        Đăng nhập
+      <Link
+        aria-label="Đăng nhập"
+        className="quietAction"
+        href="/auth/login"
+      >
+        <UserRound aria-hidden="true" />
+        <span>Đăng nhập</span>
       </Link>
     </header>
   );

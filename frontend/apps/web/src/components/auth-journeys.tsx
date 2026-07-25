@@ -183,7 +183,7 @@ export function RegisterJourney() {
         values.get("acceptedTerms") === "on",
       );
       setMessage(
-        "Nếu địa chỉ đủ điều kiện, chúng tôi đã gửi hướng dẫn xác minh email.",
+        "Tài khoản đã được tạo. Bạn có thể đăng nhập ngay.",
       );
       event.currentTarget.reset();
     } catch (requestError) {

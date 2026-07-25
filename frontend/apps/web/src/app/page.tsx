@@ -1,4 +1,14 @@
 import { StatusPill } from "@gioitruyen/ui";
+import {
+  BookOpen,
+  Compass,
+  Flame,
+  Heart,
+  Landmark,
+  Rocket,
+  Search,
+  Sparkles,
+} from "lucide-react";
 import Link from "next/link";
 
 import { CatalogSearch } from "@/components/catalog-search";
@@ -9,8 +19,24 @@ import { loadHome } from "@/lib/catalog";
 export const revalidate = 60;
 
 export default async function HomePage() {
-  const home = await loadHome();
+  const home = await loadHome().catch(() => null);
+  if (!home) {
+    return (
+      <PublicShell>
+        <section className="notFound" role="status">
+          <p>Thư viện đang tạm ngắt kết nối</p>
+          <h1>Chưa thể tải danh mục truyện.</h1>
+          <Link href="/">Thử tải lại</Link>
+        </section>
+      </PublicShell>
+    );
+  }
   const lead = home.sections[0]?.stories[0];
+  const storyCount = new Set(
+    home.sections.flatMap((section) =>
+      section.stories.map((story) => story.id),
+    ),
+  ).size;
 
   return (
     <PublicShell>
@@ -21,36 +47,73 @@ export default async function HomePage() {
             <span>Cập nhật theo từng chương</span>
           </div>
           <h1 id="hero-title">
-            Một thế giới hay
-            <span>không khép lại ở trang cuối.</span>
+            Đọc tiếp một thế giới
+            <span>đang mở.</span>
           </h1>
           <p>
-            Theo dõi truyện dài kỳ, tìm đúng chương vừa ra và trở lại
-            chính xác nơi bạn đã dừng.
+            Khám phá truyện dài kỳ, lưu chính xác đoạn đang đọc và theo
+            dõi chương mới từ những tác giả bạn yêu thích.
           </p>
           <CatalogSearch />
+          <dl className="heroStats" aria-label="Thư viện hôm nay">
+            <div>
+              <dt>Đang lên kệ</dt>
+              <dd>{storyCount || "12"} truyện</dd>
+            </div>
+            <div>
+              <dt>Nhịp cập nhật</dt>
+              <dd>Mỗi ngày</dd>
+            </div>
+            <div>
+              <dt>Không gian</dt>
+              <dd>Sáng tác Việt</dd>
+            </div>
+          </dl>
         </div>
-
-        <aside className="featuredVolume" aria-label="Truyện nổi bật">
-          <span className="volumeIndex">Tập tuyển chọn · 07</span>
-          <div className="volumeGlyph" aria-hidden="true">
-            {lead?.title.slice(0, 1) ?? "G"}
-          </div>
-          <p>Đang được đọc</p>
-          <h2>{lead?.title ?? "Người Chép Sử Cuối Cùng"}</h2>
-          {lead && (
-            <Link href={`/stories/${lead.slug}`}>
-              Bắt đầu đọc <span aria-hidden="true">↗</span>
-            </Link>
-          )}
-        </aside>
+        {lead && (
+          <Link
+            className="heroFeatured"
+            href={`/stories/${lead.slug}`}
+          >
+            <span>Truyện nổi bật hôm nay</span>
+            <strong>{lead.title}</strong>
+            <small>
+              Mở truyện <span aria-hidden="true">→</span>
+            </small>
+          </Link>
+        )}
       </section>
 
-      <div className="catalogIndex" aria-hidden="true">
-        <span>Đọc mới</span>
-        <span>Trọn bộ</span>
-        <span>Sáng tác Việt</span>
-      </div>
+      <nav className="categoryDock" aria-label="Thể loại nổi bật">
+        <Link href="/search?q=kỳ+ảo">
+          <Sparkles aria-hidden="true" />
+          <span>Kỳ ảo Việt</span>
+        </Link>
+        <Link href="/search?q=trinh+thám">
+          <Search aria-hidden="true" />
+          <span>Trinh thám</span>
+        </Link>
+        <Link href="/search?q=lịch+sử">
+          <Landmark aria-hidden="true" />
+          <span>Lịch sử</span>
+        </Link>
+        <Link href="/search?q=viễn+tưởng">
+          <Rocket aria-hidden="true" />
+          <span>Viễn tưởng</span>
+        </Link>
+        <Link href="/search?q=lãng+mạn">
+          <Heart aria-hidden="true" />
+          <span>Lãng mạn</span>
+        </Link>
+        <Link href="/search?q=phiêu+lưu">
+          <Compass aria-hidden="true" />
+          <span>Phiêu lưu</span>
+        </Link>
+        <Link href="/search?q=đời+thường">
+          <BookOpen aria-hidden="true" />
+          <span>Đời thường</span>
+        </Link>
+      </nav>
 
       <section className="catalogSections" id="catalog">
         {home.sections.map((section, sectionIndex) => (
@@ -62,6 +125,9 @@ export default async function HomePage() {
             <header>
               <div>
                 <p>
+                  {sectionIndex === 0 && (
+                    <Flame aria-hidden="true" />
+                  )}
                   Kệ {String(sectionIndex + 1).padStart(2, "0")} ·{" "}
                   {section.type === "LATEST"
                     ? "Theo nhịp xuất bản"

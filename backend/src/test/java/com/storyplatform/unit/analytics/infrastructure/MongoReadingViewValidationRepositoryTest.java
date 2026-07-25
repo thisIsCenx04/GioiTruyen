@@ -53,7 +53,7 @@ class MongoReadingViewValidationRepositoryTest {
                 2,
                 1,
                 List.of(embedded("old", 1), embedded("new", 2))
-        ), null);
+        ), (MongoReadingViewValidationRepository.BucketDocument) null);
         var repository = repository();
 
         var claimed = repository.claim(

@@ -1,24 +1,19 @@
 package com.storyplatform.shared.events.persistence;
 
 import com.storyplatform.shared.events.IntegrationEvent;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
-@Document(collection = InboxReceipt.COLLECTION)
 public record InboxReceipt(
-        @Id String id,
+        String id,
         String consumer,
         String eventId,
         String eventType,
         int eventVersion,
         Instant processedAt
 ) {
-
-    public static final String COLLECTION = "inbox_messages";
 
     private static final Pattern CONSUMER = Pattern.compile(
             "[a-z][a-z0-9-]{0,63}"

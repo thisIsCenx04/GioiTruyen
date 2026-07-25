@@ -53,43 +53,22 @@ class MfaUseCaseTest {
     }
 
     @Test
-    void privilegedUserCannotBypassEnrollmentOrCode() {
+    void privilegedUserDoesNotRequireMfa() {
         UserAccount admin = account(GlobalRole.ADMIN);
-        when(factors.findByUserId("user-1"))
-                .thenReturn(Optional.empty())
-                .thenReturn(Optional.of(factor(true)));
 
         assertThat(useCase.authenticate(admin, null)).isEqualTo(
-                MfaUseCase.AuthenticationResult.ENROLLMENT_REQUIRED
+                MfaUseCase.AuthenticationResult.VERIFIED
         );
-        assertThat(useCase.authenticate(admin, null)).isEqualTo(
-                MfaUseCase.AuthenticationResult.CODE_REQUIRED
-        );
+        verifyNoInteractions(factors, cryptography);
     }
 
     @Test
-    void validTotpOrSingleUseRecoveryAuthenticates() {
+    void configuredFactorIsNotRequiredForModeratorLogin() {
         UserAccount moderator = account(GlobalRole.MODERATOR);
-        when(factors.findByUserId("user-1"))
-                .thenReturn(Optional.of(factor(true)));
-        when(cryptography.verifyTotp("protected", "123456", NOW))
-                .thenReturn(true);
-        when(cryptography.verifyTotp("protected", "recovery", NOW))
-                .thenReturn(false);
-        when(cryptography.hashRecoveryCode("recovery"))
-                .thenReturn("recovery-hash");
-        when(factors.consumeRecoveryCode(
-                "user-1",
-                "recovery-hash",
-                NOW
-        )).thenReturn(true).thenReturn(false);
 
-        assertThat(useCase.authenticate(moderator, "123456"))
+        assertThat(useCase.authenticate(moderator, null))
                 .isEqualTo(MfaUseCase.AuthenticationResult.VERIFIED);
-        assertThat(useCase.authenticate(moderator, "recovery"))
-                .isEqualTo(MfaUseCase.AuthenticationResult.VERIFIED);
-        assertThat(useCase.authenticate(moderator, "recovery"))
-                .isEqualTo(MfaUseCase.AuthenticationResult.INVALID);
+        verifyNoInteractions(factors, cryptography);
     }
 
     @Test

@@ -68,7 +68,8 @@ public final class ApiExceptionHandler extends ResponseEntityExceptionHandler {
                 "Unhandled API exception; correlationId="
                         + CorrelationId.from(request)
                         + "; exceptionType="
-                        + exception.getClass().getName()
+                        + exception.getClass().getName(),
+                exception
         );
         ProblemDetail problem = problems.create(
                 HttpStatus.INTERNAL_SERVER_ERROR,

@@ -1,65 +1,86 @@
 package com.storyplatform.shared.events.persistence;
 
-import org.springframework.data.domain.Sort;
-import org.springframework.data.mongodb.core.FindAndModifyOptions;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.mongodb.core.query.Update;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Map;
 import java.util.Optional;
 
 public class OutboxMessageStore {
 
-    private final MongoTemplate mongoTemplate;
+    private static final TypeReference<Map<String, String>> TRACE_CONTEXT =
+            new TypeReference<>() {
+            };
 
-    public OutboxMessageStore(MongoTemplate mongoTemplate) {
-        this.mongoTemplate = mongoTemplate;
+    private final JdbcClient jdbc;
+    private final ObjectMapper json;
+
+    public OutboxMessageStore(JdbcClient jdbc, ObjectMapper json) {
+        this.jdbc = jdbc;
+        this.json = json;
     }
 
+    @Transactional
     public Optional<OutboxMessage> claim(
             String owner,
             Instant now,
             Duration leaseDuration
     ) {
-        Query claimable = new Query(new Criteria().andOperator(
-                Criteria.where("status").in(
-                        OutboxStatus.PENDING,
-                        OutboxStatus.PROCESSING
-                ),
-                Criteria.where("nextAttemptAt").lte(now),
-                new Criteria().orOperator(
-                        Criteria.where("leaseUntil").is(null),
-                        Criteria.where("leaseUntil").lte(now)
-                )
-        )).with(Sort.by(
-                Sort.Order.asc("nextAttemptAt"),
-                Sort.Order.asc("_id")
-        ));
-        Update claim = new Update()
-                .set("status", OutboxStatus.PROCESSING)
-                .set("leaseOwner", owner)
-                .set("leaseUntil", now.plus(leaseDuration))
-                .inc("attempts", 1);
-
-        return Optional.ofNullable(mongoTemplate.findAndModify(
-                claimable,
-                claim,
-                FindAndModifyOptions.options().returnNew(true),
-                OutboxMessage.class
-        ));
+        Optional<String> messageId = jdbc.sql("""
+                        SELECT id
+                        FROM outbox_messages
+                        WHERE status IN ('PENDING', 'PROCESSING')
+                          AND next_attempt_at <= :now
+                          AND (
+                              lease_until IS NULL
+                              OR lease_until <= :now
+                          )
+                        ORDER BY next_attempt_at, id
+                        LIMIT 1
+                        FOR UPDATE SKIP LOCKED
+                        """)
+                .param("now", now)
+                .query(String.class)
+                .optional();
+        if (messageId.isEmpty()) {
+            return Optional.empty();
+        }
+        String id = messageId.orElseThrow();
+        jdbc.sql("""
+                        UPDATE outbox_messages
+                        SET status = 'PROCESSING',
+                            lease_owner = :owner,
+                            lease_until = :leaseUntil,
+                            attempts = attempts + 1
+                        WHERE id = :id
+                        """)
+                .param("owner", owner)
+                .param("leaseUntil", now.plus(leaseDuration))
+                .param("id", id)
+                .update();
+        return findById(id);
     }
 
     public void complete(String id, String owner, Instant processedAt) {
-        Update update = new Update()
-                .set("status", OutboxStatus.PROCESSED)
-                .set("processedAt", processedAt)
-                .unset("leaseOwner")
-                .unset("leaseUntil")
-                .unset("lastError");
-        updateOwned(id, owner, update);
+        updateOwned(
+                id,
+                owner,
+                """
+                status = 'PROCESSED',
+                processed_at = :changedAt,
+                lease_owner = NULL,
+                lease_until = NULL,
+                last_error = NULL
+                """,
+                processedAt,
+                null
+        );
     }
 
     public void scheduleRetry(
@@ -68,13 +89,19 @@ public class OutboxMessageStore {
             Instant nextAttemptAt,
             String errorCode
     ) {
-        Update update = new Update()
-                .set("status", OutboxStatus.PENDING)
-                .set("nextAttemptAt", nextAttemptAt)
-                .set("lastError", errorCode)
-                .unset("leaseOwner")
-                .unset("leaseUntil");
-        updateOwned(id, owner, update);
+        updateOwned(
+                id,
+                owner,
+                """
+                status = 'PENDING',
+                next_attempt_at = :changedAt,
+                last_error = :errorCode,
+                lease_owner = NULL,
+                lease_until = NULL
+                """,
+                nextAttemptAt,
+                errorCode
+        );
     }
 
     public void deadLetter(
@@ -83,28 +110,106 @@ public class OutboxMessageStore {
             Instant failedAt,
             String errorCode
     ) {
-        Update update = new Update()
-                .set("status", OutboxStatus.DEAD_LETTER)
-                .set("processedAt", failedAt)
-                .set("lastError", errorCode)
-                .unset("leaseOwner")
-                .unset("leaseUntil");
-        updateOwned(id, owner, update);
+        updateOwned(
+                id,
+                owner,
+                """
+                status = 'DEAD_LETTER',
+                processed_at = :changedAt,
+                last_error = :errorCode,
+                lease_owner = NULL,
+                lease_until = NULL
+                """,
+                failedAt,
+                errorCode
+        );
     }
 
-    private void updateOwned(String id, String owner, Update update) {
-        Query owned = Query.query(Criteria.where("_id").is(id)
-                .and("status").is(OutboxStatus.PROCESSING)
-                .and("leaseOwner").is(owner));
-        long matched = mongoTemplate.updateFirst(
-                owned,
-                update,
-                OutboxMessage.class
-        ).getMatchedCount();
-        if (matched != 1) {
+    private Optional<OutboxMessage> findById(String id) {
+        return jdbc.sql("""
+                        SELECT *
+                        FROM outbox_messages
+                        WHERE id = :id
+                        """)
+                .param("id", id)
+                .query(this::mapMessage)
+                .optional();
+    }
+
+    private void updateOwned(
+            String id,
+            String owner,
+            String assignments,
+            Instant changedAt,
+            String errorCode
+    ) {
+        JdbcClient.StatementSpec statement = jdbc.sql("""
+                        UPDATE outbox_messages
+                        SET %s
+                        WHERE id = :id
+                          AND status = 'PROCESSING'
+                          AND lease_owner = :owner
+                        """.formatted(assignments))
+                .param("changedAt", changedAt)
+                .param("id", id)
+                .param("owner", owner);
+        if (errorCode != null) {
+            statement = statement.param("errorCode", errorCode);
+        }
+        if (statement.update() != 1) {
             throw new IllegalStateException(
                     "Outbox message lease was lost"
             );
         }
+    }
+
+    private OutboxMessage mapMessage(
+            ResultSet result,
+            int rowNumber
+    ) throws SQLException {
+        return new OutboxMessage(
+                result.getString("id"),
+                result.getString("event_type"),
+                result.getInt("event_version"),
+                instant(result, "occurred_at"),
+                result.getString("correlation_id"),
+                traceContext(result.getString("trace_context")),
+                result.getString("aggregate_type"),
+                result.getString("aggregate_id"),
+                result.getString("actor_id"),
+                result.getString("team_id"),
+                result.getString("content_type"),
+                result.getString("payload"),
+                OutboxStatus.valueOf(result.getString("status")),
+                result.getInt("attempts"),
+                instant(result, "next_attempt_at"),
+                result.getString("lease_owner"),
+                nullableInstant(result, "lease_until"),
+                result.getString("last_error"),
+                instant(result, "created_at"),
+                nullableInstant(result, "processed_at")
+        );
+    }
+
+    private Map<String, String> traceContext(String value)
+            throws SQLException {
+        try {
+            return json.readValue(value, TRACE_CONTEXT);
+        } catch (Exception exception) {
+            throw new SQLException("Invalid outbox trace context", exception);
+        }
+    }
+
+    private static Instant instant(ResultSet result, String column)
+            throws SQLException {
+        return result.getTimestamp(column).toInstant();
+    }
+
+    private static Instant nullableInstant(
+            ResultSet result,
+            String column
+    ) throws SQLException {
+        var value = result.getTimestamp(column);
+        return value == null ? null : value.toInstant();
     }
 }

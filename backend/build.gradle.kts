@@ -30,6 +30,7 @@ val mockitoAgent = configurations.create("mockitoAgent") {
 
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
+	implementation("org.springframework.boot:spring-boot-starter-jdbc")
 	implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
 	implementation("org.springframework.boot:spring-boot-starter-data-redis")
 	implementation("org.springframework.boot:spring-boot-starter-opentelemetry")
@@ -40,6 +41,9 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
 	implementation("org.bouncycastle:bcprov-jdk18on:1.84")
 	implementation("org.jsoup:jsoup:1.21.2")
+	implementation("org.springframework.boot:spring-boot-starter-flyway")
+	runtimeOnly("org.flywaydb:flyway-mysql")
+	runtimeOnly("com.mysql:mysql-connector-j")
 	runtimeOnly("io.micrometer:micrometer-registry-otlp")
 	testImplementation("com.tngtech.archunit:archunit:1.4.2")
 	testImplementation("org.springframework.boot:spring-boot-starter-actuator-test")
@@ -55,6 +59,7 @@ dependencies {
 	testImplementation("net.jqwik:jqwik:$jqwikVersion")
 	testImplementation("org.testcontainers:testcontainers-junit-jupiter:2.0.5")
 	testImplementation("org.testcontainers:testcontainers-mongodb:2.0.5")
+	testImplementation("org.testcontainers:testcontainers-mysql:2.0.5")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 	mockitoAgent("org.mockito:mockito-core") {
 		isTransitive = false

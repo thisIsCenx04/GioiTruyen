@@ -48,7 +48,7 @@ class RegistrationControllerTest {
         mockMvc.perform(validRequest())
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.status")
-                        .value("PENDING_VERIFICATION"))
+                        .value("REGISTRATION_ACCEPTED"))
                 .andExpect(content().string(not(
                         containsString("reader@example.com")
                 )))

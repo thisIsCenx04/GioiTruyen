@@ -7,7 +7,7 @@ import io.opentelemetry.api.OpenTelemetry;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.Clock;
@@ -39,13 +39,13 @@ public class OutboxConfiguration {
 
     @Bean
     OutboxAppender outboxAppender(
-            MongoTemplate mongoTemplate,
+            JdbcClient jdbc,
             ObjectMapper objectMapper,
             OutboxProperties properties,
             TraceContextPropagation traceContextPropagation
     ) {
         return new OutboxAppender(
-                mongoTemplate,
+                jdbc,
                 objectMapper,
                 properties,
                 Clock.systemUTC(),
@@ -54,18 +54,21 @@ public class OutboxConfiguration {
     }
 
     @Bean
-    OutboxMessageStore outboxMessageStore(MongoTemplate mongoTemplate) {
-        return new OutboxMessageStore(mongoTemplate);
+    OutboxMessageStore outboxMessageStore(
+            JdbcClient jdbc,
+            ObjectMapper objectMapper
+    ) {
+        return new OutboxMessageStore(jdbc, objectMapper);
     }
 
     @Bean
     InboxDispatcher inboxDispatcher(
-            MongoTemplate mongoTemplate,
+            JdbcClient jdbc,
             java.util.List<com.storyplatform.shared.events
                     .IntegrationEventHandler> handlers
     ) {
         return new InboxDispatcher(
-                mongoTemplate,
+                jdbc,
                 handlers,
                 Clock.systemUTC()
         );

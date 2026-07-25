@@ -94,7 +94,10 @@ class MongoCopyrightCaseRepositoryTest {
                 any(Update.class),
                 any(FindAndModifyOptions.class),
                 eq(MongoCopyrightCaseDocument.class)
-        )).thenReturn(document("APPEALED", null), null);
+        )).thenReturn(
+                document("APPEALED", null),
+                (MongoCopyrightCaseDocument) null
+        );
         var repository = new MongoCopyrightCaseRepository(mongo);
 
         assertThat(repository.appeal(

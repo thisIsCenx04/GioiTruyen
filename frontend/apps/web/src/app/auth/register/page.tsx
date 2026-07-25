@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Tạo tài khoản" };
 export default function RegisterPage() {
   return (
     <AuthShell chapter="Chương 00 · Lời mở" eyebrow="Bắt đầu bản đọc" lead="Một tài khoản gọn nhẹ để lưu tiến độ, theo dõi tác giả và nhận chương mới mà không đánh mất nhịp truyện." title="Mở một" titleAccent="thế giới riêng.">
-      <JourneyHeading lead="Bạn cần xác minh email trước khi đăng nhập. Chúng tôi không tiết lộ một email đã tồn tại hay chưa.">Tạo tài khoản.</JourneyHeading>
+      <JourneyHeading lead="Tạo tài khoản để lưu tiến độ đọc và sử dụng ngay sau khi đăng ký.">Tạo tài khoản.</JourneyHeading>
       <RegisterJourney />
     </AuthShell>
   );

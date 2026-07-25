@@ -16,9 +16,9 @@ import com.storyplatform.reading.application.port.ReadingSessionQuota;
 import com.storyplatform.reading.application.port.ReadingSessionTokenCodec;
 import com.storyplatform.reading.application.contract.ReadingActorReferences;
 import com.storyplatform.reading.infrastructure.persistence
-        .MongoReadingProgressRepository;
+        .JdbcReadingProgressRepository;
 import com.storyplatform.reading.infrastructure.persistence
-        .MongoReadingSessionRepository;
+        .JdbcReadingSessionRepository;
 import com.storyplatform.reading.infrastructure.security
         .HmacReadingHistoryCursorCodec;
 import com.storyplatform.reading.infrastructure.security
@@ -28,7 +28,7 @@ import com.storyplatform.reading.infrastructure.security
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import com.storyplatform.shared.cache.RedisKeyFactory;
 import com.storyplatform.shared.events.persistence.OutboxAppender;
@@ -42,10 +42,10 @@ import java.util.UUID;
 public class ReadingConfiguration {
 
     @Bean
-    MongoReadingProgressRepository readingProgressRepository(
-            MongoTemplate mongo
+    JdbcReadingProgressRepository readingProgressRepository(
+            JdbcClient jdbc
     ) {
-        return new MongoReadingProgressRepository(mongo);
+        return new JdbcReadingProgressRepository(jdbc);
     }
 
     @Bean
@@ -76,17 +76,17 @@ public class ReadingConfiguration {
 
     @Bean
     ReadingHistoryOperations readingHistoryOperations(
-            MongoReadingProgressRepository repository,
+            JdbcReadingProgressRepository repository,
             ReadingHistoryCursorCodec cursors
     ) {
         return new ReadingHistoryService(repository, cursors);
     }
 
     @Bean
-    MongoReadingSessionRepository readingSessionRepository(
-            MongoTemplate mongo
+    JdbcReadingSessionRepository readingSessionRepository(
+            JdbcClient jdbc
     ) {
-        return new MongoReadingSessionRepository(mongo);
+        return new JdbcReadingSessionRepository(jdbc);
     }
 
     @Bean
@@ -133,7 +133,7 @@ public class ReadingConfiguration {
 
     @Bean
     ReadingSessionOperations readingSessionOperations(
-            MongoReadingSessionRepository repository,
+            JdbcReadingSessionRepository repository,
             ReadingSessionTokenCodec tokens,
             ReadingSessionQuota quota,
             @Value("${app.reading.session.ttl}") Duration ttl,
@@ -153,7 +153,7 @@ public class ReadingConfiguration {
 
     @Bean
     ReadingHeartbeatOperations readingHeartbeatOperations(
-            MongoReadingSessionRepository repository,
+            JdbcReadingSessionRepository repository,
             ReadingSessionTokenCodec tokens,
             OutboxAppender outbox
     ) {
@@ -167,7 +167,7 @@ public class ReadingConfiguration {
 
     @Bean
     ReadingCompletionOperations readingCompletionOperations(
-            MongoReadingSessionRepository repository,
+            JdbcReadingSessionRepository repository,
             ReadingSessionTokenCodec tokens,
             OutboxAppender outbox
     ) {

@@ -8,8 +8,7 @@ import com.storyplatform.shared.events.persistence.OutboxStatus;
 import com.storyplatform.shared.observability.TraceContextPropagation;
 import io.opentelemetry.api.OpenTelemetry;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Clock;
@@ -20,10 +19,10 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 class OutboxAppenderTest {
 
@@ -31,9 +30,12 @@ class OutboxAppenderTest {
             "2026-01-01T00:00:00Z"
     );
 
-    private final MongoTemplate mongoTemplate = mock(MongoTemplate.class);
+    private final JdbcClient jdbc = mock(
+            JdbcClient.class,
+            RETURNS_DEEP_STUBS
+    );
     private final OutboxAppender appender = new OutboxAppender(
-            mongoTemplate,
+            jdbc,
             JsonMapper.builder().build(),
             new OutboxProperties(65_536),
             Clock.fixed(NOW, ZoneOffset.UTC),
@@ -43,17 +45,12 @@ class OutboxAppenderTest {
     @Test
     void appendsPendingMessageWithStableEnvelopeAndJsonPayload() {
         IntegrationEvent event = event(Map.of("revision", 3));
-        when(mongoTemplate.insert(
-                org.mockito.ArgumentMatchers.any(OutboxMessage.class)
-        )).thenAnswer(invocation -> invocation.getArgument(0));
 
         OutboxMessage result = appender.append(event);
 
-        ArgumentCaptor<OutboxMessage> captured = ArgumentCaptor.forClass(
-                OutboxMessage.class
-        );
-        verify(mongoTemplate).insert(captured.capture());
-        assertThat(result).isEqualTo(captured.getValue());
+        verify(jdbc).sql(org.mockito.ArgumentMatchers.contains(
+                "INSERT INTO outbox_messages"
+        ));
         assertThat(result.id()).isEqualTo(event.eventId().toString());
         assertThat(result.eventType()).isEqualTo(event.eventType());
         assertThat(result.eventVersion()).isEqualTo(1);
@@ -80,9 +77,7 @@ class OutboxAppenderTest {
                 "Integration event payload exceeds 65536 bytes"
         );
 
-        verify(mongoTemplate, never()).insert(
-                org.mockito.ArgumentMatchers.any(OutboxMessage.class)
-        );
+        verify(jdbc, never()).sql(org.mockito.ArgumentMatchers.anyString());
     }
 
     private static IntegrationEvent event(Object payload) {

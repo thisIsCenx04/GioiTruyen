@@ -2,9 +2,7 @@ package com.storyplatform.shared.events.persistence;
 
 import com.storyplatform.shared.events.IntegrationEventHandler;
 import com.storyplatform.shared.events.OutboxDelivery;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
@@ -17,16 +15,16 @@ import java.util.Set;
 
 public class InboxDispatcher {
 
-    private final MongoTemplate mongoTemplate;
+    private final JdbcClient jdbc;
     private final Map<HandlerKey, List<IntegrationEventHandler>> handlers;
     private final Clock clock;
 
     public InboxDispatcher(
-            MongoTemplate mongoTemplate,
+            JdbcClient jdbc,
             List<IntegrationEventHandler> handlers,
             Clock clock
     ) {
-        this.mongoTemplate = mongoTemplate;
+        this.jdbc = jdbc;
         this.handlers = indexHandlers(handlers);
         this.clock = clock;
     }
@@ -35,9 +33,9 @@ public class InboxDispatcher {
     public DispatchResult dispatch(OutboxMessage message) {
         List<IntegrationEventHandler> matchingHandlers = handlers.get(
                 new HandlerKey(
-                message.eventType(),
-                message.eventVersion()
-        ));
+                        message.eventType(),
+                        message.eventVersion()
+                ));
         if (matchingHandlers == null) {
             throw new IllegalStateException(
                     "No handler for event type/version "
@@ -54,18 +52,42 @@ public class InboxDispatcher {
                     message,
                     clock.instant()
             );
-            if (mongoTemplate.exists(
-                    Query.query(Criteria.where("_id").is(receipt.id())),
-                    InboxReceipt.class
-            )) {
+            if (exists(receipt.id())) {
                 continue;
             }
-
-            mongoTemplate.insert(receipt);
+            insert(receipt);
             handler.handle(OutboxDelivery.from(message));
             processed = true;
         }
         return processed ? DispatchResult.PROCESSED : DispatchResult.DUPLICATE;
+    }
+
+    private boolean exists(String id) {
+        return jdbc.sql("""
+                        SELECT COUNT(*) FROM inbox_receipts WHERE id = :id
+                        """)
+                .param("id", id)
+                .query(Long.class)
+                .single() == 1;
+    }
+
+    private void insert(InboxReceipt receipt) {
+        jdbc.sql("""
+                        INSERT INTO inbox_receipts (
+                            id, consumer, event_id, event_type,
+                            event_version, processed_at
+                        ) VALUES (
+                            :id, :consumer, :eventId, :eventType,
+                            :eventVersion, :processedAt
+                        )
+                        """)
+                .param("id", receipt.id())
+                .param("consumer", receipt.consumer())
+                .param("eventId", receipt.eventId())
+                .param("eventType", receipt.eventType())
+                .param("eventVersion", receipt.eventVersion())
+                .param("processedAt", receipt.processedAt())
+                .update();
     }
 
     private static Map<HandlerKey, List<IntegrationEventHandler>> indexHandlers(

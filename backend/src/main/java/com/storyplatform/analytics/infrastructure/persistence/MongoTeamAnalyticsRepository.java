@@ -1,7 +1,6 @@
 package com.storyplatform.analytics.infrastructure.persistence;
 
 import com.storyplatform.analytics.application.port.TeamAnalyticsRepository;
-import com.storyplatform.catalog.infrastructure.persistence.MongoStoryDocument;
 import com.mongodb.client.MongoCollection;
 import org.bson.Document;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -51,7 +50,7 @@ public final class MongoTeamAnalyticsRepository
                         .append("bucketStart", new Document("$gte", from)
                                 .append("$lt", to))),
                 new Document("$lookup", new Document()
-                        .append("from", MongoStoryDocument.COLLECTION)
+                        .append("from", "stories")
                         .append("localField", "storyId")
                         .append("foreignField", "_id")
                         .append("as", "story")),

@@ -85,6 +85,28 @@ public record UserAccount(
         );
     }
 
+    public static UserAccount active(
+            String id,
+            String emailNormalized,
+            String passwordHash,
+            String consentVersion,
+            Instant now
+    ) {
+        return new UserAccount(
+                id,
+                emailNormalized,
+                passwordHash,
+                Set.of(GlobalRole.USER),
+                UserState.ACTIVE,
+                1,
+                consentVersion,
+                now,
+                now,
+                now,
+                0
+        );
+    }
+
     public boolean isPendingVerification() {
         return state == UserState.PENDING_EMAIL_VERIFICATION;
     }

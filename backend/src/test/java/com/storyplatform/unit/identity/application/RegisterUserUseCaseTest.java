@@ -4,7 +4,6 @@ import com.storyplatform.identity.application.RegisterUserCommand;
 import com.storyplatform.identity.application.RegisterUserUseCase;
 import com.storyplatform.identity.application.RegistrationOutcome;
 import com.storyplatform.identity.application.port.PasswordHasher;
-import com.storyplatform.identity.application.port.EmailVerificationIssuer;
 import com.storyplatform.identity.application.port.UserAccountRepository;
 import com.storyplatform.identity.domain.EmailNormalizer;
 import com.storyplatform.identity.domain.PasswordPolicy;
@@ -29,11 +28,9 @@ class RegisterUserUseCaseTest {
     private static final String CONSENT_VERSION = "2026-07-24";
     private final CapturingRepository repository = new CapturingRepository();
     private final CountingHasher hasher = new CountingHasher();
-    private final CapturingIssuer issuer = new CapturingIssuer();
     private final RegisterUserUseCase useCase = new RegisterUserUseCase(
             repository,
             hasher,
-            issuer,
             () -> "user-1",
             new EmailNormalizer(),
             new PasswordPolicy(),
@@ -42,7 +39,7 @@ class RegisterUserUseCaseTest {
     );
 
     @Test
-    void createsNormalizedPendingAccountWithoutRawPassword() {
+    void createsNormalizedActiveAccountWithoutRawPassword() {
         RegistrationOutcome outcome = useCase.register(command(
                 " Reader@Example.COM ",
                 "correct horse battery staple",
@@ -59,12 +56,11 @@ class RegisterUserUseCaseTest {
             assertThat(account.passwordHash())
                     .doesNotContain("correct horse");
             assertThat(account.state())
-                    .isEqualTo(UserState.PENDING_EMAIL_VERIFICATION);
+                    .isEqualTo(UserState.ACTIVE);
             assertThat(account.acceptedConsentVersion())
                     .isEqualTo(CONSENT_VERSION);
             assertThat(account.createdAt()).isEqualTo(NOW);
         });
-        assertThat(issuer.userIds).containsExactly("user-1");
     }
 
     @Test
@@ -78,7 +74,6 @@ class RegisterUserUseCaseTest {
         assertThat(second).isEqualTo(first);
         assertThat(hasher.invocations).isEqualTo(2);
         assertThat(repository.accounts).hasSize(2);
-        assertThat(issuer.userIds).isEmpty();
     }
 
     @Test
@@ -140,7 +135,6 @@ class RegisterUserUseCaseTest {
         return new RegisterUserUseCase(
                 repository,
                 hasher,
-                issuer,
                 () -> "user-1",
                 new EmailNormalizer(),
                 new PasswordPolicy(),
@@ -178,18 +172,4 @@ class RegisterUserUseCaseTest {
         }
     }
 
-    private static final class CapturingIssuer
-            implements EmailVerificationIssuer {
-
-        private final List<String> userIds = new ArrayList<>();
-
-        @Override
-        public void issue(
-                String userId,
-                String correlationId,
-                Instant issuedAt
-        ) {
-            userIds.add(userId);
-        }
-    }
 }
