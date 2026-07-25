@@ -4,6 +4,7 @@ import com.mongodb.client.result.UpdateResult;
 import com.storyplatform.notifications.application.port
         .NotificationDeliveryRepository;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
@@ -44,7 +45,9 @@ final class MongoNotificationDeliveryRepositoryTest {
         }
 
         verify(mongo, org.mockito.Mockito.times(7)).insert(
-                any(java.util.Collection.class),
+                ArgumentMatchers
+                        .<MongoNotificationDeliveryRepository.DeliveryDocument>
+                        anyCollection(),
                 eq(MongoNotificationDeliveryRepository.COLLECTION)
         );
     }
