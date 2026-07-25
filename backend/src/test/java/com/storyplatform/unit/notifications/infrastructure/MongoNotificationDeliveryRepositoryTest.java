@@ -58,7 +58,8 @@ class MongoNotificationDeliveryRepositoryTest {
                 any(FindAndModifyOptions.class),
                 eq(MongoNotificationDeliveryRepository.DeliveryDocument.class),
                 eq(MongoNotificationDeliveryRepository.COLLECTION)
-        )).thenReturn(document(null), null);
+        )).thenReturn(document(null))
+                .thenReturn(null);
         var repository = new MongoNotificationDeliveryRepository(mongo);
 
         var claimed = repository.claim(
