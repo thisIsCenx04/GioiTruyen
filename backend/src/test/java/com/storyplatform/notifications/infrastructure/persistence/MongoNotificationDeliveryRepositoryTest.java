@@ -20,7 +20,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-class MongoNotificationDeliveryRepositoryTest {
+final class MongoNotificationDeliveryRepositoryTest {
 
     private static final Instant NOW = Instant.parse("2026-07-24T00:00:00Z");
 
