@@ -117,6 +117,13 @@ app:
         retry-delay: ${WITHDRAWAL_PAYOUT_RETRY_DELAY:30s}
         poll-interval: ${WITHDRAWAL_PAYOUT_POLL_INTERVAL:5s}
         batch-size: ${WITHDRAWAL_PAYOUT_BATCH_SIZE:25}
+    reconciliation:
+      enabled: ${MONETIZATION_RECONCILIATION_ENABLED:false}
+      provider: ${MONETIZATION_RECONCILIATION_PROVIDER:bank-provider}
+      endpoint: ${MONETIZATION_RECONCILIATION_ENDPOINT:https://provider.invalid/reconciliation}
+      token: ${MONETIZATION_RECONCILIATION_TOKEN:not-configured-secret}
+      timeout: ${MONETIZATION_RECONCILIATION_TIMEOUT:10s}
+      cron: ${MONETIZATION_RECONCILIATION_CRON:0 15 1 * * *}
   analytics:
     raw-events:
       retention: ${ANALYTICS_RAW_EVENT_RETENTION:90d}

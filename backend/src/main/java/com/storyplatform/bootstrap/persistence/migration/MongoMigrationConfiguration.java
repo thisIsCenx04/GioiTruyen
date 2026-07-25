@@ -302,6 +302,12 @@ public class MongoMigrationConfiguration {
     }
 
     @Bean
+    MonetizationReconciliationIndexes
+            monetizationReconciliationIndexes() {
+        return new MonetizationReconciliationIndexes();
+    }
+
+    @Bean
     MongoMigrationStore mongoMigrationStore(MongoTemplate mongoTemplate) {
         return new MongoMigrationStore(mongoTemplate);
     }
