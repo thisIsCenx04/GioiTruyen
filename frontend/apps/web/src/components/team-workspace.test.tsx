@@ -28,6 +28,17 @@ function commonHandlers() {
         teamId: "team-01",
       }),
     ),
+    http.get("/api/workspace/teams/team-01/withdrawals", () =>
+      HttpResponse.json(
+        {
+          code: "WITHDRAWAL_FORBIDDEN",
+          status: 403,
+          title: "Withdrawal request rejected",
+          type: "about:blank",
+        },
+        { status: 403 },
+      ),
+    ),
   ];
 }
 

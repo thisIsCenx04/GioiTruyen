@@ -448,6 +448,32 @@ export type DonationReceipt = Readonly<{
   createdAt: string;
 }>;
 
+export type WithdrawalState =
+  | "PENDING_REVIEW"
+  | "APPROVED"
+  | "PROCESSING"
+  | "PAID"
+  | "REJECTED"
+  | "FAILED";
+
+export type WithdrawalReceipt = Readonly<{
+  id: string;
+  teamId: string;
+  grossAmountXu: number;
+  feeXu: number;
+  netAmountXu: number;
+  feeRuleVersion: string;
+  destinationMasked: string;
+  state: WithdrawalState;
+  replayed: boolean;
+  createdAt: string;
+}>;
+
+export type WithdrawalPage = Readonly<{
+  items: readonly WithdrawalReceipt[];
+  nextCursor?: string;
+}>;
+
 export type BrowserTeamClientOptions = Readonly<{
   baseUrl?: string;
   fetchImplementation?: typeof fetch;
@@ -1544,6 +1570,27 @@ export function createBrowserWalletClient({
     },
     topupHistory() {
       return request<TopupRequest[]>("/wallets/me/topups");
+    },
+    createWithdrawal(
+      teamId: string,
+      input: { grossAmountXu: number; destinationId: string },
+      idempotencyKey: string,
+    ) {
+      return request<WithdrawalReceipt>(
+        `/teams/${encodeURIComponent(teamId)}/withdrawals`,
+        {
+          body: input,
+          headers: { "Idempotency-Key": idempotencyKey },
+          method: "POST",
+        },
+      );
+    },
+    withdrawals(teamId: string, cursor?: string, limit = 20) {
+      const query = new URLSearchParams({ limit: String(limit) });
+      if (cursor) query.set("cursor", cursor);
+      return request<WithdrawalPage>(
+        `/teams/${encodeURIComponent(teamId)}/withdrawals?${query}`,
+      );
     },
   });
 }

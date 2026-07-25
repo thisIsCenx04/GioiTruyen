@@ -19,6 +19,7 @@ import {
 } from "react";
 
 import styles from "./team-workspace.module.css";
+import { WithdrawalWorkspace } from "./withdrawal-workspace";
 
 const permissionOptions = [
   ["story:create", "Tạo bản thảo"],
@@ -411,6 +412,7 @@ export function TeamWorkspace({ teamId }: Readonly<{ teamId: string }>) {
           <Link href={`/teams/${teamId}/analytics` as Route}>
             Chất lượng lượt đọc
           </Link>
+          <a href="#withdrawals">Tài chính và rút XU</a>
           {canManage && <a href="#settings">Thông tin nhóm</a>}
           {canManage && <a href="#members">Sổ thành viên</a>}
           {canManage && <a href="#invite">Mời cộng sự</a>}
@@ -460,6 +462,8 @@ export function TeamWorkspace({ teamId }: Readonly<{ teamId: string }>) {
               : "Bạn đang xem ở chế độ thành viên hoặc người theo dõi."}
           </p>
         </section>
+
+        <WithdrawalWorkspace teamId={teamId} />
 
         {canManage && team && (
           <section className={styles.ruleSection} id="settings">
