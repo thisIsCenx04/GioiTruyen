@@ -437,6 +437,17 @@ export type TopupRequest = Readonly<{
   createdAt: string;
 }>;
 
+export type DonationReceipt = Readonly<{
+  donationId: string;
+  teamId: string;
+  amountXu: number;
+  message: string;
+  ledgerTransactionId: string;
+  status: "POSTED";
+  replayed: boolean;
+  createdAt: string;
+}>;
+
 export type BrowserTeamClientOptions = Readonly<{
   baseUrl?: string;
   fetchImplementation?: typeof fetch;
@@ -1512,6 +1523,16 @@ export function createBrowserWalletClient({
     createTopup(amountVnd: number, idempotencyKey: string) {
       return request<TopupRequest>("/wallets/me/topups", {
         body: { amountVnd },
+        headers: { "Idempotency-Key": idempotencyKey },
+        method: "POST",
+      });
+    },
+    donate(
+      input: { teamId: string; amountXu: number; message: string },
+      idempotencyKey: string,
+    ) {
+      return request<DonationReceipt>("/donations", {
+        body: input,
         headers: { "Idempotency-Key": idempotencyKey },
         method: "POST",
       });

@@ -126,6 +126,9 @@ function allowed(method: string, path: string) {
   if (path === "wallets/me") {
     return method === "GET";
   }
+  if (path === "donations") {
+    return method === "POST";
+  }
   if (path === "wallets/me/topups") {
     return method === "GET" || method === "POST";
   }

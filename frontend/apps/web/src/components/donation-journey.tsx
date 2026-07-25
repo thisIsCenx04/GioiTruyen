@@ -1,0 +1,229 @@
+"use client";
+
+import {
+  createBrowserWalletClient,
+  StoryApiError,
+  type DonationReceipt,
+} from "@gioitruyen/api-client";
+import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
+
+import styles from "./donation-journey.module.css";
+
+const options = [100, 500, 1_000, 5_000] as const;
+
+function xu(value: number) {
+  return new Intl.NumberFormat("vi-VN").format(value);
+}
+
+function messageFor(error: unknown) {
+  if (error instanceof StoryApiError) {
+    if (error.problem.status === 401) {
+      return "Đăng nhập để gửi XU cho đội ngũ sáng tác.";
+    }
+    if (error.problem.status === 422) {
+      return "Số dư khả dụng chưa đủ cho món quà này.";
+    }
+    return error.problem.detail ?? "Chưa thể gửi XU lúc này.";
+  }
+  return "Không thể kết nối máy chủ. Hãy thử lại.";
+}
+
+type DonationJourneyProps = Readonly<{
+  storyTitle: string;
+  teamId: string;
+}>;
+
+export function DonationJourney({
+  storyTitle,
+  teamId,
+}: DonationJourneyProps) {
+  const api = useMemo(() => createBrowserWalletClient(), []);
+  const [open, setOpen] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [amount, setAmount] = useState(500);
+  const [note, setNote] = useState("");
+  const [balance, setBalance] = useState<number | null>(null);
+  const [receipt, setReceipt] = useState<DonationReceipt | null>(null);
+  const [error, setError] = useState("");
+  const [working, setWorking] = useState(false);
+  const retryKey = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!open || balance !== null) return;
+    void api.balance()
+      .then((wallet) => setBalance(wallet.availableXu))
+      .catch((requestError) => setError(messageFor(requestError)));
+  }, [api, balance, open]);
+
+  function changeAmount(value: number) {
+    setAmount(value);
+    setConfirming(false);
+    retryKey.current = null;
+  }
+
+  async function submit() {
+    if (working || amount < 1 || amount > 1_000_000_000) return;
+    setWorking(true);
+    retryKey.current ??= crypto.randomUUID();
+    try {
+      const nextReceipt = await api.donate(
+        { amountXu: amount, message: note.trim(), teamId },
+        retryKey.current,
+      );
+      setReceipt(nextReceipt);
+      setBalance((current) => current === null
+        ? current
+        : Math.max(0, current - nextReceipt.amountXu));
+      setError("");
+      retryKey.current = null;
+    } catch (requestError) {
+      setError(messageFor(requestError));
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        className={styles.trigger}
+        onClick={() => setOpen(true)}
+        type="button"
+      >
+        <span aria-hidden="true">✦</span>
+        Ủng hộ đội ngũ bằng XU
+      </button>
+    );
+  }
+
+  return (
+    <section className={styles.panel} aria-label="Ủng hộ đội ngũ sáng tác">
+      <div className={styles.heading}>
+        <div>
+          <span>Gửi một lời cảm ơn</span>
+          <h2>Tiếp sức cho<br /><em>trang viết kế tiếp.</em></h2>
+        </div>
+        <button
+          aria-label="Đóng phần ủng hộ"
+          className={styles.close}
+          onClick={() => setOpen(false)}
+          type="button"
+        >
+          ×
+        </button>
+      </div>
+
+      {receipt ? (
+        <div className={styles.success} role="status">
+          <span className={styles.seal} aria-hidden="true">GT</span>
+          <div>
+            <strong>{xu(receipt.amountXu)} XU đã được gửi.</strong>
+            <p>
+              Món quà cho đội ngũ của “{storyTitle}” đã ghi vào sổ giao dịch.
+            </p>
+            <small>Mã biên nhận · {receipt.donationId.slice(0, 8)}</small>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className={styles.balanceLine}>
+            <span>Số dư khả dụng</span>
+            <strong>{balance === null ? "Đang kiểm tra…" : `${xu(balance)} XU`}</strong>
+          </div>
+
+          <fieldset className={styles.amounts}>
+            <legend>Chọn số XU</legend>
+            {options.map((option) => (
+              <button
+                aria-pressed={amount === option}
+                key={option}
+                onClick={() => changeAmount(option)}
+                type="button"
+              >
+                {xu(option)}
+              </button>
+            ))}
+            <label>
+              <span>Tùy chọn</span>
+              <input
+                aria-label="Số XU tùy chọn"
+                inputMode="numeric"
+                max={1_000_000_000}
+                min={1}
+                onChange={(event) => changeAmount(Number(event.target.value))}
+                type="number"
+                value={amount}
+              />
+            </label>
+          </fieldset>
+
+          <label className={styles.note}>
+            <span>Lời nhắn cho đội ngũ · không bắt buộc</span>
+            <textarea
+              maxLength={500}
+              onChange={(event) => {
+                setNote(event.target.value);
+                setConfirming(false);
+                retryKey.current = null;
+              }}
+              placeholder="Cảm ơn vì câu chuyện này…"
+              rows={3}
+              value={note}
+            />
+            <small>{note.length}/500</small>
+          </label>
+
+          {error && (
+            <div className={styles.error} role="alert">
+              <span>{error}</span>
+              {error.includes("chưa đủ") && <Link href="/wallet">Nạp thêm XU</Link>}
+            </div>
+          )}
+
+          {confirming ? (
+            <div className={styles.confirm}>
+              <p>
+                Xác nhận gửi <strong>{xu(amount)} XU</strong>. Giao dịch đã ghi
+                sổ sẽ không thể hoàn tác.
+              </p>
+              <div>
+                <button onClick={() => setConfirming(false)} type="button">
+                  Xem lại
+                </button>
+                <button
+                  disabled={
+                    working ||
+                    amount < 1 ||
+                    amount > 1_000_000_000 ||
+                    (balance !== null && amount > balance)
+                  }
+                  onClick={() => void submit()}
+                  type="button"
+                >
+                  {working ? "Đang gửi…" : `Xác nhận ${xu(amount)} XU`}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              className={styles.continue}
+              disabled={
+                amount < 1 ||
+                amount > 1_000_000_000 ||
+                (balance !== null && amount > balance)
+              }
+              onClick={() => {
+                setError("");
+                setConfirming(true);
+              }}
+              type="button"
+            >
+              Tiếp tục
+            </button>
+          )}
+        </>
+      )}
+    </section>
+  );
+}

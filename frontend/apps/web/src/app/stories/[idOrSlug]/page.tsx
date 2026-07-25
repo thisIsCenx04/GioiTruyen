@@ -7,6 +7,7 @@ import { cache } from "react";
 
 import { PublicShell } from "@/components/site-chrome";
 import { Comments } from "@/components/comments";
+import { DonationJourney } from "@/components/donation-journey";
 import { StoryRelations } from "@/components/story-relations";
 import { catalog } from "@/lib/catalog";
 
@@ -87,6 +88,7 @@ export default async function StoryPage({ params }: StoryPageProps) {
               </Link>
             )}
             <StoryRelations storyId={story.id} />
+            <DonationJourney storyTitle={story.title} teamId={story.teamId} />
           </div>
         </header>
 
