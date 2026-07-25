@@ -1,0 +1,407 @@
+.page {
+  background:
+    linear-gradient(90deg, transparent 49.9%, rgb(82 105 215 / 8%) 50%, transparent 50.1%),
+    var(--paper);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 0 clamp(1.2rem, 4vw, 4.5rem) 6rem;
+}
+
+.header {
+  align-items: end;
+  border-bottom: 0.08rem solid #aeb9d5;
+  display: grid;
+  gap: 2rem;
+  grid-template-columns: minmax(10rem, 0.55fr) minmax(18rem, 1.45fr) auto;
+  margin: 0 auto;
+  max-width: 88rem;
+  padding: 2rem 0 2.6rem;
+}
+
+.header > a:first-child { align-self: start; text-decoration: none; }
+
+.eyebrow,
+.sectionLabel {
+  color: var(--muted);
+  font: 800 0.68rem/1 var(--utility);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.header h1 {
+  font: 600 clamp(2.8rem, 6vw, 6.2rem)/0.88 var(--serif);
+  letter-spacing: -0.06em;
+  margin: 0.7rem 0 0;
+}
+
+.header h1 em { color: var(--blue); font-weight: 500; }
+
+.back {
+  border-bottom: 0.1rem solid currentColor;
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding-bottom: 0.2rem;
+  text-decoration: none;
+}
+
+.error {
+  background: #fff0ee;
+  border-left: 0.25rem solid var(--vermilion);
+  color: #8b2d27;
+  margin: 1.5rem auto 0;
+  max-width: 88rem;
+  padding: 0.9rem 1.1rem;
+}
+
+.workspace {
+  display: grid;
+  gap: clamp(2.5rem, 6vw, 7rem);
+  grid-template-columns: minmax(16rem, 0.58fr) minmax(0, 1.42fr);
+  margin: 0 auto;
+  max-width: 88rem;
+  padding-top: clamp(3rem, 6vw, 5.5rem);
+}
+
+.ledger { align-self: start; position: sticky; top: 2rem; }
+
+.balance {
+  align-items: end;
+  display: flex;
+  gap: 0.8rem;
+  margin-top: 1.2rem;
+}
+
+.balance strong {
+  color: var(--ink);
+  font: 600 clamp(3.7rem, 7vw, 6.8rem)/0.78 var(--serif);
+  letter-spacing: -0.075em;
+}
+
+.balance span {
+  color: var(--blue);
+  font: 800 0.8rem/1 var(--utility);
+  letter-spacing: 0.12em;
+  margin-bottom: 0.35rem;
+}
+
+.ledger > p {
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.55;
+  margin: 1.25rem 0 3rem;
+}
+
+.amountBlock {
+  border-top: 0.08rem solid var(--line);
+  display: grid;
+  padding-top: 1.5rem;
+}
+
+.amountBlock > label { font: 600 1.35rem/1.2 var(--serif); }
+
+.amountOptions {
+  display: grid;
+  gap: 0.45rem;
+  grid-template-columns: 1fr 1fr;
+  margin: 1rem 0;
+}
+
+.amountOptions button {
+  background: transparent;
+  border: 0.08rem solid var(--line);
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding: 0.72rem 0.5rem;
+}
+
+.amountOptions button[aria-pressed="true"] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: white;
+}
+
+.customAmount {
+  align-items: center;
+  background: white;
+  border: 0.08rem solid var(--line);
+  display: flex;
+}
+
+.customAmount input {
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 750;
+  min-width: 0;
+  padding: 0.85rem;
+  width: 100%;
+}
+
+.customAmount span {
+  color: var(--muted);
+  font: 800 0.68rem/1 var(--utility);
+  letter-spacing: 0.1em;
+  padding-right: 0.85rem;
+}
+
+.create {
+  background: var(--blue);
+  border: 0;
+  color: white;
+  cursor: pointer;
+  font-weight: 800;
+  margin-top: 0.8rem;
+  padding: 0.95rem 1rem;
+}
+
+.create:disabled { cursor: default; opacity: 0.5; }
+
+.amountBlock small {
+  color: var(--muted);
+  line-height: 1.5;
+  margin-top: 0.7rem;
+}
+
+.receiptColumn { min-width: 0; }
+
+.receipt,
+.blankReceipt {
+  animation: reveal-receipt 420ms ease-out both;
+  background: white;
+  border: 0.08rem solid #bfc9e3;
+  border-radius: 0.2rem 2.8rem 0.2rem 0.2rem;
+  box-shadow: 1rem 1rem 0 #dfe5f6;
+  min-height: 25rem;
+  overflow: hidden;
+  position: relative;
+}
+
+.receipt::after,
+.blankReceipt::after {
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--paper) 0 0.45rem,
+    transparent 0.45rem 0.9rem
+  );
+  content: "";
+  inset: 0 auto 0 -0.3rem;
+  position: absolute;
+  width: 0.6rem;
+}
+
+.receiptTop {
+  align-items: start;
+  border-bottom: 0.08rem dashed #aeb9d5;
+  display: flex;
+  gap: 2rem;
+  justify-content: space-between;
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.receiptTop h2,
+.historyHeading h2,
+.blankReceipt h2 {
+  color: var(--ink);
+  font: 600 clamp(2rem, 4vw, 3.5rem)/0.95 var(--serif);
+  letter-spacing: -0.045em;
+  margin: 0.6rem 0 0;
+}
+
+.receiptTop p {
+  color: var(--blue);
+  font-size: 0.8rem;
+  font-weight: 750;
+  margin: 0.75rem 0 0;
+}
+
+.status {
+  background: #e8ebf7;
+  border-radius: 2rem;
+  color: #4c5674;
+  font: 800 0.65rem/1 var(--utility);
+  letter-spacing: 0.08em;
+  padding: 0.55rem 0.75rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.success { background: #e2f4e7; color: #23613a; }
+
+.payment {
+  align-items: center;
+  display: grid;
+  gap: clamp(1.5rem, 4vw, 3.5rem);
+  grid-template-columns: auto minmax(0, 1fr);
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.qr {
+  background: white;
+  border: 0.08rem solid var(--line);
+  height: min(14.5rem, 28vw);
+  max-height: 14.5rem;
+  max-width: 14.5rem;
+  padding: 0.35rem;
+  width: min(14.5rem, 28vw);
+}
+
+.instructions { display: grid; gap: 0.75rem; }
+.step { color: var(--muted); font-size: 0.75rem; }
+.instructions label { font-size: 0.72rem; font-weight: 800; margin-top: 0.5rem; }
+
+.reference {
+  align-items: center;
+  background: var(--paper);
+  border: 0.08rem solid var(--line);
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 0.85rem;
+  text-align: left;
+}
+
+.reference strong {
+  font: 600 clamp(1rem, 2.2vw, 1.35rem)/1 var(--serif);
+  letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
+}
+
+.reference span {
+  color: var(--blue);
+  font-size: 0.68rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.instructions p {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  margin: 0.25rem 0 0;
+}
+
+.receiptFooter {
+  align-items: center;
+  background: var(--ink);
+  color: white;
+  display: flex;
+  font-size: 0.72rem;
+  justify-content: space-between;
+  padding: 1rem clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.receiptFooter strong {
+  color: #aebeff;
+  font: 800 0.68rem/1 var(--utility);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.blankReceipt {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(2rem, 6vw, 5rem);
+}
+
+.blankReceipt > span {
+  color: var(--blue);
+  font: 800 0.68rem/1 var(--utility);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.blankReceipt p {
+  color: var(--muted);
+  line-height: 1.65;
+  max-width: 31rem;
+}
+
+.history { margin-top: 4.5rem; }
+
+.historyHeading {
+  align-items: end;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1.4rem;
+}
+
+.historyHeading h2 { font-size: clamp(1.8rem, 3vw, 2.6rem); }
+
+.historyHeading button {
+  background: transparent;
+  border: 0;
+  border-bottom: 0.08rem solid currentColor;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 0.74rem;
+  font-weight: 800;
+  padding: 0 0 0.2rem;
+}
+
+.history ol { list-style: none; margin: 0; padding: 0; }
+.history li { border-top: 0.08rem solid var(--line); }
+.history li:last-child { border-bottom: 0.08rem solid var(--line); }
+
+.history li button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(9rem, 1fr) minmax(8rem, 1fr) minmax(7rem, auto);
+  padding: 1rem 0;
+  text-align: left;
+  width: 100%;
+}
+
+.history li strong { color: var(--ink); font: 600 1.1rem/1 var(--serif); }
+
+.history li span:last-child {
+  color: var(--blue);
+  font: 800 0.64rem/1 var(--utility);
+  letter-spacing: 0.07em;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.empty {
+  border-block: 0.08rem solid var(--line);
+  color: var(--muted);
+  padding: 1.4rem 0;
+}
+
+@keyframes reveal-receipt {
+  from { opacity: 0; transform: translateY(0.8rem) rotate(-0.4deg); }
+  to { opacity: 1; transform: translateY(0) rotate(0); }
+}
+
+@media (max-width: 48rem) {
+  .page { background: var(--paper); }
+  .header { align-items: start; grid-template-columns: 1fr auto; }
+  .header > div { grid-column: 1 / -1; grid-row: 2; }
+  .workspace { gap: 3rem; grid-template-columns: 1fr; }
+  .ledger { position: static; }
+  .payment { grid-template-columns: 1fr; }
+
+  .qr {
+    height: min(14.5rem, 72vw);
+    justify-self: center;
+    width: min(14.5rem, 72vw);
+  }
+
+  .history li button { grid-template-columns: 1fr auto; }
+  .history li span:first-child { grid-column: 1 / -1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .receipt,
+  .blankReceipt { animation: none; }
+}

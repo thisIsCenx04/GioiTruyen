@@ -123,6 +123,15 @@ function allowed(method: string, path: string) {
   ) {
     return method === "DELETE";
   }
+  if (path === "wallets/me") {
+    return method === "GET";
+  }
+  if (path === "wallets/me/topups") {
+    return method === "GET" || method === "POST";
+  }
+  if (new RegExp(`^wallets/me/topups/${uuid}$`, "u").test(path)) {
+    return method === "GET";
+  }
   if (
     new RegExp(`^me/reading-progress/${uuid}$`, "u").test(path)
   ) {

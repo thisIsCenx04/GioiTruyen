@@ -12,6 +12,7 @@ export function SiteHeader() {
         <Link href="/#catalog">Khám phá</Link>
         <Link href="/search">Tìm truyện</Link>
         <Link href="/teams">Nhóm xuất bản</Link>
+        <Link href="/wallet">Ví XU</Link>
       </nav>
       <Link className="quietAction" href="/auth/login">
         Đăng nhập

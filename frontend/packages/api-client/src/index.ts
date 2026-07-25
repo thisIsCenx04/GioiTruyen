@@ -410,6 +410,33 @@ export type NotificationPreference = Readonly<{
   version: number;
 }>;
 
+export type WalletBalance = Readonly<{
+  currency: "XU";
+  availableXu: number;
+  reservedXu: number;
+  version: number;
+  asOf: string;
+}>;
+
+export type TopupStatus =
+  | "AWAITING_PAYMENT"
+  | "CREDITED"
+  | "PENDING_REVIEW"
+  | "REJECTED";
+
+export type TopupRequest = Readonly<{
+  id: string;
+  amountVnd: number;
+  creditedXu: number;
+  discountPercent: number;
+  discountVersion: number;
+  transferReference: string;
+  qrPayload: string;
+  status: TopupStatus;
+  expiresAt: string;
+  createdAt: string;
+}>;
+
 export type BrowserTeamClientOptions = Readonly<{
   baseUrl?: string;
   fetchImplementation?: typeof fetch;
@@ -1438,6 +1465,64 @@ export function createPublicCatalogClient({
       return client.request<SuggestionResponse>(
         `/search/suggestions?q=${encodeURIComponent(query)}&limit=${limit}`,
       );
+    },
+  });
+}
+
+export function createBrowserWalletClient({
+  baseUrl = "/api/workspace",
+  fetchImplementation = fetch,
+}: BrowserTeamClientOptions = {}) {
+  const client = createStoryApiClient({ baseUrl, fetchImplementation });
+
+  async function request<Response>(
+    path: `/${string}`,
+    options: RequestOptions = {},
+  ): Promise<Response> {
+    try {
+      return await client.request<Response>(path, {
+        credentials: "same-origin",
+        ...options,
+      });
+    } catch (error) {
+      if (
+        !(error instanceof StoryApiError) ||
+        error.problem.status !== 401
+      ) {
+        throw error;
+      }
+      await createStoryApiClient({
+        baseUrl: "/api/auth",
+        fetchImplementation,
+      }).request("/refresh", {
+        credentials: "same-origin",
+        method: "POST",
+      });
+      return client.request<Response>(path, {
+        credentials: "same-origin",
+        ...options,
+      });
+    }
+  }
+
+  return Object.freeze({
+    balance() {
+      return request<WalletBalance>("/wallets/me");
+    },
+    createTopup(amountVnd: number, idempotencyKey: string) {
+      return request<TopupRequest>("/wallets/me/topups", {
+        body: { amountVnd },
+        headers: { "Idempotency-Key": idempotencyKey },
+        method: "POST",
+      });
+    },
+    getTopup(requestId: string) {
+      return request<TopupRequest>(
+        `/wallets/me/topups/${encodeURIComponent(requestId)}`,
+      );
+    },
+    topupHistory() {
+      return request<TopupRequest[]>("/wallets/me/topups");
     },
   });
 }

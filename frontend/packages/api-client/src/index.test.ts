@@ -8,6 +8,7 @@ import {
   createBrowserReadingClient,
   createBrowserReadingSessionClient,
   createBrowserTeamClient,
+  createBrowserWalletClient,
   createPublicCatalogClient,
   createStoryApiClient,
   StoryApiError,
@@ -162,6 +163,102 @@ describe("browser reading client", () => {
       client.history({ cursor: "signed-cursor", limit: 25 }),
     ).resolves.toMatchObject({ hasMore: false, items: [] });
     await expect(client.deleteHistory("story-01")).resolves.toBeUndefined();
+  });
+});
+
+describe("browser wallet client", () => {
+  it("maps balance, history and idempotent top-up requests", async () => {
+    apiMockServer.use(
+      http.get("/api/workspace/wallets/me", () =>
+        HttpResponse.json({
+          asOf: "2026-07-25T00:00:00Z",
+          availableXu: 20_000,
+          currency: "XU",
+          reservedXu: 0,
+          version: 1,
+        })),
+      http.get("/api/workspace/wallets/me/topups", () =>
+        HttpResponse.json([])),
+      http.get(
+        "/api/workspace/wallets/me/topups/10000000-0000-4000-8000-000000000001",
+        () => HttpResponse.json({
+          amountVnd: 50_000,
+          createdAt: "2026-07-25T00:00:00Z",
+          creditedXu: 50_000,
+          discountPercent: 0,
+          discountVersion: 1,
+          expiresAt: "2026-07-25T00:15:00Z",
+          id: "10000000-0000-4000-8000-000000000001",
+          qrPayload: "VIETQR",
+          status: "CREDITED",
+          transferReference: "GT20260725ABCD",
+        })),
+      http.post("/api/workspace/wallets/me/topups", async ({ request }) => {
+        expect(request.headers.get("idempotency-key")).toBe(
+          "topup-20260725-reader-01",
+        );
+        await expect(request.json()).resolves.toEqual({ amountVnd: 50_000 });
+        return HttpResponse.json({
+          amountVnd: 50_000,
+          createdAt: "2026-07-25T00:00:00Z",
+          creditedXu: 50_000,
+          discountPercent: 0,
+          discountVersion: 1,
+          expiresAt: "2026-07-25T00:15:00Z",
+          id: "10000000-0000-4000-8000-000000000001",
+          qrPayload: "VIETQR",
+          status: "AWAITING_PAYMENT",
+          transferReference: "GT20260725ABCD",
+        }, { status: 201 });
+      }),
+    );
+    const client = createBrowserWalletClient();
+
+    await expect(client.balance()).resolves.toMatchObject({
+      availableXu: 20_000,
+      currency: "XU",
+    });
+    await expect(client.topupHistory()).resolves.toEqual([]);
+    await expect(
+      client.createTopup(50_000, "topup-20260725-reader-01"),
+    ).resolves.toMatchObject({ status: "AWAITING_PAYMENT" });
+    await expect(
+      client.getTopup("10000000-0000-4000-8000-000000000001"),
+    ).resolves.toMatchObject({ status: "CREDITED" });
+  });
+
+  it("refreshes once before retrying an expired wallet request", async () => {
+    let attempts = 0;
+    let refreshes = 0;
+    apiMockServer.use(
+      http.get("/api/workspace/wallets/me", () => {
+        attempts += 1;
+        return attempts === 1
+          ? HttpResponse.json({
+              code: "AUTHENTICATION_REQUIRED",
+              status: 401,
+              title: "Authentication required",
+              type: "about:blank",
+            }, { status: 401 })
+          : HttpResponse.json({
+              asOf: "2026-07-25T00:00:00Z",
+              availableXu: 0,
+              currency: "XU",
+              reservedXu: 0,
+              version: 0,
+            });
+      }),
+      http.post("/api/auth/refresh", () => {
+        refreshes += 1;
+        return HttpResponse.json({ status: "AUTHENTICATED" });
+      }),
+    );
+
+    await expect(createBrowserWalletClient().balance()).resolves.toMatchObject({
+      currency: "XU",
+    });
+    expect(attempts).toBe(2);
+    expect(refreshes).toBe(1);
   });
 });
 
