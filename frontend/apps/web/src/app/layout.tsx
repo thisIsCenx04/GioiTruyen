@@ -5,8 +5,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Giới Truyện — Đọc tiếp một thế giới",
-    template: "%s · Giới Truyện",
+    default: "GiớiTruyện — Đọc tiếp một thế giới",
+    template: "%s · GiớiTruyện",
   },
   description:
     "Nền tảng truyện dài kỳ dành cho độc giả, tác giả và nhóm xuất bản Việt Nam.",

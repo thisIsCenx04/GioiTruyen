@@ -1,28 +1,34 @@
 import { BrandMark } from "@gioitruyen/ui";
-import { UserRound } from "lucide-react";
+import { Bell, Search, UserRound } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 export function SiteHeader() {
   return (
     <header className="siteHeader">
-      <Link aria-label="Về trang chủ Giới Truyện" href="/">
+      <Link aria-label="Về trang chủ Giới Truyện" className="brandLink" href="/">
         <BrandMark />
       </Link>
       <nav aria-label="Điều hướng chính">
-        <Link href="/#catalog">Khám phá</Link>
-        <Link href="/search">Tìm truyện</Link>
-        <Link href="/teams">Nhóm xuất bản</Link>
-        <Link href="/wallet">Ví XU</Link>
+        <Link href="/">Trang chủ</Link>
+        <Link href="/search">Truyện</Link>
+        <Link href="/search?q=thể+loại">Thể loại</Link>
+        <Link href="/search?q=xếp+hạng">Bảng xếp hạng</Link>
+        <Link href="/teams">Cộng đồng</Link>
+        <Link href="/teams">Nhóm dịch</Link>
       </nav>
-      <Link
-        aria-label="Đăng nhập"
-        className="quietAction"
-        href="/auth/login"
-      >
+      <form action="/search" className="headerSearch">
+        <Search aria-hidden="true" />
+        <input aria-label="Tìm truyện, tác giả" name="q" placeholder="Tìm truyện, tác giả..." />
+      </form>
+      <Link aria-label="Thông báo" className="headerIcon" href="/notifications">
+        <Bell aria-hidden="true" />
+      </Link>
+      <Link className="loginAction" href="/auth/login">
         <UserRound aria-hidden="true" />
         <span>Đăng nhập</span>
       </Link>
+      <Link className="quietAction" href="/auth/register">Đăng ký</Link>
     </header>
   );
 }
@@ -32,7 +38,7 @@ export function SiteFooter() {
     <footer className="siteFooter">
       <BrandMark />
       <p>Đọc có nhịp. Viết có người đồng hành.</p>
-      <Link href="/teams">Gửi bản thảo</Link>
+      <Link href="/teams">Đăng truyện cùng Giới Truyện</Link>
     </footer>
   );
 }

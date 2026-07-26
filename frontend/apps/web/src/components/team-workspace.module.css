@@ -607,6 +607,45 @@
   }
 }
 
+/* Giới Truyện 2026 — shared workspace surface */
+.directory,
+.workspace,
+.loading {
+  --workspace-ink: #0b1228;
+  --workspace-blue: #0f5fff;
+  --workspace-coral: #ff4d4f;
+  --workspace-paper: #f8faff;
+  --workspace-vellum: #eef3fb;
+  background: #f8faff;
+}
+.directoryHeader,
+.workspaceHeader { border-color: #e2e8f3; }
+.createSheet,
+.manifest {
+  background: #fff;
+  border: 1px solid #e2e8f3;
+  border-radius: .85rem;
+  box-shadow: 0 .8rem 2.4rem rgb(35 67 125 / 8%);
+  color: #11182b;
+}
+.createSheet::before { background: #0f5fff; height: .25rem; left: 0; right: 0; top: 0; width: auto; }
+.createSheet .kicker,
+.createSheet > p { color: #697590; }
+.createSheet input,
+.createSheet textarea { border-bottom-color: #d9e1ee; color: #11182b; }
+.createSheet button,
+.settingsForm button,
+.inviteSection button,
+.memberActions button { background: #0f5fff; border-radius: .5rem; }
+.spine { background: #fff; border-right: 1px solid #e2e8f3; color: #11182b; }
+.spine a, .spine button { border-radius: .45rem; }
+.spine a[aria-current="page"], .spine button[aria-pressed="true"] { background: #eef4ff; color: #0f5fff; }
+.workspaceBody,
+.ruleSection,
+.inviteSection,
+.memberLedger { background: #fff; border: 1px solid #e2e8f3; border-radius: .8rem; box-shadow: none; }
+.memberRow { border-color: #e7ecf4; }
+
 @media (max-width: 62rem) {
   .directoryHeader {
     grid-template-columns: 1fr auto;
