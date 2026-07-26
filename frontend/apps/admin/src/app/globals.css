@@ -466,3 +466,44 @@ button:disabled { cursor: wait; opacity: 0.55; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; }
 }
+
+/* 2026 visual system: white moderation console, cobalt actions, quiet data chrome. */
+:root {
+  --navy:#0b1228;
+  --navy-2:#eef4ff;
+  --blue:#0f5fff;
+  --coral:#ff4d4f;
+  --mint:#16a46f;
+  --paper:#f8faff;
+  --surface:#fff;
+  --text:#11182b;
+  --muted:#697590;
+  --line:#e2e8f3;
+  --serif:"Be Vietnam Pro","Segoe UI Variable","Segoe UI",sans-serif;
+  --sans:"Be Vietnam Pro","Segoe UI Variable","Segoe UI",sans-serif;
+}
+.reviewRail {
+  background:#fff;
+  border-right:1px solid var(--line);
+  color:var(--text);
+}
+.railTitle { border-color:var(--line); }
+.railTitle span { color:var(--muted); }
+.reviewRail nav button { border-left:0; border-radius:.5rem; color:#47536d; }
+.reviewRail nav button:hover,
+.reviewRail nav button[aria-current="page"] { background:#eef4ff; color:#0f5fff; }
+.reviewRail nav small { color:#8390aa; }
+.priority { background:#e8efff; color:#0f5fff; }
+.priority.p4 { background:#0f5fff; }
+.operator { border-color:var(--line); }
+.operator strong { color:var(--text); }
+.financeLink { border-color:var(--line); color:#0f5fff; }
+.reviewDesk { max-width:100rem; }
+.reviewHeader h1 { font:750 clamp(2rem,4vw,3.2rem)/1 var(--sans); }
+.storyEvidence, .chapterEvidence, .decisionPanel > section,
+.decisionForm, .auditReceipt { border-radius:.65rem; }
+.storyEvidence { border-top-color:#0f5fff; }
+.storyEvidence h2 { font-family:var(--sans); font-weight:750; }
+.chapterTabs button { border-radius:.45rem; }
+.chapterTabs button[aria-selected="true"] { background:#eef4ff; color:#0f5fff; }
+.claimButton, .decisionForm button { background:#0f5fff; border-radius:.5rem; }

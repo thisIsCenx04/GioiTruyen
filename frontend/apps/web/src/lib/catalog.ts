@@ -9,5 +9,9 @@ const apiBaseUrl = (
 export const catalog = createPublicCatalogClient({ baseUrl: apiBaseUrl });
 
 export async function loadHome() {
-  return catalog.home();
+  const [home, taxonomy] = await Promise.all([
+    catalog.home(),
+    catalog.categories(),
+  ]);
+  return { ...home, taxonomy };
 }

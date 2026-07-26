@@ -622,3 +622,20 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Match the clean, data-dense authoring UI used across Giới Truyện. */
+.workspace,
+.loading { --ink:#0b1228; --blue:#0f5fff; --coral:#ff4d4f; --paper:#f8faff; --vellum:#eef3fb; background:#f8faff; }
+.ledger { background:#fff; border-right:1px solid #e2e8f3; color:#11182b; }
+.ledger nav button { border-radius:.5rem; }
+.ledger nav button[aria-pressed="true"] { background:#eef4ff; color:#0f5fff; }
+.deskHeader { border-color:#e2e8f3; }
+.newStory, .storySheet, .chapterDesk {
+  border:1px solid #e2e8f3; border-radius:.8rem; box-shadow:0 .7rem 2rem rgb(35 67 125 / 6%);
+}
+.chapterSpines { background:#f7f9fd; border-color:#e2e8f3; }
+.chapterSpines > button { background:#fff; border-left-color:#c9d7f4; border-radius:.45rem; }
+.chapterSpines > button[aria-pressed="true"] { background:#eef4ff; border-left-color:#0f5fff; color:#0f5fff; transform:none; }
+.chapterSpines button[aria-pressed="true"] small { color:#697590; }
+.proofline .reached { border-color:#0f5fff; }
+.proofline .reached::before { background:#0f5fff; border-color:#0f5fff; }

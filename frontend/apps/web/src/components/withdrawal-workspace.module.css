@@ -206,3 +206,12 @@
   .ledger li { align-items: start; flex-direction: column; }
   .ledger li > div:last-child { justify-items: start; text-align: left; }
 }
+
+.workspace, .restricted { border-color:#e2e8f3; margin-top:2rem; padding-top:2rem; }
+.heading h2 { color:#0b1228; font:750 clamp(2rem,4vw,3.4rem)/1 var(--sans); }
+.grid { gap:1.5rem; grid-template-columns:minmax(18rem,.75fr) minmax(0,1.25fr); margin-top:1.5rem; }
+.form, .ledger { background:#fff; border:1px solid #e2e8f3; border-radius:.8rem; color:#11182b; padding:1.4rem; }
+.form .label, .policy { color:#697590; }
+.form input { border-bottom-color:#d7e0ee; color:#11182b; }
+.actions button { border-color:#cbd7ea; color:#11182b; }
+.actions button:last-child { background:#0f5fff; border-color:#0f5fff; color:#fff; }

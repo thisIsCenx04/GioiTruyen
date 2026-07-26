@@ -7,8 +7,6 @@ export function CatalogStoryCard({
   story,
   index,
 }: Readonly<{ story: HomeStorySummary; index: number }>) {
-  const initial = story.title.trim().slice(0, 1).toLocaleUpperCase("vi");
-
   return (
     <article className="catalogCard">
       <Link
@@ -17,22 +15,11 @@ export function CatalogStoryCard({
         data-tone={tones[index % tones.length]}
         href={`/stories/${story.slug}`}
       >
-        <span className="bookSpine" aria-hidden="true">
-          {String(index + 1).padStart(2, "0")}
-        </span>
-        <span className="coverInitial" aria-hidden="true">
-          {initial}
-        </span>
-        <span className="coverLabel">Giới Truyện</span>
+        <span className="coverLabel">{story.title}</span>
       </Link>
       <div className="catalogCardBody">
-        <p>{new Date(story.publishedAt).toLocaleDateString("vi-VN")}</p>
-        <h3>
-          <Link href={`/stories/${story.slug}`}>{story.title}</Link>
-        </h3>
-        <Link className="readLink" href={`/stories/${story.slug}`}>
-          Mở truyện <span aria-hidden="true">→</span>
-        </Link>
+        <h3><Link href={`/stories/${story.slug}`}>{story.title}</Link></h3>
+        <p>Cập nhật {new Date(story.publishedAt).toLocaleDateString("vi-VN")}</p>
       </div>
     </article>
   );

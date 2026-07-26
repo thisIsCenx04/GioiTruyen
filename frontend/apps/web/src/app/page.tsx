@@ -1,14 +1,4 @@
-import { StatusPill } from "@gioitruyen/ui";
-import {
-  BookOpen,
-  Compass,
-  Flame,
-  Heart,
-  Landmark,
-  Rocket,
-  Search,
-  Sparkles,
-} from "lucide-react";
+import { BookOpen, ChevronRight, Flame, Shapes } from "lucide-react";
 import Link from "next/link";
 
 import { CatalogSearch } from "@/components/catalog-search";
@@ -31,131 +21,120 @@ export default async function HomePage() {
       </PublicShell>
     );
   }
-  const lead = home.sections[0]?.stories[0];
-  const storyCount = new Set(
-    home.sections.flatMap((section) =>
-      section.stories.map((story) => story.id),
-    ),
-  ).size;
+
+  const stories = home.sections.flatMap((section) => section.stories);
+  const lead = stories[0];
+  const latest = home.sections.find((section) => section.type === "LATEST")?.stories ?? [];
+  const completed = home.sections.find((section) => section.type === "COMPLETED")?.stories ?? [];
+  const original = home.sections.find((section) => section.type === "ORIGINAL")?.stories ?? [];
+  const categories = home.taxonomy.groups.flatMap((group) => group.categories);
 
   return (
     <PublicShell>
-      <section className="catalogHero" aria-labelledby="hero-title">
-        <div className="heroManifesto">
-          <div className="heroEyebrow">
-            <StatusPill tone="active">Thư viện đang mở</StatusPill>
-            <span>Cập nhật theo từng chương</span>
-          </div>
-          <h1 id="hero-title">
-            Đọc tiếp một thế giới
-            <span>đang mở.</span>
-          </h1>
-          <p>
-            Khám phá truyện dài kỳ, lưu chính xác đoạn đang đọc và theo
-            dõi chương mới từ những tác giả bạn yêu thích.
-          </p>
-          <CatalogSearch />
-          <dl className="heroStats" aria-label="Thư viện hôm nay">
-            <div>
-              <dt>Đang lên kệ</dt>
-              <dd>{storyCount || "12"} truyện</dd>
-            </div>
-            <div>
-              <dt>Nhịp cập nhật</dt>
-              <dd>Mỗi ngày</dd>
-            </div>
-            <div>
-              <dt>Không gian</dt>
-              <dd>Sáng tác Việt</dd>
-            </div>
-          </dl>
-        </div>
-        {lead && (
-          <Link
-            className="heroFeatured"
-            href={`/stories/${lead.slug}`}
-          >
-            <span>Truyện nổi bật hôm nay</span>
-            <strong>{lead.title}</strong>
-            <small>
-              Mở truyện <span aria-hidden="true">→</span>
-            </small>
-          </Link>
-        )}
-      </section>
-
-      <nav className="categoryDock" aria-label="Thể loại nổi bật">
-        <Link href="/search?q=kỳ+ảo">
-          <Sparkles aria-hidden="true" />
-          <span>Kỳ ảo Việt</span>
-        </Link>
-        <Link href="/search?q=trinh+thám">
-          <Search aria-hidden="true" />
-          <span>Trinh thám</span>
-        </Link>
-        <Link href="/search?q=lịch+sử">
-          <Landmark aria-hidden="true" />
-          <span>Lịch sử</span>
-        </Link>
-        <Link href="/search?q=viễn+tưởng">
-          <Rocket aria-hidden="true" />
-          <span>Viễn tưởng</span>
-        </Link>
-        <Link href="/search?q=lãng+mạn">
-          <Heart aria-hidden="true" />
-          <span>Lãng mạn</span>
-        </Link>
-        <Link href="/search?q=phiêu+lưu">
-          <Compass aria-hidden="true" />
-          <span>Phiêu lưu</span>
-        </Link>
-        <Link href="/search?q=đời+thường">
-          <BookOpen aria-hidden="true" />
-          <span>Đời thường</span>
-        </Link>
-      </nav>
-
-      <section className="catalogSections" id="catalog">
-        {home.sections.map((section, sectionIndex) => (
-          <section
-            aria-labelledby={`section-${section.id}`}
-            className="storySection"
-            key={section.id}
-          >
-            <header>
-              <div>
-                <p>
-                  {sectionIndex === 0 && (
-                    <Flame aria-hidden="true" />
-                  )}
-                  Kệ {String(sectionIndex + 1).padStart(2, "0")} ·{" "}
-                  {section.type === "LATEST"
-                    ? "Theo nhịp xuất bản"
-                    : "Tuyển chọn biên tập"}
-                </p>
-                <h2 id={`section-${section.id}`}>{section.title}</h2>
+      <div className="homeLayout">
+        <div className="homeMain">
+          <section className="catalogHero" aria-labelledby="hero-title">
+            <div className="heroManifesto">
+              <span className="heroBadge">TIỂU THUYẾT HOT</span>
+              <h1 id="hero-title">{lead?.title ?? "Thư viện đang cập nhật"}</h1>
+              <div className="heroMeta">
+                <span>{home.sections[0]?.title}</span>
+                {lead && <span>Cập nhật {new Date(lead.publishedAt).toLocaleDateString("vi-VN")}</span>}
               </div>
-              <Link href="/search">Xem toàn bộ</Link>
-            </header>
-            {section.stories.length > 0 ? (
-              <div className="catalogGrid">
-                {section.stories.map((story, index) => (
-                  <CatalogStoryCard
-                    index={index + sectionIndex}
-                    key={story.id}
-                    story={story}
-                  />
-                ))}
-              </div>
-            ) : (
-              <p className="emptyCatalog">
-                Kệ này đang được biên tập. Khám phá các truyện mới nhất
-                trong lúc chờ.
+              <p>
+                Khám phá truyện vừa xuất bản, lưu tiến độ đọc và theo dõi
+                chương mới từ các tác giả, nhóm dịch trên Giới Truyện.
               </p>
-            )}
+              <div className="heroActions">
+                {lead && <Link className="primaryAction" href={`/stories/${lead.slug}`}>
+                  <BookOpen aria-hidden="true" /> Đọc ngay
+                </Link>}
+                <Link className="secondaryAction" href="/search">Xem chi tiết</Link>
+              </div>
+            </div>
+            <div aria-hidden="true" className="heroDots"><i /><i /><i /><i /></div>
+            <ChevronRight aria-hidden="true" className="heroArrow" />
           </section>
-        ))}
-      </section>
+
+          {home.sections.map((section, sectionIndex) => (
+            <section
+              aria-labelledby={`section-${section.id}`}
+              className="storySection"
+              key={section.id}
+            >
+              <header>
+                <div>
+                  <h2 id={`section-${section.id}`}>
+                    {sectionIndex === 0 && <Flame aria-hidden="true" />}
+                    {section.title}
+                  </h2>
+                </div>
+                <Link href="/search">Xem tất cả</Link>
+              </header>
+              {section.stories.length > 0 ? (
+                <div className="catalogGrid">
+                  {section.stories.slice(0, 6).map((story, index) => (
+                    <CatalogStoryCard index={index + sectionIndex} key={story.id} story={story} />
+                  ))}
+                </div>
+              ) : <p className="emptyCatalog">Kệ truyện đang được cập nhật.</p>}
+            </section>
+          ))}
+
+          <section className="categorySection">
+            <header><h2>Thể loại truyện phổ biến</h2></header>
+            <nav className="categoryDock" aria-label="Thể loại nổi bật">
+              {categories.slice(0, 6).map((category) => (
+                <Link href={`/search?category=${encodeURIComponent(category.slug)}`} key={category.id}>
+                  <Shapes aria-hidden="true" /><strong>{category.name}</strong><small>Khám phá thể loại</small>
+                </Link>
+              ))}
+            </nav>
+          </section>
+
+          <section className="creatorBanner">
+            <BookOpen aria-hidden="true" />
+            <div><strong>Bạn muốn chia sẻ câu chuyện của mình?</strong>
+              <p>Gia nhập cộng đồng tác giả và nhóm dịch tại Giới Truyện.</p></div>
+            <Link href="/teams">Tìm hiểu thêm</Link>
+            <Link className="primaryAction" href="/teams">Đăng ký ngay</Link>
+          </section>
+        </div>
+
+        <aside className="homeAside">
+          <section className="sideCard rankingCard">
+            <header><h2>Truyện mới cập nhật</h2><Link href="/search">Xem tất cả</Link></header>
+            <ol>
+              {latest.slice(0, 5).map((story, index) => (
+                <li key={story.id}>
+                  <b>{index + 1}</b>
+                  <span className="rankCover" data-rank={index} />
+                  <div><Link href={`/stories/${story.slug}`}>{story.title}</Link>
+                    <small>{new Date(story.publishedAt).toLocaleDateString("vi-VN")}</small></div>
+                </li>
+              ))}
+            </ol>
+          </section>
+          <section className="sideCard continueCard">
+            <header><h2>Truyện đã hoàn thành</h2><Link href="/search">Xem tất cả</Link></header>
+            {completed.slice(0, 3).map((story, index) => (
+              <Link className="continueItem" href={`/stories/${story.slug}`} key={story.id}>
+                <span className="rankCover" data-rank={index} />
+                <div><strong>{story.title}</strong>
+                  <small>Hoàn thành {new Date(story.publishedAt).toLocaleDateString("vi-VN")}</small></div>
+              </Link>
+            ))}
+          </section>
+          <section className="sideCard communityCard">
+            <header><h2>Sáng tác nguyên bản</h2><Link href="/search">Xem tất cả</Link></header>
+            {original.slice(0, 3).map((story, index) => (
+              <div key={story.id}><span className="rankCover" data-rank={index} />
+                <p><strong>{story.title}</strong><small>{new Date(story.publishedAt).toLocaleDateString("vi-VN")}</small></p>
+                <Link href={`/stories/${story.slug}`}>Đọc</Link></div>
+            ))}
+          </section>
+        </aside>
+      </div>
     </PublicShell>
   );
 }

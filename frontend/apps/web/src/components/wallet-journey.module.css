@@ -405,3 +405,18 @@
   .receipt,
   .blankReceipt { animation: none; }
 }
+
+/* Financial pages inherit the same cobalt dashboard language. */
+.page { background:#f8faff; padding-top:1rem; }
+.header { background:#fff; border:1px solid #e2e8f3; border-radius:.8rem; padding:1.4rem; }
+.header h1 { font:750 clamp(2rem,4vw,3.4rem)/1 var(--sans); letter-spacing:-.04em; }
+.workspace { gap:1.5rem; grid-template-columns:minmax(18rem,.75fr) minmax(0,1.25fr); padding-top:1.5rem; }
+.ledger, .receiptColumn { background:#fff; border:1px solid #e2e8f3; border-radius:.8rem; padding:1.4rem; }
+.balance strong { color:#0f5fff; font:750 clamp(2.8rem,5vw,4.8rem)/.9 var(--sans); }
+.amountOptions button { border-radius:.55rem; }
+.amountOptions button[aria-pressed="true"] { background:#eef4ff; border-color:#0f5fff; color:#0f5fff; }
+.create { background:#0f5fff; border-radius:.55rem; }
+.receipt, .blankReceipt { border-color:#e2e8f3; border-radius:.75rem; box-shadow:none; }
+.receipt::after, .blankReceipt::after { display:none; }
+.receiptTop h2, .historyHeading h2, .blankReceipt h2 { font-family:var(--sans); }
+.receiptFooter { background:#0b1228; }
