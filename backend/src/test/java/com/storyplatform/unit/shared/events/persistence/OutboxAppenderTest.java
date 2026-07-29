@@ -65,7 +65,7 @@ class OutboxAppenderTest {
     }
 
     @Test
-    void oversizedPayloadIsRejectedBeforeMongoWrite() {
+    void oversizedPayloadIsRejectedBeforeDatabaseWrite() {
         IntegrationEvent event = event(Map.of(
                 "content",
                 "x".repeat(65_536)

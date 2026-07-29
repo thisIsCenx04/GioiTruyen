@@ -19,7 +19,7 @@ service identities, secrets and GitHub environments.
   populated through an approved out-of-band process and never enter Git or
   OpenTofu state.
 - VPC flow logs and application logs use KMS encryption and bounded retention.
-- MongoDB, Redis, edge ingress and Cloudinary policy are added by C024–C027.
+- MySQL, Redis, edge ingress and Cloudinary policy are added by C024–C027.
 
 AWS was selected as the initial runtime baseline because ECS Fargate provides
 private task networking and per-task IAM without requiring a Kubernetes control
@@ -78,7 +78,7 @@ the count:
 
 - populate every Secrets Manager reference through a restricted channel;
 - push the already-tested artifact to ECR and use its `@sha256` digest;
-- provision private MongoDB/Redis paths and required egress rules;
+- provision private MySQL/Redis paths and required egress rules;
 - provision edge-only ingress, TLS and health checks;
 - confirm logs, alarms, rollback and deletion protection;
 - promote the same application digest from dev to staging.

@@ -20,7 +20,7 @@ class OutboxTransactionBoundaryIntegrationTest {
     private OutboxAppender outboxAppender;
 
     @Test
-    void appendOutsideAnExistingTransactionIsRejectedBeforeMongoWrite() {
+    void appendOutsideAnExistingTransactionIsRejectedBeforeDatabaseWrite() {
         IntegrationEvent event = new IntegrationEvent(
                 UUID.fromString("581c36b2-52a0-4a18-8035-5478ec1c3270"),
                 "publishing.story.published",

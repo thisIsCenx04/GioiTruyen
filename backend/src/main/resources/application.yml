@@ -23,9 +23,6 @@ spring:
     enabled: ${MYSQL_MIGRATIONS_ENABLED:false}
     locations: classpath:db/migration
     validate-migration-naming: true
-  mongodb:
-    uri: ${MONGODB_URI:mongodb://127.0.0.1:27017/story_platform?replicaSet=rs0}
-    database: ${MONGODB_DATABASE:story_platform}
   data:
     redis:
       url: ${REDIS_URL:redis://127.0.0.1:6379}
@@ -70,7 +67,7 @@ management:
         liveness:
           include: "livenessState"
         readiness:
-          include: "readinessState,mongo,redis"
+          include: "readinessState,db,redis"
   tracing:
     sampling:
       probability: ${OTEL_TRACES_SAMPLING_PROBABILITY:0.1}
@@ -284,21 +281,6 @@ app:
         max-backoff: ${OUTBOX_WORKER_MAX_BACKOFF:15m}
   seed:
     enabled: ${APP_SEED_ENABLED:false}
-  mongodb:
-    min-pool-size: ${MONGODB_MIN_POOL_SIZE:2}
-    max-pool-size: ${MONGODB_MAX_POOL_SIZE:50}
-    max-connecting: ${MONGODB_MAX_CONNECTING:4}
-    max-wait-time: ${MONGODB_MAX_WAIT_TIME:2s}
-    max-idle-time: ${MONGODB_MAX_IDLE_TIME:60s}
-    connect-timeout: ${MONGODB_CONNECT_TIMEOUT:2s}
-    read-timeout: ${MONGODB_READ_TIMEOUT:5s}
-    server-selection-timeout: ${MONGODB_SERVER_SELECTION_TIMEOUT:3s}
-    write-timeout: ${MONGODB_WRITE_TIMEOUT:5s}
-    migrations:
-      enabled: ${MONGODB_MIGRATIONS_ENABLED:false}
-      dry-run: ${MONGODB_MIGRATIONS_DRY_RUN:true}
-      lock-duration: ${MONGODB_MIGRATIONS_LOCK_DURATION:15m}
-
 logging:
   level:
     root: ${LOG_LEVEL:INFO}

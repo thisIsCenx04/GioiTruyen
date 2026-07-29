@@ -3,34 +3,28 @@ package com.storyplatform.discovery.infrastructure;
 import com.storyplatform.discovery.application.HomeOperations;
 import com.storyplatform.discovery.application.HomeSectionBuilder;
 import com.storyplatform.discovery.application.HomeService;
+import com.storyplatform.discovery.application.RankingOperations;
+import com.storyplatform.discovery.application.RankingService;
 import com.storyplatform.discovery.application.SearchOperations;
 import com.storyplatform.discovery.application.StorySearchService;
 import com.storyplatform.discovery.application.SuggestionOperations;
 import com.storyplatform.discovery.application.SuggestionService;
-import com.storyplatform.discovery.application.RankingOperations;
-import com.storyplatform.discovery.application.RankingService;
 import com.storyplatform.discovery.application.port.HomeReadModelRepository;
 import com.storyplatform.discovery.application.port.HomeStorySource;
+import com.storyplatform.discovery.application.port.RankingRepository;
 import com.storyplatform.discovery.application.port.SearchCursorCodec;
 import com.storyplatform.discovery.application.port.StorySearchRepository;
 import com.storyplatform.discovery.application.port.SuggestionRateLimiter;
 import com.storyplatform.discovery.application.port.SuggestionRepository;
-import com.storyplatform.discovery.application.port.RankingRepository;
-import com.storyplatform.discovery.infrastructure.persistence
-        .JdbcStorySearchRepository;
-import com.storyplatform.discovery.infrastructure.persistence
-        .JdbcSuggestionRepository;
-import com.storyplatform.discovery.infrastructure.persistence
-        .MongoRankingRepository;
-import com.storyplatform.discovery.infrastructure.security
-        .HmacSearchCursorCodec;
-import com.storyplatform.discovery.infrastructure.security
-        .RedisSuggestionRateLimiter;
+import com.storyplatform.discovery.infrastructure.persistence.DisabledRankingRepository;
+import com.storyplatform.discovery.infrastructure.persistence.JdbcStorySearchRepository;
+import com.storyplatform.discovery.infrastructure.persistence.JdbcSuggestionRepository;
+import com.storyplatform.discovery.infrastructure.security.HmacSearchCursorCodec;
+import com.storyplatform.discovery.infrastructure.security.RedisSuggestionRateLimiter;
 import com.storyplatform.shared.cache.RedisKeyFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
@@ -42,8 +36,8 @@ import java.util.Base64;
 public class DiscoveryConfiguration {
 
     @Bean
-    RankingRepository rankingRepository(MongoTemplate mongo) {
-        return new MongoRankingRepository(mongo);
+    RankingRepository rankingRepository() {
+        return new DisabledRankingRepository();
     }
 
     @Bean
@@ -64,30 +58,8 @@ public class DiscoveryConfiguration {
     }
 
     @Bean
-    HomeReadModelProjector homeReadModelProjector(
-            HomeOperations homes
-    ) {
+    HomeReadModelProjector homeReadModelProjector(HomeOperations homes) {
         return new HomeReadModelProjector(homes);
-    }
-
-    @Bean
-    PublishingDiscoveryProjector chapterPublishingDiscoveryProjector(
-            HomeOperations homes
-    ) {
-        return new PublishingDiscoveryProjector(
-                homes,
-                "publishing.chapter.published"
-        );
-    }
-
-    @Bean
-    PublishingDiscoveryProjector visibilityPublishingDiscoveryProjector(
-            HomeOperations homes
-    ) {
-        return new PublishingDiscoveryProjector(
-                homes,
-                "publishing.visibility.changed"
-        );
     }
 
     @Bean
@@ -100,9 +72,7 @@ public class DiscoveryConfiguration {
     }
 
     @Bean
-    StorySearchRepository storySearchRepository(
-            JdbcClient jdbc
-    ) {
+    StorySearchRepository storySearchRepository(JdbcClient jdbc) {
         return new JdbcStorySearchRepository(jdbc);
     }
 
@@ -115,9 +85,7 @@ public class DiscoveryConfiguration {
     }
 
     @Bean
-    SuggestionRepository suggestionRepository(
-            JdbcClient jdbc
-    ) {
+    SuggestionRepository suggestionRepository(JdbcClient jdbc) {
         return new JdbcSuggestionRepository(jdbc);
     }
 

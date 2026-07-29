@@ -727,8 +727,8 @@ paths:
       operationId: searchPublishedStories
       summary: Search published stories with highlights and facets
       description: |
-        Uses Atlas Search when enabled and a bounded MongoDB text-index
-        fallback otherwise. Raw regex and MongoDB operators are never accepted.
+        Uses bounded MySQL full-text search. Raw regex and database operators
+        are never accepted.
       security: []
       tags: [Catalog]
       parameters:
@@ -3234,7 +3234,7 @@ paths:
       summary: Reject a withdrawal and release reserved XU once
       description: |
         Commits a compensating ledger posting from reserved back to available
-        and the terminal rejection through one MongoDB transaction.
+        and the terminal rejection through one database transaction.
       tags: [Monetization]
       parameters:
         - name: withdrawalId

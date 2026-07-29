@@ -47,7 +47,7 @@ Run `smoke` first. Promote sequentially to `ramp`, `spike`, `cold-cache`, and
 `SPIKE_MULTIPLIER`, `SOAK_DURATION`, or `SMOKE_DURATION` when testing a
 different capacity tier.
 
-For `degraded`, start the test and inject a MongoDB/Redis failure using the
+For `degraded`, start the test and inject a MySQL/Redis failure using the
 environment owner's approved procedure. The suite accepts controlled
 backpressure only when HTTP 429/503 includes `Retry-After`; it does not mutate
 infrastructure itself.
@@ -63,7 +63,7 @@ infrastructure itself.
 - p99 is capped at twice each p95 budget.
 
 Save k6 JSON and summary output outside Git. Correlate the run window with
-MongoDB connections/replication lag, Redis hit/eviction, JVM saturation, and
+MySQL connections/replication lag, Redis hit/eviction, JVM saturation, and
 outbox oldest age before accepting the capacity result.
 
 Validate the deterministic profile configuration without k6:

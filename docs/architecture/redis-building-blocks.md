@@ -1,6 +1,6 @@
 # Redis building blocks
 
-MongoDB remains the source of truth. Redis data must be safe to flush and
+MySQL remains the source of truth. Redis data must be safe to flush and
 rebuild. The application uses string keys and JSON values only; native Java
 serialization is not permitted.
 
@@ -35,7 +35,7 @@ new key-version or an explicit representation-version segment.
 - Wallet balances, payment state, canonical permissions and publishing state
   must never exist only in Redis.
 - Coordination leases require a TTL plus fencing/version checks at the
-  source-of-truth boundary; they never replace a MongoDB transaction.
+  source-of-truth boundary; they never replace a MySQL transaction.
 
 Production TLS, authentication, private networking, memory/eviction and
 failover are provisioned by infrastructure commit C025.

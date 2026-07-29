@@ -6,13 +6,19 @@ Java 21 and Spring Boot backend organized as a clean layered modular monolith.
 
 - JDK 21
 - Root `.env` created from `.env.example`
-- MongoDB replica set and Redis for runtime integration
+- Native MySQL 8.4
 
 Load the root environment and run:
 
 ```powershell
 . ..\scripts\load-env.ps1
 .\gradlew.bat bootRun
+```
+
+For the MySQL-only local profile, run this command from the repository root:
+
+```powershell
+.\scripts\run-local-backend.ps1
 ```
 
 Run tests:
@@ -25,38 +31,10 @@ Run tests:
 ```
 
 `unitTest` only discovers tests below `com.storyplatform.unit`, does not start
-Spring, and must not access network, MongoDB, or Redis. The JaCoCo HTML report
-is written to `build/reports/jacoco/test/html/index.html`.
+Spring, and must not access network or Redis. The JaCoCo HTML report is written
+to `build/reports/jacoco/test/html/index.html`.
 
-MongoDB integration tests use Testcontainers with a pinned MongoDB replica-set
-image. They run automatically when a Docker-compatible runtime is available and
-are reported as skipped when the runtime is absent; CI must provide Docker and
-must not accept that skip.
-
-## MongoDB migrations
-
-Migrations are forward-only, versioned, checksummed and protected by a MongoDB
-lease lock. They are disabled during normal API startup and default to dry-run
-when explicitly enabled.
-
-Preview pending migrations:
-
-```powershell
-$env:MONGODB_MIGRATIONS_ENABLED = "true"
-$env:MONGODB_MIGRATIONS_DRY_RUN = "true"
-.\gradlew.bat bootRun --args="--spring.main.web-application-type=none"
-```
-
-Apply after reviewing the dry-run with a dedicated migration database identity:
-
-```powershell
-$env:MONGODB_MIGRATIONS_DRY_RUN = "false"
-.\gradlew.bat bootRun --args="--spring.main.web-application-type=none"
-```
-
-Never edit an applied migration. Add a higher version that is idempotent and
-backward-compatible with the previous application version. Destructive changes
-follow expand, backfill, switch and contract as separate releases.
+MySQL migrations are managed by Flyway and run automatically on startup.
 
 ## Transactional outbox
 
@@ -65,7 +43,7 @@ and optional actor/Team metadata. Event payloads are JSON with a 64 KiB default
 limit and must contain only the minimum consumer data—never credentials, tokens,
 raw payment data or unnecessary PII.
 
-Call `OutboxAppender.append(...)` from an existing MongoDB transaction that also
+Call `OutboxAppender.append(...)` from an existing database transaction that also
 writes the business aggregate. The appender deliberately uses mandatory
 transaction propagation and rejects standalone calls.
 
@@ -78,7 +56,7 @@ event ID as the provider idempotency key.
 
 ## Observability
 
-Actuator and Micrometer instrument HTTP, JVM, MongoDB and Redis. The outbox adds
+Actuator and Micrometer instrument HTTP, JVM, MySQL and Redis. The outbox adds
 the low-cardinality observations `story.outbox.poll` and
 `story.outbox.process`; they never include event IDs, actor/Team IDs, payloads,
 exception messages or credentials.
@@ -99,7 +77,7 @@ committed to Git.
 
 `/actuator/health/liveness` (also `/livez`) checks only the process lifecycle;
 it intentionally ignores external systems. `/actuator/health/readiness` (also
-`/readyz`) requires the application state, MongoDB and Redis to be ready.
+`/readyz`) requires the application state and MySQL to be ready.
 Dependency failure returns `503` so the instance stops receiving traffic.
 
 All public health responses hide component names, topology, exception messages

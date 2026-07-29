@@ -1,5 +1,24 @@
 # GioiTruyen
 
+## Local development without Docker
+
+The local runtime uses native MySQL, Spring Boot, and Next.js. Start MySQL and
+the backend from the repository root:
+
+```powershell
+.\scripts\run-local-backend.ps1
+```
+
+In another terminal, start the reader application:
+
+```powershell
+pnpm --dir frontend dev:web
+```
+
+The local profile runs Flyway migrations and development data seeding against
+the `gioitruyen` MySQL database. Redis health checks are disabled for this
+profile.
+
 ## Local quality gates
 
 Use Java 21, Node.js 24, and pnpm 11.17.0. CI runs the same commands and

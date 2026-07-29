@@ -31,7 +31,6 @@ val mockitoAgent = configurations.create("mockitoAgent") {
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation("org.springframework.boot:spring-boot-starter-jdbc")
-	implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
 	implementation("org.springframework.boot:spring-boot-starter-data-redis")
 	implementation("org.springframework.boot:spring-boot-starter-opentelemetry")
 	implementation("org.springframework.boot:spring-boot-starter-security")
@@ -47,7 +46,6 @@ dependencies {
 	runtimeOnly("io.micrometer:micrometer-registry-otlp")
 	testImplementation("com.tngtech.archunit:archunit:1.4.2")
 	testImplementation("org.springframework.boot:spring-boot-starter-actuator-test")
-	testImplementation("org.springframework.boot:spring-boot-starter-data-mongodb-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-data-redis-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-security-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
@@ -58,7 +56,6 @@ dependencies {
 	testImplementation("org.mockito:mockito-junit-jupiter")
 	testImplementation("net.jqwik:jqwik:$jqwikVersion")
 	testImplementation("org.testcontainers:testcontainers-junit-jupiter:2.0.5")
-	testImplementation("org.testcontainers:testcontainers-mongodb:2.0.5")
 	testImplementation("org.testcontainers:testcontainers-mysql:2.0.5")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 	mockitoAgent("org.mockito:mockito-core") {

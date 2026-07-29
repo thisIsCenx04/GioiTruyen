@@ -19,7 +19,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(properties = {
-        "management.health.mongo.enabled=false",
         "management.health.redis.enabled=false"
 })
 @AutoConfigureMockMvc
@@ -27,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class HealthEndpointIntegrationTest {
 
     private static final String SENSITIVE_TOPOLOGY =
-            "private-mongo.internal:27017";
+            "private-mysql.internal:3306";
 
     @Autowired
     private MockMvc mockMvc;
@@ -75,7 +74,7 @@ class HealthEndpointIntegrationTest {
     static class FailingDependencies {
 
         @Bean
-        HealthIndicator mongoHealthIndicator() {
+        HealthIndicator databaseHealthIndicator() {
             return () -> Health.down()
                     .withDetail("server", SENSITIVE_TOPOLOGY)
                     .withException(new IllegalStateException(

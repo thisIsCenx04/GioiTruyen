@@ -24,7 +24,6 @@ locals {
   runtime_services = toset(["api", "worker", "web", "admin"])
 
   secret_environment_variables = {
-    MONGODB_URI                 = "mongodb-uri"
     REDIS_URL                   = "redis-url"
     JWT_SIGNING_KEY             = "jwt-signing-key"
     DATA_ENCRYPTION_KEY         = "data-encryption-key"

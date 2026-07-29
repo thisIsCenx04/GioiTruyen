@@ -52,7 +52,7 @@ class OutboxTelemetryTest {
     @Test
     void pollFailureIsCountedWithoutRecordingExceptionDetails() {
         assertThatThrownBy(() -> telemetry.observePoll(() -> {
-            throw new IllegalStateException("mongodb password");
+            throw new IllegalStateException("database password");
         })).isInstanceOf(IllegalStateException.class);
 
         assertThat(meters.get("story.outbox.poll")
@@ -62,6 +62,6 @@ class OutboxTelemetryTest {
         assertThat(meters.getMeters())
                 .allSatisfy(meter -> assertThat(
                         meter.getId().toString()
-                ).doesNotContain("mongodb password"));
+                ).doesNotContain("database password"));
     }
 }
