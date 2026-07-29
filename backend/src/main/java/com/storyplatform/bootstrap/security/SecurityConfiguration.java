@@ -36,7 +36,10 @@ public class SecurityConfiguration {
                         "/auth/reauth/grants",
                         "/me",
                         "/teams",
+                        "/teams/applications",
+                        "/teams/applications/me",
                         "/teams/*",
+                        "/teams/*/dashboard",
                         "/media/upload-signatures",
                         "/me/reading-history",
                         "/me/reading-history/*",
@@ -84,6 +87,7 @@ public class SecurityConfiguration {
                                 HttpMethod.GET,
                                 "/categories",
                                 "/home",
+                                "/promotions/home",
                                 "/search",
                                 "/search/suggestions",
                                 "/stories",
@@ -125,6 +129,17 @@ public class SecurityConfiguration {
                         .requestMatchers("/donations").authenticated()
                         .requestMatchers("/teams/*/rewards").authenticated()
                         .requestMatchers("/referrals/**").authenticated()
+                        .requestMatchers(
+                                "/teams/applications",
+                                "/teams/applications/me",
+                                "/teams/*/dashboard"
+                        ).authenticated()
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/admin/dashboard",
+                                "/admin/content/**",
+                                "/admin/finance/**"
+                        ).permitAll()
                         .requestMatchers("/admin/topups/**").authenticated()
                         .requestMatchers("/admin/withdrawals/**")
                         .authenticated()

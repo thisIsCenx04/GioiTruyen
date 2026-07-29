@@ -136,6 +136,53 @@
   border-color: #27756e;
 }
 
+/* Final bright client layout */
+.settings {
+  background:#f7fbff;
+  padding:1rem 1rem 5rem;
+}
+.settings > header,
+.settings form {
+  max-width:80rem;
+}
+.settings > header {
+  background:#fff;
+  border:1px solid #d9e8f7;
+  border-radius:1rem;
+  box-shadow:0 .8rem 2rem rgb(28 83 150 / 6%);
+  padding:1.4rem;
+}
+.settings h1 {
+  color:#102344;
+  font:750 clamp(2rem,4vw,3.4rem)/1 var(--sans);
+  letter-spacing:-.04em;
+}
+.settings h1 em,
+.settings > header a {
+  color:#0f6bff;
+}
+.settings form {
+  gap:1.4rem;
+  grid-template-columns:minmax(15rem,.45fr) minmax(0,1.55fr);
+  padding-top:1.4rem;
+}
+.intro,
+.controls {
+  background:#fff;
+  border:1px solid #d9e8f7;
+  border-radius:1rem;
+  box-shadow:0 .8rem 2rem rgb(28 83 150 / 5%);
+  padding:1.25rem;
+}
+.controls > button {
+  background:linear-gradient(135deg,#0f6bff,#00b8a9);
+  border-radius:.55rem;
+}
+.controls fieldset,
+.controls label {
+  border-color:#d9e8f7;
+}
+
 @media (max-width: 48rem) {
   .settings > header {
     align-items: start;

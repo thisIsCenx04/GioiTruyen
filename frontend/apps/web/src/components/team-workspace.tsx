@@ -4,19 +4,26 @@ import {
   createBrowserTeamClient,
   StoryApiError,
   type Team,
+  type TeamApplication,
+  type TeamDashboard,
   type TeamFollow,
   type TeamMembership,
 } from "@gioitruyen/api-client";
 import { BrandMark, StatusPill } from "@gioitruyen/ui";
+import {
+  BarChart3,
+  BookOpen,
+  CalendarDays,
+  CloudUpload,
+  DollarSign,
+  FileCheck2,
+  PenLine,
+  Send,
+  Settings,
+} from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import {
-  type FormEvent,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 import styles from "./team-workspace.module.css";
 import { WithdrawalWorkspace } from "./withdrawal-workspace";
@@ -30,11 +37,15 @@ const permissionOptions = [
   ["finance:request", "Gửi yêu cầu tài chính"],
 ] as const;
 
+const numberFormatter = new Intl.NumberFormat("vi-VN");
+
 function message(error: unknown) {
   if (error instanceof StoryApiError) {
     const known: Readonly<Record<string, string>> = {
       AUTHENTICATION_REQUIRED:
         "Phiên làm việc đã hết hạn. Hãy đăng nhập lại để tiếp tục.",
+      TEAM_APPLICATION_SLUG_TAKEN:
+        "Đường dẫn team này đã được dùng hoặc đang chờ duyệt.",
       TEAM_LAST_OWNER: "Không thể gỡ chủ sở hữu cuối cùng của nhóm.",
       TEAM_MEMBER_EXISTS: "Người này đã có trong sổ thành viên.",
       TEAM_MEMBERSHIP_VERSION_CONFLICT:
@@ -77,18 +88,20 @@ function WorkspaceNotice({
 
 export function TeamDirectory() {
   const teamsApi = useMemo(() => createBrowserTeamClient(), []);
-  const router = useRouter();
   const [teams, setTeams] = useState<Team[]>([]);
+  const [applications, setApplications] = useState<TeamApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   useEffect(() => {
     let active = true;
-    teamsApi
-      .listTeams()
-      .then((items) => {
-        if (active) setTeams(items);
+    Promise.all([teamsApi.listTeams(), teamsApi.applications().catch(() => [])])
+      .then(([teamItems, applicationItems]) => {
+        if (!active) return;
+        setTeams(teamItems);
+        setApplications(applicationItems);
       })
       .catch((requestError: unknown) => {
         if (active) setError(message(requestError));
@@ -105,16 +118,24 @@ export function TeamDirectory() {
     event.preventDefault();
     setCreating(true);
     setError("");
-    const values = new FormData(event.currentTarget);
+    setNotice("");
+    const form = event.currentTarget;
+    const values = new FormData(form);
     try {
-      const team = await teamsApi.createTeam({
-        description: String(values.get("description")),
-        name: String(values.get("name")),
-        slug: String(values.get("slug")),
+      const application = await teamsApi.createApplication({
+        description: String(values.get("description") ?? ""),
+        name: String(values.get("name") ?? ""),
+        slug: String(values.get("slug") ?? ""),
       });
-      router.push(`/teams/${team.id}` as Route);
+      setApplications((current) => [
+        application,
+        ...current.filter((item) => item.id !== application.id),
+      ]);
+      form.reset();
+      setNotice("Đã gửi đăng ký team vào danh sách chờ admin duyệt.");
     } catch (requestError) {
       setError(message(requestError));
+    } finally {
       setCreating(false);
     }
   }
@@ -126,25 +147,40 @@ export function TeamDirectory() {
           <BrandMark />
         </Link>
         <div>
-          <p className={styles.kicker}>Phòng biên tập</p>
-          <h1>Chọn một nhóm để viết tiếp.</h1>
+          <p className={styles.kicker}>Hồ sơ reader</p>
+          <h1>Tài khoản đọc truyện.</h1>
         </div>
         <Link className={styles.accountLink} href={"/account/sessions" as Route}>
           Tài khoản
         </Link>
       </header>
 
-      <div className={styles.directoryGrid}>
+      <div className={styles.readerProfileShell}>
+        <section className={styles.readerProfileCard}>
+          <div>
+            <strong>Reader</strong>
+            <span>Thông tin cơ bản, phiên đăng nhập và trạng thái đăng ký team.</span>
+          </div>
+          <nav className={styles.profileTabs} aria-label="Tab hồ sơ reader">
+            <Link href={"/account/sessions" as Route}>Phiên đăng nhập</Link>
+            <a aria-current="page" href="#team-application">
+              Đăng ký team
+            </a>
+          </nav>
+        </section>
+      </div>
+
+      <div className={styles.directoryGrid} id="team-application">
         <section className={styles.teamIndex} aria-labelledby="team-index-title">
           <div className={styles.sectionTitle}>
-            <span>Hồ sơ đang mở</span>
+            <span>Team đang hoạt động</span>
             <strong>{teams.length.toString().padStart(2, "0")}</strong>
           </div>
           <h2 id="team-index-title">Nhóm xuất bản</h2>
-          {loading && <p className={styles.empty}>Đang mở sổ nhóm…</p>}
+          {loading && <p className={styles.empty}>Đang mở sổ nhóm...</p>}
           {!loading && teams.length === 0 && (
             <p className={styles.empty}>
-              Chưa có nhóm nào. Tạo nhóm đầu tiên ở biểu mẫu bên cạnh.
+              Chưa có nhóm nào được duyệt. Gửi hồ sơ đăng ký ở biểu mẫu bên cạnh.
             </p>
           )}
           <ol className={styles.teamList}>
@@ -163,17 +199,21 @@ export function TeamDirectory() {
           </ol>
         </section>
 
-        <section className={styles.createSheet} aria-labelledby="create-title">
-          <p className={styles.kicker}>Mở hồ sơ mới</p>
-          <h2 id="create-title">Lập nhóm xuất bản</h2>
+        <section
+          className={styles.createSheet}
+          id="ads-booking"
+          aria-labelledby="create-title"
+        >
+          <p className={styles.kicker}>Tab đăng ký team</p>
+          <h2 id="create-title">Gửi hồ sơ chờ duyệt</h2>
           <p>
-            Bạn sẽ trở thành chủ sở hữu đầu tiên và có thể mời cộng sự ngay
-            sau khi tạo.
+            Reader chỉ gửi đăng ký tại đây. Hồ sơ sẽ vào danh sách xem xét, admin
+            duyệt xong mới mở quyền xuất bản.
           </p>
-          <WorkspaceNotice error={error} notice="" />
+          <WorkspaceNotice error={error} notice={notice} />
           <form onSubmit={create}>
             <label>
-              Tên nhóm
+              Tên team
               <input
                 maxLength={100}
                 minLength={2}
@@ -201,14 +241,28 @@ export function TeamDirectory() {
               <textarea
                 maxLength={1000}
                 name="description"
-                placeholder="Nhóm viết gì, dành cho ai?"
+                placeholder="Team viết gì, lịch đăng thế nào?"
                 rows={4}
               />
             </label>
             <button disabled={creating} type="submit">
-              {creating ? "Đang lập nhóm…" : "Lập nhóm và mở sổ"}
+              {creating ? "Đang gửi hồ sơ..." : "Gửi đăng ký chờ duyệt"}
             </button>
           </form>
+          {applications.length > 0 && (
+            <div className={styles.pendingReviewList}>
+              <strong>Đang chờ admin duyệt</strong>
+              {applications.map((application) => (
+                <article key={application.id}>
+                  <span>{application.name}</span>
+                  <small>
+                    /{application.slug} · gửi{" "}
+                    {new Date(application.submittedAt).toLocaleDateString("vi-VN")}
+                  </small>
+                </article>
+              ))}
+            </div>
+          )}
         </section>
       </div>
     </main>
@@ -218,6 +272,7 @@ export function TeamDirectory() {
 export function TeamWorkspace({ teamId }: Readonly<{ teamId: string }>) {
   const teamsApi = useMemo(() => createBrowserTeamClient(), []);
   const [team, setTeam] = useState<Team | null>(null);
+  const [dashboard, setDashboard] = useState<TeamDashboard | null>(null);
   const [members, setMembers] = useState<TeamMembership[]>([]);
   const [follow, setFollow] = useState<TeamFollow | null>(null);
   const [canManage, setCanManage] = useState(false);
@@ -234,12 +289,14 @@ export function TeamWorkspace({ teamId }: Readonly<{ teamId: string }>) {
       setLoading(true);
       setError("");
       try {
-        const [teamResult, followResult] = await Promise.all([
+        const [teamResult, followResult, dashboardResult] = await Promise.all([
           teamsApi.getTeam(teamId),
           teamsApi.followStatus(teamId),
+          teamsApi.dashboard(teamId),
         ]);
         if (!active) return;
         setTeam(teamResult);
+        setDashboard(dashboardResult);
         setDraftName(teamResult.name);
         setDraftDescription(teamResult.description);
         setFollow(followResult);
@@ -389,10 +446,21 @@ export function TeamWorkspace({ teamId }: Readonly<{ teamId: string }>) {
     return (
       <main className={styles.loading}>
         <BrandMark />
-        <p>Đang mở sổ biên tập…</p>
+        <p>Đang mở hồ sơ team...</p>
       </main>
     );
   }
+
+  const chartItems = dashboard
+    ? [
+        ["Lượt xem", dashboard.viewCount, "views"],
+        ["Bán lẻ", dashboard.saleXu, "sale"],
+        ["Bán combo", dashboard.comboSaleXu, "combo"],
+        ["Nhận donate", dashboard.donationXu, "donation"],
+        ["Event", dashboard.eventXu, "event"],
+      ] as const
+    : [];
+  const chartMax = Math.max(1, ...chartItems.map(([, value]) => value));
 
   return (
     <main className={styles.workspace}>
@@ -401,34 +469,71 @@ export function TeamWorkspace({ teamId }: Readonly<{ teamId: string }>) {
           <BrandMark inverse />
         </Link>
         <div className={styles.folio}>
-          <span>Hồ sơ nhóm</span>
+          <span>Hồ sơ team</span>
           <strong>{team?.slug ?? "không tìm thấy"}</strong>
         </div>
-        <nav aria-label="Mục trong không gian nhóm">
+        <nav aria-label="Mục trong không gian team">
           <a href="#overview">Tổng quan</a>
-          <Link href={`/teams/${teamId}/stories` as Route}>
-            Bàn bản thảo
-          </Link>
-          <Link href={`/teams/${teamId}/analytics` as Route}>
-            Chất lượng lượt đọc
-          </Link>
-          <a href="#withdrawals">Tài chính và rút XU</a>
-          {canManage && <a href="#settings">Thông tin nhóm</a>}
+          <a href="#dashboard">Thống kê</a>
+          <Link href={`/teams/${teamId}/stories` as Route}>D.S.Chương</Link>
+          <Link href={`/teams/${teamId}/analytics` as Route}>Nhật ký</Link>
+          <a href="#withdrawals">Yêu cầu duyệt</a>
+          <a href="#exclusive">Ký độc quyền</a>
+          {canManage && <a href="#settings">Cài đặt & Tiện ích</a>}
           {canManage && <a href="#members">Sổ thành viên</a>}
-          {canManage && <a href="#invite">Mời cộng sự</a>}
         </nav>
         <p className={styles.spineNote}>
-          Mỗi thay đổi quyền được ghi theo phiên bản để tránh ghi đè công việc
-          của người khác.
+          Dashboard này dành cho team đăng truyện. Reader thường chỉ có hồ sơ
+          cơ bản và tab đăng ký team.
         </p>
       </aside>
 
       <div className={styles.workspaceBody}>
-        <header className={styles.workspaceHeader} id="overview">
-          <div>
-            <p className={styles.kicker}>Nhóm xuất bản · {team?.state}</p>
-            <h1>{team?.name ?? "Không mở được nhóm"}</h1>
-            <p>{team?.description || "Nhóm chưa viết lời giới thiệu."}</p>
+        <header className={styles.teamSummary} id="overview">
+          <div className={styles.teamAvatar}>
+            <span>{team?.name.slice(0, 1) ?? "G"}</span>
+            <button type="button">
+              <CloudUpload aria-hidden="true" />
+              Upload
+            </button>
+          </div>
+          <div className={styles.statusLedger}>
+            <h1>{team?.name ?? "Không mở được team"}</h1>
+            <p>{team?.description || "Team chưa viết lời giới thiệu."}</p>
+            <dl>
+              <div>
+                <dt>Xuất bản:</dt>
+                <dd>{dashboard?.publishStatus ?? "Chưa xác định"}</dd>
+              </div>
+              <div>
+                <dt>Tình trạng:</dt>
+                <dd>{dashboard?.completionStatus ?? team?.state ?? "Chưa xác định"}</dd>
+              </div>
+              <div>
+                <dt>Độc quyền:</dt>
+                <dd>{dashboard?.exclusiveStatus ?? "Chưa ký"}</dd>
+              </div>
+              <div>
+                <dt>Bản quyền:</dt>
+                <dd>{dashboard?.copyrightStatus ?? "Chưa xác minh"}</dd>
+              </div>
+              <div>
+                <dt>Doanh thu:</dt>
+                <dd>{numberFormatter.format(dashboard?.revenueXu ?? 0)} XU</dd>
+              </div>
+              <div>
+                <dt>Chương cuối:</dt>
+                <dd>{dashboard?.latestChapter ?? "Chưa xác định"}</dd>
+              </div>
+              <div>
+                <dt>Vé hỗ trợ:</dt>
+                <dd>{dashboard?.supporters ?? "Danh sách"}</dd>
+              </div>
+              <div>
+                <dt>Link truyện:</dt>
+                <dd>{dashboard?.storyUrl ?? "Chưa có"}</dd>
+              </div>
+            </dl>
           </div>
           <button
             className={follow?.following ? styles.following : styles.follow}
@@ -436,10 +541,37 @@ export function TeamWorkspace({ teamId }: Readonly<{ teamId: string }>) {
             onClick={toggleFollow}
             type="button"
           >
-            {follow?.following ? "Đang theo dõi" : "Theo dõi nhóm"}
+            {follow?.following ? "Đang theo dõi" : "Theo dõi team"}
             <span>{follow?.followerCount ?? 0}</span>
           </button>
         </header>
+
+        <nav className={styles.teamDashboardTabs} aria-label="Tab team dashboard">
+          <Link href={`/teams/${teamId}/stories` as Route}>
+            <BookOpen aria-hidden="true" />
+            D.S.Chương
+          </Link>
+          <a aria-current="page" href="#dashboard">
+            <BarChart3 aria-hidden="true" />
+            Thống kê
+          </a>
+          <Link href={`/teams/${teamId}/analytics` as Route}>
+            <CalendarDays aria-hidden="true" />
+            Nhật ký
+          </Link>
+          <a href="#withdrawals">
+            <Send aria-hidden="true" />
+            Yêu cầu duyệt
+          </a>
+          <a href="#settings">
+            <Settings aria-hidden="true" />
+            Cài đặt & Tiện ích
+          </a>
+          <a href="#exclusive">
+            <PenLine aria-hidden="true" />
+            Ký độc quyền
+          </a>
+        </nav>
 
         <WorkspaceNotice error={error} notice={notice} />
 
@@ -458,9 +590,80 @@ export function TeamWorkspace({ teamId }: Readonly<{ teamId: string }>) {
           </div>
           <p>
             {canManage
-              ? "Bạn đang ở chế độ chủ sở hữu."
+              ? "Bạn đang ở chế độ chủ sở hữu team."
               : "Bạn đang xem ở chế độ thành viên hoặc người theo dõi."}
           </p>
+        </section>
+
+        <section className={styles.miniDashboard} id="dashboard">
+          <header>
+            <DollarSign aria-hidden="true" />
+            <div>
+              <h2>Doanh thu</h2>
+              <strong>{numberFormatter.format(dashboard?.revenueXu ?? 0)} XU</strong>
+            </div>
+          </header>
+          <div className={styles.revenueChart}>
+            {chartItems.map(([label, value, tone]) => (
+              <div key={label}>
+                <span>{numberFormatter.format(value)}</span>
+                <i
+                  data-tone={tone}
+                  style={{ height: `${Math.max(8, (value / chartMax) * 100)}%` }}
+                />
+                <small>{label}</small>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className={styles.exclusiveCompare} id="exclusive">
+          <header>
+            <FileCheck2 aria-hidden="true" />
+            <div>
+              <h2>Bảng so sánh</h2>
+              <p>Hiện tại: {dashboard?.exclusiveStatus ?? "Chưa ký"}</p>
+            </div>
+          </header>
+          <table>
+            <thead>
+              <tr>
+                <th>Tiêu chí</th>
+                <th>Không đăng độc quyền</th>
+                <th>Truyện đăng độc quyền</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Tỷ lệ chia sẻ doanh thu</td>
+                <td>70%</td>
+                <td>90%</td>
+              </tr>
+              <tr>
+                <td>Đội ngũ marketing hỗ trợ PR</td>
+                <td>Không</td>
+                <td>Có</td>
+              </tr>
+              <tr>
+                <td>Tham gia các sự kiện</td>
+                <td>Không</td>
+                <td>Có</td>
+              </tr>
+              <tr>
+                <td>Cơ hội hiển thị với người dùng</td>
+                <td>Bình thường</td>
+                <td>Cao hơn</td>
+              </tr>
+            </tbody>
+          </table>
+          <div className={styles.exclusiveTerms}>
+            <h3>Điều khoản ký đăng độc quyền</h3>
+            <p>Truyện cần có tối thiểu 5 chương VIP hoặc tổng giá trị từ 200 XU.</p>
+            <p>Tất cả chương VIP của truyện đã ký phải đăng độc quyền tại Giới Truyện.</p>
+            <p>Sau khi ký, team không thể tự chuyển ngược lại sang không độc quyền.</p>
+            <p>Nếu vi phạm và gây tổn thất, team có thể bị trừ phần doanh thu theo quy định.</p>
+          </div>
+          <button type="button">Ký ngay</button>
         </section>
 
         <WithdrawalWorkspace teamId={teamId} />
@@ -468,7 +671,7 @@ export function TeamWorkspace({ teamId }: Readonly<{ teamId: string }>) {
         {canManage && team && (
           <section className={styles.ruleSection} id="settings">
             <div className={styles.sectionMarker}>
-              <span>Thông tin nhóm</span>
+              <span>Thông tin team</span>
               <strong>Biên tập hồ sơ</strong>
             </div>
             <form className={styles.settingsForm} onSubmit={saveTeam}>
@@ -486,15 +689,13 @@ export function TeamWorkspace({ teamId }: Readonly<{ teamId: string }>) {
                 Lời giới thiệu
                 <textarea
                   maxLength={1000}
-                  onChange={(event) =>
-                    setDraftDescription(event.target.value)
-                  }
+                  onChange={(event) => setDraftDescription(event.target.value)}
                   rows={4}
                   value={draftDescription}
                 />
               </label>
               <button disabled={busy === "team"} type="submit">
-                {busy === "team" ? "Đang lưu…" : "Lưu thông tin"}
+                {busy === "team" ? "Đang lưu..." : "Lưu thông tin"}
               </button>
             </form>
           </section>
@@ -513,9 +714,7 @@ export function TeamWorkspace({ teamId }: Readonly<{ teamId: string }>) {
                   key={`${member.userId}:${member.version}`}
                   member={member}
                   onRemove={() => remove(member)}
-                  onSave={(permissions) =>
-                    savePermissions(member, permissions)
-                  }
+                  onSave={(permissions) => savePermissions(member, permissions)}
                 />
               ))}
             </div>
@@ -526,7 +725,7 @@ export function TeamWorkspace({ teamId }: Readonly<{ teamId: string }>) {
           <section className={styles.inviteSection} id="invite">
             <div>
               <p className={styles.kicker}>Lời mời có hạn</p>
-              <h2>Mời một cộng sự vào bàn viết</h2>
+              <h2>Mời cộng sự vào bàn viết</h2>
               <p>
                 Chọn đúng phần việc cần thiết. Bạn có thể thay đổi hoặc thu hồi
                 quyền sau khi lời mời được chấp nhận.
@@ -556,7 +755,7 @@ export function TeamWorkspace({ teamId }: Readonly<{ teamId: string }>) {
                 ))}
               </fieldset>
               <button disabled={busy === "invite"} type="submit">
-                {busy === "invite" ? "Đang ghi lời mời…" : "Gửi lời mời"}
+                {busy === "invite" ? "Đang ghi lời mời..." : "Gửi lời mời"}
               </button>
             </form>
           </section>
@@ -578,6 +777,7 @@ function PermissionEditor({
   onSave: (permissions: readonly string[]) => void;
 }>) {
   const [selected, setSelected] = useState(() => new Set(member.permissions));
+  const isOwner = member.role === "OWNER";
 
   function toggle(permission: string) {
     setSelected((current) => {
@@ -588,7 +788,6 @@ function PermissionEditor({
     });
   }
 
-  const isOwner = member.role === "OWNER";
   return (
     <article className={styles.memberRow}>
       <div className={styles.memberIdentity}>
@@ -602,7 +801,7 @@ function PermissionEditor({
       </div>
       <div className={styles.permissionGrid}>
         {isOwner ? (
-          <p>Chủ sở hữu có toàn bộ quyền nhóm và không thể bị gỡ tại đây.</p>
+          <p>Chủ sở hữu có toàn bộ quyền team và không thể bị gỡ tại đây.</p>
         ) : (
           permissionOptions.map(([permission, label]) => (
             <label key={permission}>
@@ -632,7 +831,7 @@ function PermissionEditor({
             onClick={onRemove}
             type="button"
           >
-            Gỡ khỏi nhóm
+            Gỡ khỏi team
           </button>
         </div>
       )}

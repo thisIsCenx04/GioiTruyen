@@ -68,11 +68,37 @@ public class DevelopmentDataSeeder implements ApplicationRunner {
                 "Quản trị hệ thống.",
                 List.of("USER", "ADMIN")
         );
+        seedUser(
+                "10000000-0000-0000-0000-000000000005",
+                "neon.team@gioitruyen.local",
+                "team123456",
+                "Neon Team",
+                "Nhóm dịch nội dung đô thị, công nghệ và lãng mạn hiện đại.",
+                List.of("USER")
+        );
+        seedUser(
+                "10000000-0000-0000-0000-000000000006",
+                "nha.la@gioitruyen.local",
+                "team123456",
+                "Nhà Lá Studio",
+                "Studio biên tập các series học đường, chữa lành và đời thường.",
+                List.of("USER")
+        );
+        seedUser(
+                "10000000-0000-0000-0000-000000000007",
+                "metro9@gioitruyen.local",
+                "team123456",
+                "Metro Tuyến 9",
+                "Team mới đăng ký, đang chờ admin duyệt hồ sơ xuất bản.",
+                List.of("USER")
+        );
 
         seedTeamAndMembership();
         seedCategories();
         seedStoriesAndChapters();
         seedExpandedLibrary();
+        seedStoryDiscoveryMetadata();
+        seedHomePromotionBookings();
         seedReaderExperience();
         seedModerationAndWallet();
         seedFunctionalScenarios();
@@ -154,6 +180,33 @@ public class DevelopmentDataSeeder implements ApplicationRunner {
                 """)
                 .param("now", NOW)
                 .update();
+        seedTeam(
+                "20000000-0000-0000-0000-000000000002",
+                "neon-team",
+                "Neon Team",
+                "Nhóm dịch chuyên truyện đô thị, công nghệ và đời sống sáng tạo.",
+                "10000000-0000-0000-0000-000000000005",
+                "ACTIVE",
+                12
+        );
+        seedTeam(
+                "20000000-0000-0000-0000-000000000003",
+                "nha-la-studio",
+                "Nhà Lá Studio",
+                "Studio biên tập các nội dung học đường, gia đình và chữa lành.",
+                "10000000-0000-0000-0000-000000000006",
+                "ACTIVE",
+                8
+        );
+        seedTeam(
+                "20000000-0000-0000-0000-000000000004",
+                "metro-tuyen-9",
+                "Metro Tuyến 9",
+                "Team đăng ký mới, đang chờ admin xem xét quyền đăng truyện.",
+                "10000000-0000-0000-0000-000000000007",
+                "PENDING_REVIEW",
+                0
+        );
         seedMembership(
                 "10000000-0000-0000-0000-000000000003",
                 "MODERATOR",
@@ -164,6 +217,24 @@ public class DevelopmentDataSeeder implements ApplicationRunner {
                 "MANAGER",
                 "FINANCE_REVIEW"
         );
+        jdbc.sql("""
+                INSERT INTO team_applications (
+                    id, requester_user_id, slug, name, description,
+                    state, submitted_at, version
+                ) VALUES (
+                    '23000000-0000-0000-0000-000000000001',
+                    '10000000-0000-0000-0000-000000000007',
+                    'metro-tuyen-9-moi',
+                    'Metro Tuyến 9 Mới',
+                    'Hồ sơ đăng ký team mới đang chờ admin duyệt quyền đăng truyện.',
+                    'PENDING_REVIEW',
+                    :now,
+                    0
+                )
+                ON DUPLICATE KEY UPDATE id = id
+                """)
+                .param("now", NOW)
+                .update();
         jdbc.sql("""
                 INSERT INTO team_invitations (
                     id, team_id, target_user_id, invited_by,
@@ -211,6 +282,64 @@ public class DevelopmentDataSeeder implements ApplicationRunner {
                     follower_count = VALUES(follower_count),
                     updated_at = VALUES(updated_at)
                 """)
+                .param("now", NOW)
+                .update();
+    }
+
+    private void seedTeam(
+            String id,
+            String slug,
+            String name,
+            String description,
+            String ownerUserId,
+            String state,
+            long followerCount
+    ) {
+        jdbc.sql("""
+                INSERT INTO teams (
+                    id, slug, name, description, owner_user_id, state,
+                    created_at, updated_at, version
+                ) VALUES (
+                    :id, :slug, :name, :description, :ownerUserId, :state,
+                    :now, :now, 0
+                )
+                ON DUPLICATE KEY UPDATE id = id
+                """)
+                .param("id", id)
+                .param("slug", slug)
+                .param("name", name)
+                .param("description", description)
+                .param("ownerUserId", ownerUserId)
+                .param("state", state)
+                .param("now", NOW)
+                .update();
+        jdbc.sql("""
+                INSERT INTO team_memberships (
+                    team_id, user_id, role, permissions, state,
+                    joined_at, updated_at, version
+                ) VALUES (
+                    :teamId, :ownerUserId, 'OWNER',
+                    JSON_ARRAY('STORY_CREATE', 'STORY_EDIT', 'MEMBER_MANAGE'),
+                    'ACTIVE', :now, :now, 0
+                )
+                ON DUPLICATE KEY UPDATE team_id = team_id
+                """)
+                .param("teamId", id)
+                .param("ownerUserId", ownerUserId)
+                .param("now", NOW)
+                .update();
+        jdbc.sql("""
+                INSERT INTO team_follow_counters (
+                    team_id, follower_count, updated_at
+                ) VALUES (
+                    :teamId, :followerCount, :now
+                )
+                ON DUPLICATE KEY UPDATE
+                    follower_count = VALUES(follower_count),
+                    updated_at = VALUES(updated_at)
+                """)
+                .param("teamId", id)
+                .param("followerCount", followerCount)
                 .param("now", NOW)
                 .update();
     }
@@ -371,6 +500,16 @@ public class DevelopmentDataSeeder implements ApplicationRunner {
                 "<p>Gió từ bãi bồi mang theo một cái tên không ai muốn nhắc.</p>",
                 "PUBLISHED"
         );
+        for (int number = 3; number <= 24; number++) {
+            seedChapter(
+                    seedId("50010000", 1_000 + number),
+                    "40000000-0000-0000-0000-000000000001",
+                    number,
+                    "Nhịp đèn thứ " + String.format("%02d", number),
+                    reviewChapterContent(number),
+                    "PUBLISHED"
+            );
+        }
         seedChapter(
                 "50000000-0000-0000-0000-000000000003",
                 "40000000-0000-0000-0000-000000000002",
@@ -379,6 +518,15 @@ public class DevelopmentDataSeeder implements ApplicationRunner {
                 "<p>Phong bì nằm giữa bàn, khô ráo dù ngoài trời mưa trắng phố.</p>",
                 "PUBLISHED"
         );
+    }
+
+    private static String reviewChapterContent(int number) {
+        return """
+                <p>Chương %02d mở ra một nhịp đọc dài hơn để kiểm tra giao diện reader, khoảng cách dòng và điều hướng chương kế tiếp.</p>
+                <p>Người giữ đèn đi dọc bờ sông, ghi lại từng tín hiệu nhỏ trong tiếng nước và ánh sáng lam nhạt phía cuối bến.</p>
+                <p>Khi chuông đồng hồ điểm nửa đêm, những mảnh ký ức cũ hiện lên theo thứ tự khác nhau, đủ dài để kiểm tra trạng thái cuộn trang.</p>
+                <p>Ở cuối chương, nhân vật nhận ra ngọn đèn không chỉ dẫn đường cho người mất lối mà còn lưu lại lời hứa của cả thị trấn.</p>
+                """.formatted(number);
     }
 
     private void seedStory(
@@ -486,7 +634,61 @@ public class DevelopmentDataSeeder implements ApplicationRunner {
                         18, "bep-lua-cuoi-ngon", "Bếp Lửa Cuối Ngõ",
                         "Một quán cơm nhỏ nối lại những gia đình xa cách.",
                         3, true
-                )
+                ),
+                new StorySeed(19, "startup-duoi-mua-neon", "Startup Duoi Mua Neon",
+                        "Mot founder tre dung truoc lua chon giua tang truong va loi hua voi doi ngu.",
+                        5, false),
+                new StorySeed(20, "hop-dong-hon-nhan-30-ngay", "Hop Dong Hon Nhan 30 Ngay",
+                        "Hai nguoi xa la ky hop dong gia nhung lai gap nhau dung luc can mot mai nha.",
+                        6, true),
+                new StorySeed(21, "thanh-pho-khong-ngu", "Thanh Pho Khong Ngu",
+                        "Mot shipper dem phat hien cac toa nha dang gui tin nhan bang anh den.",
+                        2, false),
+                new StorySeed(22, "idol-o-tang-thuong", "Idol O Tang Thuong",
+                        "Co gai thuc tap sinh song lai mot mua debut de cuu nhom nhac dang tan ra.",
+                        1, false),
+                new StorySeed(23, "quan-ca-phe-sau-nua-dem", "Quan Ca Phe Sau Nua Dem",
+                        "Quan ca phe chi mo cua cho nhung nguoi dang can sua lai mot loi tam biet.",
+                        3, true),
+                new StorySeed(24, "ai-viet-thu-tinh", "AI Viet Thu Tinh",
+                        "Lap trinh vien tao chatbot giup khach hang to tinh va nhan ra no hieu minh qua ro.",
+                        5, false),
+                new StorySeed(25, "metro-tuyen-so-9", "Metro Tuyen So 9",
+                        "Chuyen tau cuoi ngay dua hanh khach den cac quyet dinh ho tung bo lo.",
+                        7, false),
+                new StorySeed(26, "can-ho-co-cua-so-mau-xanh", "Can Ho Co Cua So Mau Xanh",
+                        "Mot nha thiet ke noi that nghe thay cau chuyen cua chu nha qua mau son tren tuong.",
+                        6, true),
+                new StorySeed(27, "livestream-luc-0-gio", "Livestream Luc 0 Gio",
+                        "Streamer trinh tham bat gap mot vu an dang dien ra trong binh luan truc tiep.",
+                        2, false),
+                new StorySeed(28, "bau-troi-sau-bien-quang-cao", "Bau Troi Sau Bien Quang Cao",
+                        "Mot bien quang cao loi pixel mo ra nhat ky cua nguoi mat tich.",
+                        8, false),
+                new StorySeed(29, "doi-thu-ngoi-ban-ben", "Doi Thu Ngoi Ban Ben",
+                        "Hai hoc sinh dung dau bang diem bat dau hop tac de chong lai mot cuoc thi bat cong.",
+                        4, true),
+                new StorySeed(30, "van-phong-tang-18", "Van Phong Tang 18",
+                        "Nhan vien moi nhan ra tang 18 cua cong ty khong ton tai tren ban ve.",
+                        8, false),
+                new StorySeed(31, "bao-tang-ky-uc-so", "Bao Tang Ky Uc So",
+                        "Mot curator so hoa ky uc cua nguoi la va tim thay ky uc cua chinh minh.",
+                        5, true),
+                new StorySeed(32, "nhom-chat-gia-dinh", "Nhom Chat Gia Dinh",
+                        "Nhung tin nhan bi xoa trong nhom chat lam lo ra bi mat cua ba the he.",
+                        3, true),
+                new StorySeed(33, "duong-chay-5-gio-sang", "Duong Chay 5 Gio Sang",
+                        "Mot van dong vien phong trao gap lai nguoi da thay doi cuoc doi minh tren duong chay.",
+                        7, false),
+                new StorySeed(34, "phong-thu-am-so-404", "Phong Thu Am So 404",
+                        "Ban demo cua mot ca khuc chua phat hanh du doan chinh xac tin tuc ngay mai.",
+                        1, false),
+                new StorySeed(35, "nguoi-thu-vien-cuoi-tuan", "Nguoi Thu Vien Cuoi Tuan",
+                        "Thu vien vien ban thoi gian giup doc gia tim dung quyen sach can cho ngay mai.",
+                        4, true),
+                new StorySeed(36, "ung-dung-hen-ho-vo-danh", "Ung Dung Hen Ho Vo Danh",
+                        "Mot ung dung ghep doi dua hai nguoi qua cac nhiem vu khong duoc biet ten nhau.",
+                        6, false)
         );
         stories.forEach(this::seedExpandedStory);
     }
@@ -618,6 +820,185 @@ public class DevelopmentDataSeeder implements ApplicationRunner {
                 .param("plainText", content.replaceAll("<[^>]+>", ""))
                 .param("checksum", "seed-" + id)
                 .param("createdAt", NOW)
+                .update();
+    }
+
+    private void seedHomePromotionBookings() {
+        List<String> storyIds = List.of(
+                "40000000-0000-0000-0000-000000000001",
+                seedId("40000000", 18),
+                seedId("40000000", 17),
+                seedId("40000000", 16),
+                seedId("40000000", 15),
+                seedId("40000000", 14),
+                seedId("40000000", 13),
+                seedId("40000000", 12),
+                seedId("40000000", 11),
+                seedId("40000000", 10),
+                seedId("40000000", 20),
+                seedId("40000000", 19)
+        );
+        for (int index = 0; index < storyIds.size(); index++) {
+            seedPromotionBooking(index + 1, storyIds.get(index));
+        }
+    }
+
+    private void seedStoryDiscoveryMetadata() {
+        List<Integer> storyNumbers = List.of(
+                1, 2, 3,
+                10, 11, 12, 13, 14, 15, 16, 17, 18,
+                19, 20, 21, 22, 23, 24, 25, 26, 27, 28,
+                29, 30, 31, 32, 33, 34, 35, 36
+        );
+        List<Integer> exclusiveStories = List.of(
+                1, 11, 13, 15, 17, 18, 20, 23, 26, 29, 31, 32, 35
+        );
+        List<Integer> newReleaseStories = List.of(
+                18, 17, 16, 15, 14, 13, 12, 11, 10, 19, 20, 21
+        );
+        List<Integer> recentUpdateStories = List.of(
+                1, 18, 17, 16, 15, 14, 13, 12, 11, 10, 22, 23
+        );
+        List<Integer> originalStories = List.of(
+                1, 2, 3, 10, 13, 18, 20, 22, 23, 24, 26, 29
+        );
+        List<Integer> completedStories = List.of(
+                11, 13, 15, 17, 18, 20, 23, 26, 29, 31, 32, 35
+        );
+
+        storyNumbers.forEach(number -> seedRevenuePolicy(
+                storyId(number),
+                exclusiveStories.contains(number)
+        ));
+        newReleaseStories.forEach(number -> seedStoryLabel(storyId(number), "NEW_RELEASE"));
+        recentUpdateStories.forEach(number -> seedStoryLabel(storyId(number), "RECENT_UPDATE"));
+        originalStories.forEach(number -> seedStoryLabel(storyId(number), "ORIGINAL"));
+        completedStories.forEach(number -> seedStoryLabel(storyId(number), "COMPLETED"));
+        exclusiveStories.forEach(number -> seedStoryLabel(storyId(number), "EXCLUSIVE"));
+
+        for (int index = 0; index < storyNumbers.size(); index++) {
+            int storyNumber = storyNumbers.get(index);
+            long base = 120_000L - (index * 2_400L);
+            seedStoryMetrics(
+                    storyId(storyNumber),
+                    Math.max(7_500L, base + (storyNumber * 250L)),
+                    Math.max(60L, 980L - (index * 22L) + storyNumber),
+                    Math.max(20L, 420L - (index * 9L) + storyNumber),
+                    Math.max(4_000L, 82_000L - (index * 1_700L) + (storyNumber * 310L))
+            );
+        }
+    }
+
+    private void seedStoryLabel(String storyId, String label) {
+        jdbc.sql("""
+                INSERT INTO story_labels (story_id, label, created_at)
+                VALUES (:storyId, :label, :now)
+                ON DUPLICATE KEY UPDATE story_id = story_id
+                """)
+                .param("storyId", storyId)
+                .param("label", label)
+                .param("now", NOW)
+                .update();
+    }
+
+    private void seedRevenuePolicy(String storyId, boolean exclusive) {
+        jdbc.sql("""
+                INSERT INTO story_revenue_policies (
+                    story_id, exclusive, author_share_bps, admin_share_bps,
+                    updated_at, version
+                ) VALUES (
+                    :storyId, :exclusive, :authorShareBps, :adminShareBps,
+                    :now, 0
+                )
+                ON DUPLICATE KEY UPDATE
+                    exclusive = VALUES(exclusive),
+                    author_share_bps = VALUES(author_share_bps),
+                    admin_share_bps = VALUES(admin_share_bps),
+                    updated_at = VALUES(updated_at)
+                """)
+                .param("storyId", storyId)
+                .param("exclusive", exclusive)
+                .param("authorShareBps", exclusive ? 9000 : 7000)
+                .param("adminShareBps", exclusive ? 1000 : 3000)
+                .param("now", NOW)
+                .update();
+    }
+
+    private void seedStoryMetrics(
+            String storyId,
+            long donationXu,
+            long recommendationCount,
+            long saveCount,
+            long viewCount
+    ) {
+        jdbc.sql("""
+                INSERT INTO story_engagement_metrics (
+                    story_id, donation_xu, recommendation_count, save_count,
+                    view_count, updated_at
+                ) VALUES (
+                    :storyId, :donationXu, :recommendationCount, :saveCount,
+                    :viewCount, :now
+                )
+                ON DUPLICATE KEY UPDATE
+                    donation_xu = VALUES(donation_xu),
+                    recommendation_count = VALUES(recommendation_count),
+                    save_count = VALUES(save_count),
+                    view_count = VALUES(view_count),
+                    updated_at = VALUES(updated_at)
+                """)
+                .param("storyId", storyId)
+                .param("donationXu", donationXu)
+                .param("recommendationCount", recommendationCount)
+                .param("saveCount", saveCount)
+                .param("viewCount", viewCount)
+                .param("now", NOW)
+                .update();
+    }
+
+    private void seedPromotionBooking(int slot, String storyId) {
+        long pricePerDay = 2_500L;
+        int bookedDays = 7;
+        long totalCost = pricePerDay * bookedDays;
+        jdbc.sql("""
+                INSERT INTO story_promotion_bookings (
+                    id, story_id, team_id, slot_position, tag_label,
+                    price_xu_per_day, booked_days, total_cost_xu,
+                    starts_at, ends_at, state, created_at, updated_at, version
+                ) VALUES (
+                    :id, :storyId, '20000000-0000-0000-0000-000000000001',
+                    :slot, 'Nổi bật', :pricePerDay, :bookedDays, :totalCost,
+                    :startsAt, :endsAt, 'ACTIVE', :now, :now, 0
+                )
+                ON DUPLICATE KEY UPDATE id = id
+                """)
+                .param("id", seedId("22000000", slot))
+                .param("storyId", storyId)
+                .param("slot", slot)
+                .param("pricePerDay", pricePerDay)
+                .param("bookedDays", bookedDays)
+                .param("totalCost", totalCost)
+                .param("startsAt", NOW.minusSeconds(86_400))
+                .param("endsAt", NOW.plusSeconds(604_800))
+                .param("now", NOW)
+                .update();
+        jdbc.sql("""
+                INSERT INTO ledger_entries (
+                    id, user_id, entry_type, amount_xu,
+                    reference_type, reference_id, description, created_at
+                ) VALUES (
+                    :id, '10000000-0000-0000-0000-000000000002',
+                    'PROMOTION_BOOKING', :amountXu,
+                    'STORY_PROMOTION_BOOKING', :bookingId,
+                    :description, :now
+                )
+                ON DUPLICATE KEY UPDATE id = id
+                """)
+                .param("id", seedId("72000000", slot))
+                .param("amountXu", -totalCost)
+                .param("bookingId", seedId("22000000", slot))
+                .param("description", "Phí booking truyện lên trang đầu slot " + slot
+                        + " trong " + bookedDays + " ngày")
+                .param("now", NOW)
                 .update();
     }
 
@@ -909,6 +1290,10 @@ public class DevelopmentDataSeeder implements ApplicationRunner {
     private static String seedId(String prefix, int number) {
         return prefix + "-0000-0000-0000-"
                 + String.format("%012d", number);
+    }
+
+    private static String storyId(int number) {
+        return seedId("40000000", number);
     }
 
     private record StorySeed(

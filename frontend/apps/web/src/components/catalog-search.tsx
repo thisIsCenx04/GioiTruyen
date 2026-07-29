@@ -1,23 +1,30 @@
 "use client";
 
 import type { SuggestionResponse } from "@gioitruyen/api-client";
-import { useEffect, useId, useState } from "react";
+import Link from "next/link";
+import type { Route } from "next";
+import { useRouter } from "next/navigation";
+import { useEffect, useId, useState, useTransition } from "react";
 
 export function CatalogSearch({
   initialQuery = "",
 }: Readonly<{ initialQuery?: string }>) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
   const [query, setQuery] = useState(initialQuery);
-  const [items, setItems] =
-    useState<SuggestionResponse["items"]>([]);
+  const [suggesting, setSuggesting] = useState(false);
+  const [items, setItems] = useState<SuggestionResponse["items"]>([]);
   const listId = useId();
 
   useEffect(() => {
     const normalized = query.trim();
     if (normalized.length < 2) {
-      return;
+      return undefined;
     }
+
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
+      setSuggesting(true);
       void fetch(
         `/api/catalog/search/suggestions?q=${encodeURIComponent(normalized)}&limit=6`,
         { signal: controller.signal },
@@ -28,12 +35,15 @@ export function CatalogSearch({
         })
         .then((result) => setItems(result.items))
         .catch((error: unknown) => {
-          if (!(error instanceof DOMException)
-              || error.name !== "AbortError") {
+          if (!(error instanceof DOMException) || error.name !== "AbortError") {
             setItems([]);
           }
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setSuggesting(false);
         });
     }, 180);
+
     return () => {
       window.clearTimeout(timer);
       controller.abort();
@@ -41,7 +51,23 @@ export function CatalogSearch({
   }, [query]);
 
   return (
-    <form action="/search" className="catalogSearch" role="search">
+    <form
+      action="/search"
+      aria-busy={pending || suggesting}
+      className="catalogSearch"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const normalized = query.trim();
+        setItems([]);
+        startTransition(() => {
+          const href = normalized.length > 0
+            ? `/search?q=${encodeURIComponent(normalized)}`
+            : "/search";
+          router.push(href as Route);
+        });
+      }}
+      role="search"
+    >
       <label htmlFor="catalog-query">Tìm theo tên truyện</label>
       <div className="searchControl">
         <input
@@ -54,22 +80,32 @@ export function CatalogSearch({
           onChange={(event) => {
             const value = event.target.value;
             setQuery(value);
-            if (value.trim().length < 2) setItems([]);
+            if (value.trim().length < 2) {
+              setItems([]);
+              setSuggesting(false);
+            }
           }}
-          placeholder="Thử “kiếm hiệp”, “thành phố”…"
+          placeholder='Thử "kiếm hiệp", "hiện đại"...'
           type="search"
           value={query}
         />
-        <button type="submit">Tìm truyện</button>
+        <button disabled={pending} type="submit">
+          {pending ? "Đang tìm" : "Tìm truyện"}
+        </button>
       </div>
+      {suggesting && items.length === 0 && (
+        <div className="suggestionState" role="status">
+          Đang tải gợi ý...
+        </div>
+      )}
       {items.length > 0 && (
         <ul className="suggestionList" id={listId}>
           {items.map((item) => (
             <li key={item.id}>
-              <a href={`/stories/${item.slug}`}>
+              <Link href={`/stories/${item.slug}`} onClick={() => setItems([])}>
                 <span>{item.title}</span>
                 <small>Mở truyện</small>
-              </a>
+              </Link>
             </li>
           ))}
         </ul>

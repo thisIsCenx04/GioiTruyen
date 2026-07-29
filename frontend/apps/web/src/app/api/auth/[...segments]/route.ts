@@ -48,9 +48,30 @@ function allowed(method: string, path: string) {
   return method === "DELETE" && /^sessions\/[0-9a-f-]{36}$/u.test(path);
 }
 
+function oauthProvider(path: string) {
+  const match = /^oauth2\/(google|facebook)\/authorize$/u.exec(path);
+  return match?.[1] ?? null;
+}
+
 async function proxy(request: NextRequest, context: RouteContext) {
   const { segments } = await context.params;
   const path = segments.join("/");
+  const provider = oauthProvider(path);
+  if (request.method === "GET" && provider) {
+    const returnTo = request.nextUrl.searchParams.get("returnTo") ?? "/account/sessions";
+    const publicAuthBaseUrl = process.env.NEXT_PUBLIC_OAUTH_AUTH_BASE_URL?.replace(/\/+$/u, "");
+    if (publicAuthBaseUrl) {
+      const target = new URL(`/auth/oauth2/${provider}/authorize`, publicAuthBaseUrl);
+      target.searchParams.set("returnTo", returnTo);
+      return NextResponse.redirect(target);
+    }
+    const target = new URL("/auth/login", request.nextUrl.origin);
+    target.searchParams.set("oauth", provider);
+    target.searchParams.set("status", "unconfigured");
+    target.searchParams.set("returnTo", returnTo);
+    return NextResponse.redirect(target);
+  }
+
   if (!allowed(request.method, path)) {
     return NextResponse.json(
       {

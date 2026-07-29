@@ -1,12 +1,18 @@
-import { BookOpen, ChevronRight, Flame, Shapes } from "lucide-react";
+import { BookOpen, Flame, Shapes } from "lucide-react";
 import Link from "next/link";
 
-import { CatalogSearch } from "@/components/catalog-search";
 import { CatalogStoryCard } from "@/components/catalog-story-card";
+import {
+  PromotedEmptySlot,
+  PromotedStoryCard,
+} from "@/components/promoted-story-card";
+import { RankingPanel } from "@/components/ranking-panel";
 import { PublicShell } from "@/components/site-chrome";
 import { loadHome } from "@/lib/catalog";
 
 export const revalidate = 60;
+
+const promotedSlots = Array.from({ length: 12 }, (_, index) => index + 1);
 
 export default async function HomePage() {
   const home = await loadHome().catch(() => null);
@@ -22,118 +28,143 @@ export default async function HomePage() {
     );
   }
 
-  const stories = home.sections.flatMap((section) => section.stories);
-  const lead = stories[0];
-  const latest = home.sections.find((section) => section.type === "LATEST")?.stories ?? [];
-  const completed = home.sections.find((section) => section.type === "COMPLETED")?.stories ?? [];
-  const original = home.sections.find((section) => section.type === "ORIGINAL")?.stories ?? [];
+  const storySections = home.storySections.length > 0
+    ? home.storySections
+    : home.sections;
+  const stories = [
+    ...new Map(
+      storySections
+        .flatMap((section) => section.stories)
+        .map((story) => [story.id, story] as const),
+    ).values(),
+  ];
   const categories = home.taxonomy.groups.flatMap((group) => group.categories);
+  const promotedStories = home.promotions.map((booking) => booking.story);
+  const visiblePromotions = home.promotions.slice(0, 11);
+  const bookingsBySlot = new Map(
+    visiblePromotions.map((booking) => [booking.slotPosition, booking] as const),
+  );
 
   return (
     <PublicShell>
-      <div className="homeLayout">
-        <div className="homeMain">
-          <section className="catalogHero" aria-labelledby="hero-title">
-            <div className="heroManifesto">
-              <span className="heroBadge">TIỂU THUYẾT HOT</span>
-              <h1 id="hero-title">{lead?.title ?? "Thư viện đang cập nhật"}</h1>
-              <div className="heroMeta">
-                <span>{home.sections[0]?.title}</span>
-                {lead && <span>Cập nhật {new Date(lead.publishedAt).toLocaleDateString("vi-VN")}</span>}
-              </div>
-              <p>
-                Khám phá truyện vừa xuất bản, lưu tiến độ đọc và theo dõi
-                chương mới từ các tác giả, nhóm dịch trên Giới Truyện.
-              </p>
-              <div className="heroActions">
-                {lead && <Link className="primaryAction" href={`/stories/${lead.slug}`}>
-                  <BookOpen aria-hidden="true" /> Đọc ngay
-                </Link>}
-                <Link className="secondaryAction" href="/search">Xem chi tiết</Link>
-              </div>
+      <div className="homeLayout homeLayoutFull">
+        <section className="bookingBoard" aria-labelledby="booking-title">
+          <header>
+            <div>
+              <p>Top truyện</p>
+              <h1 id="booking-title">Đang nổi bật trên Giới Truyện</h1>
             </div>
-            <div aria-hidden="true" className="heroDots"><i /><i /><i /><i /></div>
-            <ChevronRight aria-hidden="true" className="heroArrow" />
-          </section>
+            <Link href="/teams#ads-booking">
+              <BookOpen aria-hidden="true" />
+              Đăng ký Bố cáo
+            </Link>
+          </header>
+          <div className="promotedGrid">
+            {promotedSlots.map((slot, index) => {
+              const booking = bookingsBySlot.get(slot);
+              return booking ? (
+                <PromotedStoryCard
+                  booking={booking}
+                  index={index}
+                  key={booking.bookingId}
+                />
+              ) : (
+                <PromotedEmptySlot key={`empty-${slot}`} slot={slot} />
+              );
+            })}
+          </div>
+        </section>
 
-          {home.sections.map((section, sectionIndex) => (
-            <section
-              aria-labelledby={`section-${section.id}`}
-              className="storySection"
-              key={section.id}
-            >
-              <header>
-                <div>
-                  <h2 id={`section-${section.id}`}>
-                    {sectionIndex === 0 && <Flame aria-hidden="true" />}
-                    {section.title}
-                  </h2>
-                </div>
-                <Link href="/search">Xem tất cả</Link>
-              </header>
-              {section.stories.length > 0 ? (
-                <div className="catalogGrid">
-                  {section.stories.slice(0, 6).map((story, index) => (
-                    <CatalogStoryCard index={index + sectionIndex} key={story.id} story={story} />
-                  ))}
-                </div>
-              ) : <p className="emptyCatalog">Kệ truyện đang được cập nhật.</p>}
-            </section>
-          ))}
-
-          <section className="categorySection">
-            <header><h2>Thể loại truyện phổ biến</h2></header>
-            <nav className="categoryDock" aria-label="Thể loại nổi bật">
-              {categories.slice(0, 6).map((category) => (
-                <Link href={`/search?category=${encodeURIComponent(category.slug)}`} key={category.id}>
-                  <Shapes aria-hidden="true" /><strong>{category.name}</strong><small>Khám phá thể loại</small>
-                </Link>
-              ))}
-            </nav>
-          </section>
-
-          <section className="creatorBanner">
-            <BookOpen aria-hidden="true" />
-            <div><strong>Bạn muốn chia sẻ câu chuyện của mình?</strong>
-              <p>Gia nhập cộng đồng tác giả và nhóm dịch tại Giới Truyện.</p></div>
-            <Link href="/teams">Tìm hiểu thêm</Link>
-            <Link className="primaryAction" href="/teams">Đăng ký ngay</Link>
-          </section>
+        <div className="storyRankingLayout">
+          <div className="homeSectionStack">
+            {storySections.map((section) => (
+              <section
+                aria-labelledby={`${section.id}-title`}
+                className="storySection storySectionLarge storyListBoard"
+                key={section.id}
+              >
+                <header>
+                  <div>
+                    <h2 id={`${section.id}-title`}>
+                      <Flame aria-hidden="true" />
+                      {section.title}
+                    </h2>
+                  </div>
+                  <Link href="/stories">Xem tất cả</Link>
+                </header>
+                {section.stories.length > 0 ? (
+                  <div className="catalogGrid catalogGridLarge catalogGridVertical">
+                    {section.stories.slice(0, 8).map((story, index) => (
+                      <CatalogStoryCard
+                        index={index}
+                        key={story.id}
+                        story={story}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="emptyCatalog">Section này đang được cập nhật.</p>
+                )}
+              </section>
+            ))}
+          </div>
+          <RankingPanel stories={promotedStories.length > 0 ? promotedStories : stories} />
         </div>
 
-        <aside className="homeAside">
-          <section className="sideCard rankingCard">
-            <header><h2>Truyện mới cập nhật</h2><Link href="/search">Xem tất cả</Link></header>
-            <ol>
-              {latest.slice(0, 5).map((story, index) => (
-                <li key={story.id}>
-                  <b>{index + 1}</b>
-                  <span className="rankCover" data-rank={index} />
-                  <div><Link href={`/stories/${story.slug}`}>{story.title}</Link>
-                    <small>{new Date(story.publishedAt).toLocaleDateString("vi-VN")}</small></div>
-                </li>
-              ))}
-            </ol>
-          </section>
-          <section className="sideCard continueCard">
-            <header><h2>Truyện đã hoàn thành</h2><Link href="/search">Xem tất cả</Link></header>
-            {completed.slice(0, 3).map((story, index) => (
-              <Link className="continueItem" href={`/stories/${story.slug}`} key={story.id}>
-                <span className="rankCover" data-rank={index} />
-                <div><strong>{story.title}</strong>
-                  <small>Hoàn thành {new Date(story.publishedAt).toLocaleDateString("vi-VN")}</small></div>
+        <section className="categorySection categorySectionLarge">
+          <header>
+            <h2>Thể loại truyện phổ biến</h2>
+            <Link href="/categories">Xem tất cả</Link>
+          </header>
+          <nav className="categoryDock categoryDockColor" aria-label="Thể loại nổi bật">
+            {categories.slice(0, 12).map((category, index) => (
+              <Link
+                data-tone={index % 8}
+                href={`/search?category=${encodeURIComponent(category.slug)}`}
+                key={category.id}
+              >
+                <Shapes aria-hidden="true" />
+                <strong>{category.name}</strong>
+                <small>Khám phá thể loại</small>
               </Link>
             ))}
-          </section>
-          <section className="sideCard communityCard">
-            <header><h2>Sáng tác nguyên bản</h2><Link href="/search">Xem tất cả</Link></header>
-            {original.slice(0, 3).map((story, index) => (
-              <div key={story.id}><span className="rankCover" data-rank={index} />
-                <p><strong>{story.title}</strong><small>{new Date(story.publishedAt).toLocaleDateString("vi-VN")}</small></p>
-                <Link href={`/stories/${story.slug}`}>Đọc</Link></div>
-            ))}
-          </section>
-        </aside>
+          </nav>
+        </section>
+
+        <section className="aboutBand" aria-labelledby="about-title">
+          <div>
+            <p className="detailEyebrow">Về Giới Truyện</p>
+            <h2 id="about-title">Không gian đọc truyện hiện đại cho reader, tác giả và team dịch.</h2>
+          </div>
+          <p>
+            Giới Truyện tập trung vào trải nghiệm đọc nhanh, giao diện sáng, lưu tiến độ đọc,
+            theo dõi chương mới, donate XU cho tác giả và khu làm việc riêng cho team xuất bản.
+            Kho nội dung được đồng bộ từ database để reader luôn thấy truyện, thể loại và bảng xếp hạng mới nhất.
+          </p>
+        </section>
+
+        <section className="publishingRules" aria-labelledby="publishing-rules-title">
+          <div>
+            <p className="detailEyebrow">Quy định trước khi đăng truyện</p>
+            <h2 id="publishing-rules-title">Nội dung sạch, quyền rõ, lịch đăng có trách nhiệm.</h2>
+          </div>
+          <ol>
+            <li>Truyện phải do bạn sở hữu quyền đăng hoặc có giấy phép chuyển ngữ, xuất bản.</li>
+            <li>Không đăng nội dung vi phạm pháp luật, kích động thù ghét, lộ thông tin cá nhân.</li>
+            <li>Chương mới cần có tiêu đề, nội dung hoàn chỉnh và gửi kiểm duyệt trước khi xuất bản.</li>
+            <li>Team mới đăng ký sẽ vào danh sách chờ admin duyệt trước khi mở quyền xuất bản.</li>
+          </ol>
+        </section>
+
+        <section className="creatorBanner creatorBannerWide">
+          <BookOpen aria-hidden="true" />
+          <div>
+            <strong>Bạn muốn chia sẻ câu chuyện của mình?</strong>
+            <p>Gia nhập cộng đồng tác giả và nhóm dịch tại Giới Truyện.</p>
+          </div>
+          <Link href="/teams">Tìm hiểu thêm</Link>
+          <Link className="primaryAction" href="/teams">Đăng ký ngay</Link>
+        </section>
       </div>
     </PublicShell>
   );

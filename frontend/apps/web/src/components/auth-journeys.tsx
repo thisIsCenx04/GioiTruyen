@@ -7,7 +7,7 @@ import {
 } from "@gioitruyen/api-client";
 import type { Route } from "next";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   type FormEvent,
   useEffect,
@@ -72,11 +72,35 @@ function Status({
   return <div aria-live="polite" />;
 }
 
+function SocialAuthLinks({ mode }: Readonly<{ mode: "login" | "register" }>) {
+  const returnTo = encodeURIComponent(routes.sessions);
+  return (
+    <div className={styles.socialAuth} aria-label="Đăng nhập mạng xã hội">
+      <a href={`/api/auth/oauth2/google/authorize?returnTo=${returnTo}`}>
+        <span aria-hidden="true">G</span>
+        {mode === "login" ? "Đăng nhập bằng Google" : "Đăng ký bằng Google"}
+      </a>
+      <a href={`/api/auth/oauth2/facebook/authorize?returnTo=${returnTo}`}>
+        <span aria-hidden="true">f</span>
+        {mode === "login" ? "Đăng nhập bằng Facebook" : "Đăng ký bằng Facebook"}
+      </a>
+      <small>Hoặc dùng email</small>
+    </div>
+  );
+}
+
 export function LoginJourney() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [needsMfa, setNeedsMfa] = useState(false);
+  const oauthProvider = searchParams.get("oauth");
+  const oauthStatus = searchParams.get("status");
+  const socialMessage =
+    oauthStatus === "unconfigured" && oauthProvider
+      ? `Đăng nhập ${oauthProvider === "google" ? "Google" : "Facebook"} đang chờ cấu hình OAuth provider.`
+      : "";
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -112,7 +136,8 @@ export function LoginJourney() {
 
   return (
     <form className={styles.form} onSubmit={submit}>
-      <Status error={error} />
+      <SocialAuthLinks mode="login" />
+      <Status error={error} message={socialMessage} />
       <div className={styles.field}>
         <label htmlFor="login-email">Email</label>
         <input
@@ -195,6 +220,7 @@ export function RegisterJourney() {
 
   return (
     <form className={styles.form} onSubmit={submit}>
+      <SocialAuthLinks mode="register" />
       <Status error={error} message={message} />
       <div className={styles.field}>
         <label htmlFor="register-email">Email</label>

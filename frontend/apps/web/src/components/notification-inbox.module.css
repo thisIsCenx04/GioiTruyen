@@ -213,6 +213,57 @@
   padding: 0.7rem 0 0.25rem;
 }
 
+/* Final bright client layout */
+.inbox {
+  background:#f7fbff;
+  padding:1rem 1rem 5rem;
+}
+.header,
+.ledger {
+  max-width:80rem;
+}
+.header {
+  background:#fff;
+  border:1px solid #d9e8f7;
+  border-radius:1rem;
+  box-shadow:0 .8rem 2rem rgb(28 83 150 / 6%);
+  padding:1.4rem;
+}
+.header h1 {
+  color:#102344;
+  font:750 clamp(2rem,4vw,3.4rem)/1 var(--sans);
+  letter-spacing:-.04em;
+}
+.header h1 em,
+.settingsLink,
+.state {
+  color:#0f6bff;
+}
+.ledger {
+  gap:1.4rem;
+  grid-template-columns:minmax(15rem,.45fr) minmax(0,1.55fr);
+  padding-top:1.4rem;
+}
+.summary,
+.stream {
+  background:#fff;
+  border:1px solid #d9e8f7;
+  border-radius:1rem;
+  box-shadow:0 .8rem 2rem rgb(28 83 150 / 5%);
+  padding:1.25rem;
+}
+.summary button {
+  background:linear-gradient(135deg,#0f6bff,#00b8a9);
+  border-radius:.55rem;
+}
+.list li:first-child,
+.list li {
+  border-color:#d9e8f7;
+}
+.marker {
+  background:#00b8a9;
+}
+
 @media (max-width: 48rem) {
   .header {
     align-items: start;

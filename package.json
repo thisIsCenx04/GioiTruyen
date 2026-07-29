@@ -1,0 +1,13 @@
+{
+  "name": "gioitruyen",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.17.0",
+  "scripts": {
+    "dev:fe": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/run-local-frontend.ps1",
+    "dev:admin": "pnpm --dir frontend dev:admin",
+    "dev:be": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/run-local-backend.ps1",
+    "build:fe": "pnpm --dir frontend build",
+    "test:be": "backend\\gradlew.bat --project-dir backend test"
+  }
+}

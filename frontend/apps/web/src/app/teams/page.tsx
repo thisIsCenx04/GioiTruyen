@@ -4,8 +4,8 @@ import { TeamDirectory } from "../../components/team-workspace";
 
 export const metadata: Metadata = {
   description:
-    "Tạo nhóm xuất bản và mở không gian cộng tác của bạn trên Giới Truyện.",
-  title: "Nhóm xuất bản | Giới Truyện",
+    "Đăng ký team xuất bản và theo dõi hồ sơ chờ admin duyệt trên Giới Truyện.",
+  title: "Đăng ký team | Giới Truyện",
 };
 
 export default function TeamsPage() {

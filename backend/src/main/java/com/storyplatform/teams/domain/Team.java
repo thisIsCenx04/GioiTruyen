@@ -37,6 +37,7 @@ public record Team(
 
     public enum State {
         ACTIVE,
+        PENDING_REVIEW,
         SUSPENDED,
         ARCHIVED
     }

@@ -263,9 +263,39 @@ export type TeamAnalyticsReport = Readonly<{
   }>[];
 }>;
 
+export type TeamApplication = Readonly<{
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  state: "PENDING_REVIEW" | "APPROVED" | "REJECTED";
+  submittedAt: string;
+  reviewedAt: string | null;
+}>;
+
+export type TeamDashboard = Readonly<{
+  teamId: string;
+  publishStatus: string;
+  completionStatus: string;
+  exclusiveStatus: string;
+  copyrightStatus: string;
+  revenueXu: number;
+  latestChapter: string;
+  supporters: string;
+  storyUrl: string;
+  viewCount: number;
+  saleXu: number;
+  comboSaleXu: number;
+  donationXu: number;
+  eventXu: number;
+  authorShareBps: number;
+  adminShareBps: number;
+}>;
+
 export type PublishingStory = Readonly<{
   id: string;
   teamId: string;
+  teamName?: string;
   slug: string;
   title: string;
   synopsis: string;
@@ -608,6 +638,24 @@ export function createBrowserTeamClient({
     analytics(teamId: string, period: "7D" | "30D" | "90D" = "30D") {
       return request<TeamAnalyticsReport>(
         `/teams/${encodeURIComponent(teamId)}/analytics/views?period=${period}`,
+      );
+    },
+    applications() {
+      return request<TeamApplication[]>("/teams/applications/me");
+    },
+    createApplication(input: {
+      slug: string;
+      name: string;
+      description: string;
+    }) {
+      return request<TeamApplication>("/teams/applications", {
+        body: input,
+        method: "POST",
+      });
+    },
+    dashboard(teamId: string) {
+      return request<TeamDashboard>(
+        `/teams/${encodeURIComponent(teamId)}/dashboard`,
       );
     },
     inviteMember(
@@ -1064,10 +1112,13 @@ export type PublicStory = Readonly<{
 export type HomeStorySummary = Readonly<{
   id: string;
   teamId: string;
+  teamName?: string;
   slug: string;
   title: string;
   coverAssetId: string | null;
   publishedAt: string;
+  viewCount?: number;
+  saveCount?: number;
 }>;
 
 export type HomeSection = Readonly<{
@@ -1077,11 +1128,39 @@ export type HomeSection = Readonly<{
   stories: readonly HomeStorySummary[];
 }>;
 
+export type TaggedStorySection = Readonly<{
+  id: string;
+  tag: "EXCLUSIVE" | "NEW_RELEASE" | "RECENT_UPDATE" | "ORIGINAL" | "COMPLETED";
+  title: string;
+  stories: readonly HomeStorySummary[];
+}>;
+
 export type HomeResponse = Readonly<{
   locale: string;
   version: string;
   generatedAt: string;
   sections: readonly HomeSection[];
+}>;
+
+export type PromotedHomeStory = Readonly<{
+  bookingId: string;
+  slotPosition: number;
+  tagLabel: string;
+  story: HomeStorySummary;
+}>;
+
+export type RankingStory = Readonly<{
+  rank: number;
+  metricValue: number;
+  story: HomeStorySummary;
+}>;
+
+export type RankingBoard = Readonly<{
+  id: "gold" | "recommendations" | "views";
+  title: string;
+  subtitle: string;
+  unit: string;
+  stories: readonly RankingStory[];
 }>;
 
 export type PublicChapter = Readonly<{
@@ -1528,6 +1607,15 @@ export function createPublicCatalogClient({
       return client.request<HomeResponse>(
         `/home?locale=${encodeURIComponent(locale)}`,
       );
+    },
+    promotedHome() {
+      return client.request<PromotedHomeStory[]>("/promotions/home");
+    },
+    storySections() {
+      return client.request<TaggedStorySection[]>("/stories/sections");
+    },
+    rankingBoards() {
+      return client.request<RankingBoard[]>("/rankings/boards");
     },
     categories() {
       return client.request<CategoryTaxonomy>("/categories");

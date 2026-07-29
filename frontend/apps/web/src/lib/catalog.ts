@@ -9,9 +9,20 @@ const apiBaseUrl = (
 export const catalog = createPublicCatalogClient({ baseUrl: apiBaseUrl });
 
 export async function loadHome() {
-  const [home, taxonomy] = await Promise.all([
+  const [home, taxonomy, promotions, storySections, rankingBoards] = await Promise.all([
     catalog.home(),
     catalog.categories(),
+    catalog.promotedHome().catch(() => []),
+    catalog.storySections().catch(() => []),
+    catalog.rankingBoards().catch(() => []),
   ]);
-  return { ...home, taxonomy };
+  return { ...home, promotions, rankingBoards, storySections, taxonomy };
+}
+
+export async function loadStorySections() {
+  return catalog.storySections().catch(() => []);
+}
+
+export async function loadRankingBoards() {
+  return catalog.rankingBoards().catch(() => []);
 }

@@ -420,3 +420,45 @@
 .receipt::after, .blankReceipt::after { display:none; }
 .receiptTop h2, .historyHeading h2, .blankReceipt h2 { font-family:var(--sans); }
 .receiptFooter { background:#0b1228; }
+
+/* Final bright client layout */
+.page {
+  background:#f7fbff;
+  padding:1rem 1rem 5rem;
+}
+.header,
+.workspace {
+  max-width:80rem;
+}
+.header {
+  border-color:#d9e8f7;
+  border-radius:1rem;
+  box-shadow:0 .8rem 2rem rgb(28 83 150 / 6%);
+}
+.workspace {
+  gap:1.25rem;
+  grid-template-columns:minmax(18rem,.7fr) minmax(0,1.3fr);
+}
+.ledger,
+.receiptColumn,
+.receipt,
+.blankReceipt {
+  border-color:#d9e8f7;
+  border-radius:1rem;
+}
+.ledger,
+.receiptColumn {
+  box-shadow:0 .8rem 2rem rgb(28 83 150 / 5%);
+}
+.create,
+.amountOptions button[aria-pressed="true"] {
+  background:linear-gradient(135deg,#0f6bff,#00b8a9);
+  border-color:transparent;
+  color:#fff;
+}
+.back,
+.receiptTop p,
+.reference span,
+.history li span:last-child {
+  color:#0f6bff;
+}

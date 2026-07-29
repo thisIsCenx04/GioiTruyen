@@ -1,12 +1,18 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { Suspense } from "react";
+
+import {
+  NavigationState,
+  RouteTransition,
+} from "@/components/navigation-state";
 
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "GiớiTruyện — Đọc tiếp một thế giới",
-    template: "%s · GiớiTruyện",
+    default: "Giới Truyện - Đọc tiếp một thế giới",
+    template: "%s · Giới Truyện",
   },
   description:
     "Nền tảng truyện dài kỳ dành cho độc giả, tác giả và nhóm xuất bản Việt Nam.",
@@ -17,7 +23,12 @@ export default function RootLayout({
 }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="vi">
-      <body>{children}</body>
+      <body>
+        <Suspense fallback={null}>
+          <NavigationState />
+          <RouteTransition>{children}</RouteTransition>
+        </Suspense>
+      </body>
     </html>
   );
 }

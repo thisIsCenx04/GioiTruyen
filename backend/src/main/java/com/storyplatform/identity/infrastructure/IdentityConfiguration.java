@@ -35,6 +35,7 @@ import com.storyplatform.identity.infrastructure.persistence
         .PersistentEmailVerificationIssuer;
 import com.storyplatform.identity.infrastructure.security.Argon2PasswordHasher;
 import com.storyplatform.identity.infrastructure.security.HmacVerificationTokenCodec;
+import com.storyplatform.identity.infrastructure.security.InMemoryLoginRiskLimiter;
 import com.storyplatform.identity.infrastructure.security.JwtAccessTokenIssuer;
 import com.storyplatform.identity.infrastructure.security.TotpMfaCryptography;
 import com.storyplatform.identity.infrastructure.security.RedisLoginRiskLimiter;
@@ -51,6 +52,7 @@ import com.storyplatform.shared.events.persistence.OutboxAppender;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -194,6 +196,7 @@ public class IdentityConfiguration {
     }
 
     @Bean
+    @Profile("!local")
     LoginRiskLimiter loginRiskLimiter(
             StringRedisTemplate redis,
             RedisKeyFactory keys,
@@ -205,6 +208,12 @@ public class IdentityConfiguration {
                 properties,
                 decodeKey(properties.hmacKey(), "LOGIN_RISK_HMAC_KEY")
         );
+    }
+
+    @Bean
+    @Profile("local")
+    LoginRiskLimiter localLoginRiskLimiter(LoginRiskProperties properties) {
+        return new InMemoryLoginRiskLimiter(properties, Clock.systemUTC());
     }
 
     @Bean

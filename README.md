@@ -3,16 +3,29 @@
 ## Local development without Docker
 
 The local runtime uses native MySQL, Spring Boot, and Next.js. Start MySQL and
-the backend from the repository root:
+the backend from the repository root with one command:
 
 ```powershell
-.\scripts\run-local-backend.ps1
+pnpm dev:be
 ```
 
-In another terminal, start the reader application:
+In another terminal, start the reader application with one command:
+
+```powershell
+pnpm dev:fe
+```
+
+To run the admin Next.js app:
+
+```powershell
+pnpm dev:admin
+```
+
+The commands above are wrappers for the existing project commands:
 
 ```powershell
 pnpm --dir frontend dev:web
+.\scripts\run-local-backend.ps1
 ```
 
 The local profile runs Flyway migrations and development data seeding against

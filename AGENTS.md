@@ -1,5 +1,6 @@
 # Agent Execution Rules
 
+Must Read First!!
 ## Direct Task Handling
 
 1. Read the user's request literally and identify the concrete expected result.

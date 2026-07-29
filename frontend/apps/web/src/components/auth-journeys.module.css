@@ -3,6 +3,69 @@
   gap: 1.15rem;
 }
 
+.socialAuth {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.socialAuth a {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #d9e8f7;
+  border-radius: 0.55rem;
+  color: #0b1228;
+  display: flex;
+  font-size: 0.82rem;
+  font-weight: 850;
+  gap: 0.65rem;
+  min-height: 3rem;
+  padding: 0.7rem 0.85rem;
+  text-decoration: none;
+}
+
+.socialAuth a:hover {
+  border-color: #9bcaff;
+  box-shadow: 0 0.6rem 1.4rem rgb(15 107 255 / 10%);
+  color: #0f6bff;
+}
+
+.socialAuth span {
+  align-items: center;
+  border: 1px solid #d9e8f7;
+  border-radius: 999rem;
+  display: inline-flex;
+  font-size: 0.9rem;
+  font-weight: 950;
+  height: 1.9rem;
+  justify-content: center;
+  width: 1.9rem;
+}
+
+.socialAuth a:nth-child(2) span {
+  background: #1877f2;
+  border-color: #1877f2;
+  color: #fff;
+  font-family: Arial, sans-serif;
+}
+
+.socialAuth small {
+  align-items: center;
+  color: #747c95;
+  display: grid;
+  font-size: 0.68rem;
+  font-weight: 800;
+  gap: 0.6rem;
+  grid-template-columns: 1fr auto 1fr;
+  margin: 0.2rem 0 0;
+}
+
+.socialAuth small::before,
+.socialAuth small::after {
+  background: #d9e1ee;
+  content: "";
+  height: 1px;
+}
+
 .field {
   display: grid;
   gap: 0.45rem;

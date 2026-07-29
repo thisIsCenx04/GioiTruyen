@@ -15,8 +15,17 @@ function allowed(method: string, path: string) {
   if (/^teams$/u.test(path)) {
     return method === "GET" || method === "POST";
   }
+  if (path === "teams/applications") {
+    return method === "POST";
+  }
+  if (path === "teams/applications/me") {
+    return method === "GET";
+  }
   if (new RegExp(`^teams/${uuid}$`, "u").test(path)) {
     return method === "GET" || method === "PATCH";
+  }
+  if (new RegExp(`^teams/${uuid}/dashboard$`, "u").test(path)) {
+    return method === "GET";
   }
   if (new RegExp(`^teams/${uuid}/stories$`, "u").test(path)) {
     return method === "GET" || method === "POST";
