@@ -43,7 +43,7 @@ export default async function SearchPage({
         ) : results === null ? (
           <div className="searchPrompt" role="status">
             <strong>Chưa thể kết nối thư viện.</strong>
-            <span>Kiểm tra API rồi thử tìm lại.</span>
+            <span>Vui lòng đợi một chút rồi thử tìm lại.</span>
           </div>
         ) : results.items.length === 0 ? (
           <div className="searchPrompt" role="status">
@@ -56,7 +56,7 @@ export default async function SearchPage({
               <h2 id="results-title">
                 {results.items.length} kết quả cho “{query}”
               </h2>
-              <span>{results.tookMs} ms</span>
+              <span>Đã tìm thấy trong thư viện</span>
             </div>
             <div className="catalogGrid">
               {results.items.map((hit, index) => (

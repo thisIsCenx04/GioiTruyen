@@ -15,9 +15,11 @@ export function BrandMark({
       data-compact={compact || undefined}
       data-inverse={inverse || undefined}
     >
-      <span aria-hidden="true" className={styles.brandSeal}>
-        G
-      </span>
+      <img
+        src="/logo-icon.jpg"
+        alt="Giới Truyện Logo"
+        className={styles.brandLogoImg}
+      />
       {!compact && <span className={styles.brandName}>Giới Truyện</span>}
     </span>
   );

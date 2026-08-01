@@ -4,6 +4,7 @@ import {
   createBrowserStoryRelationClient,
   type StoryRelation,
 } from "@gioitruyen/api-client";
+import { BookmarkPlus, Heart } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -54,9 +55,10 @@ export function StoryRelations({ storyId }: Readonly<{ storyId: string }>) {
 
   if (requiresLogin) {
     return (
-      <p className={styles.login}>
-        <Link href="/auth/login">Đăng nhập</Link> để lưu truyện và nhận chương mới.
-      </p>
+      <div aria-label="Lưu truyện" className={styles.actions}>
+        <Link href="/auth/login"><Heart aria-hidden="true" /> Yêu thích</Link>
+        <Link href="/auth/login"><BookmarkPlus aria-hidden="true" /> Theo dõi</Link>
+      </div>
     );
   }
 
@@ -68,7 +70,7 @@ export function StoryRelations({ storyId }: Readonly<{ storyId: string }>) {
         onClick={() => void toggle("favorite")}
         type="button"
       >
-        <span aria-hidden="true">♡</span>
+        <Heart aria-hidden="true" />
         {state.favorite?.active ? "Đã yêu thích" : "Yêu thích"}
         {state.favorite && <small>{state.favorite.count}</small>}
       </button>
@@ -78,7 +80,7 @@ export function StoryRelations({ storyId }: Readonly<{ storyId: string }>) {
         onClick={() => void toggle("follow")}
         type="button"
       >
-        <span aria-hidden="true">＋</span>
+        <BookmarkPlus aria-hidden="true" />
         {state.follow?.active ? "Đang theo dõi" : "Theo dõi"}
         {state.follow && <small>{state.follow.count}</small>}
       </button>

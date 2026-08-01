@@ -11,7 +11,8 @@ type RouteContext = Readonly<{
 function allowed(path: string) {
   return path === "categories"
     || path === "comments"
-    || path === "search/suggestions";
+    || path === "search/suggestions"
+    || /^chapters\/[a-zA-Z0-9-]+$/u.test(path);
 }
 
 export async function GET(
@@ -31,12 +32,14 @@ export async function GET(
     );
   }
   try {
+    const accessToken = request.cookies.get("access_token")?.value;
     const backend = await fetch(
       `${backendBaseUrl}/${path}${request.nextUrl.search}`,
       {
         cache: "no-store",
         headers: {
           Accept: "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },
       },
     );

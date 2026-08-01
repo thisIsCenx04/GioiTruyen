@@ -26,15 +26,18 @@ type RouteContext = Readonly<{
   params: Promise<{ segments: string[] }>;
 }>;
 
-function secureCookie(name: string, value: string, maxAge: number) {
+function secureCookie(request: NextRequest, name: string, value: string, maxAge: number) {
+  const isHttps =
+    request.nextUrl.protocol === "https:" ||
+    request.headers.get("x-forwarded-proto") === "https";
   return {
     name,
     value,
     httpOnly: true,
     maxAge,
     path: "/",
-    sameSite: "strict" as const,
-    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    secure: isHttps,
   };
 }
 
@@ -139,12 +142,28 @@ async function proxy(request: NextRequest, context: RouteContext) {
       expiresIn: number;
       refreshToken: string;
     };
-    const response = NextResponse.json({ status: "AUTHENTICATED" });
+    let roles: string[] = [];
+    try {
+      const parts = tokens.accessToken.split(".");
+      const tokenSegment = parts[1];
+      if (tokenSegment) {
+        const payload = JSON.parse(
+          Buffer.from(tokenSegment, "base64url").toString("utf-8"),
+        ) as { roles?: string[] };
+        if (Array.isArray(payload.roles)) {
+          roles = payload.roles;
+        }
+      }
+    } catch {
+      // Ignore token decode errors
+    }
+    const response = NextResponse.json({ status: "AUTHENTICATED", roles });
+    const THIRTY_DAYS = 30 * 24 * 60 * 60;
     response.cookies.set(
-      secureCookie("access_token", tokens.accessToken, tokens.expiresIn),
+      secureCookie(request, "access_token", tokens.accessToken, THIRTY_DAYS),
     );
     response.cookies.set(
-      secureCookie("refresh_token", tokens.refreshToken, 60 * 60 * 24 * 30),
+      secureCookie(request, "refresh_token", tokens.refreshToken, THIRTY_DAYS),
     );
     return response;
   }
@@ -161,8 +180,8 @@ async function proxy(request: NextRequest, context: RouteContext) {
     (path === "logout" ||
       (path === "sessions" && request.method === "DELETE"))
   ) {
-    response.cookies.set(secureCookie("access_token", "", 0));
-    response.cookies.set(secureCookie("refresh_token", "", 0));
+    response.cookies.set(secureCookie(request, "access_token", "", 0));
+    response.cookies.set(secureCookie(request, "refresh_token", "", 0));
   }
   const retryAfter = backend.headers.get("retry-after");
   if (retryAfter) {

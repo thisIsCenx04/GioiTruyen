@@ -102,7 +102,7 @@ export function CatalogSearch({
         <ul className="suggestionList" id={listId}>
           {items.map((item) => (
             <li key={item.id}>
-              <Link href={`/stories/${item.slug}`} onClick={() => setItems([])}>
+              <Link href={`/truyen/${item.slug}` as Route} onClick={() => setItems([])}>
                 <span>{item.title}</span>
                 <small>Mở truyện</small>
               </Link>

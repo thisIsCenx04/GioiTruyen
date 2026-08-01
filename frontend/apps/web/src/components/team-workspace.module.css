@@ -13,8 +13,31 @@
 }
 
 .directory {
-  overflow: auto;
-  padding: 0 clamp(1.25rem, 4vw, 4.5rem) 5rem;
+  margin: 0 auto;
+  max-width: 96rem;
+  overflow: hidden;
+  padding: 1.5rem max(1.25rem, 2.5vw) 5rem;
+}
+
+.directoryIntro {
+  margin: 0 auto;
+  max-width: 80rem;
+  padding: 2.25rem 0 1.5rem;
+  text-align: center;
+}
+
+.directoryIntro h1 {
+  color: #102344;
+  font-size: clamp(1.9rem, 3.6vw, 3rem);
+  line-height: 1.1;
+  margin: .55rem auto .7rem;
+}
+
+.directoryIntro > p:last-child {
+  color: #697590;
+  line-height: 1.6;
+  margin: 0 auto;
+  max-width: 42rem;
 }
 
 .directoryHeader {
@@ -1122,6 +1145,96 @@
     grid-column: 1;
   }
 
+
+@media (max-width: 62rem) {
+  .directoryHeader {
+    grid-template-columns: 1fr auto;
+  }
+
+  .directoryHeader > div {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .directoryGrid {
+    gap: 4rem;
+    grid-template-columns: 1fr;
+  }
+
+  .createSheet {
+    position: static;
+  }
+
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .spine {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: auto 1fr;
+    min-height: auto;
+    position: static;
+  }
+
+  .folio {
+    border: 0;
+    margin: 0;
+    text-align: right;
+  }
+
+  .spine nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.2rem;
+    grid-column: 1 / -1;
+  }
+
+  .spine nav a {
+    border: 0;
+    padding: 0.2rem 0;
+  }
+
+  .spineNote {
+    display: none;
+  }
+}
+
+@media (max-width: 42rem) {
+  .directoryHeader,
+  .workspaceHeader,
+  .ruleSection,
+  .inviteSection {
+    grid-template-columns: 1fr;
+  }
+
+  .workspaceHeader {
+    align-items: start;
+  }
+
+  .follow,
+  .following {
+    justify-self: start;
+  }
+
+  .manifest {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .manifest > p {
+    border-top: 0.08rem solid #c4cce2;
+    grid-column: 1 / -1;
+    min-height: auto;
+  }
+
+  .memberRow {
+    grid-template-columns: 1fr;
+  }
+
+  .memberActions {
+    grid-column: 1;
+  }
+
   .permissionGrid,
   .inviteSection fieldset {
     grid-template-columns: 1fr;
@@ -1130,5 +1243,426 @@
   .slugField {
     align-items: stretch;
     flex-direction: column;
+  }
+}
+
+/* ==========================================================================
+   NEW TEAM DIRECTORY HERO BANNER & FEATURED CARDS GRID STYLES
+   ========================================================================== */
+
+.heroSection {
+  position: relative;
+  width: 100%;
+  padding: 3.5rem 0 5rem;
+  margin-bottom: 2rem;
+}
+
+.heroBannerBlur {
+  position: absolute;
+  inset: 0;
+  border-radius: 1.5rem;
+  background: linear-gradient(135deg, rgba(15, 95, 255, 0.08) 0%, rgba(18, 183, 214, 0.06) 50%, rgba(248, 250, 255, 0.95) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(226, 232, 243, 0.8);
+  box-shadow: 0 1rem 3rem rgba(15, 95, 255, 0.05);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.heroContainer {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(22rem, 28rem);
+  gap: 3rem;
+  align-items: center;
+  max-width: 88rem;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.heroTextContent {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.heroTag {
+  align-self: flex-start;
+  color: #0f5fff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: rgba(15, 95, 255, 0.1);
+  padding: 0.4rem 0.85rem;
+  border-radius: 2rem;
+  border: 1px solid rgba(15, 95, 255, 0.2);
+}
+
+.heroTitle {
+  color: #0b1228;
+  font-size: clamp(2.2rem, 4vw, 3.4rem);
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  margin: 0;
+}
+
+.heroSubtitle {
+  color: #52607d;
+  font-size: clamp(1rem, 1.3vw, 1.15rem);
+  line-height: 1.65;
+  margin: 0;
+  max-width: 38rem;
+}
+
+.heroStats {
+  display: flex;
+  gap: 2.5rem;
+  margin-top: 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(226, 232, 243, 0.8);
+}
+
+.heroStats div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.heroStats strong {
+  color: #0b1228;
+  font-size: 1.8rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.heroStats span {
+  color: #697590;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+/* OVERLAY FORM CARD */
+.heroFormOverlay {
+  position: relative;
+}
+
+.formCard {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 243, 0.9);
+  border-radius: 1.25rem;
+  padding: 2rem;
+  box-shadow: 0 1.25rem 3rem rgba(11, 18, 40, 0.12), 0 0.25rem 0.75rem rgba(15, 95, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.formHeader h2 {
+  color: #0b1228;
+  font-size: 1.45rem;
+  font-weight: 850;
+  margin: 0.35rem 0 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+.formHeader p {
+  color: #697590;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.registrationForm {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.registrationForm label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.registrationForm label span {
+  color: #334155;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.registrationForm input,
+.registrationForm textarea {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.6rem;
+  color: #0f172a;
+  font-size: 0.9rem;
+  padding: 0.65rem 0.85rem;
+  transition: all 0.2s ease;
+}
+
+.registrationForm input:focus,
+.registrationForm textarea:focus {
+  background: #ffffff;
+  border-color: #0f5fff;
+  box-shadow: 0 0 0 3px rgba(15, 95, 255, 0.15);
+  outline: none;
+}
+
+.slugPrefix {
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: #e2e8f0;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.6rem 0 0 0.6rem;
+  border: 1px solid #cbd5e1;
+  border-right: 0;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.registrationForm .slugField {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.registrationForm .slugField input {
+  border-radius: 0 0.6rem 0.6rem 0;
+  flex: 1;
+}
+
+.submitBtn {
+  background: linear-gradient(135deg, #0f5fff 0%, #0284c7 100%);
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 800;
+  padding: 0.85rem 1.25rem;
+  border: none;
+  border-radius: 0.6rem;
+  cursor: pointer;
+  box-shadow: 0 0.4rem 1.2rem rgba(15, 95, 255, 0.3);
+  transition: all 0.2s ease;
+  margin-top: 0.5rem;
+}
+
+.submitBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0.6rem 1.6rem rgba(15, 95, 255, 0.4);
+}
+
+.pendingReviewList {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed #cbd5e1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.pendingReviewList strong {
+  color: #334155;
+  font-size: 0.82rem;
+}
+
+.pendingAppCard {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f1f5f9;
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.5rem;
+}
+
+.pendingAppCard strong {
+  color: #0f172a;
+  font-size: 0.85rem;
+  display: block;
+}
+
+.pendingAppCard small {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.pendingBadge {
+  background: #fef3c7;
+  color: #b45309;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.25rem 0.55rem;
+  border-radius: 1rem;
+}
+
+/* SECTION 2: FEATURED TEAMS GRID */
+.teamsGridSection {
+  max-width: 88rem;
+  margin: 0 auto;
+  padding: 2rem 1rem 5rem;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e2e8f3;
+}
+
+.sectionHeader h2 {
+  color: #0b1228;
+  font-size: 1.8rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  margin: 0.3rem 0 0;
+}
+
+.activeTeamsCount {
+  color: #0f5fff;
+  font-size: 0.9rem;
+  font-weight: 800;
+  background: #eff6ff;
+  padding: 0.4rem 0.85rem;
+  border-radius: 2rem;
+}
+
+.featuredTeamsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  gap: 1.75rem;
+}
+
+.teamCard {
+  background: #ffffff;
+  border: 1px solid #e2e8f3;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  box-shadow: 0 0.4rem 1.5rem rgba(15, 95, 255, 0.04);
+  transition: all 0.25s ease;
+}
+
+.teamCard:hover {
+  transform: translateY(-3px);
+  border-color: rgba(15, 95, 255, 0.4);
+  box-shadow: 0 0.8rem 2.5rem rgba(15, 95, 255, 0.12);
+}
+
+.teamCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.teamCardAvatar {
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, #0f5fff 0%, #10d2ae 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  font-weight: 900;
+  box-shadow: 0 0.3rem 0.8rem rgba(15, 95, 255, 0.25);
+}
+
+.teamCardBody h3 {
+  color: #0b1228;
+  font-size: 1.25rem;
+  font-weight: 850;
+  margin: 0 0 0.4rem;
+}
+
+.teamCardBody p {
+  color: #64748b;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.teamCardMetrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  padding: 0.85rem;
+  background: #f8fafc;
+  border-radius: 0.75rem;
+  border: 1px solid #f1f5f9;
+}
+
+.metricItem {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.metricIcon {
+  width: 1.15rem;
+  height: 1.15rem;
+  color: #0f5fff;
+  flex-shrink: 0;
+}
+
+.metricItem div {
+  display: flex;
+  flex-direction: column;
+}
+
+.metricItem strong {
+  color: #0f172a;
+  font-size: 0.88rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.metricItem span {
+  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.teamCardFooter {
+  margin-top: auto;
+}
+
+.viewTeamBtn {
+  display: block;
+  text-align: center;
+  background: #f1f5f9;
+  color: #0f5fff;
+  font-size: 0.85rem;
+  font-weight: 800;
+  padding: 0.65rem 1rem;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.viewTeamBtn:hover {
+  background: #0f5fff;
+  color: #ffffff;
+}
+
+@media (max-width: 900px) {
+  .heroContainer {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
   }
 }

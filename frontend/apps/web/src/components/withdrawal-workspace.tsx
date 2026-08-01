@@ -46,6 +46,17 @@ function failureMessage(error: unknown) {
   return "Không thể kết nối máy chủ. Hãy thử lại.";
 }
 
+function safeUUID(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 export function WithdrawalWorkspace({ teamId }: Readonly<{ teamId: string }>) {
   const api = useMemo(() => createBrowserWalletClient(), []);
   const [items, setItems] = useState<WithdrawalReceipt[]>([]);
@@ -108,7 +119,7 @@ export function WithdrawalWorkspace({ teamId }: Readonly<{ teamId: string }>) {
       return;
     }
     setWorking(true);
-    retryKey.current ??= crypto.randomUUID();
+    retryKey.current ??= safeUUID();
     try {
       const receipt = await api.createWithdrawal(
         teamId,

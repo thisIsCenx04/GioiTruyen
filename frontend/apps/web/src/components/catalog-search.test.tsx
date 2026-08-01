@@ -3,7 +3,11 @@ import "@testing-library/jest-dom/vitest";
 import { HttpResponse, http } from "msw";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
 
 import { apiMockServer } from "../../../../test/msw/server";
 import { CatalogSearch } from "./catalog-search";
@@ -36,7 +40,7 @@ describe("catalog search", () => {
 
     expect(
       await screen.findByRole("link", { name: /Người Chép Sử/u }),
-    ).toHaveAttribute("href", "/stories/nguoi-chep-su");
+    ).toHaveAttribute("href", "/truyen/nguoi-chep-su");
     expect(
       screen.getByRole("button", { name: "Tìm truyện" }),
     ).toHaveAttribute("type", "submit");

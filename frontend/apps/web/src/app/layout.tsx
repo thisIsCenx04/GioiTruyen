@@ -16,6 +16,11 @@ export const metadata: Metadata = {
   },
   description:
     "Nền tảng truyện dài kỳ dành cho độc giả, tác giả và nhóm xuất bản Việt Nam.",
+  icons: {
+    icon: "/logo-icon.jpg",
+    shortcut: "/logo-icon.jpg",
+    apple: "/logo-icon.jpg",
+  },
 };
 
 export default function RootLayout({

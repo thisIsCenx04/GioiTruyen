@@ -20,6 +20,7 @@ export type AdminOverview = {
   };
   revenueSeries: ChartPoint[];
   trafficSeries: ChartPoint[];
+  readerSeries: ChartPoint[];
   tasks: string[];
 };
 
@@ -29,9 +30,23 @@ export type AdminStoryRow = {
   title: string;
   authorName: string;
   teamName: string;
+  teamId: string;
+  categoryId: string;
+  categoryName: string;
+  synopsis: string;
   workflowStatus: string;
   completionStatus: string;
   updatedAt: string | null;
+};
+
+export type AdminCategoryRow = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  sortOrder: number;
+  active: boolean;
+  version: number;
 };
 
 export type AdminTeamRow = {
@@ -39,6 +54,8 @@ export type AdminTeamRow = {
   slug: string;
   name: string;
   ownerName: string;
+  ownerUserId: string;
+  description: string;
   state: string;
   memberCount: number;
   updatedAt: string | null;
@@ -48,8 +65,10 @@ export type AdminUserRow = {
   id: string;
   email: string;
   displayName: string;
+  bio: string;
   state: string;
   roles: string;
+  availableXu: number;
   createdAt: string | null;
 };
 
@@ -60,6 +79,7 @@ export type AdminCashFlowRow = {
   referenceType: string;
   referenceId: string;
   description: string;
+  userId: string;
   userEmail: string;
   createdAt: string | null;
 };
@@ -68,6 +88,7 @@ async function adminRequest<T>(path: `/${string}`): Promise<T> {
   const response = await fetch(`${apiBaseUrl}${path}`, {
     cache: "no-store",
     headers: { Accept: "application/json" },
+    signal: AbortSignal.timeout(4000),
   });
 
   if (!response.ok) {
@@ -87,6 +108,7 @@ export function loadAdminOverview() {
       visits: 0,
     },
     revenueSeries: [],
+    readerSeries: [],
     tasks: [
       "Không kết nối được API admin. Kiểm tra backend local/prod trước khi thao tác dữ liệu.",
       "Khi API sẵn sàng, dashboard sẽ tự đọc lại từ database.",
@@ -97,6 +119,10 @@ export function loadAdminOverview() {
 
 export function loadAdminStories() {
   return adminRequest<AdminStoryRow[]>("/admin/content/stories").catch(() => []);
+}
+
+export function loadAdminCategories() {
+  return adminRequest<AdminCategoryRow[]>("/admin/content/categories").catch(() => []);
 }
 
 export function loadAdminTeams() {

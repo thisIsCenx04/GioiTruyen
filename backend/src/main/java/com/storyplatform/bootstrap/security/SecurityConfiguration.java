@@ -86,6 +86,7 @@ public class SecurityConfiguration {
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/categories",
+                                "/categories/*/stories",
                                 "/home",
                                 "/promotions/home",
                                 "/search",
@@ -94,6 +95,7 @@ public class SecurityConfiguration {
                                 "/stories/*",
                                 "/stories/*/chapters",
                                 "/chapters/*",
+                                "/chapters/*/access",
                                 "/users/*",
                                 "/teams",
                                 "/teams/*",
@@ -126,6 +128,10 @@ public class SecurityConfiguration {
                         .authenticated()
                         .requestMatchers("/rankings/**").permitAll()
                         .requestMatchers("/wallets/**").authenticated()
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/chapters/*/unlock"
+                        ).authenticated()
                         .requestMatchers("/donations").authenticated()
                         .requestMatchers("/teams/*/rewards").authenticated()
                         .requestMatchers("/referrals/**").authenticated()
@@ -140,6 +146,10 @@ public class SecurityConfiguration {
                                 "/admin/content/**",
                                 "/admin/finance/**"
                         ).permitAll()
+                        .requestMatchers(
+                                "/admin/content/**",
+                                "/admin/finance/**"
+                        ).authenticated()
                         .requestMatchers("/admin/topups/**").authenticated()
                         .requestMatchers("/admin/withdrawals/**")
                         .authenticated()
@@ -160,6 +170,7 @@ public class SecurityConfiguration {
                                 "/me/reading-history/*",
                                 "/me/reading-progress/*"
                         ).authenticated()
+                        .requestMatchers("/me/library").authenticated()
                         .requestMatchers(
                                 "/stories/*/favorite",
                                 "/stories/*/follow"

@@ -32,6 +32,17 @@ const stages = [
   ["PUBLISHED", "Đã xuất bản"],
 ] as const;
 
+function safeUUID(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 function errorMessage(error: unknown) {
   if (error instanceof StoryApiError) {
     const messages: Readonly<Record<string, string>> = {
@@ -261,7 +272,7 @@ export function PublishingWorkspace({
           synopsis: String(values.get("synopsis")),
           title: String(values.get("title")),
         },
-        crypto.randomUUID(),
+        safeUUID(),
       );
       setStories((current) => [created, ...current]);
       form.reset();
@@ -294,7 +305,7 @@ export function PublishingWorkspace({
   async function submitForReview() {
     if (!selected || storyDirty || chapterDirty) return;
     try {
-      await api.submit(teamId, selected.id, crypto.randomUUID());
+      await api.submit(teamId, selected.id, safeUUID());
       const next = { ...selected, workflowStatus: "IN_REVIEW" };
       setSelected(next);
       setStories((current) =>

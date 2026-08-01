@@ -2,11 +2,16 @@ package com.storyplatform.catalog.api;
 
 import com.storyplatform.catalog.application.CatalogRequestException;
 import com.storyplatform.catalog.application.ChapterCatalogOperations;
+import com.storyplatform.catalog.application.ChapterAccessOperations;
 import com.storyplatform.shared.api.ApiException;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -25,9 +30,19 @@ public final class ChapterCatalogController {
                     .staleWhileRevalidate(Duration.ofMinutes(10));
 
     private final ChapterCatalogOperations chapters;
+    private final ChapterAccessOperations access;
 
     public ChapterCatalogController(ChapterCatalogOperations chapters) {
+        this(chapters, ChapterAccessOperations.unrestricted());
+    }
+
+    @Autowired
+    public ChapterCatalogController(
+            ChapterCatalogOperations chapters,
+            ChapterAccessOperations access
+    ) {
         this.chapters = Objects.requireNonNull(chapters, "chapters");
+        this.access = Objects.requireNonNull(access, "access");
     }
 
     @GetMapping("/stories/{idOrSlug}/chapters")
@@ -56,12 +71,17 @@ public final class ChapterCatalogController {
     @GetMapping("/chapters/{chapterId}")
     public ResponseEntity<ChapterCatalogOperations.ChapterDetail> detail(
             @PathVariable String chapterId,
+            @AuthenticationPrincipal Jwt jwt,
             @RequestHeader(
                     value = HttpHeaders.IF_NONE_MATCH,
                     required = false
             ) String ifNoneMatch
     ) {
         try {
+            access.requireReadable(
+                    chapterId,
+                    jwt == null ? null : jwt.getSubject()
+            );
             var chapter = chapters.detail(chapterId);
             String etag = "\"" + chapter.etag() + "\"";
             if (etag.equals(ifNoneMatch)) {
@@ -85,5 +105,34 @@ public final class ChapterCatalogController {
                     exception.getMessage()
             );
         }
+    }
+
+    public ResponseEntity<ChapterCatalogOperations.ChapterDetail> detail(
+            String chapterId,
+            String ifNoneMatch
+    ) {
+        return detail(chapterId, null, ifNoneMatch);
+    }
+
+    @GetMapping("/chapters/{chapterId}/access")
+    public ChapterAccessOperations.ChapterAccessView access(
+            @PathVariable String chapterId,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return access.status(
+                chapterId,
+                jwt == null ? null : jwt.getSubject()
+        );
+    }
+
+    @PostMapping("/chapters/{chapterId}/unlock")
+    public ChapterAccessOperations.ChapterAccessView unlock(
+            @PathVariable String chapterId,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return access.unlock(
+                chapterId,
+                jwt == null ? null : jwt.getSubject()
+        );
     }
 }

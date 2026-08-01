@@ -1,11 +1,17 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+import { AdminShell } from "./admin-shell";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Bàn kiểm duyệt · Giới Truyện",
-  description: "Không gian kiểm duyệt xuất bản và lưu vết quyết định.",
+  title: "Giới Truyện Admin · Control Center",
+  description: "Bảng điều khiển quản trị nền tảng truyện tranh Giới Truyện.",
+  icons: {
+    icon: "/logo-icon.jpg",
+    shortcut: "/logo-icon.jpg",
+    apple: "/logo-icon.jpg",
+  },
 };
 
 export default function AdminLayout({
@@ -13,7 +19,7 @@ export default function AdminLayout({
 }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="vi">
-      <body>{children}</body>
+      <body><AdminShell>{children}</AdminShell></body>
     </html>
   );
 }

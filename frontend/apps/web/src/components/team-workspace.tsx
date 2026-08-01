@@ -17,9 +17,11 @@ import {
   CloudUpload,
   DollarSign,
   FileCheck2,
+  Headphones,
   PenLine,
   Send,
   Settings,
+  Users,
 } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
@@ -27,6 +29,17 @@ import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 import styles from "./team-workspace.module.css";
 import { WithdrawalWorkspace } from "./withdrawal-workspace";
+
+function safeUUID(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
 
 const permissionOptions = [
   ["story:create", "Tạo bản thảo"],
@@ -45,7 +58,7 @@ function message(error: unknown) {
       AUTHENTICATION_REQUIRED:
         "Phiên làm việc đã hết hạn. Hãy đăng nhập lại để tiếp tục.",
       TEAM_APPLICATION_SLUG_TAKEN:
-        "Đường dẫn team này đã được dùng hoặc đang chờ duyệt.",
+        "Đường dẫn nhóm này đã được dùng hoặc đang chờ duyệt.",
       TEAM_LAST_OWNER: "Không thể gỡ chủ sở hữu cuối cùng của nhóm.",
       TEAM_MEMBER_EXISTS: "Người này đã có trong sổ thành viên.",
       TEAM_MEMBERSHIP_VERSION_CONFLICT:
@@ -94,6 +107,7 @@ export function TeamDirectory() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [activeRankTab, setActiveRankTab] = useState<"views" | "likes" | "stories">("views");
 
   useEffect(() => {
     let active = true;
@@ -121,18 +135,22 @@ export function TeamDirectory() {
     setNotice("");
     const form = event.currentTarget;
     const values = new FormData(form);
+    const sdt = String(values.get("sdt") ?? "").trim();
+    const linkFb = String(values.get("link_fb") ?? "").trim();
+    const note = String(values.get("note") ?? "").trim();
+
     try {
       const application = await teamsApi.createApplication({
-        description: String(values.get("description") ?? ""),
-        name: String(values.get("name") ?? ""),
-        slug: String(values.get("slug") ?? ""),
+        description: `FB: ${linkFb} | Note: ${note}`,
+        name: `SĐT ${sdt}`,
+        slug: `team-${sdt.replace(/\D/g, "") || Date.now()}`,
       });
       setApplications((current) => [
         application,
         ...current.filter((item) => item.id !== application.id),
       ]);
       form.reset();
-      setNotice("Đã gửi đăng ký team vào danh sách chờ admin duyệt.");
+      setNotice("Đã gửi đăng ký thành công! Admin sẽ xem xét và liên hệ lại với bạn qua SĐT/FB trong 1-3 ngày.");
     } catch (requestError) {
       setError(message(requestError));
     } finally {
@@ -140,134 +158,281 @@ export function TeamDirectory() {
     }
   }
 
+  // Top 5 teams mock dataset matching screenshot
+  const topTeams = [
+    { rank: 1, name: "Linh Vực Studio", views: "12.5M", stories: "28", verified: true, avatarTone: "indigo" },
+    { rank: 2, name: "Hắc Nguyệt Team", views: "8.7M", stories: "19", verified: true, avatarTone: "dark" },
+    { rank: 3, name: "Thiên Hóa Các", views: "6.3M", stories: "15", verified: true, avatarTone: "gold" },
+    { rank: 4, name: "Dream Manga", views: "5.1M", stories: "12", verified: true, avatarTone: "cyan" },
+    { rank: 5, name: "Sắc Phong Team", views: "4.3M", stories: "10", verified: true, avatarTone: "blue" },
+  ];
+
   return (
-    <main className={styles.directory}>
-      <header className={styles.directoryHeader}>
-        <Link href={"/" as Route}>
-          <BrandMark />
-        </Link>
-        <div>
-          <p className={styles.kicker}>Hồ sơ reader</p>
-          <h1>Tài khoản đọc truyện.</h1>
-        </div>
-        <Link className={styles.accountLink} href={"/account/sessions" as Route}>
-          Tài khoản
-        </Link>
-      </header>
-
-      <div className={styles.readerProfileShell}>
-        <section className={styles.readerProfileCard}>
-          <div>
-            <strong>Reader</strong>
-            <span>Thông tin cơ bản, phiên đăng nhập và trạng thái đăng ký team.</span>
-          </div>
-          <nav className={styles.profileTabs} aria-label="Tab hồ sơ reader">
-            <Link href={"/account/sessions" as Route}>Phiên đăng nhập</Link>
-            <a aria-current="page" href="#team-application">
-              Đăng ký team
-            </a>
-          </nav>
-        </section>
-      </div>
-
-      <div className={styles.directoryGrid} id="team-application">
-        <section className={styles.teamIndex} aria-labelledby="team-index-title">
-          <div className={styles.sectionTitle}>
-            <span>Team đang hoạt động</span>
-            <strong>{teams.length.toString().padStart(2, "0")}</strong>
-          </div>
-          <h2 id="team-index-title">Nhóm xuất bản</h2>
-          {loading && <p className={styles.empty}>Đang mở sổ nhóm...</p>}
-          {!loading && teams.length === 0 && (
-            <p className={styles.empty}>
-              Chưa có nhóm nào được duyệt. Gửi hồ sơ đăng ký ở biểu mẫu bên cạnh.
+    <main className="teamsRegistrationRedesign">
+      {/* ── TOP HERO BANNER (FULL WIDTH, HEIGHT 400PX) ── */}
+      <section className="teamsFullHeroBanner">
+        <div className="teamsHeroBg" />
+        <div className="teamsHeroContainer">
+          <div className="teamsHeroContent">
+            <h1>Nhóm xuất bản & Tác giả</h1>
+            <p>
+              Khám phá các nhóm xuất bản tài năng, kết nối cộng đồng sáng tác và tạo nhóm mới cùng Giới Truyện.
             </p>
-          )}
-          <ol className={styles.teamList}>
-            {teams.map((team, index) => (
-              <li key={team.id}>
-                <Link href={`/teams/${team.id}` as Route}>
-                  <span>{String(index + 1).padStart(2, "0")}</span>
-                  <div>
-                    <strong>{team.name}</strong>
-                    <small>{team.description || "Chưa có lời giới thiệu"}</small>
-                  </div>
-                  <i aria-hidden="true">↗</i>
-                </Link>
-              </li>
-            ))}
-          </ol>
-        </section>
+            <div className="teamsStatCardsRow">
+              <div className="teamsStatGlassCard">
+                <div className="statIconCircle">
+                  <Users size={20} />
+                </div>
+                <div className="statText">
+                  <strong>200+</strong>
+                  <span>Nhóm đã tham gia</span>
+                </div>
+              </div>
 
-        <section
-          className={styles.createSheet}
-          id="ads-booking"
-          aria-labelledby="create-title"
-        >
-          <p className={styles.kicker}>Tab đăng ký team</p>
-          <h2 id="create-title">Gửi hồ sơ chờ duyệt</h2>
-          <p>
-            Reader chỉ gửi đăng ký tại đây. Hồ sơ sẽ vào danh sách xem xét, admin
-            duyệt xong mới mở quyền xuất bản.
-          </p>
+              <div className="teamsStatGlassCard">
+                <div className="statIconCircle">
+                  <BookOpen size={20} />
+                </div>
+                <div className="statText">
+                  <strong>5K+</strong>
+                  <span>Truyện đã xuất bản</span>
+                </div>
+              </div>
+
+              <div className="teamsStatGlassCard">
+                <div className="statIconCircle">
+                  <Headphones size={20} />
+                </div>
+                <div className="statText">
+                  <strong>1M+</strong>
+                  <span>Lượt đọc mỗi tháng</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="teamsBodyWrapper">
+        {/* ── SECTION 1: Top Registration Split ── */}
+        <section className="teamsHeroSplit">
+        {/* Left: Registration Form (3 Fields) */}
+        <div className="teamsFormCard">
+          <header className="formHeader">
+            <h1>Đăng ký nhóm xuất bản</h1>
+            <p>Tham gia cùng Giới Truyện để xuất bản và chia sẻ những câu chuyện tuyệt vời của bạn.</p>
+          </header>
+
           <WorkspaceNotice error={error} notice={notice} />
-          <form onSubmit={create}>
-            <label>
-              Tên team
+
+          <form onSubmit={create} className="teamsFormStack">
+            <div className="teamsFieldGroup">
+              <label htmlFor="field-sdt">Số điện thoại *</label>
               <input
-                maxLength={100}
-                minLength={2}
-                name="name"
-                placeholder="Ví dụ: Lam Dạ"
+                id="field-sdt"
+                type="tel"
+                name="sdt"
+                className="teamsInput"
+                placeholder="Ví dụ: 0912345678"
                 required
               />
-            </label>
-            <label>
-              Đường dẫn
-              <span className={styles.slugField}>
-                gioitruyen.vn/teams/
-                <input
-                  maxLength={50}
-                  minLength={3}
-                  name="slug"
-                  pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
-                  placeholder="lam-da"
-                  required
-                />
-              </span>
-            </label>
-            <label>
-              Lời giới thiệu
-              <textarea
-                maxLength={1000}
-                name="description"
-                placeholder="Team viết gì, lịch đăng thế nào?"
-                rows={4}
+            </div>
+
+            <div className="teamsFieldGroup">
+              <label htmlFor="field-fb">Link Facebook hoặc Fanpage FB *</label>
+              <input
+                id="field-fb"
+                type="url"
+                name="link_fb"
+                className="teamsInput"
+                placeholder="https://facebook.com/your.fanpage"
+                required
               />
-            </label>
-            <button disabled={creating} type="submit">
-              {creating ? "Đang gửi hồ sơ..." : "Gửi đăng ký chờ duyệt"}
+            </div>
+
+            <div className="teamsFieldGroup">
+              <label htmlFor="field-note">Ghi chú</label>
+              <textarea
+                id="field-note"
+                name="note"
+                className="teamsTextarea"
+                rows={4}
+                placeholder="Giới thiệu ngắn hoặc câu hỏi/ghi chú thêm..."
+              />
+            </div>
+
+            <div className="teamsAlertBox">
+              <span className="alertIcon">ℹ️</span>
+              <p>
+                <strong>Sau khi gửi đăng ký, Admin sẽ xem xét hồ sơ của bạn.</strong>
+                <br />
+                Kết quả duyệt sẽ được gửi qua email/SĐT trong vòng 1-3 ngày làm việc.
+              </p>
+            </div>
+
+            <button disabled={creating} type="submit" className="teamsSubmitBtn">
+              {creating ? "Đang gửi hồ sơ..." : "✈️ Gửi hồ sơ đăng ký"}
             </button>
           </form>
-          {applications.length > 0 && (
-            <div className={styles.pendingReviewList}>
-              <strong>Đang chờ admin duyệt</strong>
-              {applications.map((application) => (
-                <article key={application.id}>
-                  <span>{application.name}</span>
-                  <small>
-                    /{application.slug} · gửi{" "}
-                    {new Date(application.submittedAt).toLocaleDateString("vi-VN")}
-                  </small>
-                </article>
-              ))}
+        </div>
+
+        {/* Right: Anime Graphic Wallpaper & Value Props */}
+        <div className="teamsGraphicCard">
+          <div className="graphicBackground" />
+          <div className="graphicContent">
+            <h2>Cùng Giới Truyện lan tỏa những câu chuyện hay</h2>
+
+            <ul className="valuePropList">
+              <li><span className="propCheck">✓</span> Xuất bản truyện dễ dàng</li>
+              <li><span className="propCheck">✓</span> Quản lý tác phẩm chuyên nghiệp</li>
+              <li><span className="propCheck">✓</span> Cộng đồng độc giả đông đảo</li>
+              <li><span className="propCheck">✓</span> Hỗ trợ & đồng hành cùng phát triển</li>
+            </ul>
+
+            <div className="glassStatsBar">
+              <div className="statItem">
+                <strong>200+</strong>
+                <span>Nhóm đã tham gia</span>
+              </div>
+              <div className="statDivider" />
+              <div className="statItem">
+                <strong>5K+</strong>
+                <span>Truyện đã xuất bản</span>
+              </div>
+              <div className="statDivider" />
+              <div className="statItem">
+                <strong>1M+</strong>
+                <span>Lượt đọc mỗi tháng</span>
+              </div>
             </div>
-          )}
-        </section>
+          </div>
+        </div>
+      </section>
+
+      {/* ── SECTION 2: Quy định & điều kiện ── */}
+      <section className="termsSection">
+        <div className="sectionTitleCenter">
+          <span className="shieldIcon">🛡️</span>
+          <h2>Quy định & điều kiện</h2>
+        </div>
+
+        <div className="termsCardsGrid">
+          <div className="termCard">
+            <div className="termIconCircle termBlue">👜</div>
+            <h3>Nội dung hợp lệ</h3>
+            <p>Truyện không vi phạm pháp luật, không chứa nội dung phản cảm, bạo lực, đồi trụy.</p>
+          </div>
+
+          <div className="termCard">
+            <div className="termIconCircle termGreen">📜</div>
+            <h3>Bản quyền rõ ràng</h3>
+            <p>Nhóm phải có quyền sở hữu hoặc được ủy quyền hợp pháp đối với nội dung đăng tải.</p>
+          </div>
+
+          <div className="termCard">
+            <div className="termIconCircle termPurple">🔄</div>
+            <h3>Cập nhật thường xuyên</h3>
+            <p>Cam kết cập nhật truyện đều đặn, đảm bảo chất lượng nội dung cho độc giả.</p>
+          </div>
+
+          <div className="termCard">
+            <div className="termIconCircle termOrange">⚖️</div>
+            <h3>Tuân thủ quy định</h3>
+            <p>Chấp hành mọi quy định của Giới Truyện và quyết định của Ban quản trị.</p>
+          </div>
+        </div>
+
+        <div className="termsCenterBtn">
+          <Link href={"/publishing-rules" as Route} className="btnOutline">
+            Xem chi tiết quy định &gt;
+          </Link>
+        </div>
+      </section>
+
+      {/* ── SECTION 3: Bảng xếp hạng nhóm ── */}
+      <section className="teamsRankingSection">
+        <div className="rankingHeaderFlex">
+          <h2>Bảng xếp hạng nhóm</h2>
+          <Link href={"/rankings" as Route} className="btnLinkBlue">
+            Xem bảng xếp hạng đầy đủ
+          </Link>
+        </div>
+
+        <div className="rankingTabsFilter">
+          <button
+            className={activeRankTab === "views" ? "active" : ""}
+            onClick={() => setActiveRankTab("views")}
+            type="button"
+          >
+            Theo lượt xem
+          </button>
+          <button
+            className={activeRankTab === "likes" ? "active" : ""}
+            onClick={() => setActiveRankTab("likes")}
+            type="button"
+          >
+            Theo lượt thích
+          </button>
+          <button
+            className={activeRankTab === "stories" ? "active" : ""}
+            onClick={() => setActiveRankTab("stories")}
+            type="button"
+          >
+            Theo số truyện
+          </button>
+        </div>
+
+        <div className="topTeamsGrid">
+          {topTeams.map((t) => (
+            <div key={t.rank} className="topTeamCard">
+              <div className={`rankHexBadge rankHex${t.rank <= 3 ? t.rank : "Normal"}`}>
+                {t.rank}
+              </div>
+
+              <div className={`teamAvatarSquare avatarTone-${t.avatarTone}`}>
+                <span>{t.name.charAt(0)}</span>
+              </div>
+
+              <div className="teamInfoMain">
+                <h3>
+                  {t.name} {t.verified && <span className="verifiedCheck">✔</span>}
+                </h3>
+                <div className="teamStatsRow">
+                  <span>👁️ {t.views}</span>
+                  <span>📚 {t.stories} truyện</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── SECTION 4: Về Giới Truyện ── */}
+      <section className="aboutGioiTruyenCard">
+        <div className="aboutLeftContent">
+          <h2>Về Giới Truyện</h2>
+          <p>
+            Giới Truyện là nền tảng đọc truyện online miễn phí, nơi kết nối độc giả với những bộ truyện chất lượng và các nhóm dịch, tác giả tài năng.
+            <br /><br />
+            Chúng tôi luôn đồng hành và hỗ trợ các nhóm sáng tạo để mang đến những câu chuyện hay nhất cho cộng đồng.
+          </p>
+
+          <Link href={"/about" as Route} className="aboutBtn">
+            Tìm hiểu thêm về Giới Truyện
+          </Link>
+        </div>
+
+        <div className="aboutRightGraphic">
+          <div className="pedestal3D">
+            <span className="bigG">G</span>
+          </div>
+        </div>
+      </section>
       </div>
     </main>
   );
 }
+
 
 export function TeamWorkspace({ teamId }: Readonly<{ teamId: string }>) {
   const teamsApi = useMemo(() => createBrowserTeamClient(), []);
@@ -387,7 +552,7 @@ export function TeamWorkspace({ teamId }: Readonly<{ teamId: string }>) {
           permissions,
           userId: String(values.get("userId")),
         },
-        crypto.randomUUID(),
+        safeUUID(),
       );
       setMembers((current) => [
         ...current.filter((item) => item.userId !== member.userId),
@@ -446,7 +611,7 @@ export function TeamWorkspace({ teamId }: Readonly<{ teamId: string }>) {
     return (
       <main className={styles.loading}>
         <BrandMark />
-        <p>Đang mở hồ sơ team...</p>
+        <p>Đang mở hồ sơ nhóm...</p>
       </main>
     );
   }
@@ -469,10 +634,10 @@ export function TeamWorkspace({ teamId }: Readonly<{ teamId: string }>) {
           <BrandMark inverse />
         </Link>
         <div className={styles.folio}>
-          <span>Hồ sơ team</span>
+          <span>Hồ sơ nhóm</span>
           <strong>{team?.slug ?? "không tìm thấy"}</strong>
         </div>
-        <nav aria-label="Mục trong không gian team">
+        <nav aria-label="Mục trong không gian nhóm">
           <a href="#overview">Tổng quan</a>
           <a href="#dashboard">Thống kê</a>
           <Link href={`/teams/${teamId}/stories` as Route}>D.S.Chương</Link>
@@ -483,8 +648,8 @@ export function TeamWorkspace({ teamId }: Readonly<{ teamId: string }>) {
           {canManage && <a href="#members">Sổ thành viên</a>}
         </nav>
         <p className={styles.spineNote}>
-          Dashboard này dành cho team đăng truyện. Reader thường chỉ có hồ sơ
-          cơ bản và tab đăng ký team.
+          Khu thống kê này dành cho nhóm đăng truyện. Độc giả thông thường chỉ có
+          hồ sơ cá nhân và mục đăng ký nhóm xuất bản.
         </p>
       </aside>
 
@@ -498,8 +663,8 @@ export function TeamWorkspace({ teamId }: Readonly<{ teamId: string }>) {
             </button>
           </div>
           <div className={styles.statusLedger}>
-            <h1>{team?.name ?? "Không mở được team"}</h1>
-            <p>{team?.description || "Team chưa viết lời giới thiệu."}</p>
+            <h1>{team?.name ?? "Không mở được hồ sơ nhóm"}</h1>
+            <p>{team?.description || "Nhóm chưa viết lời giới thiệu."}</p>
             <dl>
               <div>
                 <dt>Xuất bản:</dt>
@@ -541,12 +706,12 @@ export function TeamWorkspace({ teamId }: Readonly<{ teamId: string }>) {
             onClick={toggleFollow}
             type="button"
           >
-            {follow?.following ? "Đang theo dõi" : "Theo dõi team"}
+            {follow?.following ? "Đang theo dõi" : "Theo dõi nhóm"}
             <span>{follow?.followerCount ?? 0}</span>
           </button>
         </header>
 
-        <nav className={styles.teamDashboardTabs} aria-label="Tab team dashboard">
+        <nav className={styles.teamDashboardTabs} aria-label="Các mục quản lý nhóm">
           <Link href={`/teams/${teamId}/stories` as Route}>
             <BookOpen aria-hidden="true" />
             D.S.Chương
@@ -590,7 +755,7 @@ export function TeamWorkspace({ teamId }: Readonly<{ teamId: string }>) {
           </div>
           <p>
             {canManage
-              ? "Bạn đang ở chế độ chủ sở hữu team."
+              ? "Bạn đang ở chế độ chủ sở hữu nhóm."
               : "Bạn đang xem ở chế độ thành viên hoặc người theo dõi."}
           </p>
         </section>
@@ -660,8 +825,8 @@ export function TeamWorkspace({ teamId }: Readonly<{ teamId: string }>) {
             <h3>Điều khoản ký đăng độc quyền</h3>
             <p>Truyện cần có tối thiểu 5 chương VIP hoặc tổng giá trị từ 200 XU.</p>
             <p>Tất cả chương VIP của truyện đã ký phải đăng độc quyền tại Giới Truyện.</p>
-            <p>Sau khi ký, team không thể tự chuyển ngược lại sang không độc quyền.</p>
-            <p>Nếu vi phạm và gây tổn thất, team có thể bị trừ phần doanh thu theo quy định.</p>
+            <p>Sau khi ký, nhóm không thể tự chuyển ngược lại sang không độc quyền.</p>
+            <p>Nếu vi phạm và gây tổn thất, nhóm có thể bị trừ phần doanh thu theo quy định.</p>
           </div>
           <button type="button">Ký ngay</button>
         </section>
@@ -671,7 +836,7 @@ export function TeamWorkspace({ teamId }: Readonly<{ teamId: string }>) {
         {canManage && team && (
           <section className={styles.ruleSection} id="settings">
             <div className={styles.sectionMarker}>
-              <span>Thông tin team</span>
+              <span>Thông tin nhóm</span>
               <strong>Biên tập hồ sơ</strong>
             </div>
             <form className={styles.settingsForm} onSubmit={saveTeam}>
@@ -801,7 +966,7 @@ function PermissionEditor({
       </div>
       <div className={styles.permissionGrid}>
         {isOwner ? (
-          <p>Chủ sở hữu có toàn bộ quyền team và không thể bị gỡ tại đây.</p>
+          <p>Chủ sở hữu có toàn bộ quyền quản lý nhóm và không thể bị gỡ tại đây.</p>
         ) : (
           permissionOptions.map(([permission, label]) => (
             <label key={permission}>
@@ -831,7 +996,7 @@ function PermissionEditor({
             onClick={onRemove}
             type="button"
           >
-            Gỡ khỏi team
+            Gỡ khỏi nhóm
           </button>
         </div>
       )}

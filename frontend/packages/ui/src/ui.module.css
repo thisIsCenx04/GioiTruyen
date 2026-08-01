@@ -13,22 +13,21 @@
   color: #f4f7ff;
 }
 
-.brandSeal {
-  align-items: center;
-  background: linear-gradient(135deg, #4f70f5, #76a5ff);
-  border-radius: 0.45rem;
-  color: #fff;
-  display: inline-flex;
-  font-family: "Aptos Narrow", "Arial Narrow", sans-serif;
-  font-size: 0.78rem;
-  font-weight: 800;
+.brandLogoImg {
+  border-radius: 0.5rem;
+  box-shadow: 0 0.35rem 0.8rem rgb(37 99 235 / 22%);
+  display: inline-block;
+  flex-shrink: 0;
+  height: 2.2rem;
+  object-fit: cover;
+  width: 2.2rem;
+}
+
+.brand[data-compact] .brandLogoImg {
   height: 1.8rem;
-  justify-content: center;
-  letter-spacing: 0;
-  box-shadow: 0 0.45rem 1rem rgb(79 112 245 / 24%);
-  transform: none;
   width: 1.8rem;
 }
+
 
 .status {
   align-items: center;

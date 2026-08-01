@@ -21,7 +21,7 @@ export function PromotedStoryCard({
         aria-label={`Đọc ${story.title}`}
         className="promotedCover"
         data-tone={tones[index % tones.length]}
-        href={`/stories/${story.slug}` as Route}
+        href={`/truyen/${story.slug}` as Route}
       >
         <span className="featuredTag">
           <BadgeCheck aria-hidden="true" />
@@ -40,11 +40,11 @@ export function PromotedStoryCard({
       </Link>
       <div className="promotedBody">
         <h3>
-          <Link href={`/stories/${story.slug}` as Route}>{story.title}</Link>
+          <Link href={`/truyen/${story.slug}` as Route}>{story.title}</Link>
         </h3>
         <p className="promotedAuthor">
           <UsersRound aria-hidden="true" />
-          {story.teamName ?? "Team Giới Truyện"}
+          {story.teamName ?? "Nhóm Giới Truyện"}
         </p>
       </div>
     </article>
@@ -72,7 +72,7 @@ export function PromotedEmptySlot({
         </h3>
         <p className="promotedAuthor">
           <UsersRound aria-hidden="true" />
-          Dành cho team đăng truyện
+          Dành cho nhóm xuất bản
         </p>
       </div>
     </article>

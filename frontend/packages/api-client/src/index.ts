@@ -1620,6 +1620,11 @@ export function createPublicCatalogClient({
     categories() {
       return client.request<CategoryTaxonomy>("/categories");
     },
+    categoryStories(slug: string) {
+      return client.request<HomeStorySummary[]>(
+        `/categories/${encodeURIComponent(slug)}/stories`,
+      );
+    },
     story(identifier: string) {
       return client.request<PublicStory>(
         `/stories/${encodeURIComponent(identifier)}`,

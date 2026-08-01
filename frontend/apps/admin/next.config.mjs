@@ -5,6 +5,8 @@ const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
 /** @type {import("next").NextConfig} */
 const nextConfig = {
+  basePath: "/dashboard",
+  output: "standalone",
   poweredByHeader: false,
   reactStrictMode: true,
   transpilePackages: ["@gioitruyen/api-client", "@gioitruyen/ui"],

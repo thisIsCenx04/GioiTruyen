@@ -5,7 +5,7 @@ import Link from "next/link";
 import { PublicShell } from "@/components/site-chrome";
 
 export const metadata: Metadata = {
-  description: "Không gian cộng đồng cho reader, tác giả và nhóm dịch trên Giới Truyện.",
+  description: "Không gian cộng đồng cho người đọc, tác giả và nhóm dịch trên Giới Truyện.",
   title: "Cộng đồng",
 };
 
@@ -15,13 +15,13 @@ export default function CommunityPage() {
       <section className="catalogPage">
         <header className="pageIntro compactIntro">
           <p>Cộng đồng</p>
-          <h1>Nơi reader, tác giả và nhóm dịch cùng phát triển nội dung.</h1>
+          <h1>Nơi người đọc gặp những người làm nên câu chuyện.</h1>
         </header>
         <div className="communityGrid">
           <Link href="/teams">
             <UsersRound aria-hidden="true" />
             <strong>Nhóm dịch</strong>
-            <span>Mở hồ sơ nhóm, xem team đang hoạt động và gửi đăng ký chờ duyệt.</span>
+            <span>Mở hồ sơ nhóm, xem các nhóm đang hoạt động và gửi đăng ký chờ duyệt.</span>
           </Link>
           <Link href={"/stories" as Route}>
             <PenLine aria-hidden="true" />

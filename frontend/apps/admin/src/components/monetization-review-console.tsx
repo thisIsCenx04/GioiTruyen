@@ -40,6 +40,17 @@ function operationLabel(operation: MonetizationKillSwitch["operation"]) {
   }[operation];
 }
 
+function safeUUID(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 export function MonetizationReviewConsole() {
   const api = useMemo(() => createBrowserAdminMonetizationClient(), []);
   const auth = useMemo(() => createBrowserAuthClient(), []);
@@ -114,7 +125,7 @@ export function MonetizationReviewConsole() {
             grant.grantToken,
           ));
         } else {
-          retryKey.current ??= crypto.randomUUID();
+          retryKey.current ??= safeUUID();
           setReceipt(await api.reviewWithdrawal(
             targetId,
             decision === "APPROVE" ? "approve" : "reject",

@@ -141,6 +141,12 @@ function allowed(method: string, path: string) {
   if (path === "donations") {
     return method === "POST";
   }
+  if (new RegExp(`^chapters/${uuid}/access$`, "u").test(path)) {
+    return method === "GET";
+  }
+  if (new RegExp(`^chapters/${uuid}/unlock$`, "u").test(path)) {
+    return method === "POST";
+  }
   if (path === "wallets/me/topups") {
     return method === "GET" || method === "POST";
   }
@@ -153,6 +159,9 @@ function allowed(method: string, path: string) {
     return method === "GET" || method === "PUT";
   }
   if (path === "me/reading-history") {
+    return method === "GET";
+  }
+  if (path === "me/library") {
     return method === "GET";
   }
   if (new RegExp(`^me/reading-history/${uuid}$`, "u").test(path)) {

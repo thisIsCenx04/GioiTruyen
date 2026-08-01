@@ -1,4 +1,4 @@
-import { BookOpen, Grid3X3, Headphones, LibraryBig, Sparkles } from "lucide-react";
+import { BookOpen, Grid3X3, Headphones, LibraryBig } from "lucide-react";
 import type { Metadata, Route } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -17,18 +17,18 @@ type CategoryDetailProps = Readonly<{
 const numberFormatter = new Intl.NumberFormat("vi-VN");
 
 async function loadCategory(slug: string) {
-  const taxonomy = await catalog.categories();
-  const categories = taxonomy.groups.flatMap((group) => group.categories);
+  const taxonomy = await catalog.categories().catch(() => ({ groups: [] }));
+  const categories = taxonomy?.groups ? taxonomy.groups.flatMap((group) => group.categories) : [];
   const category = categories.find((item) => item.slug === slug);
   if (!category) {
     return null;
   }
 
   const [results, boards] = await Promise.all([
-    catalog.search(category.name, 36).catch(() => null),
+    catalog.categoryStories(category.slug).catch(() => []),
     loadRankingBoards(),
   ]);
-  const stories = results?.items.map((item) => item.story) ?? [];
+  const stories = results;
   const rankingStories = boards.flatMap((board) => board.stories.map((row) => row.story));
 
   return { category, stories, taxonomy, rankingStories };
@@ -76,7 +76,7 @@ export default async function CategoryDetailPage({ params }: CategoryDetailProps
             <p className="detailEyebrow">Thể loại</p>
             <h1>{result.category.name}</h1>
             <p>
-              Tuyển tập truyện đang có trong nhóm {result.category.name.toLocaleLowerCase("vi-VN")}, cập nhật từ thư viện thật.
+              Những tác phẩm mang màu sắc {result.category.name.toLocaleLowerCase("vi-VN")}, được sắp xếp theo lần cập nhật gần nhất.
             </p>
             <div className="detailHeroStats" aria-label="Thông số thể loại">
               <span title="Số truyện">
@@ -100,12 +100,10 @@ export default async function CategoryDetailPage({ params }: CategoryDetailProps
             <section className="storySection storySectionLarge storyListBoard">
               <header>
                 <h2>Truyện thuộc {result.category.name}</h2>
-                <Link href={`/search?q=${encodeURIComponent(result.category.name)}` as Route}>
-                  Xem theo tìm kiếm
-                </Link>
+                <Link href="/categories">Đổi thể loại</Link>
               </header>
               {result.stories.length === 0 ? (
-                <p className="emptyCatalog">Chưa có truyện khớp thể loại này trong dữ liệu hiện tại.</p>
+                <p className="emptyCatalog">Thể loại này đang chờ những tác phẩm đầu tiên.</p>
               ) : (
                 <div className="catalogGrid catalogGridLarge catalogGridVertical">
                   {result.stories.slice(0, 24).map((story, index) => (
@@ -117,7 +115,6 @@ export default async function CategoryDetailPage({ params }: CategoryDetailProps
 
             <section className="categoryDetailMore" aria-labelledby="related-categories">
               <header>
-                <Sparkles aria-hidden="true" />
                 <h2 id="related-categories">Thể loại liên quan</h2>
               </header>
               <div>

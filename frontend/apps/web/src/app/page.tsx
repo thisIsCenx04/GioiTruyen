@@ -1,4 +1,5 @@
-import { BookOpen, Flame, Shapes } from "lucide-react";
+import { BookOpen, Flame } from "lucide-react";
+import type { Route } from "next";
 import Link from "next/link";
 
 import { CatalogStoryCard } from "@/components/catalog-story-card";
@@ -103,7 +104,7 @@ export default async function HomePage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="emptyCatalog">Section này đang được cập nhật.</p>
+                  <p className="emptyCatalog">Danh mục này đang chờ những chương truyện đầu tiên.</p>
                 )}
               </section>
             ))}
@@ -120,13 +121,11 @@ export default async function HomePage() {
             {categories.slice(0, 12).map((category, index) => (
               <Link
                 data-tone={index % 8}
-                href={`/search?category=${encodeURIComponent(category.slug)}`}
-                key={category.id}
-              >
-                <Shapes aria-hidden="true" />
-                <strong>{category.name}</strong>
-                <small>Khám phá thể loại</small>
-              </Link>
+                href={`/categories/${category.slug}`}
+              key={category.id}
+            >
+              <strong>{category.name}</strong>
+            </Link>
             ))}
           </nav>
         </section>
@@ -134,35 +133,35 @@ export default async function HomePage() {
         <section className="aboutBand" aria-labelledby="about-title">
           <div>
             <p className="detailEyebrow">Về Giới Truyện</p>
-            <h2 id="about-title">Không gian đọc truyện hiện đại cho reader, tác giả và team dịch.</h2>
+            <h2 id="about-title">Một thư viện mở cho người đọc, tác giả và các nhóm chuyển ngữ.</h2>
           </div>
           <p>
-            Giới Truyện tập trung vào trải nghiệm đọc nhanh, giao diện sáng, lưu tiến độ đọc,
-            theo dõi chương mới, donate XU cho tác giả và khu làm việc riêng cho team xuất bản.
-            Kho nội dung được đồng bộ từ database để reader luôn thấy truyện, thể loại và bảng xếp hạng mới nhất.
+            Giới Truyện giúp bạn đọc liền mạch trên nhiều thiết bị, lưu truyện yêu thích,
+            theo dõi chương mới và ủng hộ trực tiếp người làm nội dung bằng XU. Mỗi tác phẩm
+            đều có thông tin tác giả, trạng thái xuất bản và lịch sử cập nhật rõ ràng.
           </p>
         </section>
 
         <section className="publishingRules" aria-labelledby="publishing-rules-title">
           <div>
             <p className="detailEyebrow">Quy định trước khi đăng truyện</p>
-            <h2 id="publishing-rules-title">Nội dung sạch, quyền rõ, lịch đăng có trách nhiệm.</h2>
+            <h2 id="publishing-rules-title">Tôn trọng bản quyền, người đọc và cộng đồng.</h2>
           </div>
           <ol>
             <li>Truyện phải do bạn sở hữu quyền đăng hoặc có giấy phép chuyển ngữ, xuất bản.</li>
             <li>Không đăng nội dung vi phạm pháp luật, kích động thù ghét, lộ thông tin cá nhân.</li>
             <li>Chương mới cần có tiêu đề, nội dung hoàn chỉnh và gửi kiểm duyệt trước khi xuất bản.</li>
-            <li>Team mới đăng ký sẽ vào danh sách chờ admin duyệt trước khi mở quyền xuất bản.</li>
+            <li>Nhóm mới đăng ký phải hoàn tất hồ sơ và chờ quản trị viên duyệt quyền xuất bản.</li>
           </ol>
         </section>
 
         <section className="creatorBanner creatorBannerWide">
           <BookOpen aria-hidden="true" />
           <div>
-            <strong>Bạn muốn chia sẻ câu chuyện của mình?</strong>
-            <p>Gia nhập cộng đồng tác giả và nhóm dịch tại Giới Truyện.</p>
+            <strong>Bạn có một câu chuyện muốn được tìm thấy?</strong>
+            <p>Đăng ký nhóm xuất bản, chuẩn bị bản quyền và bắt đầu xây dựng tủ truyện của riêng bạn.</p>
           </div>
-          <Link href="/teams">Tìm hiểu thêm</Link>
+          <Link href={"/publishing-rules" as Route}>Xem quy định</Link>
           <Link className="primaryAction" href="/teams">Đăng ký ngay</Link>
         </section>
       </div>

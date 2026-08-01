@@ -2,12 +2,7 @@ import { StoryApiError } from "@gioitruyen/api-client";
 import {
   Bookmark,
   CalendarDays,
-  Headphones,
   ListMusic,
-  Play,
-  Radio,
-  SkipBack,
-  SkipForward,
   Volume2,
 } from "lucide-react";
 import type { Metadata, Route } from "next";
@@ -15,6 +10,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 
+import { BrowserAudioPlayer } from "@/components/browser-audio-player";
 import { RankingPanel } from "@/components/ranking-panel";
 import { PublicShell } from "@/components/site-chrome";
 import { catalog, loadHome } from "@/lib/catalog";
@@ -78,8 +74,6 @@ export default async function AudioDetailPage({ params }: AudioDetailProps) {
   }
 
   const { chapters, rankingStories, story } = result;
-  const firstChapter = chapters.items[0];
-
   return (
     <PublicShell>
       <article className="catalogDetailPage audioDetailPage">
@@ -93,7 +87,7 @@ export default async function AudioDetailPage({ params }: AudioDetailProps) {
 
         <header className="monkeyDetailHero audioDetailHero">
           <div className="detailHeroCover" data-tone="indigo">
-            <Headphones aria-hidden="true" />
+            <Volume2 aria-hidden="true" />
             <small>Audio</small>
           </div>
           <div>
@@ -119,62 +113,7 @@ export default async function AudioDetailPage({ params }: AudioDetailProps) {
 
         <div className="storyRankingLayout detailContentLayout">
           <div className="homeSectionStack">
-            <section className="audioPlayerPanel" aria-labelledby="audio-player-title">
-              <header>
-                <Radio aria-hidden="true" />
-                <div>
-                  <p className="detailEyebrow">Đang phát</p>
-                  <h2 id="audio-player-title">{firstChapter?.title ?? "Chưa có tập audio"}</h2>
-                </div>
-              </header>
-              <div className="audioControlSurface">
-                <button aria-label="Tập trước" type="button">
-                  <SkipBack aria-hidden="true" />
-                </button>
-                <Link
-                  aria-disabled={!firstChapter}
-                  className="audioPlayButton"
-                  href={firstChapter ? (`/read/${firstChapter.id}` as Route) : ("/audio" as Route)}
-                >
-                  <Play aria-hidden="true" />
-                </Link>
-                <button aria-label="Tập tiếp theo" type="button">
-                  <SkipForward aria-hidden="true" />
-                </button>
-                <div className="audioProgress">
-                  <span />
-                </div>
-                <Volume2 aria-hidden="true" />
-              </div>
-            </section>
-
-            <section className="chapterList audioEpisodeList" aria-labelledby="audio-episodes-title">
-              <header>
-                <div>
-                  <p className="detailEyebrow">Danh sách tập</p>
-                  <h2 id="audio-episodes-title">Tập audio đã có</h2>
-                </div>
-                <span>{chapters.items.length} tập</span>
-              </header>
-              {chapters.items.length === 0 ? (
-                <p className="emptyCatalog">Truyện này chưa có tập audio công khai.</p>
-              ) : (
-                <ol>
-                  {chapters.items.map((chapter) => (
-                    <li id={`episode-${chapter.number}`} key={chapter.id}>
-                      <Link href={`/read/${chapter.id}` as Route}>
-                        <span>{String(chapter.number).padStart(3, "0")}</span>
-                        <div>
-                          <strong>{chapter.title}</strong>
-                          <small>{new Date(chapter.publishedAt).toLocaleDateString("vi-VN")}</small>
-                        </div>
-                        <Headphones aria-hidden="true" />
-                      </Link>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </section>
+            <BrowserAudioPlayer chapters={chapters.items} storyTitle={story.title} />
           </div>
           <RankingPanel stories={rankingStories} />
         </div>

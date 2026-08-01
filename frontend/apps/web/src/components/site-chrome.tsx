@@ -4,6 +4,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { HeaderAuthNav } from "@/components/header-auth-nav";
 import { HeaderSearch } from "@/components/header-search";
 import { MainNav } from "@/components/main-nav";
 
@@ -25,33 +26,8 @@ export function SiteHeader() {
             href={"/notifications" as Route}
           >
             <Bell aria-hidden="true" />
-            <span>0</span>
           </Link>
-          <details className="profileMenu">
-            <summary>
-              <span className="profileAvatar">
-                <UserRound aria-hidden="true" />
-              </span>
-              <span>
-                <strong>pocket</strong>
-                <small>pocket</small>
-              </span>
-            </summary>
-            <div>
-              <Link href={"/library" as Route}>
-                <BookMarked aria-hidden="true" />
-                Tủ truyện
-              </Link>
-              <Link href={"/wallet" as Route}>
-                <WalletCards aria-hidden="true" />
-                Ví của bạn
-              </Link>
-              <Link href={"/account/sessions" as Route}>
-                <UserRound aria-hidden="true" />
-                Hồ sơ
-              </Link>
-            </div>
-          </details>
+          <HeaderAuthNav />
         </div>
       </div>
       <div className="siteHeaderBottom">
@@ -64,19 +40,25 @@ export function SiteHeader() {
 export function SiteFooter() {
   return (
     <footer className="siteFooter">
-      <BrandMark />
-      <p>Đọc có nhịp. Viết có người đồng hành.</p>
-      <Link href="/teams">Đăng truyện cùng Giới Truyện</Link>
+      <div>
+        <BrandMark />
+        <p>Đọc có nhịp. Viết có người đồng hành.</p>
+      </div>
+      <nav aria-label="Thông tin Giới Truyện">
+        <Link href={"/about" as Route}>Về chúng tôi</Link>
+        <Link href={"/publishing-rules" as Route}>Quy định đăng truyện</Link>
+        <Link href="/teams">Đăng ký nhóm xuất bản</Link>
+      </nav>
     </footer>
   );
 }
 
 export function PublicShell({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <main>
+    <div className="publicShell">
       <SiteHeader />
       {children}
       <SiteFooter />
-    </main>
+    </div>
   );
 }

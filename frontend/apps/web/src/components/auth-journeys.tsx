@@ -108,12 +108,20 @@ export function LoginJourney() {
     setError("");
     const values = new FormData(event.currentTarget);
     try {
-      await auth.login(
+      const loginRes = (await auth.login(
         String(values.get("email")),
         String(values.get("password")),
         needsMfa ? String(values.get("mfaCode")) : undefined,
-      );
-      router.replace(routes.sessions);
+      )) as unknown as { status: string; roles?: string[] };
+      const returnTo = searchParams.get("returnTo");
+      const roles = loginRes?.roles ?? [];
+      if (returnTo) {
+        router.replace(returnTo as Route);
+      } else if (roles.includes("ADMIN")) {
+        window.location.href = "/dashboard";
+      } else {
+        router.replace("/");
+      }
     } catch (requestError) {
       if (
         requestError instanceof StoryApiError &&

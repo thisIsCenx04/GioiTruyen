@@ -8,14 +8,17 @@ type RouteContext = Readonly<{
   params: Promise<{ segments: string[] }>;
 }>;
 
-function cookie(name: string, value: string, maxAge: number) {
+function cookie(request: NextRequest, name: string, value: string, maxAge: number) {
+  const isHttps =
+    request.nextUrl.protocol === "https:" ||
+    request.headers.get("x-forwarded-proto") === "https";
   return {
     httpOnly: true,
     maxAge,
     name,
     path: "/",
-    sameSite: "strict" as const,
-    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    secure: isHttps,
     value,
   };
 }
@@ -84,11 +87,12 @@ async function proxy(request: NextRequest, context: RouteContext) {
         refreshToken: string;
       };
       const response = NextResponse.json({ status: "AUTHENTICATED" });
+      const THIRTY_DAYS = 30 * 24 * 60 * 60;
       response.cookies.set(
-        cookie("access_token", tokens.accessToken, tokens.expiresIn),
+        cookie(request, "access_token", tokens.accessToken, THIRTY_DAYS),
       );
       response.cookies.set(
-        cookie("refresh_token", tokens.refreshToken, 60 * 60 * 24 * 30),
+        cookie(request, "refresh_token", tokens.refreshToken, THIRTY_DAYS),
       );
       return response;
     }
@@ -100,8 +104,8 @@ async function proxy(request: NextRequest, context: RouteContext) {
       status: backend.status,
     });
     if (path === "logout" && backend.ok) {
-      response.cookies.set(cookie("access_token", "", 0));
-      response.cookies.set(cookie("refresh_token", "", 0));
+      response.cookies.set(cookie(request, "access_token", "", 0));
+      response.cookies.set(cookie(request, "refresh_token", "", 0));
     }
     return response;
   } catch {

@@ -24,12 +24,12 @@ export function RankingPanel({
               aria-label={`Mở ${story.title}`}
               className="rankingThumb"
               data-tone={index % 4}
-              href={`/stories/${story.slug}` as Route}
+              href={`/truyen/${story.slug}` as Route}
             >
               <span>{story.title.slice(0, 1)}</span>
             </Link>
             <div>
-              <Link href={`/stories/${story.slug}` as Route}>{story.title}</Link>
+              <Link href={`/truyen/${story.slug}` as Route}>{story.title}</Link>
               <small>Chương mới</small>
             </div>
             <em>

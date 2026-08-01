@@ -15,6 +15,18 @@
 
 .trigger span { color: var(--vermilion); }
 
+.actionTrigger {
+  background: #ff4057;
+  border: 1px solid #ff4057;
+  border-radius: 999rem;
+  color: white;
+  margin: 0;
+  min-height: 2.45rem;
+  padding: .55rem .9rem;
+}
+
+.actionTrigger span { color: white; }
+
 .panel {
   background: white;
   border: 0.08rem solid var(--line);
@@ -23,6 +35,20 @@
   margin-top: 1.8rem;
   max-width: 36rem;
   overflow: hidden;
+}
+
+.actionPanel {
+  border-radius: .75rem;
+  box-shadow: 0 1.5rem 4rem rgb(15 45 90 / 24%);
+  left: 50%;
+  margin: 0;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  position: fixed;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(36rem, calc(100vw - 2rem));
+  z-index: 150;
 }
 
 .heading {

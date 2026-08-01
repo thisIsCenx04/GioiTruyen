@@ -32,11 +32,24 @@ function messageFor(error: unknown) {
 type DonationJourneyProps = Readonly<{
   storyTitle: string;
   teamId: string;
+  variant?: "default" | "action";
 }>;
+
+function safeUUID(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
 
 export function DonationJourney({
   storyTitle,
   teamId,
+  variant = "default",
 }: DonationJourneyProps) {
   const api = useMemo(() => createBrowserWalletClient(), []);
   const [open, setOpen] = useState(false);
@@ -65,7 +78,7 @@ export function DonationJourney({
   async function submit() {
     if (working || amount < 1 || amount > 1_000_000_000) return;
     setWorking(true);
-    retryKey.current ??= crypto.randomUUID();
+    retryKey.current ??= safeUUID();
     try {
       const nextReceipt = await api.donate(
         { amountXu: amount, message: note.trim(), teamId },
@@ -87,7 +100,7 @@ export function DonationJourney({
   if (!open) {
     return (
       <button
-        className={styles.trigger}
+        className={`${styles.trigger} ${variant === "action" ? styles.actionTrigger : ""}`}
         onClick={() => setOpen(true)}
         type="button"
       >
@@ -98,7 +111,7 @@ export function DonationJourney({
   }
 
   return (
-    <section className={styles.panel} aria-label="Ủng hộ đội ngũ sáng tác">
+      <section className={`${styles.panel} ${variant === "action" ? styles.actionPanel : ""}`} aria-label="Ủng hộ đội ngũ sáng tác">
       <div className={styles.heading}>
         <div>
           <span>Gửi một lời cảm ơn</span>

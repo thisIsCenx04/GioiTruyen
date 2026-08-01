@@ -93,7 +93,9 @@ public class DevelopmentDataSeeder implements ApplicationRunner {
                 List.of("USER")
         );
 
+        seedAdditionalUsers();
         seedTeamAndMembership();
+        seedAdditionalTeams();
         seedCategories();
         seedStoriesAndChapters();
         seedExpandedLibrary();
@@ -101,7 +103,51 @@ public class DevelopmentDataSeeder implements ApplicationRunner {
         seedHomePromotionBookings();
         seedReaderExperience();
         seedModerationAndWallet();
+        seedPaidReadingExperience();
         seedFunctionalScenarios();
+    }
+
+    private void seedAdditionalUsers() {
+        seedUser(
+                "10000000-0000-0000-0000-000000000008",
+                "minh.an@gioitruyen.local",
+                "reader123456",
+                "Minh An",
+                "Đọc truyện trinh thám và lưu lại những bộ đang theo dõi.",
+                List.of("USER")
+        );
+        seedUser(
+                "10000000-0000-0000-0000-000000000009",
+                "thao.nguyen@gioitruyen.local",
+                "reader123456",
+                "Thảo Nguyên",
+                "Yêu truyện đời thường, lãng mạn và những chương audio buổi tối.",
+                List.of("USER")
+        );
+        seedUser(
+                "10000000-0000-0000-0000-000000000010",
+                "bao.chau@gioitruyen.local",
+                "team123456",
+                "Bảo Châu",
+                "Biên tập viên truyện sáng tác hiện đại.",
+                List.of("USER")
+        );
+        seedUser(
+                "10000000-0000-0000-0000-000000000011",
+                "quang.huy@gioitruyen.local",
+                "reader123456",
+                "Quang Huy",
+                "Theo dõi truyện khoa học viễn tưởng và phiêu lưu.",
+                List.of("USER")
+        );
+        seedUser(
+                "10000000-0000-0000-0000-000000000012",
+                "linh.chi@gioitruyen.local",
+                "team123456",
+                "Linh Chi",
+                "Dịch giả và hiệu đính nội dung lãng mạn.",
+                List.of("USER")
+        );
     }
 
     private void seedUser(
@@ -286,6 +332,27 @@ public class DevelopmentDataSeeder implements ApplicationRunner {
                 .update();
     }
 
+    private void seedAdditionalTeams() {
+        seedTeam(
+                "20000000-0000-0000-0000-000000000005",
+                "tram-may-studio",
+                "Trạm Mây Studio",
+                "Nhóm biên tập truyện kỳ ảo và khoa học viễn tưởng dành cho độc giả trẻ.",
+                "10000000-0000-0000-0000-000000000010",
+                "ACTIVE",
+                1_284
+        );
+        seedTeam(
+                "20000000-0000-0000-0000-000000000006",
+                "mot-chuong-nua",
+                "Một Chương Nữa",
+                "Nhóm dịch truyện lãng mạn, đời thường với lịch cập nhật đều mỗi tuần.",
+                "10000000-0000-0000-0000-000000000012",
+                "ACTIVE",
+                936
+        );
+    }
+
     private void seedTeam(
             String id,
             String slug,
@@ -441,7 +508,11 @@ public class DevelopmentDataSeeder implements ApplicationRunner {
                     :id, :slug, :name, :description,
                     'GENRE', 10, :displayOrder, TRUE, 1
                 )
-                ON DUPLICATE KEY UPDATE id = id
+                ON DUPLICATE KEY UPDATE
+                    name = VALUES(name),
+                    description = VALUES(description),
+                    sort_order = VALUES(sort_order),
+                    active = TRUE
                 """)
                 .param("id", id)
                 .param("slug", slug)
@@ -552,7 +623,12 @@ public class DevelopmentDataSeeder implements ApplicationRunner {
                     CASE WHEN :state = 'PUBLISHED' THEN :now ELSE NULL END,
                     :now, :now, 1
                 )
-                ON DUPLICATE KEY UPDATE id = id
+                ON DUPLICATE KEY UPDATE
+                    title = VALUES(title),
+                    synopsis = VALUES(synopsis),
+                    author_name = VALUES(author_name),
+                    workflow_status = VALUES(workflow_status),
+                    updated_at = VALUES(updated_at)
                 """)
                 .param("id", id)
                 .param("slug", slug)
@@ -635,59 +711,59 @@ public class DevelopmentDataSeeder implements ApplicationRunner {
                         "Một quán cơm nhỏ nối lại những gia đình xa cách.",
                         3, true
                 ),
-                new StorySeed(19, "startup-duoi-mua-neon", "Startup Duoi Mua Neon",
-                        "Mot founder tre dung truoc lua chon giua tang truong va loi hua voi doi ngu.",
+                new StorySeed(19, "startup-duoi-mua-neon", "Startup Dưới Mưa Neon",
+                        "Một nhà sáng lập trẻ đứng trước lựa chọn giữa tăng trưởng và lời hứa với đội ngũ.",
                         5, false),
-                new StorySeed(20, "hop-dong-hon-nhan-30-ngay", "Hop Dong Hon Nhan 30 Ngay",
-                        "Hai nguoi xa la ky hop dong gia nhung lai gap nhau dung luc can mot mai nha.",
+                new StorySeed(20, "hop-dong-hon-nhan-30-ngay", "Hợp Đồng Hôn Nhân 30 Ngày",
+                        "Hai người xa lạ ký hợp đồng giả nhưng lại gặp nhau đúng lúc cần một mái nhà.",
                         6, true),
-                new StorySeed(21, "thanh-pho-khong-ngu", "Thanh Pho Khong Ngu",
-                        "Mot shipper dem phat hien cac toa nha dang gui tin nhan bang anh den.",
+                new StorySeed(21, "thanh-pho-khong-ngu", "Thành Phố Không Ngủ",
+                        "Một shipper đêm phát hiện các tòa nhà đang gửi tin nhắn bằng ánh đèn.",
                         2, false),
-                new StorySeed(22, "idol-o-tang-thuong", "Idol O Tang Thuong",
-                        "Co gai thuc tap sinh song lai mot mua debut de cuu nhom nhac dang tan ra.",
+                new StorySeed(22, "idol-o-tang-thuong", "Idol Ở Tầng Thượng",
+                        "Cô gái thực tập sinh sống lại một mùa debut để cứu nhóm nhạc đang tan rã.",
                         1, false),
-                new StorySeed(23, "quan-ca-phe-sau-nua-dem", "Quan Ca Phe Sau Nua Dem",
-                        "Quan ca phe chi mo cua cho nhung nguoi dang can sua lai mot loi tam biet.",
+                new StorySeed(23, "quan-ca-phe-sau-nua-dem", "Quán Cà Phê Sau Nửa Đêm",
+                        "Quán cà phê chỉ mở cửa cho những người đang cần sửa lại một lời tạm biệt.",
                         3, true),
-                new StorySeed(24, "ai-viet-thu-tinh", "AI Viet Thu Tinh",
-                        "Lap trinh vien tao chatbot giup khach hang to tinh va nhan ra no hieu minh qua ro.",
+                new StorySeed(24, "ai-viet-thu-tinh", "AI Viết Thư Tình",
+                        "Lập trình viên tạo chatbot giúp khách hàng tỏ tình và nhận ra nó hiểu mình quá rõ.",
                         5, false),
-                new StorySeed(25, "metro-tuyen-so-9", "Metro Tuyen So 9",
-                        "Chuyen tau cuoi ngay dua hanh khach den cac quyet dinh ho tung bo lo.",
+                new StorySeed(25, "metro-tuyen-so-9", "Metro Tuyến Số 9",
+                        "Chuyến tàu cuối ngày đưa hành khách đến các quyết định họ từng bỏ lỡ.",
                         7, false),
-                new StorySeed(26, "can-ho-co-cua-so-mau-xanh", "Can Ho Co Cua So Mau Xanh",
-                        "Mot nha thiet ke noi that nghe thay cau chuyen cua chu nha qua mau son tren tuong.",
+                new StorySeed(26, "can-ho-co-cua-so-mau-xanh", "Căn Hộ Có Cửa Sổ Màu Xanh",
+                        "Một nhà thiết kế nội thất nghe thấy câu chuyện của chủ nhà qua màu sơn trên tường.",
                         6, true),
-                new StorySeed(27, "livestream-luc-0-gio", "Livestream Luc 0 Gio",
-                        "Streamer trinh tham bat gap mot vu an dang dien ra trong binh luan truc tiep.",
+                new StorySeed(27, "livestream-luc-0-gio", "Livestream Lúc 0 Giờ",
+                        "Streamer trinh thám bắt gặp một vụ án đang diễn ra trong bình luận trực tiếp.",
                         2, false),
-                new StorySeed(28, "bau-troi-sau-bien-quang-cao", "Bau Troi Sau Bien Quang Cao",
-                        "Mot bien quang cao loi pixel mo ra nhat ky cua nguoi mat tich.",
+                new StorySeed(28, "bau-troi-sau-bien-quang-cao", "Bầu Trời Sau Biển Quảng Cáo",
+                        "Một biển quảng cáo lỗi pixel mở ra nhật ký của người mất tích.",
                         8, false),
-                new StorySeed(29, "doi-thu-ngoi-ban-ben", "Doi Thu Ngoi Ban Ben",
-                        "Hai hoc sinh dung dau bang diem bat dau hop tac de chong lai mot cuoc thi bat cong.",
+                new StorySeed(29, "doi-thu-ngoi-ban-ben", "Đối Thủ Ngồi Bàn Bên",
+                        "Hai học sinh đứng đầu bảng điểm bắt đầu hợp tác để chống lại một cuộc thi bất công.",
                         4, true),
-                new StorySeed(30, "van-phong-tang-18", "Van Phong Tang 18",
-                        "Nhan vien moi nhan ra tang 18 cua cong ty khong ton tai tren ban ve.",
+                new StorySeed(30, "van-phong-tang-18", "Văn Phòng Tầng 18",
+                        "Nhân viên mới nhận ra tầng 18 của công ty không tồn tại trên bản vẽ.",
                         8, false),
-                new StorySeed(31, "bao-tang-ky-uc-so", "Bao Tang Ky Uc So",
-                        "Mot curator so hoa ky uc cua nguoi la va tim thay ky uc cua chinh minh.",
+                new StorySeed(31, "bao-tang-ky-uc-so", "Bảo Tàng Ký Ức Số",
+                        "Một giám tuyển số hóa ký ức của người lạ và tìm thấy ký ức của chính mình.",
                         5, true),
-                new StorySeed(32, "nhom-chat-gia-dinh", "Nhom Chat Gia Dinh",
-                        "Nhung tin nhan bi xoa trong nhom chat lam lo ra bi mat cua ba the he.",
+                new StorySeed(32, "nhom-chat-gia-dinh", "Nhóm Chat Gia Đình",
+                        "Những tin nhắn bị xóa trong nhóm chat làm lộ ra bí mật của ba thế hệ.",
                         3, true),
-                new StorySeed(33, "duong-chay-5-gio-sang", "Duong Chay 5 Gio Sang",
-                        "Mot van dong vien phong trao gap lai nguoi da thay doi cuoc doi minh tren duong chay.",
+                new StorySeed(33, "duong-chay-5-gio-sang", "Đường Chạy 5 Giờ Sáng",
+                        "Một vận động viên phong trào gặp lại người đã thay đổi cuộc đời mình trên đường chạy.",
                         7, false),
-                new StorySeed(34, "phong-thu-am-so-404", "Phong Thu Am So 404",
-                        "Ban demo cua mot ca khuc chua phat hanh du doan chinh xac tin tuc ngay mai.",
+                new StorySeed(34, "phong-thu-am-so-404", "Phòng Thu Âm Số 404",
+                        "Bản demo của một ca khúc chưa phát hành dự đoán chính xác tin tức ngày mai.",
                         1, false),
-                new StorySeed(35, "nguoi-thu-vien-cuoi-tuan", "Nguoi Thu Vien Cuoi Tuan",
-                        "Thu vien vien ban thoi gian giup doc gia tim dung quyen sach can cho ngay mai.",
+                new StorySeed(35, "nguoi-thu-vien-cuoi-tuan", "Người Thủ Viện Cuối Tuần",
+                        "Thủ thư bán thời gian giúp độc giả tìm đúng quyển sách cần cho ngày mai.",
                         4, true),
-                new StorySeed(36, "ung-dung-hen-ho-vo-danh", "Ung Dung Hen Ho Vo Danh",
-                        "Mot ung dung ghep doi dua hai nguoi qua cac nhiem vu khong duoc biet ten nhau.",
+                new StorySeed(36, "ung-dung-hen-ho-vo-danh", "Ứng Dụng Hẹn Hò Vô Danh",
+                        "Một ứng dụng ghép đôi đưa hai người qua các nhiệm vụ không được biết tên nhau.",
                         6, false)
         );
         stories.forEach(this::seedExpandedStory);
@@ -715,25 +791,54 @@ public class DevelopmentDataSeeder implements ApplicationRunner {
                     .update();
         }
         int firstChapter = seed.number() * 10;
-        seedChapter(
-                seedId("50000000", firstChapter),
-                storyId,
-                1,
-                "Dấu hiệu đầu tiên",
-                "<p>" + seed.synopsis() + "</p>"
-                        + "<p>Câu chuyện bắt đầu khi thành phố vừa lên đèn."
-                        + "</p>",
-                "PUBLISHED"
-        );
-        seedChapter(
-                seedId("50000000", firstChapter + 1),
-                storyId,
-                2,
-                "Cánh cửa mở ra",
-                "<p>Nhân vật chính bước qua ranh giới quen thuộc "
-                        + "và nhận ra mọi lựa chọn đều để lại dấu vết.</p>",
-                "PUBLISHED"
-        );
+        if (seed.number() == 18) {
+            List<CuratedOriginalStory.Chapter> chapters =
+                    CuratedOriginalStory.chapters();
+            for (int index = 0; index < chapters.size(); index++) {
+                CuratedOriginalStory.Chapter chapter = chapters.get(index);
+                seedChapter(
+                        seedId("50000000", firstChapter + index),
+                        storyId,
+                        index + 1,
+                        chapter.title(),
+                        chapter.contentHtml(),
+                        "PUBLISHED"
+                );
+            }
+        } else {
+            seedChapter(
+                    seedId("50000000", firstChapter),
+                    storyId,
+                    1,
+                    "Dấu hiệu đầu tiên",
+                    "<p>" + seed.synopsis() + "</p>"
+                            + "<p>Câu chuyện bắt đầu khi thành phố vừa lên đèn."
+                            + "</p>",
+                    "PUBLISHED"
+            );
+            seedChapter(
+                    seedId("50000000", firstChapter + 1),
+                    storyId,
+                    2,
+                    "Cánh cửa mở ra",
+                    "<p>Nhân vật chính bước qua ranh giới quen thuộc "
+                            + "và nhận ra mọi lựa chọn đều để lại dấu vết.</p>",
+                    "PUBLISHED"
+            );
+            for (int chapterNumber = 3; chapterNumber <= 8; chapterNumber++) {
+                seedChapter(
+                        seedId(
+                                "50000000",
+                                firstChapter + chapterNumber - 1
+                        ),
+                        storyId,
+                        chapterNumber,
+                        expandedChapterTitle(chapterNumber),
+                        expandedChapterContent(seed, chapterNumber),
+                        "PUBLISHED"
+                );
+            }
+        }
         jdbc.sql("""
                         INSERT INTO comments (
                             id, story_id, chapter_id, user_id, body, state,
@@ -774,6 +879,29 @@ public class DevelopmentDataSeeder implements ApplicationRunner {
                 .update();
     }
 
+    private static String expandedChapterTitle(int chapterNumber) {
+        return switch (chapterNumber) {
+            case 3 -> "Tin nhắn chưa gửi";
+            case 4 -> "Cuộc hẹn dưới mưa";
+            case 5 -> "Điều còn giấu kín";
+            case 6 -> "Lựa chọn lúc nửa đêm";
+            case 7 -> "Khi thành phố thức giấc";
+            default -> "Một khởi đầu khác";
+        };
+    }
+
+    private static String expandedChapterContent(
+            StorySeed seed,
+            int chapterNumber
+    ) {
+        return """
+                <p>%s</p>
+                <p>Ở chương %d, các nhân vật phải đối diện với hệ quả từ lựa chọn trước đó. Những chi tiết nhỏ dần nối lại thành một câu trả lời rõ ràng hơn.</p>
+                <p>Không gian thành phố thay đổi theo từng khung giờ, còn cuộc trò chuyện dang dở buộc mọi người phải thành thật với điều mình thực sự mong muốn.</p>
+                <p>Chương khép lại bằng một phát hiện mới, mở đường cho mạch truyện tiếp theo.</p>
+                """.formatted(seed.synopsis(), chapterNumber);
+    }
+
     private void seedChapter(
             String id,
             String storyId,
@@ -793,7 +921,12 @@ public class DevelopmentDataSeeder implements ApplicationRunner {
                     :chapterNumber, :slug, :title, :state, :revisionId,
                     :now, :now, :now, 1
                 )
-                ON DUPLICATE KEY UPDATE id = id
+                ON DUPLICATE KEY UPDATE
+                    slug = VALUES(slug),
+                    title = VALUES(title),
+                    workflow_status = VALUES(workflow_status),
+                    current_revision = VALUES(current_revision),
+                    updated_at = VALUES(updated_at)
                 """)
                 .param("id", id)
                 .param("storyId", storyId)
@@ -812,7 +945,10 @@ public class DevelopmentDataSeeder implements ApplicationRunner {
                     :id, :chapterId, 1, :content, :plainText,
                     :checksum, :createdAt
                 )
-                ON DUPLICATE KEY UPDATE id = id
+                ON DUPLICATE KEY UPDATE
+                    content_html = VALUES(content_html),
+                    plain_text = VALUES(plain_text),
+                    checksum = VALUES(checksum)
                 """)
                 .param("id", revisionIdForChapter(id))
                 .param("chapterId", id)
@@ -1070,9 +1206,12 @@ public class DevelopmentDataSeeder implements ApplicationRunner {
                     user_id, available_xu, pending_xu, updated_at, version
                 ) VALUES (
                     '10000000-0000-0000-0000-000000000001',
-                    25000, 0, :now, 0
+                    1250000, 0, :now, 0
                 )
-                ON DUPLICATE KEY UPDATE user_id = user_id
+                ON DUPLICATE KEY UPDATE
+                    available_xu = VALUES(available_xu),
+                    pending_xu = VALUES(pending_xu),
+                    updated_at = VALUES(updated_at)
                 """)
                 .param("now", NOW)
                 .update();
@@ -1092,7 +1231,147 @@ public class DevelopmentDataSeeder implements ApplicationRunner {
     private void seedFunctionalScenarios() {
         seedReadingSessions();
         seedLedgerEntries();
+        seedDailyDashboardSeries();
         seedAdditionalModerationCases();
+    }
+
+    private void seedPaidReadingExperience() {
+        for (int chapterNumber = 5; chapterNumber <= 8; chapterNumber++) {
+            String chapterId = seedId("50010000", 1_000 + chapterNumber);
+            jdbc.sql("""
+                    INSERT INTO chapter_prices (
+                        chapter_id, price_xu, updated_at, version
+                    ) VALUES (:chapterId, :priceXu, :now, 0)
+                    ON DUPLICATE KEY UPDATE
+                        price_xu = VALUES(price_xu),
+                        updated_at = VALUES(updated_at)
+                    """)
+                    .param("chapterId", chapterId)
+                    .param("priceXu", 100L + ((chapterNumber - 5L) * 25L))
+                    .param("now", NOW)
+                    .update();
+        }
+        List.of(1, 10, 13, 18, 24, 31).forEach(number -> jdbc.sql("""
+                INSERT INTO story_library_entries (
+                    user_id, story_id, saved_at
+                ) VALUES (
+                    '10000000-0000-0000-0000-000000000001',
+                    :storyId, :now
+                )
+                ON DUPLICATE KEY UPDATE user_id = user_id
+                """)
+                .param("storyId", storyId(number))
+                .param("now", NOW.minusSeconds(number * 900L))
+                .update());
+        String ledgerId = "b3000000-0000-0000-0000-000000000001";
+        String chapterId = seedId("50010000", 1_005);
+        jdbc.sql("""
+                INSERT INTO ledger_entries (
+                    id, user_id, entry_type, amount_xu, reference_type,
+                    reference_id, description, created_at
+                ) VALUES (
+                    :id, '10000000-0000-0000-0000-000000000001',
+                    'CHAPTER_UNLOCK', -100, 'CHAPTER', :chapterId,
+                    'Mở khóa chương 5 - Người Giữ Đèn Bên Sông', :now
+                )
+                ON DUPLICATE KEY UPDATE id = id
+                """)
+                .param("id", ledgerId)
+                .param("chapterId", chapterId)
+                .param("now", NOW)
+                .update();
+        jdbc.sql("""
+                INSERT INTO chapter_unlocks (
+                    user_id, chapter_id, price_xu,
+                    ledger_entry_id, unlocked_at
+                ) VALUES (
+                    '10000000-0000-0000-0000-000000000001',
+                    :chapterId, 100, :ledgerId, :now
+                )
+                ON DUPLICATE KEY UPDATE user_id = user_id
+                """)
+                .param("chapterId", chapterId)
+                .param("ledgerId", ledgerId)
+                .param("now", NOW)
+                .update();
+    }
+
+    private void seedDailyDashboardSeries() {
+        List<String> readerIds = List.of(
+                "10000000-0000-0000-0000-000000000001",
+                "10000000-0000-0000-0000-000000000008",
+                "10000000-0000-0000-0000-000000000009",
+                "10000000-0000-0000-0000-000000000011"
+        );
+        for (int day = 13; day >= 0; day--) {
+            Instant dayStart = NOW.minusSeconds(day * 86_400L);
+            int sessionCount = 4 + ((13 - day) % 6);
+            for (int index = 0; index < sessionCount; index++) {
+                String readerId = readerIds.get(index % readerIds.size());
+                int storyNumber = 10 + ((day + index) % 20);
+                int chapterNumber = storyNumber * 10;
+                Instant startedAt = dayStart.plusSeconds(index * 1_200L);
+                jdbc.sql("""
+                        INSERT INTO reading_sessions (
+                            id, story_id, chapter_id, actor_type, actor_ref,
+                            started_at, expires_at, purge_at, status,
+                            last_sequence, completed_at, updated_at
+                        ) VALUES (
+                            :id, :storyId, :chapterId, 'USER', :readerId,
+                            :startedAt, :expiresAt, :purgeAt, 'COMPLETED',
+                            8, :completedAt, :updatedAt
+                        )
+                        ON DUPLICATE KEY UPDATE id = id
+                        """)
+                        .param("id", seedId("a3000000", (day * 100) + index + 1))
+                        .param("storyId", storyId(storyNumber))
+                        .param("chapterId", seedId("50000000", chapterNumber))
+                        .param("readerId", readerId)
+                        .param("startedAt", startedAt)
+                        .param("expiresAt", startedAt.plusSeconds(1_800))
+                        .param("purgeAt", startedAt.plusSeconds(604_800))
+                        .param("completedAt", startedAt.plusSeconds(900))
+                        .param("updatedAt", startedAt.plusSeconds(900))
+                        .update();
+            }
+            seedDailyRevenue(day, dayStart);
+        }
+    }
+
+    private void seedDailyRevenue(int day, Instant createdAt) {
+        long topupAmount = 45_000L + ((13L - day) * 8_500L);
+        jdbc.sql("""
+                INSERT INTO ledger_entries (
+                    id, user_id, entry_type, amount_xu, reference_type,
+                    reference_id, description, created_at
+                ) VALUES (
+                    :id, '10000000-0000-0000-0000-000000000001',
+                    'TOPUP', :amountXu, 'TOPUP', :referenceId,
+                    'Nạp XU qua chuyển khoản', :createdAt
+                )
+                ON DUPLICATE KEY UPDATE id = id
+                """)
+                .param("id", seedId("b1000000", day + 1))
+                .param("amountXu", topupAmount)
+                .param("referenceId", "seed-daily-topup-" + day)
+                .param("createdAt", createdAt.plusSeconds(3_600))
+                .update();
+        jdbc.sql("""
+                INSERT INTO ledger_entries (
+                    id, user_id, entry_type, amount_xu, reference_type,
+                    reference_id, description, created_at
+                ) VALUES (
+                    :id, '10000000-0000-0000-0000-000000000002',
+                    'DONATION', :amountXu, 'STORY', :storyId,
+                    'Doanh thu ủng hộ truyện', :createdAt
+                )
+                ON DUPLICATE KEY UPDATE id = id
+                """)
+                .param("id", seedId("b2000000", day + 1))
+                .param("amountXu", 5_000L + ((day % 5L) * 2_000L))
+                .param("storyId", storyId(10 + (day % 20)))
+                .param("createdAt", createdAt.plusSeconds(7_200))
+                .update();
     }
 
     private void seedReadingSessions() {

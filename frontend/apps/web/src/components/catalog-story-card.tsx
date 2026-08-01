@@ -1,5 +1,5 @@
 import type { HomeStorySummary } from "@gioitruyen/api-client";
-import { Bookmark, Ear, Eye } from "lucide-react";
+import { Bookmark, Eye, Volume2 } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 
@@ -21,8 +21,10 @@ export function CatalogStoryCard({
   hrefBase?: "/audio" | "/stories";
 }>) {
   const publishedDate = new Date(story.publishedAt).toLocaleDateString("vi-VN");
-  const PrimaryMetricIcon = metricIcon === "audio" ? Ear : Eye;
-  const href = `${hrefBase}/${story.slug}` as Route;
+  const PrimaryMetricIcon = metricIcon === "audio" ? Volume2 : Eye;
+  const href = hrefBase === "/stories"
+    ? (`/truyen/${story.slug}` as Route)
+    : (`${hrefBase}/${story.slug}` as Route);
 
   return (
     <article className="catalogCard">
@@ -36,7 +38,7 @@ export function CatalogStoryCard({
           <span title={metricIcon === "audio" ? "Lượt nghe" : "Lượt xem"}>
             <PrimaryMetricIcon aria-hidden="true" /> {numberFormatter.format(story.viewCount ?? 0)}
           </span>
-          <span title="Reader lưu vào tủ truyện">
+          <span title="Độc giả lưu vào tủ truyện">
             <Bookmark aria-hidden="true" /> {numberFormatter.format(story.saveCount ?? 0)}
           </span>
         </span>

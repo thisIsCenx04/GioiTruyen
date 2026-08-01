@@ -1,25 +1,30 @@
 import { StoryApiError } from "@gioitruyen/api-client";
-import { BookOpen, CalendarDays, Languages, Layers3 } from "lucide-react";
+import {
+  BookOpen,
+  List,
+  MessageSquare,
+  Star,
+} from "lucide-react";
 import type { Metadata, Route } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 
+import { CatalogStoryCard } from "@/components/catalog-story-card";
 import { Comments } from "@/components/comments";
 import { DonationJourney } from "@/components/donation-journey";
 import { PublicShell } from "@/components/site-chrome";
 import { StoryRelations } from "@/components/story-relations";
-import { catalog } from "@/lib/catalog";
+import { StoryReportButton } from "@/components/story-report-button";
+import { loadStoryDetail } from "@/lib/catalog";
 
 type StoryPageProps = Readonly<{ params: Promise<{ idOrSlug: string }> }>;
 
+const numberFormatter = new Intl.NumberFormat("vi-VN");
+
 const loadStory = cache(async (identifier: string) => {
   try {
-    const [story, chapters] = await Promise.all([
-      catalog.story(identifier),
-      catalog.chapters(identifier),
-    ]);
-    return { chapters, state: "ready" as const, story };
+    return { ...(await loadStoryDetail(identifier)), state: "ready" as const };
   } catch (error) {
     return error instanceof StoryApiError && error.problem.status === 404
       ? { state: "missing" as const }
@@ -27,10 +32,16 @@ const loadStory = cache(async (identifier: string) => {
   }
 });
 
+function statusLabel(status: "ONGOING" | "COMPLETED" | "HIATUS") {
+  if (status === "COMPLETED") return "Đã hoàn thành";
+  if (status === "HIATUS") return "Tạm ngưng";
+  return "Đang cập nhật";
+}
+
 export async function generateMetadata({ params }: StoryPageProps): Promise<Metadata> {
   const { idOrSlug } = await params;
   const result = await loadStory(idOrSlug);
-  return result.state === "ready"
+  return result.state === "ready" && result.story
     ? { description: result.story.synopsis.slice(0, 160), title: result.story.title }
     : { title: "Không tìm thấy truyện" };
 }
@@ -38,7 +49,7 @@ export async function generateMetadata({ params }: StoryPageProps): Promise<Meta
 export default async function StoryPage({ params }: StoryPageProps) {
   const { idOrSlug } = await params;
   const result = await loadStory(idOrSlug);
-  if (result.state === "missing") notFound();
+  if (result.state === "missing" || (result.state === "ready" && !result.story)) notFound();
   if (result.state === "unavailable") {
     return (
       <PublicShell>
@@ -50,74 +61,112 @@ export default async function StoryPage({ params }: StoryPageProps) {
       </PublicShell>
     );
   }
-  const { chapters, story } = result;
-  const firstChapter = chapters.items.at(-1) ?? chapters.items[0];
+
+  const story = result.story;
+  if (!story) notFound();
+  const categories = result.categories ?? [];
+  const relatedStories = result.relatedStories ?? [];
+  const chapterItems = result.chapters?.items ?? [];
+  const orderedChapters = [...chapterItems].sort((left, right) => right.number - left.number);
+  const summary = result.summary;
+  const team = result.team;
+  const firstChapter = orderedChapters.at(-1);
+  const latestChapter = orderedChapters[0];
+  const publishedAt = new Date(story.publishedAt).toLocaleDateString("vi-VN");
+  const updatedAt = new Date(story.updatedAt).toLocaleDateString("vi-VN");
 
   return (
     <PublicShell>
-      <article className="storyDetail">
+      <main className="storyDetail storyDetailPage">
         <nav className="breadcrumbs" aria-label="Đường dẫn">
-          <Link href="/">Trang chủ</Link><span>›</span><Link href="/search">Truyện</Link><span>›</span>
+          <Link href="/">Trang chủ</Link><span>›</span><Link href="/stories">Truyện</Link><span>›</span>
           <strong>{story.title}</strong>
         </nav>
-        <header className="storyMasthead">
-          <div className="detailCover" data-tone="indigo">
-            <span>{story.title.slice(0, 1)}</span>
-            <small>{story.completionStatus === "COMPLETED" ? "HOÀN THÀNH" : "ĐANG RA"}</small>
-          </div>
-          <div className="storySummary">
-            <p className="detailEyebrow">
-              {story.origin === "ORIGINAL" ? "Truyện sáng tác" : "Truyện chuyển ngữ"}
-            </p>
-            <h1>{story.title}</h1>
-            <div className="storyTags">
-              <span>{story.completionStatus === "COMPLETED" ? "Hoàn thành" : "Đang xuất bản"}</span>
-              <span>{story.origin === "ORIGINAL" ? "Nguyên bản" : "Chuyển ngữ"}</span>
-              <span>{story.language.toLocaleUpperCase("vi")}</span>
-            </div>
-            <p className="synopsis">{story.synopsis}</p>
-            {firstChapter && (
-              <Link className="primaryAction" href={`/read/${firstChapter.id}` as Route}>
-                <BookOpen aria-hidden="true" /> Đọc ngay
-              </Link>
-            )}
-            <DonationJourney storyTitle={story.title} teamId={story.teamId} />
-          </div>
-          <aside className="storyInfo">
-            <h2>Thông tin truyện</h2>
-            <dl>
-              <div><dt><Layers3 /> Trạng thái</dt><dd>{story.completionStatus}</dd></div>
-              <div><dt><Languages /> Ngôn ngữ</dt><dd>{story.language.toUpperCase()}</dd></div>
-              <div><dt><BookOpen /> Số chương</dt><dd>{chapters.items.length}</dd></div>
-              <div><dt><CalendarDays /> Ngày đăng</dt><dd>{new Date(story.publishedAt).toLocaleDateString("vi-VN")}</dd></div>
-              <div><dt><CalendarDays /> Cập nhật</dt><dd>{new Date(story.updatedAt).toLocaleDateString("vi-VN")}</dd></div>
-            </dl>
-          </aside>
-        </header>
 
-        <div className="storyContentGrid">
-          <section className="chapterList" aria-labelledby="chapters-title">
+        <article className="storyDetailCard">
+          <div className="detailCover storyDetailCover" data-tone={story.origin === "ORIGINAL" ? "teal" : "indigo"}>
+            <span>{story.title.slice(0, 1)}</span>
+            <small>{story.completionStatus === "COMPLETED" ? "FULL" : "MỚI"}</small>
+          </div>
+
+          <div className="storyDetailMain">
+            <h1>{story.title}</h1>
+            <dl className="storyMetadata">
+              <div><dt>Cập nhật</dt><dd>{updatedAt}</dd></div>
+              <div><dt>Loại</dt><dd><span className="metadataBadge">{story.origin === "ORIGINAL" ? "Truyện sáng tác" : "Truyện chuyển ngữ"}</span></dd></div>
+              <div>
+                <dt>Thể loại</dt>
+                <dd className="metadataCategories">
+                  {categories.length > 0
+                    ? categories.map((category) => <Link href={`/categories/${category.slug}` as Route} key={category.id}>{category.name}</Link>)
+                    : <span>Đang cập nhật</span>}
+                </dd>
+              </div>
+              <div><dt>Nhóm đăng</dt><dd><Link className="teamBadge" href={`/teams/${story.teamId}` as Route}>{team?.name ?? "Nhóm Giới Truyện"}</Link></dd></div>
+              <div><dt>Lượt xem</dt><dd>{numberFormatter.format(summary?.viewCount ?? 0)}</dd></div>
+              <div><dt>Đã lưu</dt><dd>{numberFormatter.format(summary?.saveCount ?? 0)}</dd></div>
+              <div><dt>Trạng thái</dt><dd>{statusLabel(story.completionStatus)}</dd></div>
+              <div><dt>Ngày đăng</dt><dd>{publishedAt}</dd></div>
+            </dl>
+
+            <div className="storyActionBar" aria-label="Thao tác với truyện">
+              <StoryRelations storyId={story.id} />
+              <DonationJourney storyTitle={story.title} teamId={story.teamId} variant="action" />
+              {firstChapter && <Link className="storyAction storyActionStart" href={`/truyen/${story.slug}/chuong-${firstChapter.number}` as Route}><BookOpen /> Đọc từ đầu</Link>}
+              {latestChapter && <Link className="storyAction storyActionLatest" href={`/truyen/${story.slug}/chuong-${latestChapter.number}` as Route}><Star /> Đọc tập mới</Link>}
+              <StoryReportButton targetId={story.id} />
+            </div>
+
+            <p className="storyDescription">{story.synopsis}</p>
+          </div>
+        </article>
+
+        <div className="storyDetailContentGrid">
+          <div className="storyDetailPrimary">
+            <section className="storyChapterPanel" aria-labelledby="chapters-title">
+              <div className="storyPanelTabs">
+                <a aria-current="page" href="#chapter-list"><List /> Danh sách chương</a>
+                <a href="#story-comments"><MessageSquare /> Bình luận</a>
+              </div>
+              <div id="chapter-list">
+                <header>
+                  <h2 id="chapters-title">Danh sách chương</h2>
+                  <span>{chapterItems.length} chương</span>
+                </header>
+                {orderedChapters.length > 0 ? (
+                  <ol>
+                    {orderedChapters.map((chapter) => (
+                      <li key={chapter.id}>
+                        <Link href={`/truyen/${story.slug}/chuong-${chapter.number}` as Route}>
+                          <span>Chương {chapter.number}</span>
+                          <strong>{chapter.title}</strong>
+                          <time dateTime={chapter.publishedAt}>{new Date(chapter.publishedAt).toLocaleDateString("vi-VN")}</time>
+                        </Link>
+                      </li>
+                    ))}
+                  </ol>
+                ) : <p className="emptyCatalog">Truyện chưa có chương công khai.</p>}
+              </div>
+            </section>
+
+            <div id="story-comments"><Comments targetId={story.id} targetType="STORY" /></div>
+          </div>
+
+          <aside className="storyRecommendations" aria-labelledby="recommendations-title">
             <header>
-              <div><p className="detailEyebrow">Mục lục đã xuất bản</p>
-                <h2 id="chapters-title">Danh sách chương</h2></div>
-              <span>{chapters.items.length} chương</span>
+              <div>
+                <p className="detailEyebrow">Dành cho bạn</p>
+                <h2 id="recommendations-title">Truyện tương tự</h2>
+              </div>
             </header>
-            {chapters.items.length > 0 ? (
-              <ol>{chapters.items.map((chapter) => (
-                <li id={`chapter-${chapter.number}`} key={chapter.id}>
-                  <Link href={`/read/${chapter.id}` as Route}>
-                    <span>{String(chapter.number).padStart(3, "0")}</span>
-                    <div><strong>{chapter.title}</strong><small>{new Date(chapter.publishedAt).toLocaleDateString("vi-VN")}</small></div>
-                    <span aria-hidden="true">→</span>
-                  </Link>
-                </li>
-              ))}</ol>
-            ) : <p className="emptyCatalog">Chưa có chương công khai.</p>}
-          </section>
-          <StoryRelations storyId={story.id} />
+            <div className="storyRecommendationGrid">
+              {relatedStories.map((relatedStory, index) => (
+                <CatalogStoryCard index={index} key={relatedStory.id} story={relatedStory} />
+              ))}
+            </div>
+          </aside>
         </div>
-        <Comments targetId={story.id} targetType="STORY" />
-      </article>
+      </main>
     </PublicShell>
   );
 }

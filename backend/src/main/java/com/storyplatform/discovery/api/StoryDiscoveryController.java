@@ -9,6 +9,7 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -70,7 +71,7 @@ public class StoryDiscoveryController {
                 new RankingBoardResponse(
                         "gold",
                         "Thánh bảng/Mâm vàng",
-                        "Top doanh thu và ủng hộ",
+                        "Thánh Bảng",
                         "XU",
                         rankedStories("donation_xu")
                 ),
@@ -92,6 +93,39 @@ public class StoryDiscoveryController {
         return ResponseEntity.ok()
                 .cacheControl(PUBLIC_CACHE)
                 .body(boards);
+    }
+
+    @GetMapping("/categories/{slug}/stories")
+    public ResponseEntity<List<HomeStorySummaryResponse>> categoryStories(
+            @PathVariable String slug
+    ) {
+        List<HomeStorySummaryResponse> stories = jdbc.sql("""
+                        SELECT s.id,
+                               s.team_id,
+                               s.slug,
+                               s.title,
+                               s.cover_asset_id,
+                               s.published_at,
+                               COALESCE(m.view_count, 0) AS view_count,
+                               COALESCE(m.save_count, 0) AS save_count
+                        FROM categories c
+                        JOIN story_categories sc ON sc.category_id = c.id
+                        JOIN stories s ON s.id = sc.story_id
+                        LEFT JOIN story_engagement_metrics m
+                          ON m.story_id = s.id
+                        WHERE c.slug = :slug
+                          AND c.active = TRUE
+                          AND s.workflow_status = 'PUBLISHED'
+                        ORDER BY COALESCE(s.updated_at, s.published_at) DESC,
+                                 s.title ASC
+                        LIMIT 48
+                        """)
+                .param("slug", slug)
+                .query((result, rowNumber) -> story(result))
+                .list();
+        return ResponseEntity.ok()
+                .cacheControl(PUBLIC_CACHE)
+                .body(stories);
     }
 
     private List<HomeStorySummaryResponse> storiesByLabel(
