@@ -1,0 +1,305 @@
+spring:
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:../.env[.properties]
+  application:
+    name: ${APP_NAME:story-platform}
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+  datasource:
+    url: ${MYSQL_URL:jdbc:mysql://127.0.0.1:3307/gioitruyen?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false}
+    username: ${MYSQL_USER:gioitruyen}
+    password: ${MYSQL_PASSWORD:gioitruyen_local}
+    hikari:
+      minimum-idle: ${MYSQL_MIN_POOL_SIZE:2}
+      maximum-pool-size: ${MYSQL_MAX_POOL_SIZE:20}
+      connection-timeout: ${MYSQL_CONNECTION_TIMEOUT_MS:3000}
+      validation-timeout: ${MYSQL_VALIDATION_TIMEOUT_MS:1000}
+  flyway:
+    enabled: ${MYSQL_MIGRATIONS_ENABLED:false}
+    locations: classpath:db/migration
+    validate-migration-naming: true
+  data:
+    redis:
+      url: ${REDIS_URL:redis://127.0.0.1:6379}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:500ms}
+      timeout: ${REDIS_OPERATION_TIMEOUT:250ms}
+  mvc:
+    problemdetails:
+      enabled: true
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 2MB
+  web:
+    error:
+      include-message: never
+      include-binding-errors: never
+      include-stacktrace: never
+
+server:
+  address: ${API_HOST:127.0.0.1}
+  port: ${API_PORT:8080}
+  servlet:
+    context-path: /api/v1
+  shutdown: graceful
+  tomcat:
+    max-http-form-post-size: 1MB
+    max-swallow-size: 2MB
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+      show-components: never
+      probes:
+        enabled: true
+        add-additional-paths: true
+      group:
+        liveness:
+          include: "livenessState"
+        readiness:
+          include: "readinessState,db,redis"
+  tracing:
+    sampling:
+      probability: ${OTEL_TRACES_SAMPLING_PROBABILITY:0.1}
+    export:
+      otlp:
+        enabled: ${OTEL_TRACES_EXPORT_ENABLED:false}
+  opentelemetry:
+    resource-attributes:
+      deployment.environment: ${APP_ENV:local}
+      service.version: ${APP_VERSION:dev}
+    tracing:
+      limits:
+        max-attributes: 64
+        max-attribute-value-length: 256
+        max-events: 32
+  otlp:
+    metrics:
+      export:
+        enabled: ${OTEL_METRICS_EXPORT_ENABLED:false}
+        step: ${OTEL_METRICS_EXPORT_INTERVAL:30s}
+
+app:
+  monetization:
+    topup:
+      request-ttl: ${TOPUP_REQUEST_TTL:30m}
+      bank-bin: ${TOPUP_BANK_BIN:970436}
+      account-number: ${TOPUP_BANK_ACCOUNT:0000000000}
+      account-name: ${TOPUP_BANK_NAME:GIOI TRUYEN}
+      provider: ${TOPUP_PAYMENT_PROVIDER:local-bank}
+      webhook-enabled: ${TOPUP_WEBHOOK_ENABLED:false}
+      webhook-secret: ${TOPUP_WEBHOOK_SECRET:not-configured-payment-webhook-secret}
+      webhook-max-age: ${TOPUP_WEBHOOK_MAX_AGE:10m}
+      recovery-poll-interval: ${TOPUP_SETTLEMENT_RECOVERY_POLL_INTERVAL:30s}
+      recovery-batch-size: ${TOPUP_SETTLEMENT_RECOVERY_BATCH_SIZE:25}
+    rewards:
+      rule-version: ${REWARD_RULE_VERSION:reward-2026.1}
+      xu-per-thousand: ${REWARD_XU_PER_THOUSAND_VALID_VIEWS:100}
+      team-daily-cap: ${REWARD_TEAM_DAILY_CAP_XU:100000}
+      cron: "${REWARD_SETTLEMENT_CRON:0 */5 * * * *}"
+    referrals:
+      code-hmac-key: ${REFERRAL_CODE_HMAC_KEY}
+      rule-version: ${REFERRAL_RULE_VERSION:referral-2026.1}
+      reward-xu: ${REFERRAL_REWARD_XU:100}
+      attribution-window: ${REFERRAL_ATTRIBUTION_WINDOW:7d}
+      referrer-minimum-age: ${REFERRAL_REFERRER_MINIMUM_AGE:7d}
+      reward-delay: ${REFERRAL_REWARD_DELAY:7d}
+      maximum-recent: ${REFERRAL_MAXIMUM_RECENT:100}
+      poll-interval: ${REFERRAL_REWARD_POLL_INTERVAL:5m}
+    withdrawals:
+      fee-rule-version: ${WITHDRAWAL_FEE_RULE_VERSION:withdrawal-fee-2026.1}
+      minimum-gross-xu: ${WITHDRAWAL_MINIMUM_GROSS_XU:100000}
+      free-from-gross-xu: ${WITHDRAWAL_FREE_FROM_GROSS_XU:1000000}
+      flat-fee-xu: ${WITHDRAWAL_FLAT_FEE_XU:20000}
+      maximum-gross-xu: ${WITHDRAWAL_MAXIMUM_GROSS_XU:1000000000}
+      payout:
+        enabled: ${WITHDRAWAL_PAYOUT_ENABLED:false}
+        provider: ${WITHDRAWAL_PAYOUT_PROVIDER:bank-provider}
+        endpoint: ${WITHDRAWAL_PAYOUT_ENDPOINT:https://provider.invalid/payouts}
+        token: ${WITHDRAWAL_PAYOUT_TOKEN:not-configured-secret}
+        webhook-secret: ${WITHDRAWAL_PAYOUT_WEBHOOK_SECRET:not-configured-withdrawal-webhook-secret}
+        webhook-max-age: ${WITHDRAWAL_PAYOUT_WEBHOOK_MAX_AGE:10m}
+        timeout: ${WITHDRAWAL_PAYOUT_TIMEOUT:10s}
+        lease-duration: ${WITHDRAWAL_PAYOUT_LEASE_DURATION:30s}
+        retry-delay: ${WITHDRAWAL_PAYOUT_RETRY_DELAY:30s}
+        poll-interval: ${WITHDRAWAL_PAYOUT_POLL_INTERVAL:5s}
+        batch-size: ${WITHDRAWAL_PAYOUT_BATCH_SIZE:25}
+    reconciliation:
+      enabled: ${MONETIZATION_RECONCILIATION_ENABLED:false}
+      provider: ${MONETIZATION_RECONCILIATION_PROVIDER:bank-provider}
+      endpoint: ${MONETIZATION_RECONCILIATION_ENDPOINT:https://provider.invalid/reconciliation}
+      token: ${MONETIZATION_RECONCILIATION_TOKEN:not-configured-secret}
+      timeout: ${MONETIZATION_RECONCILIATION_TIMEOUT:10s}
+      cron: ${MONETIZATION_RECONCILIATION_CRON:0 15 1 * * *}
+  analytics:
+    raw-events:
+      retention: ${ANALYTICS_RAW_EVENT_RETENTION:90d}
+    validation:
+      enabled: ${ANALYTICS_VALIDATION_ENABLED:false}
+      readiness-delay: ${ANALYTICS_VALIDATION_READINESS_DELAY:2m}
+      lease: ${ANALYTICS_VALIDATION_LEASE:1m}
+      retry-delay: ${ANALYTICS_VALIDATION_RETRY_DELAY:30s}
+    fraud:
+      enabled: ${ANALYTICS_FRAUD_ENABLED:false}
+      lease: ${ANALYTICS_FRAUD_LEASE:1m}
+      retry-delay: ${ANALYTICS_FRAUD_RETRY_DELAY:30s}
+    aggregates:
+      enabled: ${ANALYTICS_AGGREGATES_ENABLED:false}
+      lease: ${ANALYTICS_AGGREGATES_LEASE:1m}
+      retry-delay: ${ANALYTICS_AGGREGATES_RETRY_DELAY:30s}
+  notifications:
+    delivery:
+      enabled: ${NOTIFICATION_DELIVERY_ENABLED:false}
+      email:
+        endpoint: ${NOTIFICATION_EMAIL_PROVIDER_ENDPOINT:https://provider.invalid/email}
+        token: ${NOTIFICATION_EMAIL_PROVIDER_TOKEN:not-configured-secret}
+      push:
+        endpoint: ${NOTIFICATION_PUSH_PROVIDER_ENDPOINT:https://provider.invalid/push}
+        token: ${NOTIFICATION_PUSH_PROVIDER_TOKEN:not-configured-secret}
+  reading:
+    session:
+      ttl: ${READING_SESSION_TTL:30m}
+      heartbeat-interval-seconds: ${READING_HEARTBEAT_INTERVAL_SECONDS:15}
+      start-quota:
+        maximum: ${READING_SESSION_START_MAXIMUM:60}
+        window: ${READING_SESSION_START_WINDOW:1m}
+  moderation:
+    appeals:
+      window: ${MODERATION_APPEAL_WINDOW:7d}
+    copyright:
+      response-sla: ${COPYRIGHT_RESPONSE_SLA:48h}
+      hold-duration: ${COPYRIGHT_HOLD_DURATION:7d}
+    queue:
+      claim-lease: ${MODERATION_QUEUE_CLAIM_LEASE:15m}
+    reports:
+      rate-limit:
+        window: ${REPORT_RATE_LIMIT_WINDOW:24h}
+  publishing:
+    prechecks:
+      enabled: ${PUBLISHING_PRECHECKS_ENABLED:false}
+      lease-duration: ${PUBLISHING_PRECHECK_LEASE_DURATION:30s}
+      timeout: ${PUBLISHING_PRECHECK_TIMEOUT:5s}
+      poll-interval: ${PUBLISHING_PRECHECK_POLL_INTERVAL:2s}
+    due-worker:
+      enabled: ${PUBLISHING_DUE_WORKER_ENABLED:false}
+      lease-duration: ${PUBLISHING_DUE_LEASE_DURATION:30s}
+      inactive-retry-delay: ${PUBLISHING_DUE_INACTIVE_RETRY_DELAY:5m}
+      poll-interval: ${PUBLISHING_DUE_POLL_INTERVAL:2s}
+    propagation:
+      enabled: ${PUBLISHING_PROPAGATION_ENABLED:false}
+      lease-duration: ${PUBLISHING_PROPAGATION_LEASE_DURATION:30s}
+      initial-backoff: ${PUBLISHING_PROPAGATION_INITIAL_BACKOFF:5s}
+      max-attempts: ${PUBLISHING_PROPAGATION_MAX_ATTEMPTS:8}
+      poll-interval: ${PUBLISHING_PROPAGATION_POLL_INTERVAL:2s}
+      cloudflare-endpoint: ${CLOUDFLARE_PURGE_ENDPOINT:https://api.cloudflare.com/client/v4/zones/disabled/purge_cache}
+      cloudflare-token: ${CLOUDFLARE_API_TOKEN:}
+      isr-endpoint: ${NEXT_ISR_REVALIDATE_ENDPOINT:https://localhost.invalid/api/internal/revalidate}
+      isr-token: ${NEXT_ISR_REVALIDATE_TOKEN:}
+  media:
+    cloudinary:
+      enabled: ${CLOUDINARY_UPLOAD_SIGNING_ENABLED:false}
+      cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+      api-key: ${CLOUDINARY_API_KEY:}
+      api-secret: ${CLOUDINARY_API_SECRET:}
+      upload-preset: ${CLOUDINARY_UPLOAD_PRESET:}
+      root-folder: ${CLOUDINARY_ROOT_FOLDER:gioitruyen/local}
+      signature-ttl: ${CLOUDINARY_SIGNATURE_TTL:55m}
+      webhook-enabled: ${CLOUDINARY_WEBHOOK_ENABLED:false}
+      webhook-secret: ${CLOUDINARY_WEBHOOK_SECRET:}
+      webhook-max-age: ${CLOUDINARY_WEBHOOK_MAX_AGE:2h}
+      processing-enabled: ${CLOUDINARY_PROCESSING_ENABLED:false}
+      processing-lease-duration: ${CLOUDINARY_PROCESSING_LEASE_DURATION:30s}
+      processing-retry-delay: ${CLOUDINARY_PROCESSING_RETRY_DELAY:30s}
+      processing-poll-interval: ${CLOUDINARY_PROCESSING_POLL_INTERVAL:2s}
+      processing-timeout: ${CLOUDINARY_PROCESSING_TIMEOUT:15s}
+      processing-max-attempts: ${CLOUDINARY_PROCESSING_MAX_ATTEMPTS:5}
+  discovery:
+    search:
+      backend: ${SEARCH_BACKEND:text}
+      atlas-index: ${ATLAS_SEARCH_INDEX:story_search_v1}
+    suggestions:
+      maximum: ${SUGGESTION_RATE_LIMIT_MAXIMUM:30}
+      window: ${SUGGESTION_RATE_LIMIT_WINDOW:1m}
+  community:
+    comments:
+      rate-limit:
+        maximum: ${COMMENT_RATE_LIMIT_MAXIMUM:10}
+        window: ${COMMENT_RATE_LIMIT_WINDOW:1m}
+  identity:
+    registration:
+      current-consent-version: ${REGISTRATION_CONSENT_VERSION:2026-07-24}
+      argon2-memory-kb: ${ARGON2_MEMORY_KB:19456}
+      argon2-iterations: ${ARGON2_ITERATIONS:2}
+      argon2-parallelism: ${ARGON2_PARALLELISM:1}
+    verification:
+      token-ttl: ${EMAIL_VERIFICATION_TOKEN_TTL:24h}
+      hmac-key: ${EMAIL_VERIFICATION_HMAC_KEY}
+    access-token:
+      issuer: ${JWT_ISSUER}
+      audience: ${JWT_AUDIENCE}
+      ttl: ${JWT_ACCESS_TOKEN_TTL:10m}
+      signing-key: ${JWT_SIGNING_KEY}
+    login-risk:
+      max-email-failures: ${LOGIN_MAX_EMAIL_FAILURES:5}
+      max-address-failures: ${LOGIN_MAX_ADDRESS_FAILURES:20}
+      window: ${LOGIN_RISK_WINDOW:15m}
+      hmac-key: ${LOGIN_RISK_HMAC_KEY}
+    refresh-session:
+      ttl: ${REFRESH_SESSION_TTL:30d}
+      maximum-generations: ${REFRESH_SESSION_MAX_GENERATIONS:500}
+    mfa:
+      encryption-key: ${MFA_ENCRYPTION_KEY}
+    reauthentication:
+      ttl: ${REAUTHENTICATION_GRANT_TTL:5m}
+    google-oauth:
+      client-id: ${GOOGLE_OAUTH_CLIENT_ID:}
+      client-secret: ${GOOGLE_OAUTH_CLIENT_SECRET:}
+      redirect-uri: ${GOOGLE_OAUTH_REDIRECT_URI:http://127.0.0.1:8080/api/v1/auth/oauth2/google/callback}
+      frontend-return-base: ${GOOGLE_OAUTH_FRONTEND_RETURN_BASE:http://localhost:3000}
+  redis:
+    application-prefix: ${REDIS_KEY_PREFIX:gioitruyen}
+    key-version: ${REDIS_KEY_VERSION:v1}
+    environment: ${APP_ENV:local}
+    minimum-cache-ttl: ${REDIS_MINIMUM_CACHE_TTL:30s}
+    maximum-cache-ttl: ${REDIS_MAXIMUM_CACHE_TTL:60m}
+    ttl-jitter-ratio: ${REDIS_TTL_JITTER_RATIO:0.1}
+  events:
+    outbox:
+      max-payload-bytes: ${OUTBOX_MAX_PAYLOAD_BYTES:65536}
+      worker:
+        enabled: ${OUTBOX_WORKER_ENABLED:false}
+        batch-size: ${OUTBOX_WORKER_BATCH_SIZE:25}
+        lease-duration: ${OUTBOX_WORKER_LEASE_DURATION:30s}
+        poll-interval: ${OUTBOX_WORKER_POLL_INTERVAL:1s}
+        max-attempts: ${OUTBOX_WORKER_MAX_ATTEMPTS:8}
+        initial-backoff: ${OUTBOX_WORKER_INITIAL_BACKOFF:1s}
+        max-backoff: ${OUTBOX_WORKER_MAX_BACKOFF:15m}
+  seed:
+    enabled: ${APP_SEED_ENABLED:false}
+logging:
+  level:
+    root: ${LOG_LEVEL:INFO}
+  structured:
+    format:
+      console: ${LOG_FORMAT:ecs}
+    ecs:
+      service:
+        environment: ${APP_ENV:local}
+        version: ${APP_VERSION:dev}
+    json:
+      stacktrace:
+        max-length: 2048
+        max-throwable-depth: 12
+  include-application-name: false
+  pattern:
+    correlation: "[${spring.application.name:},%X{traceId:-},%X{spanId:-},%X{correlationId:-}] "

@@ -4,10 +4,12 @@
   "private": true,
   "packageManager": "pnpm@11.17.0",
   "scripts": {
-    "dev:fe": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/run-local-frontend.ps1",
-    "dev:admin": "pnpm --dir frontend dev:admin",
-    "dev:be": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/run-local-backend.ps1",
-    "build:fe": "pnpm --dir frontend build",
-    "test:be": "backend\\gradlew.bat --project-dir backend test"
+    "dev:fe": "powershell -NoProfile -ExecutionPolicy Bypass -File ./fe/run-local-frontend.ps1",
+    "dev:be": "powershell -NoProfile -ExecutionPolicy Bypass -File ./be/run-local-backend.ps1 -Mode local",
+    "dev:be:prod": "powershell -NoProfile -ExecutionPolicy Bypass -File ./be/run-local-backend.ps1 -Mode production",
+    "dev:db": "powershell -NoProfile -ExecutionPolicy Bypass -File ./db/start-local-mysql.ps1",
+    "build:fe": "pnpm --dir fe/apps/web build",
+    "typecheck:fe": "pnpm --dir fe/apps/web typecheck",
+    "test:be": "be\\gradlew.bat --project-dir be test"
   }
 }

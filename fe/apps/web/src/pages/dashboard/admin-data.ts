@@ -1,0 +1,145 @@
+const defaultApiBaseUrl = "/api/v1";
+
+const apiBaseUrl = (process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? defaultApiBaseUrl).replace(
+  /\/+$/u,
+  "",
+);
+
+export type ChartPoint = {
+  label: string;
+  value: number;
+};
+
+export type AdminOverview = {
+  stats: {
+    revenueXu: number;
+    visits: number;
+    readers: number;
+    teams: number;
+    stories: number;
+  };
+  revenueSeries: ChartPoint[];
+  trafficSeries: ChartPoint[];
+  readerSeries: ChartPoint[];
+  tasks: string[];
+};
+
+export type AdminStoryRow = {
+  id: string;
+  slug: string;
+  title: string;
+  authorName: string;
+  teamName: string;
+  teamId: string;
+  categoryId: string;
+  categoryName: string;
+  synopsis: string;
+  workflowStatus: string;
+  completionStatus: string;
+  updatedAt: string | null;
+};
+
+export type AdminCategoryRow = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  sortOrder: number;
+  active: boolean;
+  version: number;
+};
+
+export type AdminTeamRow = {
+  id: string;
+  slug: string;
+  name: string;
+  ownerName: string;
+  ownerUserId: string;
+  description: string;
+  state: string;
+  memberCount: number;
+  updatedAt: string | null;
+};
+
+export type AdminUserRow = {
+  id: string;
+  email: string;
+  displayName: string;
+  bio: string;
+  state: string;
+  roles: string;
+  availableXu: number;
+  createdAt: string | null;
+};
+
+export type AdminCashFlowRow = {
+  id: string;
+  entryType: string;
+  amountXu: number;
+  referenceType: string;
+  referenceId: string;
+  description: string;
+  userId: string;
+  userEmail: string;
+  createdAt: string | null;
+};
+
+async function adminRequest<T>(path: `/${string}`): Promise<T> {
+  const token = typeof window !== "undefined"
+    ? localStorage.getItem("access_token") || (document.cookie.match(/(?:^|; )access_token=([^;]*)/)?.[1] ? decodeURIComponent(document.cookie.match(/(?:^|; )access_token=([^;]*)/)![1]) : null)
+    : null;
+
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${apiBaseUrl}${path}`, {
+    cache: "no-store",
+    credentials: "same-origin",
+    headers,
+    signal: AbortSignal.timeout(8000),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Admin API request failed: ${response.status} ${response.statusText}`);
+  }
+
+  return (await response.json()) as T;
+}
+
+export function loadAdminOverview() {
+  return adminRequest<AdminOverview>("/admin/dashboard").catch(() => ({
+    stats: {
+      readers: 0,
+      revenueXu: 0,
+      stories: 0,
+      teams: 0,
+      visits: 0,
+    },
+    revenueSeries: [],
+    readerSeries: [],
+    tasks: [],
+    trafficSeries: [],
+  }));
+}
+
+export function loadAdminStories() {
+  return adminRequest<AdminStoryRow[]>("/admin/content/stories").catch(() => []);
+}
+
+export function loadAdminCategories() {
+  return adminRequest<AdminCategoryRow[]>("/admin/content/categories").catch(() => []);
+}
+
+export function loadAdminTeams() {
+  return adminRequest<AdminTeamRow[]>("/admin/content/teams").catch(() => []);
+}
+
+export function loadAdminUsers() {
+  return adminRequest<AdminUserRow[]>("/admin/content/users").catch(() => []);
+}
+
+export function loadAdminCashFlow() {
+  return adminRequest<AdminCashFlowRow[]>("/admin/finance/cash-flow").catch(() => []);
+}

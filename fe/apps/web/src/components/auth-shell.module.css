@@ -1,0 +1,406 @@
+.page {
+  --auth-ink: #111a3a;
+  --auth-blue: #4e72ff;
+  --auth-coral: #e94b4b;
+  --auth-jade: #198b79;
+  --auth-paper: #f4f7ff;
+  --auth-line: #cbd4ee;
+  background:
+    linear-gradient(90deg, rgb(78 114 255 / 7%) 1px, transparent 1px) 0 0 /
+      3.5rem 100%,
+    var(--auth-paper);
+  color: #171a29;
+  display: grid;
+  grid-template-columns: minmax(18rem, 0.78fr) minmax(30rem, 1.22fr);
+  min-height: 100vh;
+}
+
+.margin {
+  background: var(--auth-ink);
+  color: #f8f9ff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 100vh;
+  overflow: hidden;
+  padding: clamp(1.5rem, 4vw, 4.5rem);
+  position: relative;
+}
+
+.margin::after {
+  background: var(--auth-coral);
+  content: "";
+  height: 8rem;
+  position: absolute;
+  right: clamp(1.5rem, 4vw, 4.5rem);
+  top: -1rem;
+  width: 1.1rem;
+}
+
+.back {
+  color: #bfc9ec;
+  font-size: 0.78rem;
+  font-weight: 760;
+  text-decoration: none;
+  width: fit-content;
+}
+
+.back:hover {
+  color: white;
+}
+
+.chapter {
+  margin: clamp(5rem, 15vh, 10rem) 0 auto;
+  max-width: 31rem;
+  position: relative;
+}
+
+.chapterNumber {
+  color: #8fa5f8;
+  font: 800 0.72rem/1 var(--utility);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.chapter h1 {
+  font: 620 clamp(2.6rem, 5vw, 5.4rem)/0.93 var(--serif);
+  letter-spacing: -0.055em;
+  margin: 1.2rem 0 1.5rem;
+}
+
+.chapter h1 em {
+  color: #9fb2ff;
+  display: block;
+  font-weight: 500;
+}
+
+.chapter p {
+  color: #b7c1e4;
+  font-size: clamp(0.95rem, 1.4vw, 1.1rem);
+  line-height: 1.65;
+  max-width: 31rem;
+}
+
+.folio {
+  align-items: center;
+  border-top: 1px solid rgb(255 255 255 / 18%);
+  color: #8e9bc5;
+  display: flex;
+  font: 700 0.67rem/1 var(--utility);
+  justify-content: space-between;
+  letter-spacing: 0.08em;
+  margin-top: 3rem;
+  padding-top: 1.2rem;
+  text-transform: uppercase;
+}
+
+.folio strong {
+  color: white;
+  font-weight: 800;
+}
+
+.sheet {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  padding: clamp(2rem, 7vw, 7rem);
+}
+
+.sheetInner {
+  animation: settle 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  max-width: 34rem;
+  width: 100%;
+}
+
+.eyebrow {
+  color: var(--auth-coral);
+  font: 800 0.7rem/1 var(--utility);
+  letter-spacing: 0.13em;
+  margin: 0 0 0.8rem;
+  text-transform: uppercase;
+}
+
+.sheetTitle {
+  color: var(--auth-ink);
+  font: 650 clamp(2.3rem, 4vw, 3.8rem)/0.98 var(--serif);
+  letter-spacing: -0.045em;
+  margin: 0;
+}
+
+.lede {
+  color: #626a83;
+  line-height: 1.65;
+  margin: 1rem 0 2.2rem;
+  max-width: 31rem;
+}
+
+@keyframes settle {
+  from {
+    opacity: 0;
+    transform: translateY(0.8rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 52rem) {
+  .page {
+    display: block;
+  }
+
+  .margin {
+    min-height: auto;
+    padding-bottom: 2.5rem;
+  }
+
+  .chapter {
+    margin: 4rem 0 0;
+  }
+
+  .chapter h1 {
+    max-width: 10ch;
+  }
+
+  .folio {
+    display: none;
+  }
+
+  .sheet {
+    min-height: 31rem;
+    padding-block: 3.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheetInner {
+    animation: none;
+  }
+}
+
+/* Final bright auth layout */
+.page {
+  background:#f7fbff;
+  display:grid;
+  gap:1rem;
+  grid-template-columns:minmax(0,3fr) minmax(28rem,2fr);
+  padding:1rem;
+}
+.margin,
+.sheet {
+  border:1px solid #d9e8f7;
+  border-radius:1rem;
+  min-height:calc(100vh - 2rem);
+}
+.margin {
+  background:
+    linear-gradient(90deg, rgb(5 9 28 / 88%), rgb(5 14 39 / 58%)),
+    url("/stories_hero_banner.png") center / cover;
+  box-shadow:0 .8rem 2rem rgb(28 83 150 / 8%);
+  isolation:isolate;
+}
+.margin::after {
+  background:linear-gradient(180deg, rgb(255 255 255 / 36%), rgb(255 255 255 / 6%));
+  border-radius:999px;
+}
+.artBackdrop {
+  background:
+    radial-gradient(circle at 26% 22%, rgb(255 216 112 / 28%), transparent 28%),
+    linear-gradient(180deg, transparent 54%, rgb(3 8 24 / 72%));
+  inset:0;
+  pointer-events:none;
+  position:absolute;
+  z-index:-1;
+}
+.sheet {
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 94%), rgb(248 251 255 / 98%)),
+    url("/assets/audio-comic-reference/cover-light.png") right bottom / 38rem auto no-repeat;
+  box-shadow:0 .8rem 2rem rgb(28 83 150 / 6%);
+}
+.eyebrow,
+.chapterNumber {
+  color:#0f6bff;
+}
+.sheetTitle {
+  color:#102344;
+  font:850 clamp(2.6rem,4.2vw,4.2rem)/.98 var(--sans);
+  letter-spacing:0;
+}
+.chapter h1 {
+  font:900 clamp(3.2rem,5vw,6rem)/.92 var(--sans);
+  letter-spacing:0;
+  text-shadow:0 .3rem 1.4rem rgb(0 0 0 / 34%);
+}
+.chapter p,
+.lede {
+  font-size:1.08rem;
+}
+.back {
+  font-size:.95rem;
+}
+
+@media (max-width: 52rem) {
+  .page {
+    display:block;
+    padding:0;
+  }
+  .margin,
+  .sheet {
+    border-radius:0;
+    min-height:auto;
+  }
+}
+
+/* Login page viewport lock: desktop must fit without vertical scroll. */
+.page {
+  height: 100dvh;
+  min-height: 42rem;
+  overflow: hidden;
+}
+
+.margin,
+.sheet {
+  height: calc(100dvh - 2rem);
+  min-height: 40rem;
+}
+
+.margin {
+  padding: clamp(1.4rem, 3vw, 3.2rem);
+}
+
+.chapter {
+  margin: clamp(2.2rem, 8vh, 4.8rem) 0 auto;
+}
+
+.chapter h1 {
+  font-size: clamp(2.8rem, 4.2vw, 5.2rem);
+  margin: .85rem 0 1rem;
+}
+
+.chapter p,
+.lede {
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.sheet {
+  overflow: hidden;
+  padding: clamp(1.2rem, 3.4vw, 3.4rem);
+}
+
+.sheetInner {
+  max-height: calc(100dvh - 4rem);
+}
+
+.sheetTitle {
+  font-size: clamp(2.2rem, 3.5vw, 3.4rem);
+}
+
+.lede {
+  margin: .8rem 0 1.35rem;
+}
+
+@media (max-width: 52rem) {
+  .page {
+    height: auto;
+    min-height: 100dvh;
+    overflow: auto;
+  }
+
+  .margin,
+  .sheet {
+    height: auto;
+    min-height: auto;
+  }
+}
+
+/* Full fantasy background auth layout. */
+.page {
+  background-image:
+    linear-gradient(90deg, rgb(5 9 28 / 82%) 0%, rgb(5 12 30 / 52%) 50%, rgb(248 251 255 / 86%) 100%),
+    url("/auth-healing-bg.png");
+  background-position: center, center;
+  background-repeat: no-repeat, no-repeat;
+  background-size: cover, cover;
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(28rem, 2fr);
+}
+
+.margin,
+.sheet {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.margin {
+  background: transparent;
+}
+
+.sheet {
+  align-items: center;
+  background: transparent;
+  justify-content: center;
+}
+
+.sheetInner {
+  background: rgb(255 255 255 / 94%);
+  border: 1px solid rgb(255 255 255 / 68%);
+  border-radius: 0;
+  box-shadow: 0 1.4rem 4rem rgb(2 8 24 / 28%);
+  max-width: 31rem;
+  padding: clamp(1.4rem, 3vw, 2.2rem);
+}
+
+.chapter {
+  max-width: min(48rem, 58vw);
+}
+
+.chapter h1 {
+  max-width: 13ch;
+  text-wrap: balance;
+}
+
+.chapter h1 em {
+  white-space: nowrap;
+}
+
+.chapter p {
+  max-width: 46rem;
+  text-wrap: pretty;
+}
+
+.folio {
+  max-width: 40rem;
+}
+
+@media (max-width: 52rem) {
+  .page {
+    background-image:
+      linear-gradient(180deg, rgb(5 9 28 / 76%), rgb(248 251 255 / 92%)),
+      url("/auth-healing-bg.png");
+    background-position: center, center;
+    background-repeat: no-repeat, no-repeat;
+    background-size: cover, cover;
+    display: block;
+  }
+
+  .sheet {
+    padding: 1rem;
+  }
+
+  .sheetInner {
+    max-width: none;
+  }
+
+  .chapter,
+  .chapter p {
+    max-width: none;
+  }
+
+  .chapter h1 em {
+    white-space: normal;
+  }
+}

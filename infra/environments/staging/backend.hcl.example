@@ -1,7 +1,0 @@
-# Bootstrap this bucket in the dedicated staging account before init.
-bucket       = "replace-with-gioitruyen-staging-state-bucket"
-key          = "environments/staging/terraform.tfstate"
-region       = "ap-southeast-1"
-encrypt      = true
-use_lockfile = true
-kms_key_id   = "replace-with-staging-state-kms-key-arn"

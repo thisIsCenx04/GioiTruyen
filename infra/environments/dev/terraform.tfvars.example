@@ -1,6 +1,0 @@
-# Use a dedicated non-production account. Never put credentials in this file.
-account_id = "111111111111"
-region     = "ap-southeast-1"
-
-# CI replaces this placeholder with the exact digest it built and signed.
-container_image = "111111111111.dkr.ecr.ap-southeast-1.amazonaws.com/gioitruyen-dev/api@sha256:0000000000000000000000000000000000000000000000000000000000000000"

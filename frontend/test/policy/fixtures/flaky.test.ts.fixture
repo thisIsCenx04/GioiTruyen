@@ -1,6 +1,0 @@
-describe.only("an accidentally focused suite", () => {
-  it("retries a real network check after sleeping", async () => {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    await fetch("https://example.test/health");
-  });
-});
