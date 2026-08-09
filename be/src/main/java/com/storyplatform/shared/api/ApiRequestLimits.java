@@ -1,7 +1,5 @@
 package com.storyplatform.shared.api;
 
-import tools.jackson.core.StreamReadConstraints;
-
 public final class ApiRequestLimits {
 
     public static final int MAX_JSON_DEPTH = 32;
@@ -14,14 +12,4 @@ public final class ApiRequestLimits {
     private ApiRequestLimits() {
     }
 
-    public static StreamReadConstraints jsonConstraints() {
-        return StreamReadConstraints.builder()
-                .maxNestingDepth(MAX_JSON_DEPTH)
-                .maxDocumentLength(MAX_REQUEST_BODY_BYTES)
-                .maxTokenCount(MAX_JSON_TOKENS)
-                .maxNumberLength(MAX_JSON_NUMBER_LENGTH)
-                .maxStringLength(MAX_JSON_STRING_LENGTH)
-                .maxNameLength(MAX_JSON_FIELD_NAME_LENGTH)
-                .build();
-    }
 }

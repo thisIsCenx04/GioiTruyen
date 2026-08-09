@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Testcontainers(disabledWithoutDocker = true)
 class RedisCacheIntegrationTest {
 
+    @SuppressWarnings("resource")
     @Container
     static final GenericContainer<?> REDIS =
             new GenericContainer<>("redis:8.2.7-alpine")

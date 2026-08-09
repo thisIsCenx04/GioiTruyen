@@ -1,38 +1,25 @@
 package com.storyplatform.teams.domain;
 
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Table;
+import java.util.UUID;
 import java.time.Instant;
-import java.util.Objects;
 
-public record TeamFollow(
-        String id,
-        String teamId,
-        String userId,
-        Instant createdAt
-) {
-    public TeamFollow {
-        id = requireText(id, "id");
-        teamId = requireText(teamId, "teamId");
-        userId = requireText(userId, "userId");
-        createdAt = Objects.requireNonNull(createdAt, "createdAt");
-    }
+@Table("team_follows")
+public class TeamFollow {
+    private UUID userId;
+    private UUID teamId;
+    private Instant createdAt;
 
-    public static TeamFollow create(
-            String teamId,
-            String userId,
-            Instant now
-    ) {
-        return new TeamFollow(
-                teamId + ":" + userId,
-                teamId,
-                userId,
-                now
-        );
-    }
+    public TeamFollow() {}
 
-    private static String requireText(String value, String field) {
-        if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException(field + " must not be blank");
-        }
-        return value;
-    }
+    public UUID getUserId() { return userId; }
+    public void setUserId(UUID userId) { this.userId = userId; }
+
+    public UUID getTeamId() { return teamId; }
+    public void setTeamId(UUID teamId) { this.teamId = teamId; }
+
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+
 }

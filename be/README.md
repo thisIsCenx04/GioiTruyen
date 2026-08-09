@@ -12,7 +12,7 @@ Load the root environment and run:
 
 ```powershell
 . ..\scripts\load-env.ps1
-.\gradlew.bat bootRun
+mvn spring-boot:run
 ```
 
 For the MySQL-only local profile, run this command from the repository root:
@@ -24,10 +24,8 @@ For the MySQL-only local profile, run this command from the repository root:
 Run tests:
 
 ```powershell
-.\gradlew.bat unitTest
-.\gradlew.bat test
-.\gradlew.bat jacocoTestReport jacocoTestCoverageVerification
-.\gradlew.bat check
+mvn test
+mvn verify
 ```
 
 `unitTest` only discovers tests below `com.storyplatform.unit`, does not start

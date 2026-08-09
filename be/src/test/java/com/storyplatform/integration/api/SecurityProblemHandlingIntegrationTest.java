@@ -62,7 +62,7 @@ class SecurityProblemHandlingIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .header(CorrelationId.HEADER_NAME, "security-44")
                         .content(body))
-                .andExpect(status().isPayloadTooLarge())
+                .andExpect(status().is(413))
                 .andExpect(jsonPath("$.code").value("PAYLOAD_TOO_LARGE"))
                 .andExpect(jsonPath("$.traceId").value("security-44"));
     }

@@ -71,6 +71,9 @@ if ($listeners.Count -gt 0) {
 
 Write-Host "`n[INFO] Starting Backend Spring Boot ($Mode mode)..." -ForegroundColor Cyan
 Write-Host "[INFO] Server will display '>>> BACKEND SPRING BOOT HAS STARTED SUCCESSFULLY! <<<' when ready." -ForegroundColor Green
-& (Join-Path $PSScriptRoot "gradlew.bat") --project-dir $PSScriptRoot bootRun
+Push-Location $PSScriptRoot
+mvn spring-boot:run
+$exitCode = $LASTEXITCODE
+Pop-Location
 
-exit $LASTEXITCODE
+exit $exitCode

@@ -26,5 +26,5 @@ if ($listeners.Count -gt 0) {
 
 Write-Host "Starting Frontend React SPA (Vite) at $homeUrl..."
 Set-Location $webAppDir
-pnpm dev --port $preferredPort
+npm run dev -- --port $preferredPort
 exit $LASTEXITCODE

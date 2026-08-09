@@ -13,7 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import tools.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -68,13 +68,13 @@ public final class RequestBodyLimitFilter extends OncePerRequestFilter {
             HttpServletRequest request,
             HttpServletResponse response
     ) throws IOException {
-        response.setStatus(HttpStatus.PAYLOAD_TOO_LARGE.value());
+        response.setStatus(413);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         objectMapper.writeValue(
                 response.getOutputStream(),
                 problems.create(
-                        HttpStatus.PAYLOAD_TOO_LARGE,
+                        HttpStatus.valueOf(413),
                         "PAYLOAD_TOO_LARGE",
                         "Nội dung yêu cầu quá lớn",
                         "Nội dung JSON vượt quá giới hạn cho phép.",

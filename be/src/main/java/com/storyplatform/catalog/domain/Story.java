@@ -1,167 +1,106 @@
 package com.storyplatform.catalog.domain;
 
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
-import java.util.Set;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Table;
 import java.util.UUID;
-import java.util.regex.Pattern;
+import java.time.Instant;
 
-public record Story(
-        String id,
-        String teamId,
-        String slug,
-        String title,
-        List<String> aliases,
-        String synopsis,
-        List<String> categoryIds,
-        Origin origin,
-        String language,
-        CompletionStatus completionStatus,
-        WorkflowStatus workflowStatus,
-        String currentRevision,
-        String coverAssetId,
-        Instant publishedAt,
-        Instant createdAt,
-        Instant updatedAt,
-        long version
-) {
+@Table("stories")
+public class Story {
+    @Id
+    private UUID id;
+    private UUID teamId;
+    private UUID createdBy;
+    private String title;
+    private String slug;
+    private String originalTitle;
+    private String originalAuthor;
+    private String shortDescription;
+    private String description;
+    private String coverUrl;
+    private String bannerUrl;
+    private StoryContentType contentType;
+    private StoryStatus status;
+    private StoryProgressStatus progressStatus;
+    private String ageRating;
+    private Instant publishedAt;
+    private Instant lastChapterAt;
+    private Long viewCountCache;
+    private Long followCountCache;
+    private Long favoriteCountCache;
+    private Long recommendationGemCache;
+    private Instant createdAt;
+    private Instant updatedAt;
 
-    private static final Pattern SLUG = Pattern.compile(
-            "[a-z0-9]+(?:-[a-z0-9]+)*"
-    );
-    private static final Pattern LANGUAGE = Pattern.compile(
-            "[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*"
-    );
+    public Story() {}
 
-    public Story {
-        id = uuid(id, "id");
-        teamId = uuid(teamId, "teamId");
-        currentRevision = uuid(currentRevision, "currentRevision");
-        if (coverAssetId != null) {
-            coverAssetId = uuid(coverAssetId, "coverAssetId");
-        }
-        slug = text(slug, "slug", 100);
-        title = text(title, "title", 200);
-        synopsis = text(synopsis, "synopsis", 5000);
-        origin = Objects.requireNonNull(origin, "origin");
-        completionStatus = Objects.requireNonNull(
-                completionStatus,
-                "completionStatus"
-        );
-        workflowStatus = Objects.requireNonNull(
-                workflowStatus,
-                "workflowStatus"
-        );
-        createdAt = Objects.requireNonNull(createdAt, "createdAt");
-        updatedAt = Objects.requireNonNull(updatedAt, "updatedAt");
-        if (!SLUG.matcher(slug).matches()) {
-            throw new IllegalArgumentException(
-                    "slug must be lowercase kebab-case"
-            );
-        }
-        if (language == null || !LANGUAGE.matcher(language).matches()) {
-            throw new IllegalArgumentException(
-                    "language must be a bounded BCP 47 tag"
-            );
-        }
-        aliases = boundedUnique(aliases, "aliases", 10, 200, false);
-        categoryIds = boundedUnique(
-                categoryIds,
-                "categoryIds",
-                30,
-                36,
-                true
-        );
-        if (updatedAt.isBefore(createdAt) || version < 1) {
-            throw new IllegalArgumentException(
-                    "story version or timestamps are invalid"
-            );
-        }
-        if (workflowStatus == WorkflowStatus.PUBLISHED
-                && publishedAt == null) {
-            throw new IllegalArgumentException(
-                    "published stories require publishedAt"
-            );
-        }
-    }
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
 
-    public boolean publiclyVisible() {
-        return workflowStatus == WorkflowStatus.PUBLISHED;
-    }
+    public UUID getTeamId() { return teamId; }
+    public void setTeamId(UUID teamId) { this.teamId = teamId; }
 
-    private static List<String> boundedUnique(
-            List<String> values,
-            String field,
-            int maximumItems,
-            int maximumLength,
-            boolean uuids
-    ) {
-        Objects.requireNonNull(values, field);
-        if (values.size() > maximumItems) {
-            throw new IllegalArgumentException(field + " has too many items");
-        }
-        Set<String> normalized = new HashSet<>();
-        List<String> checkedValues = new ArrayList<>();
-        for (String value : values) {
-            String checked = uuids
-                    ? uuid(value, field)
-                    : text(value, field, maximumLength);
-            String key = checked.toLowerCase(Locale.ROOT);
-            if (!normalized.add(key)) {
-                throw new IllegalArgumentException(
-                        field + " contains duplicates"
-                );
-            }
-            checkedValues.add(checked);
-        }
-        return List.copyOf(checkedValues);
-    }
+    public UUID getCreatedBy() { return createdBy; }
+    public void setCreatedBy(UUID createdBy) { this.createdBy = createdBy; }
 
-    private static String text(
-            String value,
-            String field,
-            int maximumLength
-    ) {
-        if (value == null || value.isBlank()
-                || value.length() > maximumLength) {
-            throw new IllegalArgumentException(field + " is invalid");
-        }
-        return value;
-    }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
 
-    private static String uuid(String value, String field) {
-        try {
-            return UUID.fromString(value).toString();
-        } catch (RuntimeException exception) {
-            throw new IllegalArgumentException(
-                    field + " must be a UUID",
-                    exception
-            );
-        }
-    }
+    public String getSlug() { return slug; }
+    public void setSlug(String slug) { this.slug = slug; }
 
-    public enum Origin {
-        ORIGINAL,
-        TRANSLATED
-    }
+    public String getOriginalTitle() { return originalTitle; }
+    public void setOriginalTitle(String originalTitle) { this.originalTitle = originalTitle; }
 
-    public enum CompletionStatus {
-        ONGOING,
-        COMPLETED,
-        HIATUS
-    }
+    public String getOriginalAuthor() { return originalAuthor; }
+    public void setOriginalAuthor(String originalAuthor) { this.originalAuthor = originalAuthor; }
 
-    public enum WorkflowStatus {
-        DRAFT,
-        IN_REVIEW,
-        CHANGES_REQUESTED,
-        APPROVED,
-        PUBLISHED,
-        SUSPENDED,
-        ARCHIVED
-    }
+    public String getShortDescription() { return shortDescription; }
+    public void setShortDescription(String shortDescription) { this.shortDescription = shortDescription; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+
+    public String getCoverUrl() { return coverUrl; }
+    public void setCoverUrl(String coverUrl) { this.coverUrl = coverUrl; }
+
+    public String getBannerUrl() { return bannerUrl; }
+    public void setBannerUrl(String bannerUrl) { this.bannerUrl = bannerUrl; }
+
+    public StoryContentType getContentType() { return contentType; }
+    public void setContentType(StoryContentType contentType) { this.contentType = contentType; }
+
+    public StoryStatus getStatus() { return status; }
+    public void setStatus(StoryStatus status) { this.status = status; }
+
+    public StoryProgressStatus getProgressStatus() { return progressStatus; }
+    public void setProgressStatus(StoryProgressStatus progressStatus) { this.progressStatus = progressStatus; }
+
+    public String getAgeRating() { return ageRating; }
+    public void setAgeRating(String ageRating) { this.ageRating = ageRating; }
+
+    public Instant getPublishedAt() { return publishedAt; }
+    public void setPublishedAt(Instant publishedAt) { this.publishedAt = publishedAt; }
+
+    public Instant getLastChapterAt() { return lastChapterAt; }
+    public void setLastChapterAt(Instant lastChapterAt) { this.lastChapterAt = lastChapterAt; }
+
+    public Long getViewCountCache() { return viewCountCache; }
+    public void setViewCountCache(Long viewCountCache) { this.viewCountCache = viewCountCache; }
+
+    public Long getFollowCountCache() { return followCountCache; }
+    public void setFollowCountCache(Long followCountCache) { this.followCountCache = followCountCache; }
+
+    public Long getFavoriteCountCache() { return favoriteCountCache; }
+    public void setFavoriteCountCache(Long favoriteCountCache) { this.favoriteCountCache = favoriteCountCache; }
+
+    public Long getRecommendationGemCache() { return recommendationGemCache; }
+    public void setRecommendationGemCache(Long recommendationGemCache) { this.recommendationGemCache = recommendationGemCache; }
+
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+
+    public Instant getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+
 }

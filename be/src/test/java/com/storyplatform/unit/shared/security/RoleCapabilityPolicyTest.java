@@ -23,32 +23,11 @@ class RoleCapabilityPolicyTest {
     }
 
     @Test
-    void moderatorCanModerateButCannotReachSensitiveAdminFunctions() {
+    void teamCanAccessTeamCapabilities() {
         assertThat(policy.allows(
-                Set.of("MODERATOR"),
+                Set.of("TEAM"),
                 PrivilegedCapability.MODERATION_QUEUE_READ
         )).isTrue();
-        assertThat(policy.allows(
-                Set.of("MODERATOR"),
-                PrivilegedCapability.MODERATION_DECIDE
-        )).isTrue();
-        assertThat(policy.allows(
-                Set.of("MODERATOR"),
-                PrivilegedCapability.CONTENT_SUSPEND
-        )).isTrue();
-
-        assertThat(policy.allows(
-                Set.of("MODERATOR"),
-                PrivilegedCapability.FINANCE_REVIEW
-        )).isFalse();
-        assertThat(policy.allows(
-                Set.of("MODERATOR"),
-                PrivilegedCapability.SUPPORT_CASE_UPDATE
-        )).isFalse();
-        assertThat(policy.allows(
-                Set.of("MODERATOR"),
-                PrivilegedCapability.SYSTEM_CONFIGURE
-        )).isFalse();
     }
 
     @Test

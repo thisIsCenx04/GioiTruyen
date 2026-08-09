@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.time.Instant;
+
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -94,7 +94,7 @@ public final class RateLimitingFilter extends OncePerRequestFilter {
                   "type": "urn:problem:story-platform:too-many-requests",
                   "title": "Quá nhiều yêu cầu",
                   "status": 429,
-                  "detail": "Hệ thống phát hiện tần suất truy cập quá nhanh (phòng chống Spam/DDoS). Vui lòng thử lại sau 60 giây.",
+                  "detail": "Tần suất truy cập quá cao. Vui lòng thử lại sau 60 giây.",
                   "code": "TOO_MANY_REQUESTS"
                 }
                 """;

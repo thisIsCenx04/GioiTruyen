@@ -23,11 +23,11 @@ class JwtPrivilegeEvaluatorTest {
                 PrivilegedCapability.FINANCE_REVIEW
         )).isTrue();
         assertThat(evaluator.allows(
-                jwt(List.of("MODERATOR")),
+                jwt(List.of("READER")),
                 PrivilegedCapability.FINANCE_REVIEW
         )).isFalse();
         assertThat(evaluator.allows(
-                jwt(List.of("MODERATOR")),
+                jwt(List.of("TEAM")),
                 PrivilegedCapability.MODERATION_DECIDE
         )).isTrue();
     }

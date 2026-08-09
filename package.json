@@ -2,14 +2,14 @@
   "name": "gioitruyen",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@11.17.0",
   "scripts": {
-    "dev:fe": "powershell -NoProfile -ExecutionPolicy Bypass -File ./fe/run-local-frontend.ps1",
+    "dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev.ps1",
+    "dev:fe": "npm --prefix fe/apps/web run dev",
     "dev:be": "powershell -NoProfile -ExecutionPolicy Bypass -File ./be/run-local-backend.ps1 -Mode local",
     "dev:be:prod": "powershell -NoProfile -ExecutionPolicy Bypass -File ./be/run-local-backend.ps1 -Mode production",
     "dev:db": "powershell -NoProfile -ExecutionPolicy Bypass -File ./db/start-local-mysql.ps1",
-    "build:fe": "pnpm --dir fe/apps/web build",
-    "typecheck:fe": "pnpm --dir fe/apps/web typecheck",
-    "test:be": "be\\gradlew.bat --project-dir be test"
+    "build:fe": "npm --prefix fe/apps/web run build",
+    "typecheck:fe": "npm --prefix fe/apps/web run typecheck",
+    "test:be": "mvn -f be/pom.xml test"
   }
 }

@@ -33,7 +33,9 @@ export type AdminStoryRow = {
   teamId: string;
   categoryId: string;
   categoryName: string;
+  coverUrl?: string;
   synopsis: string;
+  tags?: string[];
   workflowStatus: string;
   completionStatus: string;
   updatedAt: string | null;

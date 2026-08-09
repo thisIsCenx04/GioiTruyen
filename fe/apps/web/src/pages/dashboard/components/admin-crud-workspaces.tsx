@@ -1,5 +1,6 @@
 "use client";
 
+import { ImagePlus, Paperclip, Plus, X } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 
 import {
@@ -17,6 +18,12 @@ import {
 
 type DrawerMode = "archive" | "create" | "edit" | "reverse";
 type SortOrder = "asc" | "desc";
+type StoryChapterDraft = {
+  id: string;
+  file: File;
+  title: string;
+  tags: string[];
+};
 
 interface SortState<K extends string> {
   key: K;
@@ -51,7 +58,7 @@ function translateStatus(status: string) {
   );
 }
 
-async function adminMutation(path: string, method: "DELETE" | "POST" | "PUT", body?: unknown) {
+async function adminMutation(path: string, method: "DELETE" | "POST" | "PUT", body?: FormData | unknown) {
   const token = typeof window !== "undefined"
     ? localStorage.getItem("access_token") || (document.cookie.match(/(?:^|; )access_token=([^;]*)/)?.[1] ? decodeURIComponent(document.cookie.match(/(?:^|; )access_token=([^;]*)/)![1]) : null)
     : null;
@@ -59,7 +66,7 @@ async function adminMutation(path: string, method: "DELETE" | "POST" | "PUT", bo
   const headers: Record<string, string> = {
     Accept: "application/json",
   };
-  if (body !== undefined) {
+  if (body !== undefined && !(body instanceof FormData)) {
     headers["Content-Type"] = "application/json";
   }
   if (token) {
@@ -67,7 +74,7 @@ async function adminMutation(path: string, method: "DELETE" | "POST" | "PUT", bo
   }
 
   const response = await fetch(`/api/v1/admin/${path}`, {
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    ...(body === undefined ? {} : { body: body instanceof FormData ? body : JSON.stringify(body) }),
     credentials: "same-origin",
     headers,
     method,
@@ -76,6 +83,15 @@ async function adminMutation(path: string, method: "DELETE" | "POST" | "PUT", bo
     const problem = (await response.json().catch(() => null)) as { title?: string } | null;
     throw new Error(problem?.title ?? `Không thể lưu thay đổi (${response.status}).`);
   }
+}
+
+function buildStorySlug(title: string) {
+  return title
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 function useSortableList<T, K extends string & keyof T>(
@@ -254,6 +270,133 @@ function Field({ children, label }: Readonly<{ children: ReactNode; label: strin
   return <label className="drawerField"><span>{label}</span>{children}</label>;
 }
 
+function TagEditor({
+  label,
+  onChange,
+  placeholder = "Nhập tag rồi Enter",
+  tags,
+}: Readonly<{
+  label: string;
+  onChange: (tags: string[]) => void;
+  placeholder?: string;
+  tags: string[];
+}>) {
+  const [draft, setDraft] = useState("");
+
+  const addTag = () => {
+    const next = draft.trim();
+    if (!next || tags.some((tag) => tag.toLowerCase() === next.toLowerCase())) return;
+    onChange([...tags, next]);
+    setDraft("");
+  };
+
+  return (
+    <div className="drawerField">
+      <span>{label}</span>
+      <div className="tagEditor">
+        <div className="tagEditorChips">
+          {tags.map((tag) => (
+            <button key={tag} onClick={() => onChange(tags.filter((item) => item !== tag))} type="button">
+              {tag}
+              <X aria-hidden="true" size={13} />
+            </button>
+          ))}
+          {tags.length === 0 ? <small>Chưa có tag.</small> : null}
+        </div>
+        <div className="tagEditorInput">
+          <input
+            onChange={(event) => setDraft(event.currentTarget.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === ",") {
+                event.preventDefault();
+                addTag();
+              }
+            }}
+            placeholder={placeholder}
+            value={draft}
+          />
+          <button aria-label="Thêm tag" onClick={addTag} type="button">
+            <Plus aria-hidden="true" size={16} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ChapterUploadList({
+  chapters,
+  onChange,
+}: Readonly<{
+  chapters: StoryChapterDraft[];
+  onChange: (chapters: StoryChapterDraft[]) => void;
+}>) {
+  const updateChapter = (id: string, patch: Partial<StoryChapterDraft>) => {
+    onChange(chapters.map((chapter) => (chapter.id === id ? { ...chapter, ...patch } : chapter)));
+  };
+
+  return (
+    <section className="chapterUploadPanel">
+      <header>
+        <span>Upload chương</span>
+        <label>
+          <Paperclip aria-hidden="true" size={16} />
+          Chọn nhiều file
+          <input
+            accept=".txt,.md,.doc,.docx,.pdf,.epub"
+            multiple
+            onChange={(event) => {
+              const files = Array.from(event.currentTarget.files ?? []);
+              if (files.length === 0) return;
+              const next = files.map((file, index) => ({
+                file,
+                id: `${file.name}-${file.lastModified}-${index}`,
+                tags: [],
+                title: file.name.replace(/\.[^.]+$/u, ""),
+              }));
+              onChange([...chapters, ...next]);
+              event.currentTarget.value = "";
+            }}
+            type="file"
+          />
+        </label>
+      </header>
+      {chapters.length === 0 ? (
+        <p>Chọn file để tạo nhiều chương cùng lúc. Mỗi chương có tiêu đề và tag riêng.</p>
+      ) : (
+        <div className="chapterDraftList">
+          {chapters.map((chapter, index) => (
+            <article className="chapterDraftItem" key={chapter.id}>
+              <button
+                aria-label={`Xóa chương ${index + 1}`}
+                className="chapterDraftRemove"
+                onClick={() => onChange(chapters.filter((item) => item.id !== chapter.id))}
+                type="button"
+              >
+                <X aria-hidden="true" size={16} />
+              </button>
+              <Field label={`Chương ${index + 1}`}>
+                <input
+                  maxLength={240}
+                  onChange={(event) => updateChapter(chapter.id, { title: event.currentTarget.value })}
+                  value={chapter.title}
+                />
+              </Field>
+              <small>{chapter.file.name}</small>
+              <TagEditor
+                label="Tag chương"
+                onChange={(tags) => updateChapter(chapter.id, { tags })}
+                placeholder="Ví dụ: battle, flashback"
+                tags={chapter.tags}
+              />
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function FormActions({ busy, close, submitLabel }: Readonly<{
   busy: boolean;
   close: () => void;
@@ -299,6 +442,10 @@ export function StoryCrudWorkspace({
   const [drawer, setDrawer] = useState<{ mode: DrawerMode; story?: AdminStoryRow } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState("");
+  const [storyTags, setStoryTags] = useState<string[]>([]);
+  const [chapterDrafts, setChapterDrafts] = useState<StoryChapterDraft[]>([]);
   const selected = drawer?.story;
 
   const refreshData = async () => {
@@ -320,6 +467,21 @@ export function StoryCrudWorkspace({
     void refreshData();
   }, []);
 
+  useEffect(() => {
+    if (!drawer || drawer.mode === "archive") {
+      setCoverFile(null);
+      setCoverPreview("");
+      setStoryTags([]);
+      setChapterDrafts([]);
+      return;
+    }
+
+    setCoverFile(null);
+    setCoverPreview(selected?.coverUrl ?? "");
+    setStoryTags(selected?.tags ?? []);
+    setChapterDrafts([]);
+  }, [drawer, selected]);
+
   const { sortedList, sortState, toggleSort } = useSortableList<AdminStoryRow, keyof AdminStoryRow>(stories, "updatedAt", "desc");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -336,16 +498,43 @@ export function StoryCrudWorkspace({
           authorName: value(form, "authorName"),
           categoryId: value(form, "categoryId"),
           completionStatus: value(form, "completionStatus"),
+          contentType: value(form, "contentType"),
           slug: value(form, "slug"),
           synopsis: value(form, "synopsis"),
+          summary: value(form, "synopsis"),
+          tags: storyTags,
           teamId: value(form, "teamId"),
           title: value(form, "title"),
           workflowStatus: value(form, "workflowStatus"),
         };
+        const hasUpload = Boolean(coverFile || chapterDrafts.length > 0);
+        const body = hasUpload ? new FormData() : payload;
+        if (body instanceof FormData) {
+          body.append("story", new Blob([JSON.stringify(payload)], { type: "application/json" }));
+          Object.entries(payload).forEach(([key, fieldValue]) => {
+            body.append(key, Array.isArray(fieldValue) ? fieldValue.join(",") : String(fieldValue));
+          });
+          if (coverFile) {
+            body.append("coverImage", coverFile);
+            body.append("avatar", coverFile);
+          }
+          chapterDrafts.forEach((chapter, index) => {
+            body.append(`chapters[${index}].file`, chapter.file);
+            body.append(`chapters[${index}].title`, chapter.title);
+            body.append(`chapters[${index}].slug`, buildStorySlug(chapter.title || chapter.file.name));
+            body.append(`chapters[${index}].tags`, chapter.tags.join(","));
+          });
+          body.append("chapters", JSON.stringify(chapterDrafts.map((chapter, index) => ({
+            order: index + 1,
+            slug: buildStorySlug(chapter.title || chapter.file.name),
+            tags: chapter.tags,
+            title: chapter.title,
+          }))));
+        }
         await adminMutation(
           selected ? `content/stories/${selected.id}` : "content/stories",
           selected ? "PUT" : "POST",
-          payload,
+          body,
         );
       }
       setDrawer(null);
@@ -392,6 +581,23 @@ export function StoryCrudWorkspace({
               <p className="drawerConfirm">Truyện sẽ chuyển sang trạng thái lưu trữ và không còn xuất hiện trên client. Dữ liệu chương vẫn được giữ nguyên.</p>
             ) : (
               <>
+                <div className="storyCoverUpload">
+                  <div className="storyCoverPreview">
+                    {coverPreview ? <img alt="" src={coverPreview} /> : <ImagePlus aria-hidden="true" size={34} />}
+                  </div>
+                  <Field label="Ảnh avatar truyện">
+                    <input
+                      accept="image/*"
+                      name="coverImage"
+                      onChange={(event) => {
+                        const file = event.currentTarget.files?.[0] ?? null;
+                        setCoverFile(file);
+                        setCoverPreview(file ? URL.createObjectURL(file) : selected?.coverUrl ?? "");
+                      }}
+                      type="file"
+                    />
+                  </Field>
+                </div>
                 <Field label="Tên truyện"><input defaultValue={selected?.title} maxLength={240} name="title" required /></Field>
                 <Field label="Đường dẫn"><input defaultValue={selected?.slug} maxLength={160} name="slug" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" required /></Field>
                 <Field label="Tác giả"><input defaultValue={selected?.authorName} maxLength={160} name="authorName" required /></Field>
@@ -399,9 +605,12 @@ export function StoryCrudWorkspace({
                 <div className="drawerFieldGrid">
                   <Field label="Team"><select defaultValue={selected?.teamId} name="teamId" required><option value="">Chọn team</option>{teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select></Field>
                   <Field label="Thể loại"><select defaultValue={selected?.categoryId} name="categoryId" required><option value="">Chọn thể loại</option>{categories.filter((category) => category.active).map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></Field>
+                  <Field label="Loại nội dung"><select defaultValue="COMIC" name="contentType"><option value="COMIC">Truyện tranh</option><option value="TEXT">Truyện chữ</option><option value="AUDIO">Audio</option></select></Field>
                   <Field label="Xuất bản"><select defaultValue={selected?.workflowStatus ?? "DRAFT"} name="workflowStatus"><option value="DRAFT">Bản nháp</option><option value="PUBLISHED">Đã xuất bản</option><option value="PENDING_REVIEW">Chờ duyệt</option></select></Field>
                   <Field label="Tiến độ"><select defaultValue={selected?.completionStatus ?? "ONGOING"} name="completionStatus"><option value="ONGOING">Đang ra chương</option><option value="COMPLETED">Đã hoàn thành</option></select></Field>
                 </div>
+                <TagEditor label="Tag truyện" onChange={setStoryTags} placeholder="Ví dụ: shounen, fantasy" tags={storyTags} />
+                <ChapterUploadList chapters={chapterDrafts} onChange={setChapterDrafts} />
               </>
             )}
             <MutationNotice error={error} />

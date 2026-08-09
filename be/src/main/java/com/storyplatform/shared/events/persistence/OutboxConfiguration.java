@@ -4,11 +4,12 @@ import com.storyplatform.shared.observability.OutboxTelemetry;
 import com.storyplatform.shared.observability.TraceContextPropagation;
 import io.micrometer.observation.ObservationRegistry;
 import io.opentelemetry.api.OpenTelemetry;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.simple.JdbcClient;
-import tools.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.Clock;
 
@@ -18,6 +19,12 @@ import java.time.Clock;
         OutboxWorkerProperties.class
 })
 public class OutboxConfiguration {
+
+    @Bean
+    @ConditionalOnMissingBean
+    OpenTelemetry openTelemetry() {
+        return OpenTelemetry.noop();
+    }
 
     @Bean
     OutboxTelemetry outboxTelemetry(

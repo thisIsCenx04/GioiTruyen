@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTimeout;
 @Testcontainers(disabledWithoutDocker = true)
 class RedisOutageIntegrationTest {
 
+    @SuppressWarnings("resource")
     @Container
     static final GenericContainer<?> REDIS =
             new GenericContainer<>("redis:8.2.7-alpine")

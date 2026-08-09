@@ -39,7 +39,7 @@ rejects changes that fail formatting/static analysis, tests, coverage, builds,
 or the OpenAPI contract.
 
 ```powershell
-.\backend\gradlew.bat --project-dir backend clean check bootJar
+mvn -f be\pom.xml clean verify
 pnpm --dir frontend install --frozen-lockfile
 pnpm --dir frontend lint
 pnpm --dir frontend typecheck
