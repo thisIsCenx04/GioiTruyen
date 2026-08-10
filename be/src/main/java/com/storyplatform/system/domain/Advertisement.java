@@ -14,6 +14,9 @@ public class Advertisement {
     private String imageUrl;
     private String targetUrl;
     private AdvertisementPlacement placement;
+    private Integer cooldownSeconds;
+    private Integer maxClicksPerDay;
+    private Integer priority;
     private Integer triggerEveryNViews;
     private Instant startAt;
     private Instant endAt;
@@ -40,6 +43,15 @@ public class Advertisement {
 
     public AdvertisementPlacement getPlacement() { return placement; }
     public void setPlacement(AdvertisementPlacement placement) { this.placement = placement; }
+
+    public Integer getCooldownSeconds() { return cooldownSeconds; }
+    public void setCooldownSeconds(Integer cooldownSeconds) { this.cooldownSeconds = cooldownSeconds; }
+
+    public Integer getMaxClicksPerDay() { return maxClicksPerDay; }
+    public void setMaxClicksPerDay(Integer maxClicksPerDay) { this.maxClicksPerDay = maxClicksPerDay; }
+
+    public Integer getPriority() { return priority; }
+    public void setPriority(Integer priority) { this.priority = priority; }
 
     public Integer getTriggerEveryNView() { return triggerEveryNViews; }
     public void setTriggerEveryNView(Integer triggerEveryNViews) { this.triggerEveryNViews = triggerEveryNViews; }

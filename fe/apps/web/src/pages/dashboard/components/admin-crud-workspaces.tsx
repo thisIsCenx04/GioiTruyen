@@ -15,12 +15,14 @@ import {
   loadAdminTeams,
   loadAdminUsers,
 } from "../admin-data";
+import { parseStoryFile } from "./story-import";
 
 type DrawerMode = "archive" | "create" | "edit" | "reverse";
 type SortOrder = "asc" | "desc";
 type StoryChapterDraft = {
   id: string;
-  file: File;
+  file?: File;
+  content: string;
   title: string;
   tags: string[];
 };
@@ -34,6 +36,16 @@ const numberFormatter = new Intl.NumberFormat("vi-VN");
 
 function value(form: FormData, name: string) {
   return String(form.get(name) ?? "").trim();
+}
+
+function nullableValue(form: FormData, name: string) {
+  const fieldValue = value(form, name);
+  return fieldValue.length > 0 ? fieldValue : null;
+}
+
+function appendNullableField(body: FormData, key: string, fieldValue: string | string[] | null) {
+  if (fieldValue === null) return;
+  body.append(key, Array.isArray(fieldValue) ? fieldValue.join(",") : fieldValue);
 }
 
 function roles(form: FormData) {
@@ -349,6 +361,7 @@ function ChapterUploadList({
               const files = Array.from(event.currentTarget.files ?? []);
               if (files.length === 0) return;
               const next = files.map((file, index) => ({
+                content: "",
                 file,
                 id: `${file.name}-${file.lastModified}-${index}`,
                 tags: [],
@@ -382,13 +395,98 @@ function ChapterUploadList({
                   value={chapter.title}
                 />
               </Field>
-              <small>{chapter.file.name}</small>
+              <small>{chapter.file?.name ?? "Nội dung nhập trực tiếp"}</small>
               <TagEditor
                 label="Tag chương"
                 onChange={(tags) => updateChapter(chapter.id, { tags })}
                 placeholder="Ví dụ: battle, flashback"
                 tags={chapter.tags}
               />
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ChapterImportWorkspace({
+  chapters,
+  onChange,
+}: Readonly<{
+  chapters: StoryChapterDraft[];
+  onChange: (chapters: StoryChapterDraft[]) => void;
+}>) {
+  const [error, setError] = useState("");
+
+  const updateChapter = (id: string, patch: Partial<StoryChapterDraft>) => {
+    onChange(chapters.map((chapter) => (chapter.id === id ? { ...chapter, ...patch } : chapter)));
+  };
+
+  const addManualChapter = () => {
+    onChange([...chapters, {
+      content: "",
+      id: `manual-${Date.now()}`,
+      tags: [],
+      title: `Chương ${chapters.length + 1}`,
+    }]);
+  };
+
+  const importFiles = async (files: File[]) => {
+    setError("");
+    try {
+      const imported = (await Promise.all(files.map(async (file) => {
+        const parsed = await parseStoryFile(file);
+        return parsed.map((chapter, index) => ({
+          content: chapter.content,
+          file: parsed.length === 1 ? file : undefined,
+          id: `${file.name}-${file.lastModified}-${index}`,
+          tags: [],
+          title: chapter.title,
+        }));
+      }))).flat();
+      onChange([...chapters, ...imported]);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Không thể đọc file chương.");
+    }
+  };
+
+  return (
+    <section className="chapterUploadPanel">
+      <header>
+        <div>
+          <strong>Chương và nội dung</strong>
+          <small>Upload file Word để tự tách chương, hoặc bấm + để thêm từng chương.</small>
+        </div>
+        <div className="chapterUploadActions">
+          <button onClick={addManualChapter} type="button"><Plus aria-hidden="true" size={16} /> Thêm chương</button>
+          <label>
+            <Paperclip aria-hidden="true" size={16} /> Upload file
+            <input accept=".txt,.md,.docx" multiple onChange={async (event) => {
+              const files = Array.from(event.currentTarget.files ?? []);
+              if (files.length === 0) return;
+              await importFiles(files);
+              event.currentTarget.value = "";
+            }} type="file" />
+          </label>
+        </div>
+      </header>
+      {error ? <p className="drawerError" role="alert">{error}</p> : null}
+      {chapters.length === 0 ? <p>Chưa có chương. Upload file hoặc bấm + để nhập content trực tiếp.</p> : (
+        <div className="chapterDraftList">
+          {chapters.map((chapter, index) => (
+            <article className="chapterDraftItem" key={chapter.id}>
+              <button aria-label={`Xóa chương ${index + 1}`} className="chapterDraftRemove" onClick={() => onChange(chapters.filter((item) => item.id !== chapter.id))} type="button">
+                <X aria-hidden="true" size={16} />
+              </button>
+              <Field label={`Chương ${index + 1}`}>
+                <input maxLength={240} onChange={(event) => updateChapter(chapter.id, { title: event.currentTarget.value })} value={chapter.title} />
+              </Field>
+              {chapter.file ? <small>File: {chapter.file.name}</small> : null}
+              <Field label="Nội dung chương">
+                <textarea onChange={(event) => updateChapter(chapter.id, { content: event.currentTarget.value })} placeholder="Nội dung chương..." rows={8} value={chapter.content} />
+              </Field>
+              <TagEditor label="Tag chương" onChange={(tags) => updateChapter(chapter.id, { tags })} placeholder="Ví dụ: battle, flashback" tags={chapter.tags} />
             </article>
           ))}
         </div>
@@ -495,13 +593,13 @@ export function StoryCrudWorkspace({
       } else {
         const form = new FormData(event.currentTarget);
         const payload = {
-          authorName: value(form, "authorName"),
-          categoryId: value(form, "categoryId"),
+          authorName: nullableValue(form, "authorName"),
+          categoryId: nullableValue(form, "categoryId"),
           completionStatus: value(form, "completionStatus"),
           contentType: value(form, "contentType"),
           slug: value(form, "slug"),
-          synopsis: value(form, "synopsis"),
-          summary: value(form, "synopsis"),
+          synopsis: nullableValue(form, "synopsis"),
+          summary: nullableValue(form, "synopsis"),
           tags: storyTags,
           teamId: value(form, "teamId"),
           title: value(form, "title"),
@@ -512,21 +610,23 @@ export function StoryCrudWorkspace({
         if (body instanceof FormData) {
           body.append("story", new Blob([JSON.stringify(payload)], { type: "application/json" }));
           Object.entries(payload).forEach(([key, fieldValue]) => {
-            body.append(key, Array.isArray(fieldValue) ? fieldValue.join(",") : String(fieldValue));
+            appendNullableField(body, key, fieldValue);
           });
           if (coverFile) {
             body.append("coverImage", coverFile);
             body.append("avatar", coverFile);
           }
           chapterDrafts.forEach((chapter, index) => {
-            body.append(`chapters[${index}].file`, chapter.file);
+            if (chapter.file) body.append(`chapters[${index}].file`, chapter.file);
+            body.append(`chapters[${index}].content`, chapter.content);
             body.append(`chapters[${index}].title`, chapter.title);
-            body.append(`chapters[${index}].slug`, buildStorySlug(chapter.title || chapter.file.name));
+            body.append(`chapters[${index}].slug`, buildStorySlug(chapter.title || chapter.file?.name || `chapter-${index + 1}`));
             body.append(`chapters[${index}].tags`, chapter.tags.join(","));
           });
           body.append("chapters", JSON.stringify(chapterDrafts.map((chapter, index) => ({
+            content: chapter.content,
             order: index + 1,
-            slug: buildStorySlug(chapter.title || chapter.file.name),
+            slug: buildStorySlug(chapter.title || chapter.file?.name || `chapter-${index + 1}`),
             tags: chapter.tags,
             title: chapter.title,
           }))));
@@ -600,17 +700,17 @@ export function StoryCrudWorkspace({
                 </div>
                 <Field label="Tên truyện"><input defaultValue={selected?.title} maxLength={240} name="title" required /></Field>
                 <Field label="Đường dẫn"><input defaultValue={selected?.slug} maxLength={160} name="slug" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" required /></Field>
-                <Field label="Tác giả"><input defaultValue={selected?.authorName} maxLength={160} name="authorName" required /></Field>
-                <Field label="Giới thiệu"><textarea defaultValue={selected?.synopsis} maxLength={10000} name="synopsis" required rows={6} /></Field>
+                <Field label="Tác giả"><input defaultValue={selected?.authorName ?? ""} maxLength={160} name="authorName" /></Field>
+                <Field label="Giới thiệu"><textarea defaultValue={selected?.synopsis ?? ""} maxLength={10000} name="synopsis" rows={6} /></Field>
                 <div className="drawerFieldGrid">
                   <Field label="Team"><select defaultValue={selected?.teamId} name="teamId" required><option value="">Chọn team</option>{teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select></Field>
-                  <Field label="Thể loại"><select defaultValue={selected?.categoryId} name="categoryId" required><option value="">Chọn thể loại</option>{categories.filter((category) => category.active).map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></Field>
-                  <Field label="Loại nội dung"><select defaultValue="COMIC" name="contentType"><option value="COMIC">Truyện tranh</option><option value="TEXT">Truyện chữ</option><option value="AUDIO">Audio</option></select></Field>
+                  <Field label="Thể loại"><select defaultValue={selected?.categoryId ?? ""} name="categoryId"><option value="">Chưa phân loại</option>{categories.filter((category) => category.active).map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></Field>
+                  <Field label="Loại nội dung"><select defaultValue="TEXT" name="contentType"><option value="TEXT">Truyện chữ</option><option value="AUDIO">Audio</option><option value="TEXT_AUDIO">Truyện chữ + audio</option></select></Field>
                   <Field label="Xuất bản"><select defaultValue={selected?.workflowStatus ?? "DRAFT"} name="workflowStatus"><option value="DRAFT">Bản nháp</option><option value="PUBLISHED">Đã xuất bản</option><option value="PENDING_REVIEW">Chờ duyệt</option></select></Field>
                   <Field label="Tiến độ"><select defaultValue={selected?.completionStatus ?? "ONGOING"} name="completionStatus"><option value="ONGOING">Đang ra chương</option><option value="COMPLETED">Đã hoàn thành</option></select></Field>
                 </div>
                 <TagEditor label="Tag truyện" onChange={setStoryTags} placeholder="Ví dụ: shounen, fantasy" tags={storyTags} />
-                <ChapterUploadList chapters={chapterDrafts} onChange={setChapterDrafts} />
+                <ChapterImportWorkspace chapters={chapterDrafts} onChange={setChapterDrafts} />
               </>
             )}
             <MutationNotice error={error} />

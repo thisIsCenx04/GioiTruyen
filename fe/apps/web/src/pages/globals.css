@@ -2610,7 +2610,7 @@ html[data-route-pending="true"] .routeSurface {
   }
 }
 
-/* MonkeyD Audio inspired detail pages. */
+/* Audio detail pages. */
 .catalogDetailPage {
   margin: 0 auto;
   max-width: 80rem;
@@ -5908,4 +5908,3 @@ html[data-route-pending="true"] .routeSurface {
   padding: 0.4rem 0.8rem;
   text-decoration: none;
 }
-

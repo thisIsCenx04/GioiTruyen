@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { getPostLoginDestination } from "@/lib/auth";
+
 export default function GoogleCallbackPage() {
   const navigate = useNavigate();
 
@@ -29,8 +31,7 @@ export default function GoogleCallbackPage() {
       }
     }
 
-    const safeTarget = returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/";
-    navigate(safeTarget, { replace: true });
+    navigate(getPostLoginDestination(accessToken, returnTo), { replace: true });
   }, [navigate]);
 
   return (

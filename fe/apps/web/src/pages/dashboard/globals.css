@@ -1304,6 +1304,35 @@ button:disabled { cursor: wait; opacity: 0.55; }
   gap: .75rem;
 }
 
+.chapterUploadPanel header > div:first-child {
+  display: grid;
+  gap: .25rem;
+}
+
+.chapterUploadPanel header small {
+  color: #77869a;
+  font-size: .72rem;
+  line-height: 1.45;
+}
+
+.chapterUploadActions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  justify-content: flex-end;
+}
+
+.chapterUploadActions button,
+.chapterUploadActions label {
+  cursor: pointer;
+}
+
+.chapterDraftItem textarea {
+  min-height: 10rem;
+  resize: vertical;
+}
+
 .chapterUploadPanel header span {
   color: #40516a;
   font-size: .73rem;

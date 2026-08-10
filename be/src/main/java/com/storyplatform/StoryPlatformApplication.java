@@ -1,6 +1,7 @@
 package com.storyplatform;
 
 import com.storyplatform.shared.config.JdbcRepositoryBeanDefinitionPostProcessor;
+import com.storyplatform.shared.config.UuidStringConverters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
@@ -45,7 +46,10 @@ public class StoryPlatformApplication extends AbstractJdbcConfiguration {
     @Override
     @Bean("jdbcCustomConversions")
     public JdbcCustomConversions jdbcCustomConversions() {
-        return super.jdbcCustomConversions();
+        return new JdbcCustomConversions(List.of(
+                UuidStringConverters.UuidToStringConverter.INSTANCE,
+                UuidStringConverters.StringToUuidConverter.INSTANCE
+        ));
     }
 
     @Bean("jdbcMappingContext")

@@ -49,6 +49,11 @@ server:
   port: ${API_PORT:8080}
   servlet:
     context-path: /api/v1
+    # Multipart form fields carry no charset of their own; without this the
+    # container falls back to ISO-8859-1 and mangles Vietnamese input.
+    encoding:
+      charset: UTF-8
+      force: true
   shutdown: graceful
   tomcat:
     max-http-form-post-size: 1MB
@@ -93,6 +98,10 @@ management:
         step: ${OTEL_METRICS_EXPORT_INTERVAL:30s}
 
 app:
+  security:
+    # Defined here rather than only in the local profile so every environment
+    # resolves it; prod supplies the value through JWT_SIGNING_KEY.
+    jwt-secret: ${JWT_SIGNING_KEY:${JWT_SECRET:local-development-jwt-secret-at-least-32-bytes}}
   monetization:
     topup:
       request-ttl: ${TOPUP_REQUEST_TTL:30m}
@@ -209,6 +218,11 @@ app:
       isr-endpoint: ${NEXT_ISR_REVALIDATE_ENDPOINT:https://localhost.invalid/api/internal/revalidate}
       isr-token: ${NEXT_ISR_REVALIDATE_TOKEN:}
   media:
+    local:
+      upload-dir: ${MEDIA_UPLOAD_DIR:uploads}
+      # Resource handlers resolve under the servlet context path, so the stored
+      # URL has to carry it for the browser to reach the file.
+      public-prefix: ${MEDIA_PUBLIC_PREFIX:/api/v1/uploads}
     cloudinary:
       enabled: ${CLOUDINARY_UPLOAD_SIGNING_ENABLED:false}
       cloud-name: ${CLOUDINARY_CLOUD_NAME:}

@@ -1,6 +1,6 @@
 -- ============================================================
 -- Web Truyen - MySQL Database Schema (Auto Migration)
--- Generated from entity_real.sql
+-- Canonical MySQL schema managed by Flyway.
 -- ============================================================
 
 SET FOREIGN_KEY_CHECKS = 0;
@@ -35,7 +35,7 @@ DROP TABLE IF EXISTS `password_reset_tokens`;
 CREATE TABLE `password_reset_tokens` (
     id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
     user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    token_hash TEXT NOT NULL UNIQUE,
+    token_hash VARCHAR(255) NOT NULL UNIQUE,
     expires_at TIMESTAMP NOT NULL,
     used_at TIMESTAMP,
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
@@ -326,7 +326,7 @@ CREATE TABLE `payment_methods` (
     'QR',
     'PAYPAL',
     'OTHER') NOT NULL,
-    config JSON NOT NULL DEFAULT '{}'::JSON,
+    config JSON NOT NULL,
     instructions TEXT,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     sort_order INTEGER NOT NULL DEFAULT 0,
@@ -374,9 +374,7 @@ CREATE TABLE `purchase_orders` (
     id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
     user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     story_id VARCHAR(36) NOT NULL REFERENCES stories(id) ON DELETE RESTRICT,
-    ENUM('SINGLE_CHAPTER',
-    'CHAPTER_RANGE',
-    'FULL_STORY') ENUM('SINGLE_CHAPTER',
+    purchase_type ENUM('SINGLE_CHAPTER',
     'CHAPTER_RANGE',
     'FULL_STORY') NOT NULL,
     total_coin BIGINT NOT NULL CHECK (total_coin >= 0),
@@ -442,22 +440,18 @@ CREATE TABLE `story_recommendations` (
 DROP TABLE IF EXISTS `ranking_snapshots`;
 CREATE TABLE `ranking_snapshots` (
     id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    ENUM('GEM_RECOMMENDATION',
-    'COIN_REVENUE',
-    'VIEWS') ENUM('GEM_RECOMMENDATION',
+    ranking_type ENUM('GEM_RECOMMENDATION',
     'COIN_REVENUE',
     'VIEWS') NOT NULL,
     story_id VARCHAR(36) NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
     score BIGINT NOT NULL DEFAULT 0,
-    rank INTEGER NOT NULL CHECK (rank > 0),
+    `rank` INTEGER NOT NULL CHECK (`rank` > 0),
     period ENUM('DAILY',
     'WEEKLY',
     'MONTHLY',
     'ALL_TIME') NOT NULL,
     snapshot_date DATE NOT NULL,
-    UNIQUE(ENUM('GEM_RECOMMENDATION',
-    'COIN_REVENUE',
-    'VIEWS'), story_id, period, snapshot_date)
+    UNIQUE(ranking_type, story_id, period, snapshot_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DROP TABLE IF EXISTS `notifications`;
@@ -498,12 +492,7 @@ CREATE TABLE `missions` (
     code VARCHAR(100) NOT NULL UNIQUE,
     name VARCHAR(180) NOT NULL,
     description TEXT,
-    ENUM('LOGIN',
-    'READ_CHAPTER',
-    'VIEW_STORY',
-    'FAVORITE_STORY',
-    'COMMENT',
-    'OTHER') ENUM('LOGIN',
+    mission_type ENUM('LOGIN',
     'READ_CHAPTER',
     'VIEW_STORY',
     'FAVORITE_STORY',
@@ -522,7 +511,7 @@ DROP TABLE IF EXISTS `user_mission_progress`;
 CREATE TABLE `user_mission_progress` (
     user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     mission_id VARCHAR(36) NOT NULL REFERENCES missions(id) ON DELETE CASCADE,
-    progress_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    progress_date DATE NOT NULL DEFAULT (CURRENT_DATE),
     progress INTEGER NOT NULL DEFAULT 0 CHECK (progress >= 0),
     completed BOOLEAN NOT NULL DEFAULT FALSE,
     claimed BOOLEAN NOT NULL DEFAULT FALSE,
@@ -574,7 +563,7 @@ CREATE TABLE `community_messages` (
 
 DROP TABLE IF EXISTS `site_settings`;
 CREATE TABLE `site_settings` (
-    key VARCHAR(150) PRIMARY KEY,
+    `key` VARCHAR(150) PRIMARY KEY,
     value JSON NOT NULL,
     updated_by VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL,
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
@@ -608,11 +597,15 @@ CREATE TABLE `advertisements` (
     'AFFILIATE_REDIRECT') NOT NULL,
     image_url TEXT,
     target_url TEXT NOT NULL,
-    placement ENUM('STORY_OPEN',
+    placement ENUM('GLOBAL_CLICK',
+    'STORY_OPEN',
     'STORY_DETAIL',
     'READER',
     'HOME',
     'SIDEBAR') NOT NULL,
+    cooldown_seconds INTEGER NOT NULL DEFAULT 600 CHECK (cooldown_seconds >= 0),
+    max_clicks_per_day INTEGER NOT NULL DEFAULT 5 CHECK (max_clicks_per_day >= 0),
+    priority INTEGER NOT NULL DEFAULT 0 CHECK (priority >= 0),
     trigger_every_n_views INTEGER CHECK (
     trigger_every_n_views IS NULL OR trigger_every_n_views > 0
     ),

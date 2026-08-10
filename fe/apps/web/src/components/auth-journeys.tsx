@@ -14,7 +14,13 @@ import {
   useState,
 } from "react";
 
+import { getPostLoginDestination } from "@/lib/auth";
 import styles from "./auth-journeys.module.css";
+
+type LoginResponse = Readonly<{
+  accessToken?: string;
+  refreshToken?: string;
+}>;
 
 const auth = createBrowserAuthClient({ baseUrl: "/api/v1/auth" });
 const routes = {
@@ -140,7 +146,7 @@ export function LoginJourney() {
         String(values.get("email")),
         String(values.get("password")),
         needsMfa ? String(values.get("mfaCode")) : undefined,
-      )) as any;
+      )) as unknown as LoginResponse;
       document.cookie = "logged_in=true; path=/; max-age=2592000; SameSite=Lax";
       if (res && res.accessToken) {
         document.cookie = `access_token=${encodeURIComponent(res.accessToken)}; path=/; max-age=2592000; SameSite=Lax`;
@@ -151,8 +157,10 @@ export function LoginJourney() {
         }
       }
       window.dispatchEvent(new Event("auth-change"));
-      const returnTo = safeInternalPath(searchParams.get("returnTo"));
-      const destination = returnTo ?? "/";
+      const destination = getPostLoginDestination(
+        res.accessToken ?? null,
+        searchParams.get("returnTo"),
+      );
       window.location.href = destination;
     } catch (requestError) {
       if (

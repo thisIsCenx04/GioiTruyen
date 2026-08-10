@@ -1,6 +1,6 @@
 const defaultApiBaseUrl = "/api/v1";
 
-const apiBaseUrl = (process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? defaultApiBaseUrl).replace(
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? defaultApiBaseUrl).replace(
   /\/+$/u,
   "",
 );
@@ -28,13 +28,13 @@ export type AdminStoryRow = {
   id: string;
   slug: string;
   title: string;
-  authorName: string;
-  teamName: string;
+  authorName: string | null;
+  teamName: string | null;
   teamId: string;
-  categoryId: string;
-  categoryName: string;
+  categoryId: string | null;
+  categoryName: string | null;
   coverUrl?: string;
-  synopsis: string;
+  synopsis: string | null;
   tags?: string[];
   workflowStatus: string;
   completionStatus: string;

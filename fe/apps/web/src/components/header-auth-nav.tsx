@@ -71,7 +71,7 @@ export function HeaderAuthNav() {
       </summary>
       <div>
         {isAdmin && (
-          <Link to="/dashboard/content/stories" style={{ color: "#10b981", fontWeight: 600 }}>
+          <Link to="/dashboard" style={{ color: "#10b981", fontWeight: 600 }}>
             <ShieldCheck aria-hidden="true" />
             Bảng quản trị (Dashboard)
           </Link>

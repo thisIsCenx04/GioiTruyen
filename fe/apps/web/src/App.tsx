@@ -3,10 +3,12 @@ import type { ReactNode } from 'react';
 import Layout from './pages/layout';
 import { withAsync } from './lib/withAsync';
 import { AdminShell } from './pages/dashboard/admin-shell';
+import { GlobalAdvertisementManager } from './features/advertisement/global-advertisement-manager';
 
 import PageL2Fib3V0 from './pages/about/page';
 import PageL2FjY291bnQ from './pages/account/page';
 import PageL2FmZmlsaWF0ZS1saW5rcw from './pages/affiliate-links/page';
+import PromotionPage from './pages/bo-cao/page';
 import PageL2F1ZGlv from './pages/audio/page';
 import PageL2F1ZGlvLzppZE9yU2x1Zw from './pages/audio/[idOrSlug]/page';
 import PageL2F1dGgvZm9yZ290LXBhc3N3b3Jk from './pages/auth/forgot-password/page';
@@ -25,6 +27,7 @@ import PageL2Rhc2hib2FyZC9jb250ZW50L3N0b3JpZXM from './pages/dashboard/content/s
 import PageL2Rhc2hib2FyZC9jb250ZW50L3RlYW1z from './pages/dashboard/content/teams/page';
 import PageL2Rhc2hib2FyZC9jb250ZW50L3VzZXJz from './pages/dashboard/content/users/page';
 import PageL2Rhc2hib2FyZC9maW5hbmNl from './pages/dashboard/finance/page';
+import AffiliateLinksAdminPage from './pages/dashboard/affiliate-links/page';
 import PageL2Rhc2hib2FyZC9sb2dpbg from './pages/dashboard/login/page';
 import PageL2xpYnJhcnk from './pages/library/page';
 import PageL2xvZ2lu from './pages/login/page';
@@ -257,11 +260,13 @@ function DashboardLayout({ children }: { children: ReactNode }) {
 function App() {
   return (
     <Router>
+      <GlobalAdvertisementManager />
       <Routes>
         <Route element={<Layout />}>
           <Route path="/about" element={<PageL2Fib3V0 />} />
           <Route path="/account" element={<PageL2FjY291bnQ />} />
           <Route path="/affiliate-links" element={<PageL2FmZmlsaWF0ZS1saW5rcw />} />
+          <Route path="/bo-cao" element={<PromotionPage />} />
           <Route path="/audio" element={<WrappedPageL2F1ZGlv />} />
           <Route path="/audio/:idOrSlug" element={<WrappedPageL2F1ZGlvLzppZE9yU2x1Zw />} />
           <Route path="/auth/forgot-password" element={<PageL2F1dGgvZm9yZ290LXBhc3N3b3Jk />} />
@@ -280,6 +285,7 @@ function App() {
           <Route path="/dashboard/content/teams" element={<DashboardLayout><WrappedPageL2Rhc2hib2FyZC9jb250ZW50L3RlYW1z /></DashboardLayout>} />
           <Route path="/dashboard/content/users" element={<DashboardLayout><WrappedPageL2Rhc2hib2FyZC9jb250ZW50L3VzZXJz /></DashboardLayout>} />
           <Route path="/dashboard/finance" element={<DashboardLayout><WrappedPageL2Rhc2hib2FyZC9maW5hbmNl /></DashboardLayout>} />
+          <Route path="/dashboard/affiliate-links" element={<DashboardLayout><AffiliateLinksAdminPage /></DashboardLayout>} />
           <Route path="/dashboard/login" element={<PageL2Rhc2hib2FyZC9sb2dpbg />} />
           <Route path="/library" element={<WrappedPageL2xpYnJhcnk />} />
           <Route path="/login" element={<PageL2xvZ2lu />} />

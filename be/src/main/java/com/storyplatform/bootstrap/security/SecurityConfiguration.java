@@ -12,8 +12,13 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import com.nimbusds.jose.jwk.source.ImmutableSecret;
 
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -30,6 +35,16 @@ public class SecurityConfiguration {
         return NimbusJwtDecoder.withSecretKey(secretKey)
                 .macAlgorithm(MacAlgorithm.HS256)
                 .build();
+    }
+
+    @Bean
+    JwtEncoder jwtEncoder(@Value("${app.security.jwt-secret}") String jwtSecret) {
+        return new NimbusJwtEncoder(new ImmutableSecret<>(jwtSecret.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+    }
+
+    @Bean
+    PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 
     @Bean
@@ -88,6 +103,25 @@ public class SecurityConfiguration {
                                 "/comments"
                         ).permitAll()
                         .requestMatchers(
+                                HttpMethod.GET,
+                                "/public/advertisements/active"
+                        ).permitAll()
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/uploads/**"
+                        ).permitAll()
+                        // The price table renders for signed-out visitors; buying a
+                        // slot and listing your own bookings still require a login.
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/promotions/packages"
+                        ).permitAll()
+                        .requestMatchers("/promotions/**").authenticated()
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/public/advertisements/*/events"
+                        ).permitAll()
+                        .requestMatchers(
                                 HttpMethod.POST,
                                 "/auth/register",
                                 "/auth/email/verify",
@@ -122,6 +156,7 @@ public class SecurityConfiguration {
                                 "/chapters/*/unlock"
                         ).authenticated()
                         .requestMatchers("/donations").authenticated()
+                        .requestMatchers("/teams/*/donations").authenticated()
                         .requestMatchers("/teams/*/rewards").authenticated()
                         .requestMatchers("/referrals/**").authenticated()
                         .requestMatchers(
@@ -142,6 +177,8 @@ public class SecurityConfiguration {
                         .requestMatchers("/admin/topups/**").authenticated()
                         .requestMatchers("/admin/withdrawals/**")
                         .authenticated()
+                        .requestMatchers("/admin/advertisements/**")
+                        .hasAuthority("SCOPE_ADMIN")
                         .requestMatchers(
                                 "/admin/configuration/topup-discount"
                         ).authenticated()
@@ -153,7 +190,7 @@ public class SecurityConfiguration {
                         .authenticated()
                         .requestMatchers("/notification-push-subscriptions/**")
                         .authenticated()
-                        .requestMatchers("/me").authenticated()
+                        .requestMatchers("/me", "/me/**").authenticated()
                         .requestMatchers(
                                 "/me/reading-history",
                                 "/me/reading-history/*",

@@ -13,6 +13,8 @@ public class AdEvent {
     private UUID userId;
     private String sessionId;
     private UUID storyId;
+    private String pageUrl;
+    private String ipHash;
     private AdEventType eventType;
     private Instant createdAt;
 
@@ -32,6 +34,12 @@ public class AdEvent {
 
     public UUID getStoryId() { return storyId; }
     public void setStoryId(UUID storyId) { this.storyId = storyId; }
+
+    public String getPageUrl() { return pageUrl; }
+    public void setPageUrl(String pageUrl) { this.pageUrl = pageUrl; }
+
+    public String getIpHash() { return ipHash; }
+    public void setIpHash(String ipHash) { this.ipHash = ipHash; }
 
     public AdEventType getEventType() { return eventType; }
     public void setEventType(AdEventType eventType) { this.eventType = eventType; }

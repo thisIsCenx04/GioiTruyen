@@ -7,8 +7,7 @@ export function getAccessToken(): string | null {
   return localStorage.getItem("access_token");
 }
 
-export function getUserRolesFromToken(): string[] {
-  const token = getAccessToken();
+export function getUserRolesFromToken(token = getAccessToken()): string[] {
   if (!token) return [];
   try {
     const parts = token.split(".");
@@ -21,11 +20,39 @@ export function getUserRolesFromToken(): string[] {
         .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
         .join("")
     );
-    const parsed = JSON.parse(jsonPayload);
-    return Array.isArray(parsed.roles) ? (parsed.roles as string[]) : [];
+    const parsed = JSON.parse(jsonPayload) as {
+      role?: unknown;
+      roles?: unknown;
+      scope?: unknown;
+    };
+    const roles = Array.isArray(parsed.roles)
+      ? parsed.roles.filter((role): role is string => typeof role === "string")
+      : [];
+
+    if (typeof parsed.role === "string") {
+      roles.push(parsed.role);
+    }
+    if (typeof parsed.scope === "string") {
+      roles.push(...parsed.scope.split(/\s+/));
+    }
+
+    return [...new Set(roles.map((role) => role.toUpperCase()))];
   } catch {
     return [];
   }
+}
+
+export function getPostLoginDestination(
+  accessToken: string | null,
+  returnTo: string | null,
+): string {
+  if (getUserRolesFromToken(accessToken).includes("ADMIN")) {
+    return "/dashboard";
+  }
+
+  return returnTo?.startsWith("/") && !returnTo.startsWith("//")
+    ? returnTo
+    : "/";
 }
 
 export function isLoggedIn(): boolean {

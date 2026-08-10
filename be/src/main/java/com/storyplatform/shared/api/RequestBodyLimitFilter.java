@@ -104,6 +104,17 @@ public final class RequestBodyLimitFilter extends OncePerRequestFilter {
             this.body = body.clone();
         }
 
+        /**
+         * JSON is UTF-8 by default (RFC 8259). Clients often omit the charset
+         * parameter, and without this the container falls back to ISO-8859-1 and
+         * mangles multi-byte characters into unreadable JSON.
+         */
+        @Override
+        public String getCharacterEncoding() {
+            String encoding = super.getCharacterEncoding();
+            return encoding == null ? StandardCharsets.UTF_8.name() : encoding;
+        }
+
         @Override
         public int getContentLength() {
             return body.length;
