@@ -42,17 +42,111 @@ export function getUserRolesFromToken(token = getAccessToken()): string[] {
   }
 }
 
+/** Same-site absolute paths only, so a crafted returnTo cannot bounce off-site. */
+export function safeReturnPath(value: string | null | undefined): string | null {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+    return null;
+  }
+  return value;
+}
+
+/**
+ * Builds a login URL that remembers the page the reader came from. Without this
+ * every login link drops them on the home page after signing in.
+ */
+export function loginHref(returnTo?: string | null): string {
+  const target = safeReturnPath(returnTo)
+    ?? (typeof window === "undefined"
+      ? null
+      : safeReturnPath(window.location.pathname + window.location.search));
+
+  return target && target !== "/"
+    ? `/login?returnTo=${encodeURIComponent(target)}`
+    : "/login";
+}
+
 export function getPostLoginDestination(
   accessToken: string | null,
   returnTo: string | null,
 ): string {
+  // An explicit returnTo wins even for admins; they asked for that page.
+  const target = safeReturnPath(returnTo);
+  if (target) {
+    return target;
+  }
   if (getUserRolesFromToken(accessToken).includes("ADMIN")) {
     return "/dashboard";
   }
+  return "/";
+}
 
-  return returnTo?.startsWith("/") && !returnTo.startsWith("//")
-    ? returnTo
-    : "/";
+function getRefreshToken(): string | null {
+  if (typeof window === "undefined") return null;
+  const match = document.cookie.match(/(?:^|; )refresh_token=([^;]*)/);
+  if (match?.[1]) {
+    return decodeURIComponent(match[1]);
+  }
+  return localStorage.getItem("refresh_token");
+}
+
+function storeTokens(accessToken: string, refreshToken?: string): void {
+  localStorage.setItem("access_token", accessToken);
+  document.cookie = `access_token=${encodeURIComponent(accessToken)}; path=/; max-age=1800; SameSite=Lax`;
+  if (refreshToken) {
+    localStorage.setItem("refresh_token", refreshToken);
+    document.cookie = `refresh_token=${encodeURIComponent(refreshToken)}; path=/; max-age=2592000; SameSite=Lax`;
+  }
+}
+
+export function clearTokens(): void {
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
+  document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+  document.cookie = "refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+}
+
+/** Concurrent 401s share one exchange; the server revokes a refresh token on use. */
+let inFlightRefresh: Promise<string | null> | null = null;
+
+/**
+ * Trades the stored refresh token for a new access token. Access tokens last 30
+ * minutes, so without this every session ends mid-read and the reader is bounced
+ * to the login page. Returns null when the session cannot be renewed.
+ */
+export async function refreshAccessToken(): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+  if (inFlightRefresh) return inFlightRefresh;
+
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return null;
+
+  inFlightRefresh = (async () => {
+    try {
+      const response = await fetch("/api/v1/auth/refresh", {
+        body: JSON.stringify({ refreshToken }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      });
+      if (!response.ok) {
+        // The token is spent or revoked; drop it so we stop retrying.
+        if (response.status === 401) clearTokens();
+        return null;
+      }
+      const data = (await response.json()) as {
+        accessToken?: string;
+        refreshToken?: string;
+      };
+      if (!data.accessToken) return null;
+      storeTokens(data.accessToken, data.refreshToken);
+      return data.accessToken;
+    } catch {
+      return null;
+    } finally {
+      inFlightRefresh = null;
+    }
+  })();
+
+  return inFlightRefresh;
 }
 
 export function isLoggedIn(): boolean {
@@ -64,11 +158,8 @@ export function isAdminUser(): boolean {
   if (typeof window === "undefined") return false;
   if (!isLoggedIn()) return false;
 
-  const roles = getUserRolesFromToken();
-  if (roles.includes("ADMIN")) return true;
-
-  if (document.cookie.includes("is_admin=true")) return true;
-  if (localStorage.getItem("is_admin") === "true") return true;
-
-  return false;
+  // UI visibility follows the same signed JWT role used by Spring Security.
+  // Never trust the old is_admin cookie/localStorage flag: either can be set
+  // manually and must not be enough to expose the dashboard shell.
+  return getUserRolesFromToken().includes("ADMIN");
 }

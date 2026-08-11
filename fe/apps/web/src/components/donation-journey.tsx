@@ -9,6 +9,7 @@ import { Link } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import styles from "./donation-journey.module.css";
+import { API_BASE_URL, apiFetch } from "@/lib/api-base";
 
 const options = [100, 500, 1_000, 5_000] as const;
 
@@ -51,7 +52,7 @@ export function DonationJourney({
   teamId,
   variant = "default",
 }: DonationJourneyProps) {
-  const api = useMemo(() => createBrowserWalletClient(), []);
+  const api = useMemo(() => createBrowserWalletClient({ baseUrl: API_BASE_URL, fetchImplementation: apiFetch }), []);
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [amount, setAmount] = useState(500);

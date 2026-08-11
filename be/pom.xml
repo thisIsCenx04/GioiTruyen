@@ -20,7 +20,6 @@
     <properties>
         <java.version>21</java.version>
         <jqwik.version>1.9.3</jqwik.version>
-        <maven.test.skip>true</maven.test.skip>
     </properties>
 
     <dependencies>
@@ -126,6 +125,28 @@
                     <compilerArgs>
                         <arg>-parameters</arg>
                     </compilerArgs>
+                    <!--
+                        These suites were written against Spring Boot 4 / Jackson 3
+                        (tools.jackson.*, org.springframework.boot.webmvc.test.*) and
+                        do not compile on the 3.5.4 line this project runs on. They
+                        are quarantined rather than deleted so they can be ported
+                        back a package at a time; everything outside this list must
+                        keep compiling and passing.
+                    -->
+                    <testExcludes>
+                        <testExclude>com/storyplatform/architecture/**</testExclude>
+                        <testExclude>com/storyplatform/bootstrap/**</testExclude>
+                        <testExclude>com/storyplatform/catalog/**</testExclude>
+                        <testExclude>com/storyplatform/discovery/**</testExclude>
+                        <testExclude>com/storyplatform/fixtures/**</testExclude>
+                        <testExclude>com/storyplatform/integration/**</testExclude>
+                        <testExclude>com/storyplatform/media/**</testExclude>
+                        <testExclude>com/storyplatform/notifications/**</testExclude>
+                        <testExclude>com/storyplatform/publishing/**</testExclude>
+                        <testExclude>com/storyplatform/unit/shared/**</testExclude>
+                        <testExclude>com/storyplatform/unit/sharedapi/**</testExclude>
+                        <testExclude>com/storyplatform/StoryPlatformApplicationTests.java</testExclude>
+                    </testExcludes>
                 </configuration>
             </plugin>
             <plugin>

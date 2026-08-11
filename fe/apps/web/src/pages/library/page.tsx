@@ -46,7 +46,7 @@ export default function LibraryPage() {
 
   return (
     <PublicShell>
-      <section className="catalogPage" style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1.5rem" }}>
+      <section className="catalogPage libraryPage" style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1.5rem" }}>
         <header className="pageIntro compactIntro" style={{ marginBottom: "2rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#0f5fff", fontWeight: 800, textTransform: "uppercase", fontSize: "0.75rem", letterSpacing: "0.05em" }}>
             <Bookmark style={{ width: "1rem", height: "1rem" }} />
@@ -61,7 +61,7 @@ export default function LibraryPage() {
         </header>
 
         {/* Tab Filters */}
-        <div style={{ display: "flex", gap: "0.75rem", borderBottom: "1px solid #e2e8f0", paddingBottom: "1rem", marginBottom: "2rem" }}>
+        <div className="libraryTabs" style={{ display: "flex", gap: "0.75rem", borderBottom: "1px solid #e2e8f0", paddingBottom: "1rem", marginBottom: "2rem" }}>
           <button
             type="button"
             onClick={() => setActiveTab("favorites")}

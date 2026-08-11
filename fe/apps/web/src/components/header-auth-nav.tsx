@@ -1,9 +1,9 @@
 "use client";
 
-import { BookMarked, LogOut, ShieldCheck, UserRound, WalletCards } from "lucide-react";
+import { BookMarked, LogOut, ShieldCheck, Target, UserRound, WalletCards } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { isAdminUser, isLoggedIn as checkIsLoggedIn } from "@/lib/auth";
+import { isAdminUser, isLoggedIn as checkIsLoggedIn, loginHref } from "@/lib/auth";
 
 export function HeaderAuthNav() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -48,7 +48,7 @@ export function HeaderAuthNav() {
   if (!isLoggedIn) {
     return (
       <div className="headerAuthBtns">
-        <Link className="headerLoginBtn" to={"/login" as string}>
+        <Link className="headerLoginBtn" to={loginHref()}>
           Đăng nhập
         </Link>
         <Link className="headerRegisterBtn" to={"/auth/register" as string}>
@@ -76,6 +76,10 @@ export function HeaderAuthNav() {
             Bảng quản trị (Dashboard)
           </Link>
         )}
+        <Link to={"/quests" as string}>
+          <Target aria-hidden="true" />
+          Nhiệm vụ của tôi
+        </Link>
         <Link to={"/library" as string}>
           <BookMarked aria-hidden="true" />
           Tủ truyện

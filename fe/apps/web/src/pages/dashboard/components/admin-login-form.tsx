@@ -3,6 +3,13 @@
 import { useNavigate } from "react-router-dom";
 import { type FormEvent, useState } from "react";
 
+import { getUserRolesFromToken } from "../../../lib/auth";
+
+type AdminLoginResponse = Readonly<{
+  accessToken?: string;
+  refreshToken?: string;
+}>;
+
 export function AdminLoginForm() {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
@@ -25,18 +32,19 @@ export function AdminLoginForm() {
       if (!response.ok) {
         throw new Error("Email hoặc mật khẩu quản trị không đúng.");
       }
-      const data = await response.json();
-      if (data && data.accessToken) {
-        document.cookie = "logged_in=true; path=/; max-age=2592000; SameSite=Lax";
-        document.cookie = "is_admin=true; path=/; max-age=2592000; SameSite=Lax";
-        localStorage.setItem("access_token", data.accessToken);
-        localStorage.setItem("is_admin", "true");
-        if (data.refreshToken) {
-          document.cookie = `refresh_token=${encodeURIComponent(data.refreshToken)}; path=/; max-age=2592000; SameSite=Lax`;
-          localStorage.setItem("refresh_token", data.refreshToken);
-        }
-        window.dispatchEvent(new Event("auth-change"));
+      const data = (await response.json()) as AdminLoginResponse;
+      if (!data.accessToken || !getUserRolesFromToken(data.accessToken).includes("ADMIN")) {
+        throw new Error("Tài khoản này không có quyền quản trị.");
       }
+
+      document.cookie = "logged_in=true; path=/; max-age=2592000; SameSite=Lax";
+      document.cookie = `access_token=${encodeURIComponent(data.accessToken)}; path=/; max-age=1800; SameSite=Lax`;
+      localStorage.setItem("access_token", data.accessToken);
+      if (data.refreshToken) {
+        document.cookie = `refresh_token=${encodeURIComponent(data.refreshToken)}; path=/; max-age=2592000; SameSite=Lax`;
+        localStorage.setItem("refresh_token", data.refreshToken);
+      }
+      window.dispatchEvent(new Event("auth-change"));
       navigate("/dashboard/content/stories");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Không thể đăng nhập.");

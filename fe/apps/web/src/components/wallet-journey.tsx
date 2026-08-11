@@ -19,6 +19,7 @@ import {
 } from "react";
 
 import styles from "./wallet-journey.module.css";
+import { API_BASE_URL, apiFetch } from "@/lib/api-base";
 
 const amountOptions = [50_000, 100_000, 200_000, 500_000] as const;
 
@@ -113,7 +114,7 @@ function safeUUID(): string {
 }
 
 export function WalletJourney() {
-  const api = useMemo(() => createBrowserWalletClient(), []);
+  const api = useMemo(() => createBrowserWalletClient({ baseUrl: API_BASE_URL, fetchImplementation: apiFetch }), []);
   const [balance, setBalance] = useState<WalletBalance | null>(null);
   const [history, setHistory] = useState<TopupRequest[]>([]);
   const [active, setActive] = useState<TopupRequest | null>(null);

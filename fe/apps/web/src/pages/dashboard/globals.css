@@ -510,10 +510,11 @@ button:disabled { cursor: wait; opacity: 0.55; }
 .chapterTabs button[aria-selected="true"] { background:#eef4ff; color:#0f5fff; }
 .claimButton, .decisionForm button { background:#0f5fff; border-radius:.5rem; }
 
-.adminDashboardShell { display:block; min-height:100vh; padding-left:17rem; }
+/* Base layout; the pinned-frame behaviour is defined in "Shell layout" below. */
+.adminDashboardShell { display:grid; grid-template-columns:17rem minmax(0,1fr); }
 .adminSidebar {
   background:var(--navy); color:#dce4ff; display:flex; flex-direction:column; gap:1.2rem;
-  bottom:0; left:0; min-height:100vh; overflow:auto; padding:1.4rem; position:fixed; top:0; width:17rem;
+  overflow-y:auto; padding:1.4rem;
 }
 .adminBrand { align-items:center; display:flex; gap:.75rem; }
 .adminBrand span {
@@ -1201,10 +1202,43 @@ button:disabled { cursor: wait; opacity: 0.55; }
   outline: 0;
 }
 
+/* Helper text under an input: quieter than the label, still readable. */
+.drawerFieldHint {
+  color: #6b7f99;
+  font-size: .68rem;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+.drawerFieldHint code {
+  background: #eef4fb;
+  border: 1px solid #dbe7f3;
+  border-radius: .3rem;
+  color: #0b5ed7;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .95em;
+  padding: .05rem .3rem;
+  overflow-wrap: anywhere;
+}
+
+/*
+ * Fields align to the top of their row and inputs keep one consistent height.
+ * Without this a field carrying a hint stretched its neighbour's control to
+ * match, which is what made the Team dropdown render as a tall empty box.
+ */
 .drawerFieldGrid {
+  align-items: start;
   display: grid;
-  gap: 1rem;
+  gap: .85rem 1rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.drawerField { align-content: start; }
+
+.drawerField input:not([type="checkbox"]):not([type="file"]),
+.drawerField select {
+  height: 2.6rem;
+  padding-block: 0;
 }
 
 .storyCoverUpload {
@@ -1245,6 +1279,334 @@ button:disabled { cursor: wait; opacity: 0.55; }
   display: grid;
   gap: .75rem;
   padding: .75rem;
+}
+
+/* Upload-first entry point at the top of the create-story drawer. */
+/* Error popup for a failed save. Fixed to the viewport so it is seen even when
+   the drawer is scrolled far from the action bar. */
+.mutationToastLayer {
+  bottom: 1.25rem;
+  display: flex;
+  justify-content: center;
+  left: 0;
+  pointer-events: none;
+  position: fixed;
+  right: 0;
+  z-index: 60;
+}
+
+.mutationToast {
+  align-items: flex-start;
+  animation: mutation-toast-in .18s ease-out;
+  background: #fff;
+  border: 1px solid #f3c2c2;
+  border-left: .28rem solid #d92d20;
+  border-radius: .7rem;
+  box-shadow: 0 1rem 2.4rem rgb(17 26 58 / 18%);
+  display: flex;
+  gap: .7rem;
+  max-width: min(34rem, calc(100vw - 2rem));
+  padding: .9rem 1rem;
+  pointer-events: auto;
+}
+
+@keyframes mutation-toast-in {
+  from { opacity: 0; transform: translateY(.5rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.mutationToastIcon {
+  align-items: center;
+  background: #fef0ef;
+  border-radius: 50%;
+  color: #d92d20;
+  display: flex;
+  flex: 0 0 auto;
+  font-weight: 900;
+  height: 1.6rem;
+  justify-content: center;
+  width: 1.6rem;
+}
+
+.mutationToastBody strong {
+  color: #8f1d18;
+  display: block;
+  font-size: .8rem;
+}
+
+.mutationToastBody p {
+  color: #5a6a80;
+  font-size: .76rem;
+  line-height: 1.6;
+  margin: .2rem 0 0;
+}
+
+.mutationToast button {
+  background: transparent;
+  border: 0;
+  color: #94a3b8;
+  cursor: pointer;
+  flex: 0 0 auto;
+  line-height: 1;
+  padding: .15rem;
+}
+
+.mutationToast button:hover {
+  color: #475569;
+}
+
+/* Genre multi-select: a story belongs to several genres at once. */
+.genreMultiSelect {
+  display: grid;
+  gap: .45rem;
+}
+
+.genreMultiSelectLabel {
+  color: #40516a;
+  font-size: .73rem;
+  font-weight: 750;
+}
+
+/* Scrolls sideways rather than wrapping, so picking a fifth genre cannot push
+   the rest of the form down a row. */
+.genreChosenRow {
+  display: flex;
+  gap: .35rem;
+  height: 1.75rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.genreChosenRow button { flex: 0 0 auto; }
+
+.genreChosenRow em {
+  color: #8fa2b8;
+  font-size: .7rem;
+  font-style: normal;
+}
+
+.genreChosenRow button {
+  align-items: center;
+  background: #eef5ff;
+  border: 1px solid #b9d4f5;
+  border-radius: 999px;
+  color: #0b5ed7;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: .7rem;
+  font-weight: 700;
+  gap: .3rem;
+  padding: .2rem .55rem;
+}
+
+/*
+ * Fixed height, not max-height: the panel used to grow and shrink as genres
+ * were checked, shoving every field below it up and down the page.
+ */
+.genreOptionGrid {
+  background: #f8fbfe;
+  border: 1px solid #d7e4f0;
+  border-radius: .55rem;
+  display: grid;
+  gap: .1rem;
+  grid-auto-rows: max-content;
+  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+  height: 7.5rem;
+  overflow-y: auto;
+  padding: .4rem;
+}
+
+.genreOptionGrid label {
+  align-items: center;
+  border-radius: .35rem;
+  color: #40516a;
+  cursor: pointer;
+  display: flex;
+  font-size: .74rem;
+  font-weight: 600;
+  gap: .4rem;
+  padding: .3rem .4rem;
+}
+
+.genreOptionGrid label:hover { background: #eaf2fb; }
+.genreOptionGrid label.isChecked { color: #0b5ed7; font-weight: 750; }
+
+.genreOptionGrid input {
+  accent-color: #0875f5;
+  margin: 0;
+  width: auto;
+}
+
+/* Story format picker - the first choice in the create form. */
+.storyFormatPicker {
+  border: 0;
+  display: grid;
+  gap: .5rem;
+  margin: 0;
+  padding: 0;
+}
+
+.storyFormatPicker legend {
+  color: #40516a;
+  font-size: .73rem;
+  font-weight: 750;
+  padding: 0;
+}
+
+.storyFormatPicker > div {
+  display: grid;
+  gap: .6rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.storyFormatOption {
+  align-items: flex-start;
+  background: #f8fbfe;
+  border: 1px solid #d7e4f0;
+  border-radius: .55rem;
+  cursor: pointer;
+  display: flex;
+  gap: .55rem;
+  padding: .8rem .85rem;
+}
+
+.storyFormatOption.isActive {
+  background: #eef5ff;
+  border-color: #0875f5;
+  box-shadow: 0 0 0 .12rem rgb(8 117 245 / 14%);
+}
+
+.storyFormatOption input {
+  accent-color: #0875f5;
+  margin-top: .15rem;
+  width: auto;
+}
+
+.storyFormatOption strong {
+  color: #122039;
+  display: block;
+  font-size: .8rem;
+}
+
+.storyFormatOption small {
+  color: #6b7f99;
+  display: block;
+  font-size: .68rem;
+  font-weight: 500;
+  line-height: 1.5;
+  margin-top: .15rem;
+}
+
+/* One-page story editor. */
+.oneshotEditor {
+  display: grid;
+  gap: .5rem;
+}
+
+.oneshotEditor header {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  justify-content: space-between;
+}
+
+.oneshotEditor strong {
+  color: #122039;
+  display: block;
+  font-size: .8rem;
+}
+
+.oneshotEditor small {
+  color: #6b7f99;
+  display: block;
+  font-size: .68rem;
+  font-weight: 500;
+}
+
+.oneshotEditor header > span {
+  color: #0b5ed7;
+  font-size: .68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.oneshotEditor textarea {
+  background: #f8fbfe;
+  border: 1px solid #d7e4f0;
+  border-radius: .55rem;
+  color: #122039;
+  line-height: 1.75;
+  padding: .85rem;
+  resize: vertical;
+  width: 100%;
+}
+
+.oneshotEditor textarea:focus {
+  border-color: #0875f5;
+  box-shadow: 0 0 0 .2rem rgb(8 117 245 / 10%);
+  outline: 0;
+}
+
+@media (max-width: 700px) {
+  .storyFormatPicker > div { grid-template-columns: 1fr; }
+}
+
+.storyImportPanel {
+  background: linear-gradient(135deg, #eef4ff 0%, #f6f0ff 100%);
+  border: 1px dashed #9db8f0;
+  border-radius: .65rem;
+  display: grid;
+  gap: .6rem;
+  padding: .85rem;
+}
+
+.storyImportPanel header {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  justify-content: space-between;
+}
+
+.storyImportPanel strong {
+  display: block;
+  font-size: .92rem;
+}
+
+.storyImportPanel small {
+  color: #5a6b8c;
+  display: block;
+  font-size: .76rem;
+  line-height: 1.5;
+  margin-top: .2rem;
+  max-width: 52ch;
+}
+
+.storyImportButton {
+  align-items: center;
+  background: #0f5fff;
+  border-radius: .5rem;
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: .82rem;
+  font-weight: 700;
+  gap: .4rem;
+  padding: .5rem .85rem;
+}
+
+.storyImportButton input {
+  display: none;
+}
+
+.storyImportSummary {
+  color: #1a7f45;
+  font-size: .8rem;
+  font-weight: 600;
+  margin: 0;
 }
 
 .tagEditorChips {
@@ -1401,13 +1763,25 @@ button:disabled { cursor: wait; opacity: 0.55; }
   padding: .8rem;
 }
 
+/*
+ * Pinned to the bottom of the drawer so Save stays reachable no matter how long
+ * the form gets - a story with 30 chapters otherwise buries it far below the
+ * fold. The negative margin lets the bar span the drawer's full width while the
+ * form keeps its own padding.
+ */
 .drawerActions {
+  background: #fff;
   border-top: 1px solid #e1ebf5;
+  bottom: 0;
+  box-shadow: 0 -.5rem 1rem rgb(17 26 58 / 6%);
   display: flex;
   gap: .7rem;
   justify-content: flex-end;
-  margin-top: .4rem;
-  padding-top: 1rem;
+  /* Mirrors .crudDrawer's own padding so the bar spans the full drawer width. */
+  margin: .4rem calc(-1 * clamp(1.2rem, 3vw, 2rem)) calc(-1 * clamp(1.2rem, 3vw, 2rem));
+  padding: 1rem clamp(1.2rem, 3vw, 2rem);
+  position: sticky;
+  z-index: 3;
 }
 
 .drawerActions button {
@@ -1471,12 +1845,19 @@ button:disabled { cursor: wait; opacity: 0.55; }
   font-family: "Inter", "Be Vietnam Pro", "Segoe UI", sans-serif;
 }
 
-/* ── Shell layout ── */
+/* ── Shell layout ──
+ * The frame is pinned to the viewport: the page itself never scrolls, so the
+ * sidebar and topbar cannot drift off-screen. `min-height` would let the grid
+ * grow past the viewport and hand the scrollbar back to the document, so the
+ * height is fixed instead and the overflow is delegated to the content column.
+ */
 .adminDashboardShell {
   background: var(--dash-bg) !important;
   display: grid !important;
   grid-template-columns: 17rem minmax(0, 1fr) !important;
-  min-height: 100vh !important;
+  height: 100dvh !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
   padding-left: 0 !important;
 }
 
@@ -1489,13 +1870,12 @@ button:disabled { cursor: wait; opacity: 0.55; }
   display: flex !important;
   flex-direction: column !important;
   gap: 0 !important;
-  height: 100vh !important;
-  overflow: auto !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
   padding: 1.25rem 1rem 1rem !important;
-  position: sticky !important;
-  top: 0 !important;
+  position: static !important;
   width: auto !important;
-  min-height: 100vh !important;
 }
 
 /* ── Brand block ── */
@@ -1699,10 +2079,69 @@ button:disabled { cursor: wait; opacity: 0.55; }
   color: #e5484d !important;
 }
 
-/* ── Content shell ── */
+/* ── Page heading and sort bar stay put ──
+ * Only the record list scrolls, so the admin always knows which page they are on
+ * and can re-sort without scrolling back up. Both stick to the top of
+ * .adminContentShell, which is the dashboard's only scroll container.
+ */
+.adminTopbar {
+  background: var(--dash-bg, #f8fbff) !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 4 !important;
+  /* Cancels the shell padding so the sticky band spans the full width. */
+  margin-left: calc(-1 * clamp(1.25rem, 2.5vw, 2.25rem)) !important;
+  margin-right: calc(-1 * clamp(1.25rem, 2.5vw, 2.25rem)) !important;
+  padding: 1.25rem clamp(1.25rem, 2.5vw, 2.25rem) 1rem !important;
+}
+
+/* The sort toolbar rides directly beneath the heading. */
+.adminDashboard > div[style*="position"],
+.adminSortToolbar {
+  position: sticky;
+  top: 5.5rem;
+  z-index: 3;
+}
+
+/* ── Record list: quieter rows, no hard borders ── */
+.adminCrudPanel {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  display: grid;
+  gap: .35rem;
+}
+
+.adminCrudPanel article {
+  background: #fff !important;
+  border: 0 !important;
+  border-bottom: 1px solid rgb(223 234 246 / 70%) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  transition: background .15s ease;
+}
+
+.adminCrudPanel article:hover {
+  background: #f6faff !important;
+}
+
+.adminCrudPanel article:last-child {
+  border-bottom: 0 !important;
+}
+
+/* ── Content shell ──
+ * The single scroll container of the dashboard. Child pages scroll their own
+ * long tables and lists in here without moving the sidebar or the topbar.
+ */
 .adminContentShell {
-  min-width: 0 !important;
   background: var(--dash-bg) !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  min-width: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 /* ── Dashboard page ── */
@@ -2057,13 +2496,24 @@ button:disabled { cursor: wait; opacity: 0.55; }
 }
 
 @media (max-width: 900px) {
+  /* The sidebar stacks above the content here, so a viewport-locked frame
+     would squeeze both into a fraction of the screen. Narrow layouts go back
+     to ordinary page scrolling. */
   .adminDashboardShell {
     grid-template-columns: 1fr !important;
+    height: auto !important;
+    min-height: 100dvh !important;
+    overflow: visible !important;
   }
   .adminSidebar {
     height: auto !important;
     min-height: auto !important;
+    overflow: visible !important;
     position: static !important;
+  }
+  .adminContentShell {
+    height: auto !important;
+    overflow: visible !important;
   }
   .adminSidebar nav {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -2079,5 +2529,126 @@ button:disabled { cursor: wait; opacity: 0.55; }
   .adminSidebar nav,
   .statGrid {
     grid-template-columns: 1fr !important;
+  }
+}
+
+/* Compact mobile admin shell. Navigation remains reachable without forcing
+   operators to scroll past the full desktop sidebar before every workspace. */
+@media (max-width: 900px) {
+  .adminSidebar {
+    box-shadow: 0 .35rem 1rem rgb(0 0 0 / 20%) !important;
+    max-width: 100vw;
+    padding: .65rem .75rem !important;
+    position: sticky !important;
+    top: 0;
+    z-index: 40;
+  }
+
+  .adminBrand {
+    border-bottom: 0 !important;
+    margin-bottom: .55rem !important;
+    padding-bottom: 0 !important;
+  }
+
+  .adminBrandLogo {
+    height: 2rem;
+    width: 2rem;
+  }
+
+  .adminBrandText small,
+  .adminNavLabel,
+  .adminOperator,
+  .adminSidebarSpacer,
+  .adminSidebar > div:has(> a[href="/"]) {
+    display: none !important;
+  }
+
+  .adminSidebar nav {
+    display: flex !important;
+    gap: .4rem !important;
+    grid-template-columns: none !important;
+    margin-inline: -.75rem;
+    overflow-x: auto;
+    padding: 0 .75rem .1rem;
+    scrollbar-width: thin;
+  }
+
+  .adminSidebar nav a {
+    flex: 0 0 auto !important;
+    min-height: 2.45rem !important;
+    padding: .5rem .7rem !important;
+  }
+
+  .adminDashboard {
+    padding: 1rem .75rem 5rem !important;
+  }
+
+  .adminTopbar {
+    align-items: flex-start !important;
+    flex-wrap: wrap !important;
+    gap: .75rem !important;
+    margin-bottom: 1rem !important;
+  }
+
+  .adminTopbar > a,
+  .adminTopbar > button {
+    justify-content: center !important;
+  }
+
+  .affiliateForm {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .crudDrawer {
+    max-width: 100vw !important;
+    padding: 1rem !important;
+    width: 100vw !important;
+  }
+
+  .drawerActions {
+    margin: 1rem -1rem -1rem !important;
+    padding: .75rem 1rem max(.75rem, env(safe-area-inset-bottom)) !important;
+  }
+
+  .drawerActions button {
+    flex: 1 1 9rem;
+  }
+
+  .sortToolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 560px) {
+  .adminSidebar nav {
+    grid-template-columns: none !important;
+  }
+
+  .statGrid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .adminCrudPanel article,
+  .chartPanel,
+  .adminTasks {
+    padding: 1rem !important;
+  }
+
+  .adminCrudActions,
+  .adminCrudActions button,
+  .adminTopbar > a,
+  .adminTopbar > button {
+    width: 100%;
+  }
+
+  .adminCrudActions button {
+    min-height: 2.6rem;
+  }
+
+  .barChart {
+    gap: .2rem !important;
+    height: 13rem !important;
+    margin-inline: 0 !important;
   }
 }

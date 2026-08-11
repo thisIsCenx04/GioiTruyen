@@ -50,21 +50,10 @@ function getBoardRows(
 
 export default async function HomePage() {
   const home = await loadHome().catch(() => null);
-  if (!home) {
-    return (
-      <PublicShell>
-        <section className="notFound" role="status">
-          <p>Thư viện đang tạm ngắt kết nối</p>
-          <h1>Chưa thể tải danh mục truyện.</h1>
-          <Link to="/">Thử tải lại</Link>
-        </section>
-      </PublicShell>
-    );
-  }
 
-  const storySections = home.storySections.length > 0
-    ? home.storySections
-    : home.sections;
+  const storySections = home
+    ? (home.storySections.length > 0 ? home.storySections : home.sections)
+    : [];
   const stories = [
     ...new Map(
       storySections
@@ -72,6 +61,21 @@ export default async function HomePage() {
         .map((story) => [story.id, story] as const),
     ).values(),
   ];
+
+  // An outage and an empty library render identically, so a failed load must
+  // say so rather than quietly showing a library with nothing in it.
+  if (!home || (home.degraded && stories.length === 0)) {
+    return (
+      <PublicShell>
+        <section className="notFound" role="status">
+          <p>Thư viện đang tạm ngắt kết nối</p>
+          <h1>Chưa thể tải danh mục truyện.</h1>
+          <p>Kết nối tới máy chủ đang gián đoạn. Vui lòng thử lại sau giây lát.</p>
+          <Link to="/">Thử tải lại</Link>
+        </section>
+      </PublicShell>
+    );
+  }
   const categories = home.taxonomy.groups.flatMap((group) => group.categories);
   const promotedStories = home.promotions.map((booking) => booking.story);
   const visiblePromotions = home.promotions.slice(0, 11);

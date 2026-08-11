@@ -5,6 +5,7 @@ import com.storyplatform.auth.application.dto.AuthResponse;
 import com.storyplatform.auth.application.dto.LoginRequest;
 import com.storyplatform.auth.application.dto.RegisterRequest;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -29,5 +30,14 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    /** Swaps a refresh token for a new pair so a session outlives the 30-minute access token. */
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        return ResponseEntity.ok(authService.refresh(request.refreshToken()));
+    }
+
+    public record RefreshTokenRequest(@NotBlank String refreshToken) {
     }
 }

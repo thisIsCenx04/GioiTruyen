@@ -9,6 +9,9 @@ import { CircleAlert, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useMemo, useState } from "react";
 
+import { loginHref } from "@/lib/auth";
+import { API_BASE_URL, apiFetch } from "@/lib/api-base";
+
 const reasons: ReadonlyArray<Readonly<{ value: ReportReason; label: string }>> = [
   { value: "broken_content", label: "Nội dung bị lỗi hoặc thiếu" },
   { value: "copyright", label: "Vi phạm bản quyền" },
@@ -24,7 +27,7 @@ export function StoryReportButton({
   targetId: string;
   targetType?: "story" | "chapter";
 }>) {
-  const api = useMemo(() => createBrowserReportClient(), []);
+  const api = useMemo(() => createBrowserReportClient({ baseUrl: API_BASE_URL, fetchImplementation: apiFetch }), []);
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<ReportReason>("broken_content");
   const [detail, setDetail] = useState("");
@@ -77,7 +80,7 @@ export function StoryReportButton({
             {requiresLogin ? (
               <div className="storyReportNotice">
                 <p>Bạn cần đăng nhập để gửi báo cáo.</p>
-                <Link to={"/login" as string}>Đăng nhập</Link>
+                <Link to={loginHref()}>Đăng nhập</Link>
               </div>
             ) : message ? (
               <div className="storyReportNotice" role="status">

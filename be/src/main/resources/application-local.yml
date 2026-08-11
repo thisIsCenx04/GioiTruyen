@@ -1,6 +1,9 @@
 spring:
   flyway:
     enabled: ${MYSQL_MIGRATIONS_ENABLED:true}
+    # Sample data is a local-development convenience and must stay on this
+    # profile; the production profile never sees db/seed.
+    locations: classpath:db/migration,classpath:db/seed
 
 management:
   endpoint:

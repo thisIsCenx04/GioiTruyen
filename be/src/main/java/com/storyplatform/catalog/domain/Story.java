@@ -20,6 +20,8 @@ public class Story {
     private String coverUrl;
     private String bannerUrl;
     private StoryContentType contentType;
+    private StoryFormat storyFormat;
+    private StoryType storyType;
     private StoryStatus status;
     private StoryProgressStatus progressStatus;
     private String ageRating;
@@ -69,6 +71,12 @@ public class Story {
 
     public StoryContentType getContentType() { return contentType; }
     public void setContentType(StoryContentType contentType) { this.contentType = contentType; }
+
+    public StoryFormat getStoryFormat() { return storyFormat; }
+    public void setStoryFormat(StoryFormat storyFormat) { this.storyFormat = storyFormat; }
+
+    public StoryType getStoryType() { return storyType; }
+    public void setStoryType(StoryType storyType) { this.storyType = storyType; }
 
     public StoryStatus getStatus() { return status; }
     public void setStatus(StoryStatus status) { this.status = status; }

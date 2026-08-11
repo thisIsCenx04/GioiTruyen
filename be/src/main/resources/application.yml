@@ -22,8 +22,15 @@ spring:
       validation-timeout: ${MYSQL_VALIDATION_TIMEOUT_MS:1000}
   flyway:
     enabled: ${MYSQL_MIGRATIONS_ENABLED:false}
+    # Seed lives in classpath:db/seed and is added by the "local" profile only.
+    # Keeping it out of the default location means a production database can
+    # never be populated with sample users and stories, even on a fresh install.
     locations: classpath:db/migration
     validate-migration-naming: true
+    # V2 (seed) is recorded as applied on databases that were built before the
+    # split. Without this, Flyway aborts on startup because that version is no
+    # longer on the classpath.
+    ignore-migration-patterns: "*:missing"
   data:
     redis:
       repositories:
@@ -56,8 +63,18 @@ server:
       force: true
   shutdown: graceful
   tomcat:
-    max-http-form-post-size: 1MB
+    # Long story imports are multipart text fields, not only uploaded files.
+    # Keep this aligned with Spring's request limit or Tomcat rejects the form
+    # at 1 MB before the admin controller can process it.
+    max-http-form-post-size: ${MAX_HTTP_FORM_POST_SIZE:100MB}
     max-swallow-size: 100MB
+    # Tomcat caps a multipart request at 50 parts by default, and a story is
+    # submitted as up to four parts per chapter (title, slug, content, tags) - so
+    # a 12-chapter upload already tripped FileCountLimitExceededException before
+    # any controller ran. Long translations legitimately reach 1000+ chapters,
+    # so the ceiling is sized for the 3000-chapter limit the admin API enforces.
+    max-part-count: ${MAX_PART_COUNT:15000}
+    max-parameter-count: ${MAX_PARAMETER_COUNT:40000}
 
 management:
   endpoints:

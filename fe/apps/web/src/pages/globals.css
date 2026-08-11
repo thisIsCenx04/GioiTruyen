@@ -739,6 +739,612 @@ html[data-route-pending="true"] .routeSurface {
   overflow: hidden;
 }
 
+/* ── Daily quests ── */
+.questPageShell {
+  margin: 0 auto;
+  max-width: 60rem;
+  padding: 1.5rem clamp(1rem, 3vw, 2rem) 4rem;
+}
+
+.questLoading {
+  align-items: center;
+  color: var(--muted, #6b7f99);
+  display: flex;
+  gap: .5rem;
+  justify-content: center;
+  padding: 4rem 0;
+}
+
+.questLoading svg { animation: quest-spin 1s linear infinite; }
+@keyframes quest-spin { to { transform: rotate(360deg); } }
+
+.questHeader {
+  align-items: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.questHeader h1 {
+  font-size: clamp(1.7rem, 4vw, 2.4rem);
+  letter-spacing: -.03em;
+  margin: .3rem 0 .4rem;
+}
+
+.questHeaderNote { color: var(--muted, #6b7f99); margin: 0; max-width: 34rem; }
+
+.questSummary {
+  background: #f2f7ff;
+  border: 1px solid #d8e6f8;
+  border-radius: .75rem;
+  display: grid;
+  padding: .8rem 1.1rem;
+  text-align: right;
+}
+
+.questSummary strong { font-size: 1.5rem; line-height: 1; }
+.questSummary span { color: var(--muted, #6b7f99); font-size: .75rem; }
+.questSummary em { color: #0b5ed7; font-size: .72rem; font-style: normal; font-weight: 700; }
+
+.questNotice, .questError {
+  border-radius: .6rem;
+  font-size: .85rem;
+  margin: 0 0 1rem;
+  padding: .7rem .9rem;
+}
+
+.questNotice { background: #e9f8ef; border: 1px solid #b7e4c7; color: #14713d; }
+.questError { background: #fdecec; border: 1px solid #f3c2c2; color: #8f1d18; }
+
+.questList { display: grid; gap: .6rem; list-style: none; margin: 0; padding: 0; }
+
+.questCard {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e2ebf6;
+  border-radius: .75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 1rem 1.15rem;
+}
+
+.questCard.isClaimed { background: #fafcff; opacity: .72; }
+.questCardMain { display: grid; flex: 1 1 18rem; gap: .3rem; }
+.questCardMain strong { font-size: .95rem; }
+.questCardMain small { color: var(--muted, #6b7f99); font-size: .78rem; }
+
+.questProgressBar {
+  background: #e8eef7;
+  border-radius: 999px;
+  height: .4rem;
+  margin-top: .35rem;
+  overflow: hidden;
+}
+
+.questProgressBar span {
+  background: linear-gradient(90deg, #0875f5, #10b7a5);
+  display: block;
+  height: 100%;
+  transition: width .3s ease;
+}
+
+.questProgressText { color: var(--muted, #6b7f99); font-size: .72rem; font-weight: 700; }
+
+.questCardSide { align-items: center; display: flex; gap: .8rem; }
+
+.questReward { display: flex; flex-direction: column; gap: .15rem; text-align: right; }
+.questReward b {
+  align-items: center;
+  color: #b4690e;
+  display: inline-flex;
+  font-size: .78rem;
+  gap: .2rem;
+  justify-content: flex-end;
+}
+
+.questCardSide button {
+  align-items: center;
+  background: linear-gradient(135deg, #0875f5, #10b7a5);
+  border: 0;
+  border-radius: .55rem;
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: .78rem;
+  font-weight: 750;
+  gap: .35rem;
+  padding: .55rem .9rem;
+  white-space: nowrap;
+}
+
+.questCardSide button:disabled { background: #dbe5f0; color: #8fa2b8; cursor: not-allowed; }
+
+.questClaimed {
+  align-items: center;
+  color: #14713d;
+  display: inline-flex;
+  font-size: .78rem;
+  font-weight: 700;
+  gap: .25rem;
+}
+
+/* ── Social contact links ── */
+.socialLinks { align-items: center; display: flex; gap: .5rem; }
+
+.socialLinks a {
+  align-items: center;
+  border-radius: .45rem;
+  color: inherit;
+  display: inline-flex;
+  gap: .35rem;
+  padding: .3rem .5rem;
+  text-decoration: none;
+}
+
+.socialLinks a:hover { background: rgb(15 95 255 / 10%); color: var(--blue, #0f5fff); }
+.socialLinks.isCompact a { padding: .35rem; }
+.socialLinks:not(.isCompact) a { font-size: .82rem; font-weight: 650; }
+
+/* ── Wallet and top-up ── */
+.walletPageShell { margin: 0 auto; max-width: 72rem; padding: 1.5rem clamp(1rem, 3vw, 2rem) 4rem; }
+
+.walletHeader {
+  align-items: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.walletHeader h1 { font-size: clamp(1.6rem, 3.6vw, 2.2rem); letter-spacing: -.03em; margin: .25rem 0 0; }
+.walletHeader a { color: #0b5ed7; font-weight: 700; }
+
+.walletBalanceRow { display: grid; gap: .8rem; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 1.4rem; }
+
+.walletBalanceRow article {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e2ebf6;
+  border-radius: .75rem;
+  display: flex;
+  gap: .75rem;
+  padding: 1rem 1.15rem;
+}
+
+.walletBalanceRow strong { display: block; font-size: 1.45rem; line-height: 1.1; }
+.walletBalanceRow span { color: var(--muted, #6b7f99); font-size: .74rem; }
+
+.topupWorkspace { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); }
+
+.topupPicker, .topupReceipt, .topupHistory {
+  background: #fff;
+  border: 1px solid #e2ebf6;
+  border-radius: .8rem;
+  padding: 1.2rem;
+}
+
+.topupHistory { grid-column: 1 / -1; }
+.topupPicker h2, .topupHistory h2 { font-size: .95rem; margin: 0 0 .7rem; }
+.topupPicker h2:not(:first-child) { margin-top: 1.3rem; }
+
+.topupPackages { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); }
+
+.topupPackage {
+  background: #f8fbfe;
+  border: 1px solid #d7e4f0;
+  border-radius: .65rem;
+  cursor: pointer;
+  display: grid;
+  gap: .12rem;
+  padding: .8rem;
+  text-align: left;
+}
+
+.topupPackage.isActive { background: #eef5ff; border-color: #0875f5; box-shadow: 0 0 0 .12rem rgb(8 117 245 / 16%); }
+.topupPackage strong { font-size: 1.05rem; }
+.topupPackage span { color: var(--muted, #6b7f99); font-size: .74rem; }
+.topupPackage em { color: #b4690e; font-size: .72rem; font-style: normal; font-weight: 700; }
+
+.topupMethods { display: flex; flex-wrap: wrap; gap: .45rem; }
+
+.topupMethod {
+  background: #f8fbfe;
+  border: 1px solid #d7e4f0;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: .8rem;
+  font-weight: 650;
+  padding: .45rem .9rem;
+}
+
+.topupMethod.isActive { background: #eef5ff; border-color: #0875f5; color: #0b5ed7; }
+
+.topupHint { color: var(--muted, #6b7f99); font-size: .78rem; line-height: 1.6; margin: .8rem 0 0; }
+.topupHint a { color: #0b5ed7; font-weight: 700; }
+
+.topupSubmit {
+  background: linear-gradient(135deg, #0875f5, #10b7a5);
+  border: 0;
+  border-radius: .55rem;
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .85rem;
+  font-weight: 750;
+  margin-top: 1.1rem;
+  padding: .75rem 1.2rem;
+  width: 100%;
+  justify-content: center;
+}
+
+.topupSubmit:disabled { background: #dbe5f0; color: #8fa2b8; cursor: not-allowed; }
+
+.topupReceipt header h2 { font-size: 1.6rem; margin: .2rem 0 .3rem; }
+.topupReceipt header p { color: var(--muted, #6b7f99); font-size: .82rem; margin: 0; }
+
+.topupBadge {
+  background: #fff4e5;
+  border-radius: 999px;
+  color: #b4690e;
+  display: inline-block;
+  font-size: .7rem;
+  font-weight: 750;
+  margin-top: .5rem;
+  padding: .2rem .6rem;
+}
+
+.topupBadge.isPaid { background: #e9f8ef; color: #14713d; }
+
+.topupQr { border-radius: .6rem; display: block; margin: 1rem auto; max-width: 15rem; width: 100%; }
+
+.topupDetails { display: grid; gap: .5rem; margin: 1rem 0 0; }
+.topupDetails div { display: grid; gap: .1rem; }
+.topupDetails dt { color: var(--muted, #6b7f99); font-size: .7rem; }
+.topupDetails dd { align-items: center; display: flex; font-size: .88rem; gap: .4rem; margin: 0; }
+.topupDetails dd button { background: transparent; border: 0; color: #8fa2b8; cursor: pointer; padding: .1rem; }
+.topupDetails dd button:hover { color: #0b5ed7; }
+
+.topupWarn {
+  background: #fff7ed;
+  border: 1px solid #fcd9a8;
+  border-radius: .55rem;
+  color: #8a5200;
+  font-size: .76rem;
+  line-height: 1.6;
+  margin: 1rem 0 0;
+  padding: .65rem .8rem;
+}
+
+.topupEmpty { color: var(--muted, #6b7f99); }
+.topupEmpty h2 { color: #1b2740; font-size: 1.15rem; margin: .2rem 0 .5rem; }
+.topupEmpty p { font-size: .85rem; line-height: 1.7; margin: 0; }
+
+.topupHistory ul { display: grid; gap: .3rem; list-style: none; margin: 0; padding: 0; }
+
+.topupHistory li {
+  align-items: center;
+  border-bottom: 1px solid #eef3fa;
+  display: grid;
+  font-size: .8rem;
+  gap: .5rem;
+  grid-template-columns: 7rem 6rem 1fr 8rem 7rem;
+  padding: .55rem 0;
+}
+
+.topupHistoryCode { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .76rem; }
+
+@media (max-width: 60rem) {
+  .topupWorkspace { grid-template-columns: 1fr; }
+  .walletBalanceRow { grid-template-columns: 1fr; }
+  .topupHistory li { grid-template-columns: 1fr 1fr; }
+}
+
+/* Guest preview banner and the sign-in prompt shown when they try to claim. */
+.questGuestBanner {
+  background: #eef5ff;
+  border: 1px solid #cfe0f7;
+  border-radius: .6rem;
+  color: #1b3a63;
+  font-size: .85rem;
+  margin: 0 0 1rem;
+  padding: .7rem .9rem;
+}
+
+.questGuestBanner a { color: #0b5ed7; font-weight: 700; }
+
+.questLoginPrompt {
+  align-items: center;
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  position: fixed;
+  z-index: 70;
+}
+
+.questLoginScrim {
+  background: rgb(9 16 38 / 45%);
+  border: 0;
+  cursor: pointer;
+  inset: 0;
+  position: absolute;
+}
+
+.questLoginCard {
+  background: #fff;
+  border-radius: .9rem;
+  box-shadow: 0 1.2rem 3rem rgb(13 42 77 / 26%);
+  max-width: min(26rem, calc(100vw - 2rem));
+  padding: 1.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.questLoginCard h2 { font-size: 1.15rem; margin: 0 0 .5rem; }
+.questLoginCard p { color: var(--muted, #6b7f99); font-size: .88rem; line-height: 1.6; margin: 0 0 1.2rem; }
+
+.questLoginActions { display: flex; flex-wrap: wrap; gap: .5rem; }
+
+.questLoginActions a,
+.questLoginActions button {
+  border-radius: .5rem;
+  cursor: pointer;
+  font-size: .82rem;
+  font-weight: 750;
+  padding: .6rem 1rem;
+  text-decoration: none;
+}
+
+.questLoginPrimary { background: linear-gradient(135deg, #0875f5, #10b7a5); color: #fff; }
+.questLoginSecondary { background: #eef5ff; color: #0b5ed7; }
+.questLoginActions button { background: transparent; border: 0; color: #8fa2b8; }
+
+/* ── Share sheet on the story page ── */
+.storyShare { position: relative; }
+
+.storyShareSheet {
+  background: #fff;
+  border: 1px solid #dfeaf6;
+  border-radius: .6rem;
+  box-shadow: 0 .8rem 2rem rgb(17 26 58 / 14%);
+  display: grid;
+  left: 0;
+  min-width: 11rem;
+  padding: .3rem;
+  position: absolute;
+  top: calc(100% + .4rem);
+  z-index: 20;
+}
+
+.storyShareSheet button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: .4rem;
+  color: #1b2740;
+  cursor: pointer;
+  display: flex;
+  font-size: .8rem;
+  font-weight: 600;
+  gap: .5rem;
+  padding: .5rem .6rem;
+  text-align: left;
+  width: 100%;
+}
+
+.storyShareSheet button:hover { background: #f1f6fd; }
+
+/* ── Mobile navigation ──
+ * Below 76rem the nav bar used to be display:none, leaving a phone with no way
+ * to reach any section. The links now live in a slide-in panel behind a
+ * hamburger button; on wider screens the button hides and the bar behaves as
+ * it always did.
+ */
+.navToggle {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--line, #dfeaf6);
+  border-radius: .5rem;
+  color: inherit;
+  cursor: pointer;
+  display: none;
+  height: 2.5rem;
+  justify-content: center;
+  width: 2.5rem;
+}
+
+.navScrim {
+  background: rgb(9 16 38 / 45%);
+  border: 0;
+  cursor: pointer;
+  inset: 0;
+  position: fixed;
+  z-index: 60;
+}
+
+.backToTop {
+  align-items: center;
+  background: linear-gradient(135deg, #0f5fff, #10b7a5);
+  border: 0;
+  border-radius: 50%;
+  bottom: max(1.1rem, env(safe-area-inset-bottom));
+  box-shadow: 0 .6rem 1.6rem rgb(15 95 255 / 34%);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  height: 2.9rem;
+  justify-content: center;
+  position: fixed;
+  right: 1.1rem;
+  width: 2.9rem;
+  z-index: 45;
+}
+
+.backToTop:hover { filter: brightness(1.08); }
+
+@media (max-width: 76rem) {
+  .navToggle { display: inline-flex; }
+
+  /* Overrides the earlier display:none for this breakpoint. */
+  .siteHeader nav.mainNav {
+    background: #fff;
+    bottom: 0;
+    box-shadow: -1rem 0 3rem rgb(13 42 77 / 22%);
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+    max-width: 20rem;
+    overflow-y: auto;
+    padding: 1rem;
+    position: fixed;
+    right: 0;
+    top: 0;
+    transform: translateX(100%);
+    transition: transform .22s ease-out;
+    width: 82vw;
+    z-index: 61;
+  }
+
+  .siteHeader nav.mainNav.isOpen { transform: translateX(0); }
+
+  .siteHeader nav.mainNav a {
+    border-bottom: 1px solid #eef3fa;
+    border-radius: .5rem;
+    font-size: .95rem;
+    gap: .65rem;
+    padding: .85rem .6rem;
+  }
+
+  .siteHeader nav.mainNav a[aria-current="page"] {
+    background: #eef5ff;
+    color: var(--blue, #0f5fff);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .siteHeader nav.mainNav { transition: none; }
+}
+
+/* Tag chips under a story synopsis, and the tag listing page. */
+.storyTagList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+  list-style: none;
+  margin: .9rem 0 0;
+  padding: 0;
+}
+
+.storyTagList a {
+  background: #eef4fb;
+  border: 1px solid #dbe7f3;
+  border-radius: 999px;
+  color: #0b5ed7;
+  display: inline-block;
+  font-size: .74rem;
+  font-weight: 700;
+  padding: .28rem .7rem;
+  text-decoration: none;
+}
+
+.storyTagList a:hover {
+  background: #dfeafa;
+}
+
+.tagPageShell {
+  margin: 0 auto;
+  max-width: 78rem;
+  padding: 1.5rem clamp(1rem, 3vw, 2rem) 4rem;
+}
+
+.tagPageHeader {
+  margin: 1rem 0 1.75rem;
+}
+
+.tagPageHeader h1 {
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  letter-spacing: -.03em;
+  margin: .3rem 0 .5rem;
+}
+
+.tagPageHeader p {
+  color: var(--muted, #6b7f99);
+  margin: 0;
+}
+
+/* One-page (Zhihu) story: the text replaces the table of contents, so it gets
+   the same card as the chapter panel plus reading-optimised typography. */
+.oneshotReader {
+  background: white;
+  border: 1px solid #d8e3f4;
+  border-radius: .8rem;
+  box-shadow: 0 .8rem 2rem rgb(36 62 115 / 8%);
+  margin: 0;
+  max-width: none;
+  overflow: hidden;
+}
+
+.oneshotReader > header {
+  align-items: baseline;
+  border-bottom: 1px solid #eaf1fa;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+  justify-content: space-between;
+  padding: 1.1rem 1.35rem .9rem;
+}
+
+.oneshotReader > header h2 {
+  font-size: 1.15rem;
+  margin: 0;
+}
+
+.oneshotReader > header span {
+  color: #6b7f99;
+  font-size: .78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.oneshotBody {
+  color: #1b2740;
+  font-size: 1.05rem;
+  line-height: 1.95;
+  padding: 1.35rem;
+  /* Long Vietnamese paragraphs read better with a measured column. */
+  max-width: 44rem;
+}
+
+.oneshotBody p {
+  margin: 0 0 1.15rem;
+}
+
+.oneshotBody p:last-child {
+  margin-bottom: 0;
+}
+
+.oneshotBody img {
+  border-radius: .5rem;
+  height: auto;
+  max-width: 100%;
+}
+
+.oneshotBody h2,
+.oneshotBody h3 {
+  line-height: 1.4;
+  margin: 1.8rem 0 .8rem;
+}
+
+@media (max-width: 640px) {
+  .oneshotBody { font-size: 1rem; padding: 1rem; }
+}
+
 .storyPanelTabs {
   align-items: center;
   background: linear-gradient(180deg, #f8fbff, #fff);
@@ -4443,7 +5049,7 @@ html[data-route-pending="true"] .routeSurface {
   inset: 0;
   background-image: 
     linear-gradient(180deg, rgba(7, 13, 36, 0.35) 0%, rgba(7, 13, 36, 0.85) 100%),
-    url("/hero_teams_wallpaper.png");
+    url("/hero_teams_wallpaper.jpg");
   background-size: cover;
   background-position: center;
   z-index: 1;
@@ -4968,7 +5574,7 @@ html[data-route-pending="true"] .routeSurface {
   inset: 0;
   background-image: 
     linear-gradient(90deg, rgba(10, 14, 38, 0.95) 0%, rgba(10, 14, 38, 0.75) 45%, rgba(10, 14, 38, 0.25) 100%),
-    url("/stories_hero_banner.png");
+    url("/stories_hero_banner.jpg");
   background-size: cover;
   background-position: center right;
   z-index: 1;
@@ -5078,7 +5684,7 @@ html[data-route-pending="true"] .routeSurface {
   .storiesHeroBg {
     background-image: 
       linear-gradient(180deg, rgba(10, 14, 38, 0.9) 0%, rgba(10, 14, 38, 0.95) 100%),
-      url("/stories_hero_banner.png");
+      url("/stories_hero_banner.jpg");
   }
 
   .storiesStatCardsRow {
@@ -5114,7 +5720,7 @@ html[data-route-pending="true"] .routeSurface {
   inset: 0;
   background-image: 
     linear-gradient(90deg, rgba(8, 20, 44, 0.95) 0%, rgba(8, 20, 44, 0.78) 45%, rgba(8, 20, 44, 0.3) 100%),
-    url("/categories_hero_banner.png");
+    url("/categories_hero_banner.jpg");
   background-size: cover;
   background-position: center right;
   z-index: 1;
@@ -5198,7 +5804,7 @@ html[data-route-pending="true"] .routeSurface {
   .categoriesHeroBg {
     background-image: 
       linear-gradient(180deg, rgba(8, 20, 44, 0.92) 0%, rgba(8, 20, 44, 0.96) 100%),
-      url("/categories_hero_banner.png");
+      url("/categories_hero_banner.jpg");
   }
 
   .categoriesStatCardsRow {
@@ -5228,7 +5834,7 @@ html[data-route-pending="true"] .routeSurface {
   inset: 0;
   background-image: 
     linear-gradient(90deg, rgba(7, 13, 36, 0.95) 0%, rgba(7, 13, 36, 0.75) 45%, rgba(7, 13, 36, 0.25) 100%),
-    url("/hero_teams_wallpaper.png");
+    url("/hero_teams_wallpaper.jpg");
   background-size: cover;
   background-position: center right;
   z-index: 1;
@@ -5327,7 +5933,7 @@ html[data-route-pending="true"] .routeSurface {
 .zhihuHeroBackdrop {
   background:
     linear-gradient(90deg, rgb(6 12 30 / 94%) 0%, rgb(7 18 45 / 84%) 45%, rgb(7 18 45 / 18%) 100%),
-    url("/stories_hero_banner.png") center right / cover;
+    url("/stories_hero_banner.jpg") center right / cover;
   inset: 0;
   position: absolute;
 }
@@ -5631,7 +6237,7 @@ html[data-route-pending="true"] .routeSurface {
   inset: 0;
   background-image: 
     linear-gradient(90deg, rgba(12, 10, 38, 0.95) 0%, rgba(12, 10, 38, 0.75) 45%, rgba(12, 10, 38, 0.25) 100%),
-    url("/audio_hero_banner.png");
+    url("/audio_hero_banner.jpg");
   background-size: cover;
   background-position: center right;
   z-index: 1;
@@ -5907,4 +6513,220 @@ html[data-route-pending="true"] .routeSurface {
   font-weight: 700;
   padding: 0.4rem 0.8rem;
   text-decoration: none;
+}
+
+/* Mobile coverage shared by every public route. Keep page-specific desktop
+   layouts intact, but remove fixed-width assumptions at phone breakpoints. */
+img,
+video,
+canvas {
+  max-width: 100%;
+}
+
+input,
+select,
+textarea,
+button {
+  max-width: 100%;
+}
+
+@media (max-width: 48rem) {
+  body {
+    min-width: 0;
+  }
+
+  .catalogPage,
+  .searchPage,
+  .storyDetail,
+  .informationPage,
+  .teamsBodyWrapper,
+  .audioMainBodyContainer {
+    min-width: 0;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    width: 100%;
+  }
+
+  .pageIntro {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.25rem;
+  }
+
+  .pageIntro h1,
+  .compactIntro h1 {
+    font-size: clamp(1.8rem, 9vw, 2.7rem) !important;
+    overflow-wrap: anywhere;
+  }
+
+  .communityGrid,
+  .featuredTeamsGrid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .communityGrid a {
+    min-height: 0;
+  }
+
+  .audioHeroBanner {
+    height: auto !important;
+    min-height: 32rem !important;
+    padding-bottom: 2rem !important;
+    padding-top: 2rem !important;
+  }
+
+  .audioHeroBg,
+  .teamsHeroBg {
+    background-position: 64% center;
+  }
+
+  .audioStatCardsRow,
+  .teamsStatCardsRow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+
+  .audioStatGlassCard,
+  .teamsStatGlassCard {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .teamsFullHeroBanner {
+    min-height: 0 !important;
+  }
+
+  .teamsHeroContainer {
+    gap: 1.5rem;
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .teamsHeroContent {
+    justify-self: stretch;
+    max-width: none;
+    text-align: left;
+  }
+
+  .teamsHeroRules {
+    justify-items: stretch;
+  }
+
+  .teamsHeroRules li {
+    border-radius: .75rem;
+    overflow-wrap: anywhere;
+  }
+
+  .libraryPage {
+    padding: 1.25rem 1rem 3rem !important;
+  }
+
+  .libraryTabs {
+    margin-inline: -1rem;
+    overflow-x: auto;
+    padding-inline: 1rem;
+    scrollbar-width: thin;
+  }
+
+  .libraryTabs button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .profilePage {
+    padding: 1rem !important;
+  }
+
+  .profileHeader,
+  .profileBanner,
+  .profileSecurityRow {
+    align-items: flex-start !important;
+    flex-direction: column;
+  }
+
+  .profileHeader {
+    gap: 1rem;
+  }
+
+  .profileCard {
+    padding: 1.25rem !important;
+  }
+
+  .profileBanner {
+    gap: 1rem !important;
+  }
+
+  .profileActionGrid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .profileSecurityRow {
+    gap: 1rem !important;
+  }
+
+  .profileSecurityRow button {
+    justify-content: center !important;
+    width: 100%;
+  }
+
+  .chatHeader,
+  .chatLoginNotice {
+    align-items: flex-start;
+    gap: .75rem;
+  }
+
+  .chatLoginNotice {
+    flex-direction: column;
+  }
+
+  .chatForm {
+    align-items: stretch;
+  }
+
+  .chatInput,
+  .chatMessageBody {
+    min-width: 0;
+  }
+
+  .legalTableWrap {
+    margin-inline: -1rem;
+    padding-inline: 1rem;
+    scroll-snap-type: x proximity;
+  }
+}
+
+@media (max-width: 30rem) {
+  .siteHeader {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+  }
+
+  .siteHeader .quietAction {
+    min-height: 2.45rem;
+    padding-inline: .75rem;
+  }
+
+  .heroActions,
+  .resultHeading,
+  .chapterList > header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .primaryAction,
+  .secondaryAction {
+    width: 100%;
+  }
+
+  .catalogHeroLarge .heroManifesto h1 {
+    font-size: clamp(2.2rem, 13vw, 3.4rem);
+  }
+
+  .chatMessageItem {
+    gap: .5rem;
+  }
+
+  .chatAvatar {
+    height: 1.9rem;
+    min-width: 1.9rem;
+    width: 1.9rem;
+  }
 }

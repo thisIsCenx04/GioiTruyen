@@ -10,6 +10,7 @@ import { Link } from "react-router-dom";
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 import styles from "./notification-settings.module.css";
+import { API_BASE_URL, apiFetch } from "@/lib/api-base";
 
 const categories = [
   ["STORY_UPDATES", "Truyện đang theo dõi", "Chương mới, lịch xuất bản và thay đổi trạng thái."],
@@ -45,7 +46,7 @@ function applicationKey(value: string) {
 }
 
 export function NotificationSettings() {
-  const api = useMemo(() => createBrowserNotificationClient(), []);
+  const api = useMemo(() => createBrowserNotificationClient({ baseUrl: API_BASE_URL, fetchImplementation: apiFetch }), []);
   const [preference, setPreference] = useState<NotificationPreference | null>(null);
   const [email, setEmail] = useState(false);
   const [push, setPush] = useState(false);

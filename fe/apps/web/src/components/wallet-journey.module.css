@@ -462,3 +462,57 @@
 .history li span:last-child {
   color:#0f6bff;
 }
+
+@media (max-width: 48rem) {
+  .header {
+    align-items: start;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 1rem;
+  }
+
+  .header > div {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .workspace {
+    gap: 1rem;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ledger {
+    position: static;
+  }
+
+  .ledger,
+  .receiptColumn {
+    min-width: 0;
+    padding: 1rem;
+  }
+
+  .payment {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 34rem) {
+  .page {
+    padding-inline: .75rem;
+  }
+
+  .amountOptions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .history li button {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .history li span:first-child {
+    grid-column: auto;
+  }
+
+  .history li span:last-child {
+    text-align: left;
+  }
+}

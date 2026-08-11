@@ -20,6 +20,12 @@ import PageL2F1dGgvcmVzZXQtcGFzc3dvcmQ from './pages/auth/reset-password/page';
 import PageL2F1dGgvdmVyaWZ5 from './pages/auth/verify/page';
 import PageL2NhdGVnb3JpZXM from './pages/categories/page';
 import PageL2NhdGVnb3JpZXMvOnNsdWc from './pages/categories/[slug]/page';
+import { ScrollToTop } from './components/scroll-to-top';
+import PageTagSlug from './pages/tags/[slug]/page';
+import PageQuests from './pages/quests/page';
+import AdminQuestsPage from './pages/dashboard/quests/page';
+import AdminPaymentMethodsPage from './pages/dashboard/payment-methods/page';
+import AdminTopupsPage from './pages/dashboard/topups/page';
 import PageL2NvbW11bml0eQ from './pages/community/page';
 import PageL2Rhc2hib2FyZA from './pages/dashboard/page';
 import PageL2Rhc2hib2FyZC9jb250ZW50L2NhdGVnb3JpZXM from './pages/dashboard/content/categories/page';
@@ -96,6 +102,13 @@ function WrappedPageL2NhdGVnb3JpZXMvOnNsdWc() {
   const location = useLocation();
   const searchParamsObj = Object.fromEntries(new URLSearchParams(location.search));
   return <AsyncPageL2NhdGVnb3JpZXMvOnNsdWc params={Promise.resolve(params)} searchParams={Promise.resolve(searchParamsObj)} />;
+}
+const AsyncPageTagSlug = withAsync(PageTagSlug as any);
+function WrappedPageTagSlug() {
+  const params = useParams();
+  const location = useLocation();
+  const searchParamsObj = Object.fromEntries(new URLSearchParams(location.search));
+  return <AsyncPageTagSlug params={Promise.resolve(params)} searchParams={Promise.resolve(searchParamsObj)} />;
 }
 const AsyncPageL2Rhc2hib2FyZA = withAsync(PageL2Rhc2hib2FyZA as any);
 function WrappedPageL2Rhc2hib2FyZA() {
@@ -260,6 +273,7 @@ function DashboardLayout({ children }: { children: ReactNode }) {
 function App() {
   return (
     <Router>
+      <ScrollToTop />
       <GlobalAdvertisementManager />
       <Routes>
         <Route element={<Layout />}>
@@ -278,6 +292,8 @@ function App() {
           <Route path="/auth/verify" element={<WrappedPageL2F1dGgvdmVyaWZ5 />} />
           <Route path="/categories" element={<WrappedPageL2NhdGVnb3JpZXM />} />
           <Route path="/categories/:slug" element={<WrappedPageL2NhdGVnb3JpZXMvOnNsdWc />} />
+          <Route path="/tags/:slug" element={<WrappedPageTagSlug />} />
+          <Route path="/quests" element={<PageQuests />} />
           <Route path="/community" element={<PageL2NvbW11bml0eQ />} />
           <Route path="/dashboard" element={<DashboardLayout><WrappedPageL2Rhc2hib2FyZA /></DashboardLayout>} />
           <Route path="/dashboard/content/categories" element={<DashboardLayout><WrappedPageL2Rhc2hib2FyZC9jb250ZW50L2NhdGVnb3JpZXM /></DashboardLayout>} />
@@ -286,6 +302,9 @@ function App() {
           <Route path="/dashboard/content/users" element={<DashboardLayout><WrappedPageL2Rhc2hib2FyZC9jb250ZW50L3VzZXJz /></DashboardLayout>} />
           <Route path="/dashboard/finance" element={<DashboardLayout><WrappedPageL2Rhc2hib2FyZC9maW5hbmNl /></DashboardLayout>} />
           <Route path="/dashboard/affiliate-links" element={<DashboardLayout><AffiliateLinksAdminPage /></DashboardLayout>} />
+          <Route path="/dashboard/quests" element={<DashboardLayout><AdminQuestsPage /></DashboardLayout>} />
+          <Route path="/dashboard/payment-methods" element={<DashboardLayout><AdminPaymentMethodsPage /></DashboardLayout>} />
+          <Route path="/dashboard/topups" element={<DashboardLayout><AdminTopupsPage /></DashboardLayout>} />
           <Route path="/dashboard/login" element={<PageL2Rhc2hib2FyZC9sb2dpbg />} />
           <Route path="/library" element={<WrappedPageL2xpYnJhcnk />} />
           <Route path="/login" element={<PageL2xvZ2lu />} />

@@ -4,6 +4,8 @@ import { MessageSquare, Send, UserCheck, Sparkles, Shield } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 
+import { loginHref } from "@/lib/auth";
+
 export interface CommunityMessage {
   id: string;
   userName: string;
@@ -39,24 +41,60 @@ const INITIAL_MESSAGES: CommunityMessage[] = [
   },
 ];
 
-export function CommunityChat({ compact = false }: Readonly<{ compact?: boolean }>) {
+const ZHIHU_INITIAL_MESSAGES: CommunityMessage[] = [
+  {
+    id: "z1",
+    userName: "Mộc Vãn Chi",
+    userAvatarTone: "indigo",
+    userRole: "ADMIN",
+    content: "Góc truyện ngắn Zhihu - đọc trọn một mạch, bàn luận thoải mái tại đây nhé!",
+    timestamp: "12 phút trước",
+  },
+  {
+    id: "z2",
+    userName: "Hạ Vũ",
+    userAvatarTone: "cyan",
+    content: "Mấy mẩu đoản văn kiểu này hợp đọc lúc nghỉ trưa ghê.",
+    timestamp: "6 phút trước",
+  },
+  {
+    id: "z3",
+    userName: "Tiểu Miên",
+    userAvatarTone: "gold",
+    content: "Có ai gợi ý truyện ngắn nào cảm động không ạ?",
+    timestamp: "Vừa xong",
+  },
+];
+
+export function CommunityChat({
+  channel = "main",
+  compact = false,
+  title,
+}: Readonly<{ channel?: "main" | "zhihu"; compact?: boolean; title?: string }>) {
   const [messages, setMessages] = useState<CommunityMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userName, setUserName] = useState("Độc giả Giới Truyện");
 
+  // Each channel keeps its own thread, so the Zhihu corner does not mix with
+  // the main hall.
+  const storageKey = channel === "main"
+    ? "gioitruyen_community_messages"
+    : `gioitruyen_community_messages_${channel}`;
+  const seedMessages = channel === "zhihu" ? ZHIHU_INITIAL_MESSAGES : INITIAL_MESSAGES;
+
   useEffect(() => {
     // Load existing stored messages
     try {
-      const stored = localStorage.getItem("gioitruyen_community_messages");
+      const stored = localStorage.getItem(storageKey);
       if (stored) {
         setMessages(JSON.parse(stored));
       } else {
-        setMessages(INITIAL_MESSAGES);
-        localStorage.setItem("gioitruyen_community_messages", JSON.stringify(INITIAL_MESSAGES));
+        setMessages(seedMessages);
+        localStorage.setItem(storageKey, JSON.stringify(seedMessages));
       }
     } catch {
-      setMessages(INITIAL_MESSAGES);
+      setMessages(seedMessages);
     }
 
     // Check login state
@@ -66,7 +104,8 @@ export function CommunityChat({ compact = false }: Readonly<{ compact?: boolean 
       const savedName = localStorage.getItem("gioitruyen_user_name") || "Đạo Hữu Hào Hoa";
       setUserName(savedName);
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storageKey]);
 
   function handleSend(e: FormEvent) {
     e.preventDefault();
@@ -84,8 +123,7 @@ export function CommunityChat({ compact = false }: Readonly<{ compact?: boolean 
     const updated = [...messages, newMessage];
     setMessages(updated);
     try {
-      localStorage.getItem("access_token");
-      localStorage.setItem("gioitruyen_community_messages", JSON.stringify(updated.slice(-50)));
+      localStorage.setItem(storageKey, JSON.stringify(updated.slice(-50)));
     } catch {
       // ignore
     }
@@ -107,7 +145,7 @@ export function CommunityChat({ compact = false }: Readonly<{ compact?: boolean 
       <header className="chatHeader">
         <div>
           <MessageSquare aria-hidden="true" className="chatIcon" />
-          <h3>Cộng đồng Giới Truyện</h3>
+          <h3>{title ?? "Cộng đồng Giới Truyện"}</h3>
         </div>
         <span className="liveBadge">
           <span className="liveDot" />
@@ -151,7 +189,7 @@ export function CommunityChat({ compact = false }: Readonly<{ compact?: boolean 
         ) : (
           <div className="chatLoginNotice">
             <span>Đăng nhập để tham gia bình luận trực tiếp</span>
-            <Link to="/login" className="chatLoginBtn">
+            <Link to={loginHref()} className="chatLoginBtn">
               Đăng nhập ngay
             </Link>
           </div>

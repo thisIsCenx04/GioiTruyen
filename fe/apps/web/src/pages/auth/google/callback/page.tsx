@@ -24,8 +24,15 @@ export default function GoogleCallbackPage() {
       document.cookie = `logged_in=true; path=/; max-age=2592000; SameSite=Lax`;
       if (typeof window !== "undefined") {
         localStorage.setItem("access_token", accessToken);
+        // The cookie matters as much as localStorage: getAccessToken() reads the
+        // cookie first, and password sign-in sets both. Without it a Google user
+        // looked signed out to any code that only checked cookies.
+        document.cookie =
+          `access_token=${encodeURIComponent(accessToken)}; path=/; max-age=1800; SameSite=Lax`;
         if (refreshToken) {
           localStorage.setItem("refresh_token", refreshToken);
+          document.cookie =
+            `refresh_token=${encodeURIComponent(refreshToken)}; path=/; max-age=2592000; SameSite=Lax`;
         }
         window.dispatchEvent(new Event("auth-change"));
       }

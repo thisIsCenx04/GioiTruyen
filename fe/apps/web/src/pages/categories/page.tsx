@@ -46,6 +46,8 @@ export default async function CategoriesPage() {
     })
   );
 
+  const categoriesWithStories = categoryStoriesMap.size;
+
   return (
     <PublicShell>
       <div className="categoriesPageRedesignShell">
@@ -54,21 +56,22 @@ export default async function CategoriesPage() {
           <div className="categoriesHeroBg" />
           <div className="categoriesHeroContainer">
             <div className="categoriesHeroContent">
-              <h1>
-                Thể loại truyện chọn lọc, đa dạng và hấp dẫn.
-              </h1>
+              <h1>Thể loại truyện</h1>
               <p>
-                Khám phá hàng ngàn bộ truyện theo từng chủ đề yêu thích: Tiên Hiệp, Huyền Huyễn, Ngôn Tình, Đô Thị, Trọng Sinh và nhiều hơn thế.
+                Chọn chủ đề bạn muốn đọc &mdash; mỗi thể loại dẫn thẳng tới danh
+                sách truyện thuộc thể loại đó.
               </p>
 
+              {/* Counted from the taxonomy the API returns; the previous row
+                  showed invented figures (25+ / 5K+ / 1M+). */}
               <div className="categoriesStatCardsRow">
                 <div className="categoriesStatGlassCard">
                   <div className="statIconCircle catIconCyan">
                     <Layers size={20} />
                   </div>
                   <div className="statText">
-                    <strong>25+</strong>
-                    <span>Thể loại phong phú</span>
+                    <strong>{categories.length}</strong>
+                    <span>thể loại</span>
                   </div>
                 </div>
 
@@ -77,8 +80,8 @@ export default async function CategoriesPage() {
                     <Sparkles size={20} />
                   </div>
                   <div className="statText">
-                    <strong>5K+</strong>
-                    <span>Truyện chọn lọc</span>
+                    <strong>{allStories.length}</strong>
+                    <span>truyện đang hiển thị</span>
                   </div>
                 </div>
 
@@ -87,8 +90,8 @@ export default async function CategoriesPage() {
                     <Flame size={20} />
                   </div>
                   <div className="statText">
-                    <strong>1M+</strong>
-                    <span>Độc giả yêu thích</span>
+                    <strong>{categoriesWithStories}</strong>
+                    <span>thể loại đã có truyện</span>
                   </div>
                 </div>
               </div>
@@ -101,7 +104,7 @@ export default async function CategoriesPage() {
           <section className="categoryHeaderSection" aria-label="Danh sách thể loại">
             <div className="categoryIntroHeader">
               <span className="categoryBadgeEyebrow">DANH MỤC THỂ LOẠI</span>
-              <h2>Chọn Thể Loạn Nhanh</h2>
+              <h2>Chọn thể loại</h2>
               <p>Nhấp vào thể loại bất kỳ để chuyển nhanh tới danh sách các bộ truyện tương ứng.</p>
             </div>
 

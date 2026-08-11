@@ -2,8 +2,6 @@
 
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 
-import { AdminShell } from "../admin-shell";
-
 type Advertisement = {
   id: string;
   name: string;
@@ -144,8 +142,10 @@ export default function AffiliateLinksAdminPage() {
     }
   }
 
+  // The route already wraps this page in AdminShell (see App.tsx); rendering
+  // another one here drew the sidebar twice.
   return (
-    <AdminShell>
+    <>
       <header className="adminTopbar">
         <div>
           <p>Quảng cáo &amp; liên kết</p>
@@ -159,7 +159,7 @@ export default function AffiliateLinksAdminPage() {
           Link được mở khi người đọc bấm vào trang (vị trí <code>GLOBAL_CLICK</code>). Thời gian chờ
           tính bằng giây, giới hạn số lần mở mỗi ngày cho một người đọc.
         </p>
-        <form onSubmit={addLink} style={{ display: "grid", gap: "0.75rem", gridTemplateColumns: "2fr 1fr" }}>
+        <form className="affiliateForm" onSubmit={addLink} style={{ display: "grid", gap: "0.75rem", gridTemplateColumns: "2fr 1fr" }}>
           <label style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
             <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>Link affiliate</span>
             <input name="targetUrl" placeholder="https://s.shopee.vn/..." required type="url" />
@@ -232,6 +232,6 @@ export default function AffiliateLinksAdminPage() {
           ))
         )}
       </section>
-    </AdminShell>
+    </>
   );
 }

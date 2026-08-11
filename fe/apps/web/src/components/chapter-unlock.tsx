@@ -4,6 +4,8 @@ import { Link } from "react-router-dom";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useState } from "react";
 
+import { API_BASE_URL } from "@/lib/api-base";
+
 export type ChapterAccessView = Readonly<{
   chapterId: string;
   storyId: string;
@@ -31,7 +33,7 @@ export function ChapterUnlock({
     setBusy(true);
     setError("");
     try {
-      const response = await fetch(`/api/workspace/chapters/${access.chapterId}/unlock`, {
+      const response = await fetch(`${API_BASE_URL}/chapters/${access.chapterId}/unlock`, {
         method: "POST",
       });
       if (!response.ok) {

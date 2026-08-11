@@ -1,3 +1,5 @@
+import { getAccessToken, refreshAccessToken } from "../../lib/auth";
+
 const defaultApiBaseUrl = "/api/v1";
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? defaultApiBaseUrl).replace(
@@ -33,9 +35,16 @@ export type AdminStoryRow = {
   teamId: string;
   categoryId: string | null;
   categoryName: string | null;
+  /** Every genre the story belongs to; a story can carry several. */
+  categoryIds?: string[];
+  categoryNames?: string[];
   coverUrl?: string;
   synopsis: string | null;
   tags?: string[];
+  /** SERIAL or ONESHOT; absent on rows saved before the format was introduced. */
+  storyFormat?: string;
+  /** TEXT, AUDIO, EXCLUSIVE or ORIGINAL; defaults to TEXT. */
+  storyType?: string;
   workflowStatus: string;
   completionStatus: string;
   updatedAt: string | null;
@@ -86,22 +95,30 @@ export type AdminCashFlowRow = {
   createdAt: string | null;
 };
 
-async function adminRequest<T>(path: `/${string}`): Promise<T> {
-  const token = typeof window !== "undefined"
-    ? localStorage.getItem("access_token") || (document.cookie.match(/(?:^|; )access_token=([^;]*)/)?.[1] ? decodeURIComponent(document.cookie.match(/(?:^|; )access_token=([^;]*)/)![1]) : null)
-    : null;
-
+function send(path: `/${string}`, token: string | null) {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
-
-  const response = await fetch(`${apiBaseUrl}${path}`, {
+  return fetch(`${apiBaseUrl}${path}`, {
     cache: "no-store",
     credentials: "same-origin",
     headers,
     signal: AbortSignal.timeout(8000),
   });
+}
+
+async function adminRequest<T>(path: `/${string}`): Promise<T> {
+  let response = await send(path, getAccessToken());
+
+  // Access tokens expire after 30 minutes; renew once before giving up so an
+  // admin mid-session is not silently logged out.
+  if (response.status === 401) {
+    const renewed = await refreshAccessToken();
+    if (renewed) {
+      response = await send(path, renewed);
+    }
+  }
 
   if (!response.ok) {
     throw new Error(`Admin API request failed: ${response.status} ${response.statusText}`);

@@ -15,6 +15,7 @@ import { DonationJourney } from "@/components/donation-journey";
 import { PublicShell } from "@/components/site-chrome";
 import { StoryRelations } from "@/components/story-relations";
 import { StoryReportButton } from "@/components/story-report-button";
+import { StoryShareButton } from "@/components/story-share-button";
 import { loadStoryDetail } from "@/lib/catalog";
 
 type StoryPageProps = Readonly<{
@@ -88,6 +89,15 @@ export default async function StoryPage({ params, searchParams }: StoryPageProps
   const team = result.team;
   const firstChapter = orderedChapters[0];
   const latestChapter = orderedChapters.at(-1);
+  // A Zhihu-style short story is read on this page, so it shows its text instead
+  // of a table of contents and never links out to a chapter route.
+  const isOneshot = story.storyFormat === "ONESHOT";
+  // The generated client predates tags, so the field is read off the raw payload.
+  const storyTags: Array<{ label: string; slug: string }> =
+    (story as { tags?: Array<{ label: string; slug: string }> }).tags ?? [];
+  const oneshotHtml = result.oneshotChapter?.contentHtml ?? "";
+  const oneshotWords = result.oneshotChapter?.wordCount ?? 0;
+  const readingMinutes = oneshotWords > 0 ? Math.max(1, Math.ceil(oneshotWords / 200)) : 0;
   const publishedAt = new Date(story.publishedAt).toLocaleDateString("vi-VN");
   const updatedAt = new Date(story.updatedAt).toLocaleDateString("vi-VN");
 
@@ -128,17 +138,55 @@ export default async function StoryPage({ params, searchParams }: StoryPageProps
             <div className="storyActionBar" aria-label="Thao tác với truyện">
               <StoryRelations storyId={story.id} />
               <DonationJourney storyTitle={story.title} teamId={story.teamId} variant="action" />
-              {firstChapter && <Link className="storyAction storyActionStart" to={`/truyen/${story.slug}/chuong-${firstChapter.number}` as string}><BookOpen /> Đọc từ đầu</Link>}
-              {latestChapter && <Link className="storyAction storyActionLatest" to={`/truyen/${story.slug}/chuong-${latestChapter.number}` as string}><Star /> Đọc tập mới</Link>}
+              {isOneshot ? (
+                <a className="storyAction storyActionStart" href="#oneshot-body"><BookOpen /> Đọc truyện</a>
+              ) : (
+                <>
+                  {firstChapter && <Link className="storyAction storyActionStart" to={`/truyen/${story.slug}/chuong-${firstChapter.number}` as string}><BookOpen /> Đọc từ đầu</Link>}
+                  {latestChapter && <Link className="storyAction storyActionLatest" to={`/truyen/${story.slug}/chuong-${latestChapter.number}` as string}><Star /> Đọc tập mới</Link>}
+                </>
+              )}
+              <StoryShareButton storySlug={story.slug} storyTitle={story.title} />
               <StoryReportButton targetId={story.id} />
             </div>
 
             <p className="storyDescription">{story.synopsis}</p>
+
+            {storyTags.length > 0 ? (
+              <ul className="storyTagList" aria-label="Tag của truyện">
+                {storyTags.map((tag: { label: string; slug: string }) => (
+                  <li key={tag.slug}>
+                    <Link to={`/tags/${tag.slug}` as string}>#{tag.label}</Link>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </div>
         </article>
 
         <div className="storyDetailContentGrid">
           <div className="storyDetailPrimary">
+            {isOneshot ? (
+              <section className="oneshotReader" aria-labelledby="oneshot-title">
+                <div className="storyPanelTabs">
+                  <a aria-current="page" href="#oneshot-body"><BookOpen /> Nội dung truyện</a>
+                  <a href="#story-comments"><MessageSquare /> Bình luận</a>
+                </div>
+                <header>
+                  <h2 id="oneshot-title">{story.title}</h2>
+                  {readingMinutes ? <span>~{readingMinutes} phút đọc</span> : null}
+                </header>
+                {oneshotHtml ? (
+                  <div
+                    className="oneshotBody"
+                    dangerouslySetInnerHTML={{ __html: oneshotHtml }}
+                    id="oneshot-body"
+                  />
+                ) : (
+                  <p className="emptyCatalog" id="oneshot-body">Truyện chưa có nội dung công khai.</p>
+                )}
+              </section>
+            ) : (
             <section className="storyChapterPanel" aria-labelledby="chapters-title">
               <div className="storyPanelTabs">
                 <a aria-current="page" href="#chapter-list"><List /> Danh sách chương</a>
@@ -187,6 +235,7 @@ export default async function StoryPage({ params, searchParams }: StoryPageProps
                 ) : <p className="emptyCatalog">Truyện chưa có chương công khai.</p>}
               </div>
             </section>
+            )}
 
             <div id="story-comments"><Comments targetId={story.id} targetType="STORY" /></div>
           </div>

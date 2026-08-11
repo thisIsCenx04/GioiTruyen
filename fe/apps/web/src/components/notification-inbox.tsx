@@ -10,6 +10,7 @@ import { Link } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import styles from "./notification-inbox.module.css";
+import { API_BASE_URL, apiFetch } from "@/lib/api-base";
 
 function time(value: string) {
   return new Intl.DateTimeFormat("vi-VN", {
@@ -29,7 +30,7 @@ function message(error: unknown) {
 }
 
 export function NotificationInbox() {
-  const api = useMemo(() => createBrowserNotificationClient(), []);
+  const api = useMemo(() => createBrowserNotificationClient({ baseUrl: API_BASE_URL, fetchImplementation: apiFetch }), []);
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [unread, setUnread] = useState(0);

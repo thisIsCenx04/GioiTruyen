@@ -17,7 +17,11 @@ public final class CatalogDtos {
             String coverAssetId,
             String publishedAt,
             long viewCount,
-            long saveCount
+            long saveCount,
+            /** SERIAL or ONESHOT - cards link straight into a one-page read. */
+            String storyFormat,
+            /** TEXT, AUDIO, EXCLUSIVE or ORIGINAL - drives the shelf badges. */
+            String storyType
     ) {
     }
 
@@ -79,10 +83,19 @@ public final class CatalogDtos {
             String origin,
             String language,
             String completionStatus,
+            /** SERIAL or ONESHOT - decides whether the reader shows a chapter list. */
+            String storyFormat,
+            /** TEXT, AUDIO, EXCLUSIVE or ORIGINAL. */
+            String storyType,
+            /** Editorial labels; each links to /tags/{slug}/stories. */
+            List<StoryTag> tags,
             String publishedAt,
             String updatedAt,
             int version
     ) {
+    }
+
+    public record StoryTag(String slug, String label) {
     }
 
     public record PublicChapter(

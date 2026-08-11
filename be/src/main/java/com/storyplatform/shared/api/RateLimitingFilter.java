@@ -29,11 +29,20 @@ public final class RateLimitingFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(RateLimitingFilter.class);
 
-    // Limits per 1 minute window
-    private static final int MAX_BURST_PER_SECOND = 15;
+    // Budgets are sized for how the SPA actually loads: one home page render
+    // fans out 5 parallel calls, and a reader clicking through chapters can
+    // stack several of those within a second. The old burst ceiling of 15/s
+    // rejected ordinary browsing, and because the frontend swallows failures
+    // into empty fallbacks a 429 surfaced as a blank page rather than an error.
+    //
+    // Readers also share public IPs behind carrier NAT and office gateways, so
+    // a per-IP cap tuned for one person throttles a whole building. Reads are
+    // therefore generous; writes and auth stay tight, since those are what
+    // abuse actually targets.
+    private static final int MAX_BURST_PER_SECOND = 60;
     private static final int MAX_AUTH_PER_MINUTE = 15;
-    private static final int MAX_MUTATION_PER_MINUTE = 40;
-    private static final int MAX_GENERAL_PER_MINUTE = 180;
+    private static final int MAX_MUTATION_PER_MINUTE = 60;
+    private static final int MAX_GENERAL_PER_MINUTE = 600;
 
     private static final long CLEANUP_INTERVAL_MS = 300_000L; // 5 minutes
 
@@ -64,7 +73,10 @@ public final class RateLimitingFilter extends OncePerRequestFilter {
 
         if (!tracker.allowRequest(now, method, path)) {
             log.warn("Rate limit / Anti-spam triggered for IP={} path={} method={}", ip, path, method);
-            sendTooManyRequestsResponse(response);
+            // A burst breach clears within a second; a minute breach does not.
+            // Telling the client which it was lets a retry succeed promptly
+            // instead of waiting out a full minute for a one-second overage.
+            sendTooManyRequestsResponse(response, tracker.retryAfterSeconds(now));
             return;
         }
 
@@ -83,21 +95,23 @@ public final class RateLimitingFilter extends OncePerRequestFilter {
         return request.getRemoteAddr();
     }
 
-    private void sendTooManyRequestsResponse(HttpServletResponse response) throws IOException {
+    private void sendTooManyRequestsResponse(HttpServletResponse response, long retryAfterSeconds)
+            throws IOException {
         response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
-        response.setHeader("Retry-After", "60");
+        response.setHeader("Retry-After", Long.toString(retryAfterSeconds));
 
         String jsonBody = """
                 {
                   "type": "urn:problem:story-platform:too-many-requests",
                   "title": "Quá nhiều yêu cầu",
                   "status": 429,
-                  "detail": "Tần suất truy cập quá cao. Vui lòng thử lại sau 60 giây.",
-                  "code": "TOO_MANY_REQUESTS"
+                  "detail": "Tần suất truy cập quá cao. Vui lòng thử lại sau %d giây.",
+                  "code": "TOO_MANY_REQUESTS",
+                  "retryAfterSeconds": %d
                 }
-                """;
+                """.formatted(retryAfterSeconds, retryAfterSeconds);
         response.getWriter().write(jsonBody);
     }
 
@@ -126,6 +140,9 @@ public final class RateLimitingFilter extends OncePerRequestFilter {
             this.secondWindowStart = now;
         }
 
+        /** True when the last rejection was the 1s burst cap rather than a 1m cap. */
+        private boolean lastBreachWasBurst;
+
         synchronized boolean allowRequest(long now, String method, String path) {
             // Reset 1-second burst window
             if (now - secondWindowStart >= 1000L) {
@@ -141,30 +158,41 @@ public final class RateLimitingFilter extends OncePerRequestFilter {
                 mutationRequestsThisMinute.set(0);
             }
 
-            // Check burst per second limit
-            if (requestsThisSecond.incrementAndGet() > MAX_BURST_PER_SECOND) {
-                return false;
-            }
-
-            // Check total per minute limit
-            if (requestsThisMinute.incrementAndGet() > MAX_GENERAL_PER_MINUTE) {
-                return false;
-            }
-
-            // Check Auth endpoint limit
             boolean isAuth = path.startsWith("/auth/") || path.contains("/login") || path.contains("/register");
-            if (isAuth && authRequestsThisMinute.incrementAndGet() > MAX_AUTH_PER_MINUTE) {
-                return false;
-            }
-
-            // Check Mutation endpoint limit (POST, PUT, DELETE, PATCH)
             boolean isMutation = "POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method)
                     || "DELETE".equalsIgnoreCase(method) || "PATCH".equalsIgnoreCase(method);
-            if (isMutation && mutationRequestsThisMinute.incrementAndGet() > MAX_MUTATION_PER_MINUTE) {
+
+            // Every applicable budget is tested before any is spent. Incrementing
+            // as we went meant a request rejected by a later check had already
+            // consumed the earlier counters, so one blocked call shortened every
+            // other budget too.
+            if (requestsThisSecond.get() >= MAX_BURST_PER_SECOND) {
+                lastBreachWasBurst = true;
+                return false;
+            }
+            if (requestsThisMinute.get() >= MAX_GENERAL_PER_MINUTE
+                    || (isAuth && authRequestsThisMinute.get() >= MAX_AUTH_PER_MINUTE)
+                    || (isMutation && mutationRequestsThisMinute.get() >= MAX_MUTATION_PER_MINUTE)) {
+                lastBreachWasBurst = false;
                 return false;
             }
 
+            requestsThisSecond.incrementAndGet();
+            requestsThisMinute.incrementAndGet();
+            if (isAuth) {
+                authRequestsThisMinute.incrementAndGet();
+            }
+            if (isMutation) {
+                mutationRequestsThisMinute.incrementAndGet();
+            }
             return true;
+        }
+
+        /** Seconds until the breached window reopens; at least 1 so clients back off. */
+        synchronized long retryAfterSeconds(long now) {
+            long windowStart = lastBreachWasBurst ? secondWindowStart : minuteWindowStart;
+            long windowLength = lastBreachWasBurst ? 1000L : 60_000L;
+            return Math.max(1L, (windowLength - (now - windowStart) + 999L) / 1000L);
         }
 
         boolean isStale(long now) {

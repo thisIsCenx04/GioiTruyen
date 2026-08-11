@@ -88,10 +88,17 @@ public class SecurityConfiguration {
                                 HttpMethod.GET,
                                 "/categories",
                                 "/categories/*/stories",
+                                "/tags/*/stories",
                                 "/home",
                                 "/promotions/home",
                                 "/search",
                                 "/search/suggestions",
+                                "/zhihu/sections",
+                                "/zhihu/rankings",
+                                // The price list and payment options are worth
+                                // seeing before creating an account.
+                                "/deposit-packages",
+                                "/payment-methods",
                                 "/stories",
                                 "/stories/*",
                                 "/stories/*/chapters",
@@ -149,8 +156,14 @@ public class SecurityConfiguration {
                         ).authenticated()
                         .requestMatchers("/notifications/**")
                         .authenticated()
+                        // A guest may preview what quests exist; their own board
+                        // and any reward claim still require an account.
+                        .requestMatchers(HttpMethod.GET, "/quests/preview").permitAll()
+                        .requestMatchers("/quests/**").authenticated()
                         .requestMatchers("/rankings/**").permitAll()
                         .requestMatchers("/wallets/**").authenticated()
+                        // Opening and reading a top-up belongs to one account.
+                        .requestMatchers("/topups", "/topups/**").authenticated()
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/chapters/*/unlock"
@@ -164,24 +177,10 @@ public class SecurityConfiguration {
                                 "/teams/applications/me",
                                 "/teams/*/dashboard"
                         ).authenticated()
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                "/admin/dashboard",
-                                "/admin/content/**",
-                                "/admin/finance/**"
-                        ).permitAll()
-                        .requestMatchers(
-                                "/admin/content/**",
-                                "/admin/finance/**"
-                        ).authenticated()
-                        .requestMatchers("/admin/topups/**").authenticated()
-                        .requestMatchers("/admin/withdrawals/**")
-                        .authenticated()
-                        .requestMatchers("/admin/advertisements/**")
-                        .hasAuthority("SCOPE_ADMIN")
-                        .requestMatchers(
-                                "/admin/configuration/topup-discount"
-                        ).authenticated()
+                        // Every admin surface exposes user emails, wallet balances
+                        // and cash-flow history, so all of them - reads included -
+                        // require an authenticated account holding the ADMIN scope.
+                        .requestMatchers("/admin/**").hasAuthority("SCOPE_ADMIN")
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/notification-unsubscribe"

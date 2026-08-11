@@ -42,9 +42,24 @@ public class PublicCatalogController {
         return catalogService.rankingBoards();
     }
 
+    @GetMapping("/zhihu/sections")
+    public List<CatalogDtos.TaggedStorySection> zhihuSections() {
+        return catalogService.zhihuSections();
+    }
+
+    @GetMapping("/zhihu/rankings")
+    public List<CatalogDtos.RankingBoard> zhihuRankingBoards() {
+        return catalogService.zhihuRankingBoards();
+    }
+
     @GetMapping("/categories/{slug}/stories")
     public List<CatalogDtos.HomeStorySummary> categoryStories(@PathVariable String slug) {
         return catalogService.categoryStories(slug);
+    }
+
+    @GetMapping("/tags/{slug}/stories")
+    public List<CatalogDtos.HomeStorySummary> tagStories(@PathVariable String slug) {
+        return catalogService.tagStories(slug);
     }
 
     @GetMapping("/stories/{identifier}")

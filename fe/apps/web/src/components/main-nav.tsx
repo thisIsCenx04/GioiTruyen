@@ -4,14 +4,16 @@ import {
   BookOpen,
   Home,
   List,
+  Menu,
   MessageSquareQuote,
   Trophy,
   UsersRound,
   Volume2,
+  X,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useNavigate, useLocation, useParams } from "react-router-dom";
-import type { ComponentType, SVGProps } from "react";
+import { useLocation } from "react-router-dom";
+import { useEffect, useState, type ComponentType, type SVGProps } from "react";
 
 type NavIcon = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -66,23 +68,60 @@ const navItems: Array<{
 ];
 
 export function MainNav() {
-  const location = useLocation(); const pathname = location.pathname;
+  const location = useLocation();
+  const pathname = location.pathname;
+  const [open, setOpen] = useState(false);
+
+  // Closing on navigation matters because the links stay mounted: without this
+  // the panel would still cover the page the reader just opened.
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  // A panel that covers the viewport must not scroll the page behind it.
+  useEffect(() => {
+    if (!open) return undefined;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previous; };
+  }, [open]);
 
   return (
-    <nav aria-label="Điều hướng chính" className="mainNav">
-      {navItems.map((item) => {
-        const Icon = item.icon;
-        return (
-          <Link
-            aria-current={item.match(pathname) ? "page" : undefined}
-            to={item.href}
-            key={item.href}
-          >
-            <Icon aria-hidden="true" />
-            {item.label}
-          </Link>
-        );
-      })}
-    </nav>
+    <>
+      <button
+        aria-controls="main-nav"
+        aria-expanded={open}
+        aria-label={open ? "Đóng menu" : "Mở menu"}
+        className="navToggle"
+        onClick={() => setOpen((value) => !value)}
+        type="button"
+      >
+        {open ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
+      </button>
+
+      {open ? (
+        <button aria-label="Đóng menu" className="navScrim" onClick={() => setOpen(false)} type="button" />
+      ) : null}
+
+      <nav
+        aria-label="Điều hướng chính"
+        className={open ? "mainNav isOpen" : "mainNav"}
+        id="main-nav"
+      >
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <Link
+              aria-current={item.match(pathname) ? "page" : undefined}
+              to={item.href}
+              key={item.href}
+            >
+              <Icon aria-hidden="true" />
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+    </>
   );
 }

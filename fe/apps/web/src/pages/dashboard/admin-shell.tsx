@@ -1,8 +1,8 @@
 "use client";
 
-import { Link, useLocation } from "react-router-dom";
-import type { ReactNode, JSX } from "react";
-import { isAdminUser } from "@/lib/auth";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, type ReactNode, type JSX } from "react";
+import { isAdminUser, isLoggedIn } from "@/lib/auth";
 import "./globals.css";
 
 type AdminTabKey =
@@ -12,7 +12,10 @@ type AdminTabKey =
   | "teams"
   | "users"
   | "cash-flow"
-  | "affiliate-links";
+  | "affiliate-links"
+  | "quests"
+  | "payment-methods"
+  | "topups";
 
 const adminTabs: Array<{
   key: AdminTabKey;
@@ -108,14 +111,61 @@ const adminTabs: Array<{
     href: "/dashboard/affiliate-links",
     match: (p) => p.startsWith("/dashboard/affiliate-links"),
   },
+  {
+    key: "quests",
+    label: "Quản lý nhiệm vụ",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <circle cx="12" cy="12" r="6" />
+        <circle cx="12" cy="12" r="2" />
+      </svg>
+    ),
+    href: "/dashboard/quests",
+    match: (p) => p.startsWith("/dashboard/quests"),
+  },
+  {
+    key: "payment-methods",
+    label: "Phương thức thanh toán",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="5" width="20" height="14" rx="2" />
+        <line x1="2" y1="10" x2="22" y2="10" />
+        <line x1="6" y1="15" x2="10" y2="15" />
+      </svg>
+    ),
+    href: "/dashboard/payment-methods",
+    match: (p) => p.startsWith("/dashboard/payment-methods"),
+  },
+  {
+    key: "topups",
+    label: "Duyệt nạp xu",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2v20" />
+        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+      </svg>
+    ),
+    href: "/dashboard/topups",
+    match: (p) => p.startsWith("/dashboard/topups"),
+  },
 ];
 
 export function AdminShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
-
-  if (pathname === "/dashboard/login") return children;
-
+  const navigate = useNavigate();
   const isAdmin = isAdminUser();
+  const isLoginRoute = pathname === "/dashboard/login";
+
+  // A signed-out visitor (or an expired session) goes straight to the login
+  // page instead of staring at a permission notice they cannot act on.
+  useEffect(() => {
+    if (!isLoginRoute && !isAdmin && !isLoggedIn()) {
+      navigate(`/dashboard/login?returnTo=${encodeURIComponent(pathname)}`, { replace: true });
+    }
+  }, [isAdmin, isLoginRoute, navigate, pathname]);
+
+  if (isLoginRoute) return children;
 
   if (!isAdmin) {
     return (

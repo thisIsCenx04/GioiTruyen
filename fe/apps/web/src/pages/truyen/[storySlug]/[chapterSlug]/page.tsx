@@ -4,6 +4,7 @@ const cache = <T extends (...args: any[]) => any>(fn: T) => fn;
 
 import { ChapterReader } from "@/components/chapter-reader";
 import { ChapterUnlock, type ChapterAccessView } from "@/components/chapter-unlock";
+import { QuestTimeTracker } from "@/components/quest-time-tracker";
 import { PublicShell } from "@/components/site-chrome";
 
 type Props = Readonly<{
@@ -87,6 +88,8 @@ export default async function CleanReaderPage({ params }: Props) {
 
   return (
     <PublicShell>
+      {/* Only a chapter page counts toward the reading-time quests. */}
+      {result.chapter ? <QuestTimeTracker questType="READ_MINUTES" /> : null}
       {result.chapter ? (
         <ChapterReader
           chapter={result.chapter}

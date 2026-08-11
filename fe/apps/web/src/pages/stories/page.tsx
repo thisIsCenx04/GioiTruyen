@@ -21,6 +21,7 @@ export default async function StoriesPage() {
         .map((story) => [story.id, story] as const),
     ).values(),
   ];
+  const teamCount = new Set(stories.map((story) => story.teamId).filter(Boolean)).size;
 
   return (
     <PublicShell>
@@ -30,31 +31,32 @@ export default async function StoriesPage() {
           <div className="storiesHeroBg" />
           <div className="storiesHeroContainer">
             <div className="storiesHeroContent">
-              <h1>
-                Truyện độc quyền, mới ra lò, mới cập nhật, sáng tác và hoàn thành.
-              </h1>
+              <h1>Kho truyện Giới Truyện</h1>
               <p>
-                Khám phá hàng ngàn bộ truyện đặc sắc, được cập nhật liên tục mỗi ngày chỉ có tại Giới Truyện.
+                Truyện độc quyền, truyện đề cử, truyện vừa cập nhật và truyện sáng tác
+                &mdash; xếp sẵn theo từng kệ để bạn tìm nhanh thứ muốn đọc.
               </p>
 
+              {/* Counted from what the catalog actually returns; the old row showed
+                  invented figures (1M+ / 5K+ / 200+) that were never measured. */}
               <div className="storiesStatCardsRow">
-                <div className="storiesStatGlassCard">
-                  <div className="statIconCircle">
-                    <BookOpen size={20} />
-                  </div>
-                  <div className="statText">
-                    <strong>1M+</strong>
-                    <span>Lượt đọc mỗi tháng</span>
-                  </div>
-                </div>
-
                 <div className="storiesStatGlassCard">
                   <div className="statIconCircle">
                     <Library size={20} />
                   </div>
                   <div className="statText">
-                    <strong>5K+</strong>
-                    <span>Tác phẩm độc quyền</span>
+                    <strong>{stories.length}</strong>
+                    <span>truyện đang hiển thị</span>
+                  </div>
+                </div>
+
+                <div className="storiesStatGlassCard">
+                  <div className="statIconCircle">
+                    <BookOpen size={20} />
+                  </div>
+                  <div className="statText">
+                    <strong>{storySections.length}</strong>
+                    <span>kệ truyện</span>
                   </div>
                 </div>
 
@@ -63,8 +65,8 @@ export default async function StoriesPage() {
                     <Users size={20} />
                   </div>
                   <div className="statText">
-                    <strong>200+</strong>
-                    <span>Nhóm sáng tác</span>
+                    <strong>{teamCount}</strong>
+                    <span>nhóm đăng truyện</span>
                   </div>
                 </div>
               </div>

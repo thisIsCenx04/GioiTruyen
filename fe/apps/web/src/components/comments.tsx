@@ -13,7 +13,9 @@ import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 
+import { loginHref } from "@/lib/auth";
 import styles from "./comments.module.css";
+import { API_BASE_URL, apiFetch } from "@/lib/api-base";
 
 type Props = Readonly<{
   targetId: string;
@@ -21,7 +23,7 @@ type Props = Readonly<{
 }>;
 
 function ReactionButton({ commentId }: Readonly<{ commentId: string }>) {
-  const api = useMemo(() => createBrowserReactionClient(), []);
+  const api = useMemo(() => createBrowserReactionClient({ baseUrl: API_BASE_URL, fetchImplementation: apiFetch }), []);
   const [reaction, setReaction] = useState<{
     active: boolean;
     count: number;
@@ -65,8 +67,10 @@ function ReactionButton({ commentId }: Readonly<{ commentId: string }>) {
 }
 
 export function Comments({ targetId, targetType }: Props) {
-  const api = useMemo(() => createBrowserCommentClient(), []);
-  const reports = useMemo(() => createBrowserReportClient(), []);
+  // This client builds its base URL internally and takes no baseUrl option, so
+  // apiFetch is what redirects it onto /api/v1.
+  const api = useMemo(() => createBrowserCommentClient({ fetchImplementation: apiFetch }), []);
+  const reports = useMemo(() => createBrowserReportClient({ baseUrl: API_BASE_URL, fetchImplementation: apiFetch }), []);
   const [items, setItems] = useState<readonly CommunityComment[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [owned, setOwned] = useState<ReadonlySet<string>>(new Set());
@@ -224,7 +228,7 @@ export function Comments({ targetId, targetType }: Props) {
       </div>
       {notice === "LOGIN_REQUIRED" ? (
         <p className={styles.notice}>
-          <Link to={"/login" as string}>Đăng nhập</Link> để tham gia thảo luận.
+          <Link to={loginHref()}>Đăng nhập</Link> để tham gia thảo luận.
         </p>
       ) : notice ? <p className={styles.notice} role="status">{notice}</p> : null}
       <ol className={styles.list}>

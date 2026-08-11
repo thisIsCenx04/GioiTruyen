@@ -25,6 +25,7 @@ import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 import styles from "./team-workspace.module.css";
 import { WithdrawalWorkspace } from "./withdrawal-workspace";
+import { API_BASE_URL, apiFetch } from "@/lib/api-base";
 
 function safeUUID(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -96,7 +97,7 @@ function WorkspaceNotice({
 }
 
 export function TeamDirectory() {
-  const teamsApi = useMemo(() => createBrowserTeamClient(), []);
+  const teamsApi = useMemo(() => createBrowserTeamClient({ baseUrl: API_BASE_URL, fetchImplementation: apiFetch }), []);
   const [teams, setTeams] = useState<Team[]>([]);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
@@ -419,7 +420,7 @@ export function TeamDirectory() {
 
 
 export function TeamWorkspace({ teamId }: Readonly<{ teamId: string }>) {
-  const teamsApi = useMemo(() => createBrowserTeamClient(), []);
+  const teamsApi = useMemo(() => createBrowserTeamClient({ baseUrl: API_BASE_URL, fetchImplementation: apiFetch }), []);
   const [team, setTeam] = useState<Team | null>(null);
   const [dashboard, setDashboard] = useState<TeamDashboard | null>(null);
   const [members, setMembers] = useState<TeamMembership[]>([]);

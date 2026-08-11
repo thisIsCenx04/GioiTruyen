@@ -14,6 +14,7 @@ import type { CSSProperties } from "react";
 import { Comments } from "./comments";
 import styles from "./chapter-reader.module.css";
 import { StoryReportButton } from "./story-report-button";
+import { API_BASE_URL, apiFetch } from "@/lib/api-base";
 
 function safeUUID(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -35,8 +36,8 @@ export function ChapterReader({
   storySlug?: string;
   storyTitle?: string;
 }>) {
-  const sessions = useMemo(() => createBrowserReadingSessionClient(), []);
-  const progressApi = useMemo(() => createBrowserReadingClient(), []);
+  const sessions = useMemo(() => createBrowserReadingSessionClient({ baseUrl: API_BASE_URL, fetchImplementation: apiFetch }), []);
+  const progressApi = useMemo(() => createBrowserReadingClient({ baseUrl: API_BASE_URL, fetchImplementation: apiFetch }), []);
   const grant = useRef<ReadingSessionGrant | null>(null);
   const sequence = useRef(1);
   const completed = useRef(false);

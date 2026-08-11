@@ -8,7 +8,9 @@ import { BookmarkPlus, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 
+import { loginHref } from "@/lib/auth";
 import styles from "./story-relations.module.css";
+import { API_BASE_URL, apiFetch } from "@/lib/api-base";
 
 type State = Readonly<{
   favorite: StoryRelation | null;
@@ -16,7 +18,7 @@ type State = Readonly<{
 }>;
 
 export function StoryRelations({ storyId }: Readonly<{ storyId: string }>) {
-  const api = useMemo(() => createBrowserStoryRelationClient(), []);
+  const api = useMemo(() => createBrowserStoryRelationClient({ baseUrl: API_BASE_URL, fetchImplementation: apiFetch }), []);
   const [state, setState] = useState<State>({
     favorite: null,
     follow: null,
@@ -56,8 +58,8 @@ export function StoryRelations({ storyId }: Readonly<{ storyId: string }>) {
   if (requiresLogin) {
     return (
       <div aria-label="Lưu truyện" className={styles.actions}>
-        <Link to={"/login" as string}><Heart aria-hidden="true" /> Yêu thích</Link>
-        <Link to={"/login" as string}><BookmarkPlus aria-hidden="true" /> Theo dõi</Link>
+        <Link to={loginHref()}><Heart aria-hidden="true" /> Yêu thích</Link>
+        <Link to={loginHref()}><BookmarkPlus aria-hidden="true" /> Theo dõi</Link>
       </div>
     );
   }

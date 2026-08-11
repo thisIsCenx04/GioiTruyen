@@ -65,17 +65,20 @@ function RankingColumn({ board }: Readonly<{ board: RankingBoard }>) {
                 <Link className="storyTitleLink" to={`/truyen/${item.story.slug}` as string}>
                   {item.story.title}
                 </Link>
-                {board.id === "gold" ? (
-                  <span className="storyMetric metricBlue">
-                    <HeaderIcon size={12} />
-                    Top Xếp Hạng
-                  </span>
-                ) : (
-                  <span className={`storyMetric ${board.id === "recommendations" ? "metricOrange" : "metricGreen"}`}>
-                    <MetricIcon size={12} />
-                    {formatMetric(item.metricValue, board.unit)}
-                  </span>
-                )}
+                {/* Every board shows its own measure; "Top Xếp Hạng" told the
+                    reader nothing the rank badge had not already said. */}
+                <span
+                  className={`storyMetric ${
+                    board.id === "gold"
+                      ? "metricBlue"
+                      : board.id === "recommendations"
+                        ? "metricOrange"
+                        : "metricGreen"
+                  }`}
+                >
+                  {board.id === "gold" ? <HeaderIcon size={12} /> : <MetricIcon size={12} />}
+                  {formatMetric(item.metricValue, board.unit)}
+                </span>
               </div>
             </li>
           ))}
@@ -86,7 +89,7 @@ function RankingColumn({ board }: Readonly<{ board: RankingBoard }>) {
 
       <div className="columnFooter">
         <Link to={"/rankings" as string} className={`viewMoreLink ${linkTones[board.id]}`}>
-          Cập nhật từ dữ liệu thật <ChevronRight size={14} />
+          Xem bảng đầy đủ <ChevronRight size={14} />
         </Link>
       </div>
     </div>

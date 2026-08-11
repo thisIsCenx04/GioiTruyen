@@ -153,10 +153,24 @@ public class AdminCategoryController {
         return normalized;
     }
 
+    /** Vietnamese labels for the fields an admin actually sees in the drawer. */
+    private static final java.util.Map<String, String> FIELD_LABELS = java.util.Map.of(
+            "title", "Tên truyện",
+            "teamId", "Team đăng truyện",
+            "name", "Tên",
+            "slug", "Đường dẫn (slug)",
+            "email", "Email",
+            "displayName", "Tên hiển thị",
+            "ownerUserId", "Chủ sở hữu"
+    );
+
     static void requireText(String value, String field) {
         if (value == null || value.isBlank()) {
+            // The detail reaches the admin's error popup, so it names the field
+            // the way the form labels it rather than by its JSON key.
             throw new ApiException(HttpStatus.BAD_REQUEST, "request.invalid",
-                    "Missing field", field + " must not be blank");
+                    "Missing field",
+                    "Chưa nhập " + FIELD_LABELS.getOrDefault(field, field) + ".");
         }
     }
 

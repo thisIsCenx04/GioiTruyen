@@ -3,6 +3,7 @@ package com.storyplatform.catalog.application;
 import com.storyplatform.catalog.application.dto.CatalogDtos;
 import com.storyplatform.shared.api.ApiException;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -27,11 +28,18 @@ public class PublicCatalogService {
     private static final String PUBLISHED_STORY_FILTER = "s.status = 'PUBLISHED' AND s.published_at IS NOT NULL";
     private static final String STORY_SUMMARY_SELECT = """
             SELECT s.id, s.team_id, t.name AS team_name, s.slug, s.title, s.cover_url,
-                   s.published_at, s.view_count_cache, s.favorite_count_cache
+                   s.story_format, s.story_type, s.published_at, s.view_count_cache,
+                   s.favorite_count_cache
             FROM stories s
             JOIN teams t ON t.id = s.team_id
             WHERE %s
             """;
+    /** Only Zhihu-style one-page stories. */
+    private static final String ONESHOT_FILTER = "s.story_format = 'ONESHOT'";
+    /** Everything except one-page stories, so the main catalog stays serial-only. */
+    private static final String SERIAL_FILTER = "s.story_format <> 'ONESHOT'";
+    /** Cards per shelf on the catalog pages. */
+    private static final int SHELF_SIZE = 8;
 
     private final NamedParameterJdbcTemplate jdbc;
 
@@ -55,7 +63,8 @@ public class PublicCatalogService {
                                 "completed",
                                 "COMPLETED",
                                 "Truyện full",
-                                summaries("s.published_at DESC", 8, "s.progress_status = 'COMPLETED'")
+                                summaries("s.published_at DESC", 8,
+                                        SERIAL_FILTER + " AND s.progress_status = 'COMPLETED'")
                         ),
                         new CatalogDtos.HomeSection(
                                 "original",
@@ -98,7 +107,7 @@ public class PublicCatalogService {
                 """
                         SELECT p.id AS promotion_id, p.tag_label,
                                s.id, s.team_id, t.name AS team_name, s.slug, s.title, s.cover_url,
-                               s.published_at, s.view_count_cache, s.favorite_count_cache
+                               s.story_format, s.published_at, s.view_count_cache, s.favorite_count_cache
                         FROM story_promotions p
                         JOIN stories s ON s.id = p.story_id
                         JOIN teams t ON t.id = s.team_id
@@ -134,26 +143,74 @@ public class PublicCatalogService {
                 .toList();
     }
 
+    /**
+     * Shelves for the catalog page, in the order they are read: exclusives lead,
+     * then editorial picks, then what changed recently, then original writing.
+     * Empty shelves are dropped so the page never shows a heading over nothing.
+     */
     public List<CatalogDtos.TaggedStorySection> storySections() {
-        return List.of(
+        List<CatalogDtos.TaggedStorySection> sections = List.of(
                 new CatalogDtos.TaggedStorySection(
-                        "new-release",
-                        "NEW_RELEASE",
-                        "Truyện mới đăng",
-                        summaries("s.published_at DESC", 8)
+                        "exclusive",
+                        "EXCLUSIVE",
+                        "Truyện độc quyền",
+                        summaries("s.published_at DESC", SHELF_SIZE,
+                                SERIAL_FILTER + " AND s.story_type = 'EXCLUSIVE'")
+                ),
+                new CatalogDtos.TaggedStorySection(
+                        "recommended",
+                        "RECOMMENDED",
+                        "Truyện đề cử",
+                        summaries("s.recommendation_gem_cache DESC, s.view_count_cache DESC", SHELF_SIZE)
                 ),
                 new CatalogDtos.TaggedStorySection(
                         "recent-update",
                         "RECENT_UPDATE",
-                        "Vừa cập nhật chương",
-                        summaries("s.last_chapter_at DESC, s.updated_at DESC", 8)
+                        "Truyện vừa cập nhật",
+                        summaries("s.last_chapter_at DESC, s.updated_at DESC", SHELF_SIZE)
+                ),
+                new CatalogDtos.TaggedStorySection(
+                        "original",
+                        "ORIGINAL",
+                        "Truyện sáng tác",
+                        summaries("s.published_at DESC", SHELF_SIZE,
+                                SERIAL_FILTER + " AND s.story_type = 'ORIGINAL'")
+                ),
+                new CatalogDtos.TaggedStorySection(
+                        "audio",
+                        "AUDIO",
+                        "Truyện audio",
+                        summaries("s.published_at DESC", SHELF_SIZE,
+                                SERIAL_FILTER + " AND s.story_type = 'AUDIO'")
                 ),
                 new CatalogDtos.TaggedStorySection(
                         "completed",
                         "COMPLETED",
                         "Đã hoàn thành",
-                        summaries("s.published_at DESC", 8, "s.progress_status = 'COMPLETED'")
+                        summaries("s.published_at DESC", SHELF_SIZE,
+                                SERIAL_FILTER + " AND s.progress_status = 'COMPLETED'")
                 )
+        );
+        return sections.stream().filter(section -> !section.stories().isEmpty()).toList();
+    }
+
+    /** Stories carrying a given tag, for the tag links shown on cards and detail pages. */
+    public List<CatalogDtos.HomeStorySummary> tagStories(String slug) {
+        return jdbc.query(
+                // Leading newline required; see searchSummaries for the failure mode.
+                STORY_SUMMARY_SELECT.formatted(PUBLISHED_STORY_FILTER + """
+
+                        AND EXISTS (
+                            SELECT 1 FROM story_tags st
+                            WHERE st.story_id = s.id AND st.slug = :slug
+                        )
+                        ORDER BY s.published_at DESC
+                        LIMIT :limit
+                        """),
+                new MapSqlParameterSource()
+                        .addValue("slug", slug)
+                        .addValue("limit", DEFAULT_LIMIT),
+                (rs, rowNum) -> summary(rs)
         );
     }
 
@@ -165,9 +222,47 @@ public class PublicCatalogService {
         );
     }
 
+    /** Shelves for the Zhihu page: one-page stories only. */
+    public List<CatalogDtos.TaggedStorySection> zhihuSections() {
+        return List.of(
+                new CatalogDtos.TaggedStorySection(
+                        "zhihu-new",
+                        "NEW_RELEASE",
+                        "Truyện ngắn mới đăng",
+                        summaries("s.published_at DESC", 24, ONESHOT_FILTER)
+                ),
+                new CatalogDtos.TaggedStorySection(
+                        "zhihu-popular",
+                        "POPULAR",
+                        "Được đọc nhiều",
+                        summaries("s.view_count_cache DESC, s.published_at DESC", 12, ONESHOT_FILTER)
+                ),
+                new CatalogDtos.TaggedStorySection(
+                        "zhihu-loved",
+                        "MOST_LOVED",
+                        "Nhiều lượt thích nhất",
+                        summaries("s.favorite_count_cache DESC, s.published_at DESC", 12, ONESHOT_FILTER)
+                )
+        );
+    }
+
+    /** Ranking boards scoped to one-page stories, so shorts never sit beside novels. */
+    public List<CatalogDtos.RankingBoard> zhihuRankingBoards() {
+        return List.of(
+                rankingBoard("zhihu-views", "Bảng lượt đọc", "Truyện ngắn được đọc nhiều", "lượt",
+                        "VIEWS", ONESHOT_FILTER),
+                rankingBoard("zhihu-recommendations", "Bảng đề cử", "Truyện ngắn được tặng ngọc nhiều", "ngọc",
+                        "GEM_RECOMMENDATION", ONESHOT_FILTER),
+                rankingBoard("zhihu-gold", "Bảng doanh thu", "Truyện ngắn có doanh thu xu cao", "xu",
+                        "COIN_REVENUE", ONESHOT_FILTER)
+        );
+    }
+
     public List<CatalogDtos.HomeStorySummary> categoryStories(String slug) {
         return jdbc.query(
-                STORY_SUMMARY_SELECT.formatted(PUBLISHED_STORY_FILTER + """
+                // Leading newline required; see searchSummaries for the failure mode.
+                STORY_SUMMARY_SELECT.formatted(PUBLISHED_STORY_FILTER + " AND " + SERIAL_FILTER + """
+
                         AND EXISTS (
                             SELECT 1
                             FROM story_genres sg
@@ -188,7 +283,7 @@ public class PublicCatalogService {
         return jdbc.query(
                         """
                                 SELECT id, team_id, slug, title, short_description, description, original_title,
-                                       progress_status, published_at, updated_at
+                                       story_format, story_type, progress_status, published_at, updated_at
                                 FROM stories
                                 WHERE (id = :identifier OR slug = :identifier)
                                   AND status = 'PUBLISHED'
@@ -206,6 +301,9 @@ public class PublicCatalogService {
                                 rs.getString("original_title") == null ? "ORIGINAL" : "TRANSLATED",
                                 "vi-VN",
                                 mapCompletionStatus(rs.getString("progress_status")),
+                                storyFormat(rs),
+                                storyType(rs),
+                                storyTags(rs.getString("id")),
                                 instantString(rs, "published_at"),
                                 instantString(rs, "updated_at"),
                                 1
@@ -285,8 +383,13 @@ public class PublicCatalogService {
         return new CatalogDtos.SuggestionResponse(items, null, false);
     }
 
+    /**
+     * The main catalog lists serialised stories only; Zhihu one-shots have their
+     * own surfaces so a short story never competes for a shelf slot meant for a
+     * novel. Pass an explicit filter to opt into the other format.
+     */
     private List<CatalogDtos.HomeStorySummary> summaries(String orderBy, int limit) {
-        return summaries(orderBy, limit, null);
+        return summaries(orderBy, limit, SERIAL_FILTER);
     }
 
     private List<CatalogDtos.HomeStorySummary> summaries(String orderBy, int limit, String extraFilter) {
@@ -304,7 +407,10 @@ public class PublicCatalogService {
             return summaries("s.published_at DESC", Math.max(1, Math.min(limit, DEFAULT_LIMIT)));
         }
         return jdbc.query(
+                // The leading newline matters: without it the filter's trailing
+                // "NULL" fuses with "AND" into "NULLAND" and MySQL rejects the query.
                 STORY_SUMMARY_SELECT.formatted(PUBLISHED_STORY_FILTER + """
+
                         AND (s.title LIKE :query OR s.short_description LIKE :query OR s.description LIKE :query)
                         ORDER BY s.published_at DESC
                         LIMIT :limit
@@ -317,10 +423,16 @@ public class PublicCatalogService {
     }
 
     private CatalogDtos.RankingBoard rankingBoard(String id, String title, String subtitle, String unit, String rankingType) {
+        return rankingBoard(id, title, subtitle, unit, rankingType, SERIAL_FILTER);
+    }
+
+    private CatalogDtos.RankingBoard rankingBoard(
+            String id, String title, String subtitle, String unit, String rankingType, String formatFilter) {
         List<CatalogDtos.RankingStory> stories = jdbc.query(
                 """
                         SELECT r.`rank`, r.score, s.id, s.team_id, t.name AS team_name, s.slug, s.title,
-                               s.cover_url, s.published_at, s.view_count_cache, s.favorite_count_cache
+                               s.cover_url, s.story_format, s.published_at, s.view_count_cache,
+                               s.favorite_count_cache
                         FROM ranking_snapshots r
                         JOIN stories s ON s.id = r.story_id
                         JOIN teams t ON t.id = s.team_id
@@ -328,9 +440,10 @@ public class PublicCatalogService {
                           AND r.period = 'DAILY'
                           AND r.snapshot_date = (SELECT MAX(snapshot_date) FROM ranking_snapshots WHERE ranking_type = :rankingType)
                           AND %s
+                          AND %s
                         ORDER BY r.`rank` ASC
                         LIMIT 10
-                        """.formatted(PUBLISHED_STORY_FILTER),
+                        """.formatted(PUBLISHED_STORY_FILTER, formatFilter),
                 Map.of("rankingType", rankingType),
                 (rs, rowNum) -> new CatalogDtos.RankingStory(
                         rs.getInt("rank"),
@@ -346,6 +459,14 @@ public class PublicCatalogService {
                 "SELECT genre_id FROM story_genres WHERE story_id = :storyId ORDER BY genre_id",
                 Map.of("storyId", storyId),
                 String.class
+        );
+    }
+
+    private List<CatalogDtos.StoryTag> storyTags(String storyId) {
+        return jdbc.query(
+                "SELECT slug, label FROM story_tags WHERE story_id = :storyId ORDER BY label",
+                Map.of("storyId", storyId),
+                (rs, rowNum) -> new CatalogDtos.StoryTag(rs.getString("slug"), rs.getString("label"))
         );
     }
 
@@ -407,8 +528,32 @@ public class PublicCatalogService {
                 rs.getString("cover_url"),
                 instantString(rs, "published_at"),
                 rs.getLong("view_count_cache"),
-                rs.getLong("favorite_count_cache")
+                rs.getLong("favorite_count_cache"),
+                storyFormat(rs),
+                storyType(rs)
         );
+    }
+
+    /** Rows selected before the format column existed default to SERIAL. */
+    private static String storyFormat(ResultSet rs) throws SQLException {
+        String format = hasColumn(rs, "story_format") ? rs.getString("story_format") : null;
+        return format == null || format.isBlank() ? "SERIAL" : format;
+    }
+
+    /** Everything is plain text unless the admin classified it otherwise. */
+    private static String storyType(ResultSet rs) throws SQLException {
+        String type = hasColumn(rs, "story_type") ? rs.getString("story_type") : null;
+        return type == null || type.isBlank() ? "TEXT" : type;
+    }
+
+    private static boolean hasColumn(ResultSet rs, String column) throws SQLException {
+        ResultSetMetaData metaData = rs.getMetaData();
+        for (int index = 1; index <= metaData.getColumnCount(); index++) {
+            if (column.equalsIgnoreCase(metaData.getColumnLabel(index))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private CatalogDtos.PublicChapter chapter(ResultSet rs) throws SQLException {

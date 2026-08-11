@@ -21,6 +21,7 @@ import {
 
 import { localDateTimeWithOffset } from "../lib/publishing-time";
 import styles from "./publishing-workspace.module.css";
+import { API_BASE_URL, apiFetch } from "@/lib/api-base";
 
 const editableStates = new Set(["DRAFT", "CHANGES_REQUESTED"]);
 const stages = [
@@ -72,7 +73,7 @@ type StoryDraftFields = Pick<
 export function PublishingWorkspace({
   teamId,
 }: Readonly<{ teamId: string }>) {
-  const api = useMemo(() => createBrowserPublishingClient(), []);
+  const api = useMemo(() => createBrowserPublishingClient({ baseUrl: API_BASE_URL, fetchImplementation: apiFetch }), []);
   const catalog = useMemo(
     () => createPublicCatalogClient({ baseUrl: "/api/catalog" }),
     [],

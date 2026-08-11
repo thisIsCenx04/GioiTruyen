@@ -35,14 +35,31 @@ public final class AdminDtos {
             String authorName,
             String teamName,
             String teamId,
+            /** First genre, kept so existing table columns keep rendering. */
             String categoryId,
             String categoryName,
+            /** Every genre the story belongs to. */
+            List<String> categoryIds,
+            List<String> categoryNames,
             String coverUrl,
             String synopsis,
             List<String> tags,
+            String storyFormat,
+            String storyType,
             String workflowStatus,
             String completionStatus,
             String updatedAt
+    ) {}
+
+    public record AdminChapterRow(
+            String id,
+            java.math.BigDecimal chapterNumber,
+            String title,
+            String slug,
+            String content,
+            String accessType,
+            long coinPrice,
+            String status
     ) {}
 
     public record AdminCategoryRow(
@@ -103,10 +120,17 @@ public final class AdminDtos {
             String slug,
             String authorName,
             String teamId,
+            /** Legacy single-genre field; superseded by {@link #categoryIds()}. */
             String categoryId,
+            /** A story can sit in several genres at once. */
+            List<String> categoryIds,
             String synopsis,
             String summary,
             String contentType,
+            /** SERIAL or ONESHOT; defaults to SERIAL when absent. */
+            String storyFormat,
+            /** TEXT, AUDIO, EXCLUSIVE or ORIGINAL; defaults to TEXT when absent. */
+            String storyType,
             String workflowStatus,
             String completionStatus,
             List<String> tags

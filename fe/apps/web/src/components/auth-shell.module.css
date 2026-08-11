@@ -196,7 +196,7 @@
 .margin {
   background:
     linear-gradient(90deg, rgb(5 9 28 / 88%), rgb(5 14 39 / 58%)),
-    url("/stories_hero_banner.png") center / cover;
+    url("/stories_hero_banner.jpg") center / cover;
   box-shadow:0 .8rem 2rem rgb(28 83 150 / 8%);
   isolation:isolate;
 }

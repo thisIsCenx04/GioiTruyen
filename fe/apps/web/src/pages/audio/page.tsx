@@ -1,4 +1,5 @@
 import { Headphones, Sparkles, Volume2 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import { CatalogStoryCard } from "@/components/catalog-story-card";
 import { PublicShell } from "@/components/site-chrome";
@@ -10,13 +11,18 @@ export const revalidate = 60;
 
 export default async function AudioStoriesPage() {
   const home = await loadHome();
-  const stories = [
+  const everything = [
     ...new Map(
       home.storySections
         .flatMap((section) => section.stories)
         .map((story) => [story.id, story] as const),
     ).values(),
   ];
+  // The page used to list the whole catalog; now that stories carry a type it
+  // shows only the ones actually published as audio.
+  const stories = everything.filter(
+    (story) => (story as { storyType?: string }).storyType === "AUDIO",
+  );
 
   return (
     <PublicShell>
@@ -26,19 +32,22 @@ export default async function AudioStoriesPage() {
           <div className="audioHeroBg" />
           <div className="audioHeroContainer">
             <div className="audioHeroContent">
-              <h1>Nghe Audio Truyện Đặc Sắc</h1>
+              <h1>Truyện audio</h1>
               <p>
-                Trải nghiệm hàng ngàn chương truyện audio chất lượng cao với giọng đọc truyền cảm và sống động.
+                Những truyện đã có bản đọc thành tiếng, nghe được khi bạn không
+                tiện nhìn màn hình.
               </p>
 
+              {/* Counted from what the catalog returns; the old row showed
+                  invented figures (1M+ giờ nghe / 3K+ tập / 100%). */}
               <div className="audioStatCardsRow">
                 <div className="audioStatGlassCard">
                   <div className="statIconCircle">
                     <Headphones size={20} />
                   </div>
                   <div className="statText">
-                    <strong>1M+</strong>
-                    <span>Giờ nghe audio</span>
+                    <strong>{stories.length}</strong>
+                    <span>truyện audio</span>
                   </div>
                 </div>
 
@@ -47,8 +56,8 @@ export default async function AudioStoriesPage() {
                     <Volume2 size={20} />
                   </div>
                   <div className="statText">
-                    <strong>3K+</strong>
-                    <span>Tập truyện audio</span>
+                    <strong>{everything.length}</strong>
+                    <span>truyện trên nền tảng</span>
                   </div>
                 </div>
 
@@ -57,8 +66,8 @@ export default async function AudioStoriesPage() {
                     <Sparkles size={20} />
                   </div>
                   <div className="statText">
-                    <strong>100%</strong>
-                    <span>Âm thanh chất lượng cao</span>
+                    <strong>{new Set(stories.map((story) => story.teamId)).size}</strong>
+                    <span>nhóm thực hiện</span>
                   </div>
                 </div>
               </div>
@@ -67,17 +76,23 @@ export default async function AudioStoriesPage() {
         </section>
 
         <div className="audioMainBodyContainer">
-          <div className="catalogGrid catalogGridLarge catalogGridVertical">
-            {stories.slice(0, 16).map((story, index) => (
-              <CatalogStoryCard
-                hrefBase="/audio"
-                index={index}
-                key={story.id}
-                metricIcon="audio"
-                story={story}
-              />
-            ))}
-          </div>
+          {stories.length > 0 ? (
+            <div className="catalogGrid catalogGridLarge catalogGridVertical">
+              {stories.slice(0, 16).map((story, index) => (
+                <CatalogStoryCard
+                  hrefBase="/audio"
+                  index={index}
+                  key={story.id}
+                  metricIcon="audio"
+                  story={story}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="emptyCatalog">
+              Chưa có truyện audio nào. <Link to="/stories">Xem truyện chữ</Link> trong lúc chờ nhé.
+            </p>
+          )}
         </div>
       </div>
     </PublicShell>

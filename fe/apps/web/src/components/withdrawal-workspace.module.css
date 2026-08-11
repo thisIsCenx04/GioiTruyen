@@ -215,3 +215,33 @@
 .form input { border-bottom-color:#d7e0ee; color:#11182b; }
 .actions button { border-color:#cbd7ea; color:#11182b; }
 .actions button:last-child { background:#0f5fff; border-color:#0f5fff; color:#fff; }
+
+@media (max-width: 56rem) {
+  .heading,
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .form,
+  .ledger {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 34rem) {
+  .workspace,
+  .restricted {
+    margin-top: 1rem;
+    padding-top: 1rem;
+  }
+
+  .form,
+  .ledger {
+    padding: 1rem;
+  }
+
+  .actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

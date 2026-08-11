@@ -3,9 +3,12 @@ import { Bell, Moon } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { ReactNode } from "react";
 
+import { BackToTop } from "@/components/back-to-top";
 import { HeaderAuthNav } from "@/components/header-auth-nav";
 import { HeaderSearch } from "@/components/header-search";
 import { MainNav } from "@/components/main-nav";
+import { QuestTimeTracker } from "@/components/quest-time-tracker";
+import { SocialLinks } from "@/components/social-links";
 
 export function SiteHeader() {
   return (
@@ -16,6 +19,7 @@ export function SiteHeader() {
         </Link>
         <HeaderSearch />
         <div className="headerActions">
+          <SocialLinks compact />
           <button aria-label="Đổi giao diện sáng tối" className="headerIcon" type="button">
             <Moon aria-hidden="true" />
           </button>
@@ -42,6 +46,7 @@ export function SiteFooter() {
       <div>
         <BrandMark />
         <p>Đọc có nhịp. Viết có người đồng hành.</p>
+        <SocialLinks />
       </div>
       <nav aria-label="Thông tin Giới Truyện">
         <Link to={"/about" as string}>Về chúng tôi</Link>
@@ -59,9 +64,12 @@ export function SiteFooter() {
 export function PublicShell({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <div className="publicShell">
+      {/* Mounted once here so time on any page counts toward the online quest. */}
+      <QuestTimeTracker questType="ONLINE_MINUTES" />
       <SiteHeader />
       {children}
       <SiteFooter />
+      <BackToTop />
     </div>
   );
 }
