@@ -66,8 +66,11 @@ export type ImportedStory = {
   autoSplit: boolean;
 };
 
-/** Words per chapter when a document has no chapter headings of its own. */
+/** Words per chapter for an ordinary long-form story. */
 export const WORDS_PER_CHAPTER = 800;
+
+/** Zhihu stories run to a longer chapter than the rest of the catalogue. */
+export const WORDS_PER_CHAPTER_ZHIHU = 1400;
 
 /**
  * Phrases an uploaded file uses to declare the story finished. Matched against
@@ -178,7 +181,10 @@ function readLines(bytes: Uint8Array | null, text: string | null) {
  * have to retype it. Recognises "Tác giả: ..." style headers before the first
  * chapter heading; anything it cannot identify is left for manual entry.
  */
-export async function parseStoryDocument(file: File): Promise<ImportedStory> {
+export async function parseStoryDocument(
+  file: File,
+  wordsPerChapter: number = WORDS_PER_CHAPTER,
+): Promise<ImportedStory> {
   const isDocx = file.name.toLowerCase().endsWith(".docx");
   const bytes = isDocx ? new Uint8Array(await file.arrayBuffer()) : null;
   const text = isDocx ? null : await file.text();
@@ -246,21 +252,53 @@ export async function parseStoryDocument(file: File): Promise<ImportedStory> {
     metadata.synopsis = unlabelled.join("\n");
   }
 
-  // A document with real chapter headings keeps them. One long block of prose
-  // gets cut into fixed-size chapters instead, numbered and untitled.
   const bodyLines = lines.slice(hasHeadings ? firstChapterIndex : bodyStartIndex);
 
-  const chapters = hasHeadings
+  // The word budget applies either way. A document with its own headings keeps
+  // them, but any single heading holding more than a chapter's worth of prose is
+  // still cut down; a document without headings is cut from end to end. Uploads
+  // that carry one heading over an entire novel used to arrive as a single
+  // unreadable chapter.
+  const headingChapters = hasHeadings
     ? splitChapterBlocks(bodyLines, metadata.title || fallbackTitle)
-    : splitByWordCount(bodyLines);
+    : [];
+  const chapters = hasHeadings
+    ? enforceWordBudget(headingChapters, wordsPerChapter)
+    : splitByWordCount(bodyLines, wordsPerChapter);
 
   return {
     authorName: metadata.authorName,
-    autoSplit: !hasHeadings,
+    // True when the numbering came from the word budget rather than the file.
+    autoSplit: !hasHeadings || chapters.length > headingChapters.length,
     chapters,
     completionStatus,
     synopsis: metadata.synopsis,
     title: metadata.title || fallbackTitle,
   };
+}
+
+/**
+ * Cuts any chapter that runs past the word budget into numbered parts, leaving
+ * chapters already within budget exactly as the document had them.
+ */
+function enforceWordBudget(chapters: ImportedChapter[], wordsPerChapter: number): ImportedChapter[] {
+  const result: ImportedChapter[] = [];
+  for (const chapter of chapters) {
+    const words = chapter.content.split(/\s+/u).filter(Boolean).length;
+    if (words <= wordsPerChapter) {
+      result.push(chapter);
+      continue;
+    }
+    const parts = splitByWordCount(chapter.content.split(/\n/u), wordsPerChapter);
+    parts.forEach((part, index) => {
+      result.push({
+        content: part.content,
+        // Parts stay tied to the heading they came from, so a reader can see
+        // that "Chương 3 (2/4)" continues the chapter the author wrote.
+        title: `${chapter.title} (${index + 1}/${parts.length})`,
+      });
+    });
+  }
+  return result;
 }
 

@@ -12,7 +12,9 @@ import {
   X,
   Coins,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Gem,
+  User
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useEffect, useState, type FormEvent } from "react";
@@ -37,10 +39,10 @@ interface UserProfile {
   websiteUrl?: string;
 }
 
+/** Matches WalletResponse on the server: coins and gems, nothing else. */
 interface WalletData {
-  availableBalance?: number;
-  totalDeposited?: number;
-  totalSpent?: number;
+  coinBalance?: number;
+  gemBalance?: number;
 }
 
 export default function UserProfilePage() {
@@ -57,7 +59,48 @@ export default function UserProfilePage() {
   const [editGender, setEditGender] = useState("OTHER");
   const [editWebsite, setEditWebsite] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [profileMsg, setProfileMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  /**
+   * Sends the picked file straight to the server and shows the stored URL.
+   *
+   * The upload saves on its own rather than waiting for "Lưu thay đổi": the
+   * file is already on the server by then, so deferring only risks the reader
+   * closing the dialog and losing the reference to it.
+   */
+  async function uploadAvatar(file: File | null) {
+    if (!file) return;
+    setUploadingAvatar(true);
+    setProfileMsg(null);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const token = getAccessToken();
+      const res = await fetch("/api/v1/me/avatar", {
+        body,
+        credentials: "same-origin",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        method: "POST",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.detail || "Không tải được ảnh lên.");
+      }
+      const data = (await res.json()) as { avatarUrl?: string };
+      const url = data.avatarUrl ?? "";
+      setEditAvatarUrl(url);
+      setUser((prev) => (prev ? { ...prev, avatarUrl: url } : prev));
+      setProfileMsg({ text: "Đã cập nhật ảnh đại diện.", type: "success" });
+    } catch (cause) {
+      setProfileMsg({
+        text: cause instanceof Error ? cause.message : "Không tải được ảnh lên.",
+        type: "error",
+      });
+    } finally {
+      setUploadingAvatar(false);
+    }
+  }
 
   // Change Password Modal
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -95,8 +138,9 @@ export default function UserProfilePage() {
         setEditWebsite(pData.websiteUrl || "");
       }
 
-      // 3. Fetch Wallet Info
-      const walletRes = await fetch("/api/v1/wallet", { headers, credentials: "same-origin" }).catch(() => null);
+      // 3. Fetch Wallet Info. The path is /wallets/me: "/wallet" does not
+      // exist on the server, so the balance always came back empty.
+      const walletRes = await fetch("/api/v1/wallets/me", { headers, credentials: "same-origin" }).catch(() => null);
       if (walletRes && walletRes.ok) {
         const wData = await walletRes.json();
         setWallet(wData);
@@ -370,60 +414,31 @@ export default function UserProfilePage() {
             </div>
           </div>
 
-          {/* Wallet Balance Widget */}
-          <div
-            style={{
-              background: "linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(217, 119, 6, 0.05))",
-              border: "1px solid rgba(245, 158, 11, 0.3)",
-              borderRadius: "14px",
-              padding: "1.25rem 1.5rem",
-              marginTop: "1.5rem",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              flexWrap: "wrap",
-              gap: "1rem"
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-              <div
-                style={{
-                  background: "#f59e0b",
-                  borderRadius: "12px",
-                  padding: "0.6rem",
-                  display: "flex",
-                  color: "#000"
-                }}
-              >
-                <Coins style={{ height: "1.5rem", width: "1.5rem" }} />
-              </div>
-              <div>
-                <span style={{ fontSize: "0.8rem", color: "#fcd34d", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Số Dư Xu Hiện Có
+          {/* Both balances at a glance, with a direct route to topping up. */}
+          <div className="profileWallet">
+            <div className="profileWalletBalances">
+              <div className="profileBalance isCoin">
+                <span className="profileBalanceIcon" aria-hidden="true">
+                  <Coins />
                 </span>
-                <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#fff" }}>
-                  {wallet?.availableBalance ? new Intl.NumberFormat("vi-VN").format(wallet.availableBalance) : 0} <span style={{ fontSize: "1rem", color: "#f59e0b" }}>Xu</span>
+                <div>
+                  <span className="profileBalanceLabel">Xu</span>
+                  <strong>{new Intl.NumberFormat("vi-VN").format(wallet?.coinBalance ?? 0)}</strong>
+                </div>
+              </div>
+              <div className="profileBalance isGem">
+                <span className="profileBalanceIcon" aria-hidden="true">
+                  <Gem />
+                </span>
+                <div>
+                  <span className="profileBalanceLabel">Ngọc</span>
+                  <strong>{new Intl.NumberFormat("vi-VN").format(wallet?.gemBalance ?? 0)}</strong>
                 </div>
               </div>
             </div>
-            <Link
-              to="/wallet"
-              style={{
-                background: "linear-gradient(135deg, #f59e0b, #d97706)",
-                borderRadius: "8px",
-                color: "#000",
-                fontWeight: 700,
-                fontSize: "0.875rem",
-                padding: "0.6rem 1.25rem",
-                textDecoration: "none",
-                boxShadow: "0 4px 12px rgba(245, 158, 11, 0.3)",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.4rem"
-              }}
-            >
-              <Wallet style={{ height: "1rem", width: "1rem" }} />
-              Nạp Xu Ngay
+            <Link className="profileTopupButton" to="/wallet">
+              <Wallet aria-hidden="true" />
+              Nạp xu ngay
             </Link>
           </div>
 
@@ -636,25 +651,55 @@ export default function UserProfilePage() {
                 />
               </div>
 
+              {/*
+                Upload rather than "paste a URL": most readers have a photo on
+                their device and no way to host it somewhere first.
+              */}
               <div>
                 <label style={{ display: "block", fontSize: "0.85rem", color: "#cbd5e1", marginBottom: "0.4rem" }}>
-                  URL Ảnh đại diện (Avatar)
+                  Ảnh đại diện
                 </label>
-                <input
-                  type="text"
-                  value={editAvatarUrl}
-                  onChange={(e) => setEditAvatarUrl(e.target.value)}
-                  placeholder="https://example.com/avatar.jpg"
-                  style={{
-                    width: "100%",
-                    padding: "0.6rem 0.8rem",
-                    borderRadius: "8px",
-                    background: "#0f172a",
-                    border: "1px solid #334155",
-                    color: "#fff",
-                    fontSize: "0.9rem"
-                  }}
-                />
+                <div style={{ alignItems: "center", display: "flex", gap: "0.9rem" }}>
+                  {editAvatarUrl ? (
+                    <img
+                      alt="Ảnh đại diện"
+                      src={editAvatarUrl}
+                      style={{
+                        border: "1px solid #334155",
+                        borderRadius: "50%",
+                        height: "3.5rem",
+                        objectFit: "cover",
+                        width: "3.5rem",
+                      }}
+                    />
+                  ) : (
+                    <div style={{
+                      alignItems: "center",
+                      background: "#0f172a",
+                      border: "1px dashed #334155",
+                      borderRadius: "50%",
+                      color: "#64748b",
+                      display: "flex",
+                      height: "3.5rem",
+                      justifyContent: "center",
+                      width: "3.5rem",
+                    }}>
+                      <User style={{ height: "1.4rem", width: "1.4rem" }} />
+                    </div>
+                  )}
+                  <div style={{ flex: 1 }}>
+                    <input
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      disabled={uploadingAvatar}
+                      onChange={(e) => void uploadAvatar(e.target.files?.[0] ?? null)}
+                      style={{ color: "#cbd5e1", fontSize: "0.82rem", width: "100%" }}
+                      type="file"
+                    />
+                    <p style={{ color: "#64748b", fontSize: "0.72rem", margin: "0.35rem 0 0" }}>
+                      {uploadingAvatar ? "Đang tải ảnh lên…" : "PNG, JPEG, WEBP hoặc GIF, tối đa 2MB."}
+                    </p>
+                  </div>
+                </div>
               </div>
 
               <div>

@@ -1,5 +1,7 @@
 package com.storyplatform.admin.api;
 
+import static com.storyplatform.admin.application.dto.AdminDtos.timestamp;
+
 import com.storyplatform.admin.application.dto.AdminDtos.AdminTeamRow;
 import com.storyplatform.admin.application.dto.AdminDtos.UpsertTeamRequest;
 import com.storyplatform.shared.api.ApiException;
@@ -26,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminTeamController {
 
     private static final String LIST_SQL = """
-            SELECT t.id, t.slug, t.name, t.description, t.status, t.updated_at, t.created_by,
+            SELECT t.id, t.slug, t.name, t.description, t.status, t.created_at, t.updated_at, t.created_by,
                    u.display_name AS owner_name,
                    (SELECT COUNT(*) FROM team_members m
                      WHERE m.team_id = t.id AND m.status = 'ACTIVE') AS member_count
@@ -56,8 +58,8 @@ public class AdminTeamController {
                         AdminCategoryController.nullToEmpty(rs.getString("description")),
                         rs.getString("status"),
                         rs.getLong("member_count"),
-                        rs.getTimestamp("updated_at") == null
-                                ? null : rs.getTimestamp("updated_at").toInstant().toString()
+                        timestamp(rs, "updated_at"),
+                        timestamp(rs, "created_at")
                 ))
                 .list();
     }
@@ -133,6 +135,31 @@ public class AdminTeamController {
         teamRepository.save(team);
     }
 
+    /**
+     * Removes a team outright. Refused while it still owns stories: those rows
+     * are ON DELETE RESTRICT, and deleting around them would orphan a library
+     * readers are still using.
+     */
+    @DeleteMapping("/{id}/permanent")
+    @Transactional
+    public void deletePermanently(@PathVariable UUID id) {
+        Team team = find(id);
+        long stories = jdbc.sql("SELECT COUNT(*) FROM stories WHERE team_id = ?")
+                .param(id.toString())
+                .query(Long.class)
+                .optional()
+                .orElse(0L);
+        if (stories > 0) {
+            throw new ApiException(HttpStatus.CONFLICT, "team.has_stories",
+                    "Team still owns stories",
+                    ("Team \"%s\" đang sở hữu %d truyện nên không thể xóa. "
+                            + "Hãy chuyển hoặc xóa các truyện đó trước, hoặc dùng \"Tạm khóa\".")
+                            .formatted(team.getName(), stories));
+        }
+        // team_members cascades from the teams row.
+        jdbc.sql("DELETE FROM teams WHERE id = ?").param(id.toString()).update();
+    }
+
     private void ensureOwnerMembership(UUID teamId, UUID ownerId) {
         long existing = jdbc.sql("SELECT COUNT(*) FROM team_members WHERE team_id = ? AND user_id = ?")
                 .params(teamId.toString(), ownerId.toString())
@@ -192,7 +219,8 @@ public class AdminTeamController {
                 AdminCategoryController.nullToEmpty(team.getDescription()),
                 team.getStatus().name(),
                 memberCount,
-                team.getUpdatedAt() == null ? null : team.getUpdatedAt().toString()
+                team.getUpdatedAt() == null ? null : team.getUpdatedAt().toString(),
+                team.getCreatedAt() == null ? null : team.getCreatedAt().toString()
         );
     }
 }

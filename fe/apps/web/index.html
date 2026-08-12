@@ -5,6 +5,30 @@
     <link rel="icon" type="image/png" href="/logo-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Giới Truyện - Nền tảng đọc truyện online</title>
+    <!-- AdSense: also the site-ownership verification snippet for pub-4260233431693229. -->
+    <script
+      async
+      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4260233431693229"
+      crossorigin="anonymous"
+    ></script>
+    <!--
+      Decide the theme before the first paint. Doing this in React instead
+      would show a white page for a moment, then flip to dark - the flash is
+      worse than the wait.
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("site-theme");
+          var dark = stored
+            ? stored === "dark"
+            : window.matchMedia("(prefers-color-scheme: dark)").matches;
+          document.documentElement.dataset.theme = dark ? "dark" : "light";
+        } catch (e) {
+          document.documentElement.dataset.theme = "light";
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

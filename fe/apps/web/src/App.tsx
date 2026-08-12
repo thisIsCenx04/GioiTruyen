@@ -26,6 +26,9 @@ import PageQuests from './pages/quests/page';
 import AdminQuestsPage from './pages/dashboard/quests/page';
 import AdminPaymentMethodsPage from './pages/dashboard/payment-methods/page';
 import AdminTopupsPage from './pages/dashboard/topups/page';
+import AdminPromotionsPage from './pages/dashboard/promotions/page';
+import AdminAuthorApplicationsPage from './pages/dashboard/authors/page';
+import AuthorApplicationPage from './pages/dang-ky-dang-truyen/page';
 import PageL2NvbW11bml0eQ from './pages/community/page';
 import PageL2Rhc2hib2FyZA from './pages/dashboard/page';
 import PageL2Rhc2hib2FyZC9jb250ZW50L2NhdGVnb3JpZXM from './pages/dashboard/content/categories/page';
@@ -305,6 +308,9 @@ function App() {
           <Route path="/dashboard/quests" element={<DashboardLayout><AdminQuestsPage /></DashboardLayout>} />
           <Route path="/dashboard/payment-methods" element={<DashboardLayout><AdminPaymentMethodsPage /></DashboardLayout>} />
           <Route path="/dashboard/topups" element={<DashboardLayout><AdminTopupsPage /></DashboardLayout>} />
+          <Route path="/dashboard/promotions" element={<DashboardLayout><AdminPromotionsPage /></DashboardLayout>} />
+          <Route path="/dashboard/authors" element={<DashboardLayout><AdminAuthorApplicationsPage /></DashboardLayout>} />
+          <Route path="/dang-ky-dang-truyen" element={<AuthorApplicationPage />} />
           <Route path="/dashboard/login" element={<PageL2Rhc2hib2FyZC9sb2dpbg />} />
           <Route path="/library" element={<WrappedPageL2xpYnJhcnk />} />
           <Route path="/login" element={<PageL2xvZ2lu />} />

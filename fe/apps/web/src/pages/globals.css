@@ -234,7 +234,7 @@ main { min-height: 100vh; }
   aspect-ratio: 4 / 5; background: linear-gradient(transparent 50%,rgb(1 8 28 / 75%)),url("/assets/audio-comic-reference/cover-dark.png") center / cover;
   border-radius: .75rem; box-shadow: 0 1.2rem 2rem rgb(24 44 90 / 18%); display: flex; flex-direction: column; justify-content: space-between; padding: 1rem;
 }
-.detailCover span { color: transparent; }
+.detailCover > span { color: transparent; }
 .detailCover small { align-self: start; background: #ff603d; border-radius: .3rem; color: white; font-size: .65rem; font-weight: 800; padding: .45rem .55rem; }
 .storyMasthead h1 { font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -.04em; margin: .5rem 0 1rem; }
 .synopsis { color: #4c5871; font-size: .85rem; line-height: 1.8; max-width: 43rem; }
@@ -885,7 +885,13 @@ html[data-route-pending="true"] .routeSurface {
   text-decoration: none;
 }
 
-.socialLinks a:hover { background: rgb(15 95 255 / 10%); color: var(--blue, #0f5fff); }
+/* Each channel keeps its own brand colour so it is recognisable at a glance. */
+.socialLinks a[aria-label="Facebook"] { color: #1877f2; }
+.socialLinks a[aria-label="Telegram"] { color: #229ed9; }
+
+.socialLinks a[aria-label="Facebook"]:hover { background: rgb(24 119 242 / 12%); }
+.socialLinks a[aria-label="Telegram"]:hover { background: rgb(34 158 217 / 12%); }
+
 .socialLinks.isCompact a { padding: .35rem; }
 .socialLinks:not(.isCompact) a { font-size: .82rem; font-weight: 650; }
 
@@ -6730,3 +6736,924 @@ button {
     width: 1.9rem;
   }
 }
+
+/* ── Applying to publish ───────────────────────────────────────────────
+   Approval creates a team owned by the applicant; a team may hold one
+   person or many, so this is the same path larger groups take. */
+
+.authorApplyPage {
+  margin: 0 auto;
+  max-width: 42rem;
+  padding: 2rem 1rem 4rem;
+}
+
+.authorApply {
+  background: #fff;
+  border: 1px solid var(--line, #e2ebf6);
+  border-radius: .9rem;
+  padding: 1.5rem;
+}
+
+.authorApply h2 { font-size: 1.15rem; margin: 0 0 .6rem; }
+.authorApply p { color: var(--muted, #5b6880); font-size: .85rem; line-height: 1.6; margin: 0 0 .9rem; }
+
+.authorApplyPending { color: #b45309 !important; font-weight: 800; }
+.authorApplyOk { color: #12864a !important; font-weight: 800; }
+.authorApplyRejected { color: #b42318 !important; }
+.authorApplyNote { background: #f4f8fd; border-radius: .5rem; padding: .65rem .8rem; }
+.authorApplyError { color: #b42318 !important; font-weight: 700; }
+
+.authorApplyFacts { display: grid; gap: .35rem; margin: 0 0 .9rem; }
+.authorApplyFacts > div { display: flex; gap: .5rem; justify-content: space-between; }
+.authorApplyFacts dt { color: var(--muted, #5b6880); font-size: .78rem; margin: 0; }
+.authorApplyFacts dd { font-size: .82rem; font-weight: 700; margin: 0; }
+
+.authorApplyForm { display: grid; gap: .85rem; }
+.authorApplyForm label { display: grid; gap: .3rem; }
+.authorApplyForm label > span { font-size: .78rem; font-weight: 800; }
+
+.authorApplyForm input,
+.authorApplyForm textarea {
+  border: 1px solid var(--line, #e2ebf6);
+  border-radius: .5rem;
+  font: inherit;
+  font-size: .84rem;
+  padding: .6rem .75rem;
+  width: 100%;
+}
+
+.authorApplyForm button {
+  background: var(--blue, #0f6bff);
+  border: 0;
+  border-radius: .5rem;
+  color: #fff;
+  cursor: pointer;
+  font-size: .84rem;
+  font-weight: 800;
+  justify-self: start;
+  padding: .75rem 1.3rem;
+}
+
+.authorApplyForm button:disabled { cursor: not-allowed; opacity: .6; }
+
+/* ── Confirming a transfer ─────────────────────────────────────────────
+   Pressing this is what puts a top-up in front of an admin, so it is the
+   loudest control on the panel. */
+
+.topupConfirm {
+  background: #ecfdf3;
+  border: 1px solid #86e0a8;
+  border-radius: .7rem;
+  display: grid;
+  gap: .6rem;
+  margin-top: .9rem;
+  padding: .85rem;
+}
+
+.topupConfirm p { color: #12603a; font-size: .76rem; line-height: 1.5; margin: 0; }
+
+.topupConfirm button {
+  background: #12864a;
+  border: 0;
+  border-radius: .5rem;
+  color: #fff;
+  cursor: pointer;
+  font-size: .8rem;
+  font-weight: 800;
+  padding: .75rem 1rem;
+}
+
+.topupConfirm button:disabled { cursor: not-allowed; opacity: .6; }
+
+.topupPendingNote {
+  background: #eef6ff;
+  border-radius: .6rem;
+  color: #1d4d91;
+  font-size: .76rem;
+  line-height: 1.5;
+  margin-top: .9rem;
+  padding: .75rem .85rem;
+}
+
+/* ── Locked chapters ───────────────────────────────────────────────────
+   A paid chapter the reader has not bought is a button, not a link: the
+   text is withheld by the API, so following a link would only bounce them
+   off a paywall. */
+
+.chapterLocked > button {
+  align-items: center;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  gap: 1rem;
+  grid-template-columns: 3rem 1fr auto;
+  min-height: 3.8rem;
+  text-align: left;
+  width: 100%;
+}
+
+.chapterLocked > button:hover { background: #f6faff; }
+.chapterLocked > button > span { color: var(--blue); font-size: .7rem; font-weight: 800; }
+.chapterLocked > button > strong { font-size: .78rem; }
+.chapterLocked > button > time { color: var(--muted); font-size: .62rem; }
+
+.chapterLockBadge {
+  align-items: center;
+  background: #fff4e5;
+  border-radius: 999px;
+  color: #b45309;
+  display: inline-flex;
+  font-size: .62rem;
+  font-style: normal;
+  font-weight: 800;
+  gap: .25rem;
+  margin-left: .5rem;
+  padding: .12rem .45rem;
+  vertical-align: middle;
+}
+
+.chapterLockBadge svg { height: .72rem; width: .72rem; }
+
+.chapterUnlockOverlay {
+  align-items: center;
+  background: rgb(10 18 32 / 55%);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 1rem;
+  position: fixed;
+  z-index: 200;
+}
+
+.chapterUnlockDialog {
+  background: #fff;
+  border-radius: .9rem;
+  box-shadow: 0 1.5rem 3rem rgb(10 20 45 / 25%);
+  max-width: 24rem;
+  padding: 1.4rem;
+  width: 100%;
+}
+
+.chapterUnlockEyebrow {
+  color: var(--muted);
+  font-size: .64rem;
+  font-weight: 800;
+  letter-spacing: .1em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.chapterUnlockDialog h2 { font-size: 1.05rem; margin: .35rem 0 .9rem; }
+
+.chapterUnlockFacts { display: grid; gap: .4rem; margin: 0 0 .9rem; }
+.chapterUnlockFacts > div { display: flex; justify-content: space-between; }
+.chapterUnlockFacts dt { color: var(--muted); font-size: .74rem; margin: 0; }
+.chapterUnlockFacts dd { font-size: .78rem; font-weight: 800; margin: 0; }
+
+.chapterUnlockShortfall,
+.unlockShortfall {
+  background: #fff4e5;
+  border-radius: .5rem;
+  color: #b45309;
+  font-size: .74rem;
+  font-weight: 700;
+  margin: 0 0 .8rem;
+  padding: .55rem .7rem;
+}
+
+.chapterUnlockError { color: #b42318; font-size: .74rem; margin: 0 0 .8rem; }
+
+.chapterUnlockActions { display: flex; flex-wrap: wrap; gap: .5rem; }
+
+.chapterUnlockPrimary,
+.unlockPrimary {
+  background: var(--blue);
+  border: 0;
+  border-radius: .5rem;
+  color: #fff;
+  cursor: pointer;
+  flex: 1 1 auto;
+  font-size: .76rem;
+  font-weight: 800;
+  padding: .7rem .9rem;
+  text-align: center;
+  text-decoration: none;
+}
+
+.chapterUnlockPrimary:disabled { cursor: not-allowed; opacity: .6; }
+
+.chapterUnlockSecondary,
+.unlockSecondary {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: .5rem;
+  color: var(--text-secondary, #4c5871);
+  cursor: pointer;
+  flex: 0 0 auto;
+  font-size: .76rem;
+  font-weight: 800;
+  padding: .7rem .9rem;
+  text-decoration: none;
+}
+
+/* ── Story covers ──────────────────────────────────────────────────────
+   Cards previously showed only a tinted background image, so an uploaded
+   cover never appeared and a story without one looked no different. The
+   real image now fills the frame; when there is none, a single book mark
+   says the cover is still missing rather than pretending otherwise. */
+
+.catalogCover .coverImage,
+.detailCover .coverImage {
+  height: 100%;
+  inset: 0;
+  object-fit: cover;
+  position: absolute;
+  width: 100%;
+  z-index: 1;
+}
+
+/* The decorative artwork is only a backdrop for the no-cover case. */
+.catalogCover:has(.coverImage)::before {
+  display: none;
+}
+
+.detailCover {
+  overflow: hidden;
+  position: relative;
+}
+
+.detailCover small,
+.detailCover .coverPlaceholder {
+  position: relative;
+  z-index: 2;
+}
+
+.coverPlaceholder {
+  align-items: center;
+  background: linear-gradient(160deg, #eef4fb 0%, #dce8f6 100%);
+  color: #5a6b85;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  inset: 0;
+  justify-content: center;
+  position: absolute;
+  text-align: center;
+  z-index: 1;
+}
+
+.coverPlaceholder svg {
+  height: 2.6rem;
+  opacity: .75;
+  width: 2.6rem;
+}
+
+/* .detailCover > span is transparent for the decorative initial; the
+   placeholder's own label must stay readable. */
+.coverPlaceholder span {
+  color: #5a6b85;
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .01em;
+  padding: 0 .5rem;
+}
+
+/* Inside a card the title already sits over the art, so the placeholder
+   keeps its label small enough not to collide with it. */
+.catalogCover .coverPlaceholder {
+  justify-content: flex-start;
+  padding-top: 18%;
+}
+
+.catalogCover .coverPlaceholder span {
+  font-size: .62rem;
+}
+
+@media (max-width: 34rem) {
+  .coverPlaceholder svg { height: 2rem; width: 2rem; }
+  .coverPlaceholder span { font-size: .58rem; }
+}
+
+/* ── Cover aspect ratio ────────────────────────────────────────────────
+   Covers are authored at 880x1320. Every frame keeps that 2:3 ratio and
+   scales to it, so a small card shows the same picture zoomed rather than
+   a differently-cropped one. Declared last because several earlier rules
+   set their own ratio with !important. */
+
+.catalogCover,
+.detailCover,
+.catalogGridLarge .catalogCover,
+.catalogGridVertical .catalogCover,
+.storyRecommendationGrid .catalogCover {
+  aspect-ratio: 880 / 1320 !important;
+  max-height: none !important;
+  min-height: 0 !important;
+}
+
+/* The detail page frame is driven by width, so the ratio decides its height. */
+.detailCover {
+  height: auto !important;
+  max-width: 17rem !important;
+  width: 100% !important;
+}
+
+/* ── Copy discouragement ───────────────────────────────────────────────
+   Scoped to the chapter body only. Titles, URLs and comments stay
+   selectable, because stopping a reader from quoting a line they liked
+   costs more than it saves. This raises the effort of casual scraping; it
+   is not protection, and is not treated as such. */
+
+/* Selection stays enabled on purpose: disabling it would also stop the copy
+   handler from seeing any text, so the attribution line could never be
+   appended - and it breaks find-on-page and screen readers. Long-press and
+   image dragging are the parts worth blocking. */
+.chapterProse {
+  -webkit-touch-callout: none;
+}
+
+.chapterProse img {
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+/* ── Chapter interstitial ──────────────────────────────────────────────
+   Shown on the way to the next chapter. The countdown, not the ad, opens
+   the continue button: AdSense forbids gating content behind an ad view,
+   and a reader running a blocker must not be stuck. */
+
+.adGateOverlay {
+  align-items: center;
+  background: rgb(8 15 28 / 62%);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 1rem;
+  position: fixed;
+  z-index: 220;
+}
+
+.adGateDialog {
+  background: #fff;
+  border-radius: 1rem;
+  box-shadow: 0 1.5rem 3rem rgb(8 18 40 / 28%);
+  max-height: 92vh;
+  max-width: 26rem;
+  overflow-y: auto;
+  padding: 1.5rem 1.35rem;
+  text-align: center;
+  width: 100%;
+}
+
+.adGateLogo { height: 3.2rem; margin: 0 auto .9rem; object-fit: contain; }
+
+.adGateDialog h2 {
+  font-size: 1.05rem;
+  line-height: 1.4;
+  margin: 0 0 .6rem;
+}
+
+.adGateLead {
+  color: var(--muted, #6b7891);
+  font-size: .82rem;
+  line-height: 1.55;
+  margin: 0 0 1rem;
+}
+
+.adGateSlot {
+  background: #f4f8fd;
+  border-radius: .6rem;
+  margin-bottom: 1rem;
+  min-height: 250px;
+  overflow: hidden;
+}
+
+.adGateContinue {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #dfeaf6;
+  border-radius: .6rem;
+  cursor: pointer;
+  display: flex;
+  gap: .75rem;
+  justify-content: space-between;
+  padding: .85rem 1rem;
+  text-align: left;
+  width: 100%;
+}
+
+.adGateContinue:disabled { cursor: not-allowed; opacity: .65; }
+.adGateContinue strong { display: block; font-size: .84rem; }
+.adGateContinue small { color: var(--muted, #6b7891); display: block; font-size: .7rem; margin-top: .15rem; }
+.adGateContinue svg { color: #1688f8; flex: none; }
+
+.adGateSkip {
+  background: none;
+  border: 0;
+  color: var(--muted, #6b7891);
+  cursor: pointer;
+  font-size: .74rem;
+  font-weight: 700;
+  margin-top: .8rem;
+  padding: .4rem;
+  text-decoration: underline;
+}
+
+/* ── Reader banners ────────────────────────────────────────────────────
+   House creatives inside the chapter and again above the next-chapter
+   link. Sized by ratio so a banner never shifts the text as it loads. */
+
+.readerAd {
+  border: 1px solid var(--line, #e2ebf6);
+  border-radius: .7rem;
+  display: block;
+  margin: 2rem auto;
+  max-width: 46rem;
+  overflow: hidden;
+  position: relative;
+}
+
+.readerAd.isBetween { margin-bottom: 1rem; }
+
+.readerAd img {
+  aspect-ratio: 16 / 5;
+  display: block;
+  height: auto;
+  object-fit: cover;
+  width: 100%;
+}
+
+.readerAdLabel {
+  background: rgb(10 18 32 / 55%);
+  border-radius: .3rem;
+  color: #fff;
+  font-size: .58rem;
+  font-weight: 800;
+  left: .5rem;
+  letter-spacing: .08em;
+  padding: .15rem .4rem;
+  position: absolute;
+  text-transform: uppercase;
+  top: .5rem;
+  z-index: 2;
+}
+
+/* ── Site footer ───────────────────────────────────────────────────────
+   Full-width band in its own colour, with the links grouped by what the
+   reader is trying to do rather than one long row. */
+
+.siteFooter {
+  background: #0e1729 !important;
+  color: #c3cede !important;
+  display: block !important;
+  margin-top: 4rem !important;
+  padding: 0 !important;
+}
+
+.siteFooterInner {
+  display: grid;
+  gap: 2.5rem;
+  grid-template-columns: 1.4fr repeat(3, 1fr);
+  margin: 0 auto;
+  max-width: 80rem;
+  padding: 3rem 1.5rem 2.5rem;
+}
+
+.footerBrand { display: grid; gap: .9rem; align-content: start; }
+
+/* The mark is the anchor of the whole band, so it is deliberately larger. */
+.footerBrand svg,
+.footerBrand img {
+  height: auto;
+  max-width: 13rem;
+  width: 100%;
+}
+
+.footerBrand p {
+  color: #93a3ba;
+  font-size: .86rem;
+  line-height: 1.6;
+  margin: 0;
+  max-width: 22rem;
+}
+
+.siteFooterInner nav { display: grid; gap: .6rem; align-content: start; }
+
+.siteFooterInner nav h3 {
+  color: #fff;
+  font-size: .82rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  margin: 0 0 .3rem;
+  text-transform: uppercase;
+}
+
+.siteFooterInner nav a {
+  color: #a9b7c9;
+  font-size: .84rem;
+  text-decoration: none;
+  transition: color 140ms ease;
+  width: fit-content;
+}
+
+.siteFooterInner nav a:hover { color: #fff; text-decoration: underline; }
+
+.siteFooterBase {
+  align-items: center;
+  border-top: 1px solid rgb(255 255 255 / 10%);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: space-between;
+  margin: 0 auto;
+  max-width: 80rem;
+  padding: 1.1rem 1.5rem 1.5rem;
+}
+
+.siteFooterBase small { color: #8494ab; font-size: .76rem; }
+.siteFooterBaseLinks { display: flex; gap: 1.25rem; }
+
+.siteFooterBaseLinks a {
+  color: #a9b7c9;
+  font-size: .78rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.siteFooterBaseLinks a:hover { color: #fff; }
+
+/* Brand colours, and large enough to recognise at a glance. */
+.siteFooter .socialLinks { display: flex; gap: .6rem; }
+
+.siteFooter .socialLinks a {
+  align-items: center;
+  background: rgb(255 255 255 / 8%);
+  border-radius: .6rem;
+  color: #fff;
+  display: inline-flex;
+  font-size: .82rem;
+  font-weight: 700;
+  gap: .45rem;
+  padding: .5rem .8rem;
+  text-decoration: none;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.siteFooter .socialLinks a[aria-label="Facebook"]:hover { background: #1877f2; color: #fff; }
+.siteFooter .socialLinks a[aria-label="Telegram"]:hover { background: #229ed9; color: #fff; }
+.siteFooter .socialLinks a[aria-label="Facebook"] svg { color: #4a9bff; }
+.siteFooter .socialLinks a[aria-label="Telegram"] svg { color: #5cc6f0; }
+.siteFooter .socialLinks a:hover svg { color: #fff; }
+
+@media (max-width: 62rem) {
+  .siteFooterInner { grid-template-columns: 1fr 1fr; gap: 2rem; }
+  .footerBrand { grid-column: 1 / -1; }
+}
+
+@media (max-width: 34rem) {
+  .siteFooterInner { grid-template-columns: 1fr; padding: 2.25rem 1.25rem 1.75rem; }
+  .siteFooterBase { justify-content: center; text-align: center; }
+}
+
+/* ── Wallet on the profile ─────────────────────────────────────────────
+   Both currencies visible without a click, and a direct route to topping
+   up - the balance is the first thing a reader looks for here. */
+
+.profileWallet {
+  align-items: center;
+  background: rgb(245 158 11 / 10%);
+  border: 1px solid rgb(245 158 11 / 30%);
+  border-radius: .9rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-top: 1.5rem;
+  padding: 1.1rem 1.35rem;
+}
+
+.profileWalletBalances { display: flex; flex-wrap: wrap; gap: 1.75rem; }
+
+.profileBalance { align-items: center; display: flex; gap: .7rem; }
+
+.profileBalanceIcon {
+  align-items: center;
+  border-radius: .7rem;
+  display: flex;
+  height: 2.6rem;
+  justify-content: center;
+  width: 2.6rem;
+}
+
+.profileBalanceIcon svg { height: 1.4rem; width: 1.4rem; }
+
+.isCoin .profileBalanceIcon { background: #f59e0b; color: #3a2503; }
+.isGem .profileBalanceIcon { background: #38bdf8; color: #06283a; }
+
+.profileBalanceLabel {
+  color: #fcd34d;
+  display: block;
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.isGem .profileBalanceLabel { color: #7dd3fc; }
+
+.profileBalance strong {
+  color: #fff;
+  display: block;
+  font-size: 1.4rem;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.profileTopupButton {
+  align-items: center;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border-radius: .55rem;
+  box-shadow: 0 .25rem .75rem rgb(245 158 11 / 30%);
+  color: #241701;
+  display: inline-flex;
+  font-size: .86rem;
+  font-weight: 800;
+  gap: .45rem;
+  padding: .65rem 1.25rem;
+  text-decoration: none;
+}
+
+.profileTopupButton svg { height: 1rem; width: 1rem; }
+
+@media (max-width: 34rem) {
+  .profileWallet { justify-content: center; text-align: center; }
+  .profileWalletBalances { gap: 1.25rem; justify-content: center; width: 100%; }
+  .profileTopupButton { justify-content: center; width: 100%; }
+}
+
+/* ── Notification bell ─────────────────────────────────────────────────
+   A count on the icon, a dropdown, and a toast when something lands while
+   the reader is on the page. */
+
+.notifyWrap { position: relative; }
+
+.notifyBadge {
+  background: var(--vermilion, #ff4d4f);
+  border-radius: 999px;
+  color: #fff;
+  font-size: .6rem;
+  font-weight: 900;
+  line-height: 1;
+  min-width: 1.05rem;
+  padding: .18rem .28rem;
+  position: absolute;
+  right: -.15rem;
+  text-align: center;
+  top: -.15rem;
+}
+
+.notifyPanel {
+  background: var(--white, #fff);
+  border: 1px solid var(--line, #e2e8f3);
+  border-radius: .75rem;
+  box-shadow: 0 1.2rem 2.5rem rgb(12 22 45 / 18%);
+  display: flex;
+  flex-direction: column;
+  max-height: min(30rem, 75vh);
+  position: absolute;
+  right: 0;
+  top: calc(100% + .5rem);
+  width: min(22rem, calc(100vw - 2rem));
+  z-index: 120;
+}
+
+.notifyPanelHead {
+  align-items: center;
+  border-bottom: 1px solid var(--line, #e2e8f3);
+  display: flex;
+  gap: .75rem;
+  justify-content: space-between;
+  padding: .75rem .9rem;
+}
+
+.notifyPanelHead strong { font-size: .88rem; }
+
+.notifyMarkAll {
+  align-items: center;
+  color: var(--muted, #697590);
+  cursor: pointer;
+  display: flex;
+  font-size: .72rem;
+  font-weight: 700;
+  gap: .35rem;
+}
+
+.notifyMarkAll input { cursor: pointer; }
+.notifyMarkAll input:disabled { cursor: default; }
+
+.notifyList { overflow-y: auto; }
+
+.notifyEmpty {
+  color: var(--muted, #697590);
+  font-size: .8rem;
+  margin: 0;
+  padding: 1.5rem .9rem;
+  text-align: center;
+}
+
+.notifyItem {
+  align-items: flex-start;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--line, #e2e8f3);
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  gap: .6rem;
+  padding: .7rem .9rem;
+  text-align: left;
+  width: 100%;
+}
+
+.notifyItem:hover { background: var(--paper, #f8faff); }
+.notifyItem.isUnread { background: var(--blue-soft, #eef4ff); }
+
+.notifyDot {
+  background: transparent;
+  border-radius: 999px;
+  flex: none;
+  height: .45rem;
+  margin-top: .4rem;
+  width: .45rem;
+}
+
+.notifyItem.isUnread .notifyDot { background: var(--blue, #0f5fff); }
+
+.notifyItemBody { display: grid; gap: .15rem; min-width: 0; }
+.notifyItemBody strong { font-size: .8rem; }
+.notifyItemBody > span {
+  color: var(--muted, #697590);
+  font-size: .74rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.notifyItemBody small { color: var(--muted, #697590); font-size: .66rem; }
+
+.notifyPanelFoot {
+  border-top: 1px solid var(--line, #e2e8f3);
+  padding: .6rem .9rem;
+  text-align: center;
+}
+
+.notifyPanelFoot a {
+  color: var(--blue, #0f5fff);
+  font-size: .76rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+/* The toast sits under the header so it never covers the bell it refers to. */
+.notifyToast {
+  align-items: flex-start;
+  animation: notifyToastIn 220ms ease-out;
+  background: var(--white, #fff);
+  border: 1px solid var(--line, #e2e8f3);
+  border-left: .25rem solid var(--success, #16a46f);
+  border-radius: .7rem;
+  box-shadow: 0 1rem 2.5rem rgb(12 22 45 / 20%);
+  display: flex;
+  gap: .6rem;
+  max-width: calc(100vw - 2rem);
+  padding: .75rem .85rem;
+  position: fixed;
+  right: 1rem;
+  top: 4.75rem;
+  width: 21rem;
+  z-index: 200;
+}
+
+@keyframes notifyToastIn {
+  from { opacity: 0; transform: translateY(-.5rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notifyToast { animation: none; }
+}
+
+.notifyToastIcon {
+  align-items: center;
+  background: #e7f7ef;
+  border-radius: 999px;
+  color: var(--success, #16a46f);
+  display: flex;
+  flex: none;
+  height: 1.7rem;
+  justify-content: center;
+  width: 1.7rem;
+}
+
+.notifyToastBody {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  display: grid;
+  flex: 1;
+  font: inherit;
+  gap: .15rem;
+  min-width: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.notifyToastBody strong { font-size: .8rem; }
+.notifyToastBody span {
+  color: var(--muted, #697590);
+  font-size: .74rem;
+  line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.notifyToastClose {
+  background: none;
+  border: 0;
+  color: var(--muted, #697590);
+  cursor: pointer;
+  flex: none;
+  padding: .1rem;
+}
+
+@media (max-width: 34rem) {
+  .notifyToast { left: 1rem; right: 1rem; width: auto; }
+  .notifyPanel { width: calc(100vw - 2rem); }
+}
+
+/* ── Dark theme ────────────────────────────────────────────────────────
+   Only the tokens change; components read them and follow. Declared last
+   so it wins over the several :root blocks defined earlier in this file. */
+
+:root[data-theme="dark"] {
+  --ink: #e8edf8;
+  --ink-soft: #b4c0d8;
+  --blue: #4d8dff;
+  --blue-soft: #17233d;
+  --paper: #0e1420;
+  --paper-deep: #131b2a;
+  --white: #172032;
+  --text: #e8edf8;
+  --muted: #94a3bd;
+  --line: #26314a;
+  --card-bg: #172032;
+  --card-border: #26314a;
+  --text-primary: #e8edf8;
+  --text-secondary: #b4c0d8;
+  --text-muted: #94a3bd;
+  --dash-bg: #0e1420;
+
+  color-scheme: dark;
+}
+
+:root[data-theme="dark"] body {
+  background: var(--paper);
+  color: var(--text);
+}
+
+/* Surfaces that hard-coded white in the light design. */
+:root[data-theme="dark"] .catalogCard,
+:root[data-theme="dark"] .storyDetailCard,
+:root[data-theme="dark"] .chapterList,
+:root[data-theme="dark"] .notifyPanel,
+:root[data-theme="dark"] .notifyToast,
+:root[data-theme="dark"] .authorApply,
+:root[data-theme="dark"] .chapterUnlockDialog,
+:root[data-theme="dark"] .adGateDialog,
+:root[data-theme="dark"] .siteHeader,
+:root[data-theme="dark"] .siteFooter {
+  background: var(--white);
+  color: var(--text);
+}
+
+:root[data-theme="dark"] .coverPlaceholder {
+  background: linear-gradient(160deg, #1b2437 0%, #131b2a 100%);
+  color: #94a3bd;
+}
+
+:root[data-theme="dark"] .coverPlaceholder span { color: #94a3bd; }
+
+:root[data-theme="dark"] .notifyItem:hover { background: #1b2437; }
+:root[data-theme="dark"] .notifyItem.isUnread { background: #16233c; }
+
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] textarea,
+:root[data-theme="dark"] select {
+  background: #131b2a;
+  border-color: var(--line);
+  color: var(--text);
+}
+
+/* The reader has its own paper/night setting; leave it alone. */
+:root[data-theme="dark"] [data-theme="paper"] { color-scheme: light; }

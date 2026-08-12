@@ -1,5 +1,7 @@
 package com.storyplatform.admin.api;
 
+import static com.storyplatform.admin.application.dto.AdminDtos.timestamp;
+
 import com.storyplatform.admin.application.dto.AdminDtos.AdminCategoryRow;
 import com.storyplatform.admin.application.dto.AdminDtos.UpsertCategoryRequest;
 import com.storyplatform.catalog.domain.Genre;
@@ -35,7 +37,10 @@ public class AdminCategoryController {
     @GetMapping
     @Transactional(readOnly = true)
     public List<AdminCategoryRow> list() {
-        return jdbc.sql("SELECT id, slug, name, description, is_active FROM genres ORDER BY name")
+        return jdbc.sql("""
+                        SELECT id, slug, name, description, is_active, created_at, updated_at
+                        FROM genres ORDER BY name
+                        """)
                 .query((rs, rowNum) -> new AdminCategoryRow(
                         rs.getString("id"),
                         rs.getString("slug"),
@@ -43,7 +48,9 @@ public class AdminCategoryController {
                         nullToEmpty(rs.getString("description")),
                         0,
                         rs.getBoolean("is_active"),
-                        1
+                        1,
+                        timestamp(rs, "created_at"),
+                        timestamp(rs, "updated_at")
                 ))
                 .list();
     }
@@ -114,6 +121,30 @@ public class AdminCategoryController {
         genreRepository.delete(genre);
     }
 
+    /**
+     * Removes a genre outright. Refused while any story still uses it, since
+     * story_genres is ON DELETE RESTRICT and those stories would lose their
+     * classification without anyone noticing.
+     */
+    @DeleteMapping("/{id}/permanent")
+    @Transactional
+    public void deletePermanently(@PathVariable UUID id) {
+        Genre genre = find(id);
+        long linkedStories = jdbc.sql("SELECT COUNT(*) FROM story_genres WHERE genre_id = ?")
+                .param(id.toString())
+                .query(Long.class)
+                .optional()
+                .orElse(0L);
+        if (linkedStories > 0) {
+            throw new ApiException(HttpStatus.CONFLICT, "category.in_use",
+                    "Category still in use",
+                    ("Thể loại \"%s\" đang gắn với %d truyện nên không thể xóa. "
+                            + "Hãy gỡ thể loại khỏi các truyện đó, hoặc dùng \"Ẩn thể loại\".")
+                            .formatted(genre.getName(), linkedStories));
+        }
+        jdbc.sql("DELETE FROM genres WHERE id = ?").param(id.toString()).update();
+    }
+
     private Genre find(UUID id) {
         return genreRepository.findById(id).orElseThrow(() -> new ApiException(
                 HttpStatus.NOT_FOUND, "category.not_found", "Category not found", "Category not found"));
@@ -139,7 +170,9 @@ public class AdminCategoryController {
                 nullToEmpty(genre.getDescription()),
                 0,
                 Boolean.TRUE.equals(genre.getIsActive()),
-                1
+                1,
+                genre.getCreatedAt() == null ? null : genre.getCreatedAt().toString(),
+                genre.getUpdatedAt() == null ? null : genre.getUpdatedAt().toString()
         );
     }
 

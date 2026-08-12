@@ -5,7 +5,10 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,15 +34,21 @@ public class AdminTopupController {
     public record AdminTopupRow(
             String id,
             String userEmail,
+            String userName,
             String transactionCode,
             long amountVnd,
             long coinReceived,
             long gemReceived,
             String methodName,
             String status,
+            String adminNote,
             String createdAt,
-            String paidAt
+            String paidAt,
+            String reviewedAt
     ) {
+    }
+
+    public record ReviewRequest(String note) {
     }
 
     @GetMapping
@@ -49,12 +58,17 @@ public class AdminTopupController {
                 : status.trim().toUpperCase(java.util.Locale.ROOT);
         return jdbc.sql("""
                         SELECT p.id, p.transaction_code, p.amount_vnd, p.coin_received,
-                               p.gem_received, p.status, p.created_at, p.paid_at,
-                               u.email AS user_email, m.name AS method_name
+                               p.gem_received, p.status, p.admin_note, p.created_at,
+                               p.paid_at, p.reviewed_at,
+                               u.email AS user_email, u.display_name AS user_name,
+                               m.name AS method_name
                         FROM payments p
                         JOIN users u ON u.id = p.user_id
                         LEFT JOIN payment_methods m ON m.id = p.payment_method_id
-                        WHERE (? IS NULL OR p.status = ?)
+                        -- A DRAFT is a reader looking at a QR code, not a claim
+                        -- that money moved, so it never reaches this queue.
+                        WHERE p.status <> 'DRAFT'
+                          AND (? IS NULL OR p.status = ?)
                         ORDER BY p.created_at DESC
                         LIMIT 200
                         """)
@@ -62,14 +76,17 @@ public class AdminTopupController {
                 .query((rs, rowNum) -> new AdminTopupRow(
                         rs.getString("id"),
                         rs.getString("user_email"),
+                        rs.getString("user_name"),
                         rs.getString("transaction_code"),
                         rs.getLong("amount_vnd"),
                         rs.getLong("coin_received"),
                         rs.getLong("gem_received"),
                         rs.getString("method_name"),
                         rs.getString("status"),
+                        rs.getString("admin_note"),
                         String.valueOf(rs.getTimestamp("created_at")),
-                        rs.getTimestamp("paid_at") == null ? null : String.valueOf(rs.getTimestamp("paid_at"))))
+                        rs.getTimestamp("paid_at") == null ? null : String.valueOf(rs.getTimestamp("paid_at")),
+                        rs.getTimestamp("reviewed_at") == null ? null : String.valueOf(rs.getTimestamp("reviewed_at"))))
                 .list();
     }
 
@@ -81,7 +98,11 @@ public class AdminTopupController {
      */
     @PostMapping("/{paymentId}/approve")
     @Transactional
-    public AdminTopupRow approve(@PathVariable String paymentId) {
+    public AdminTopupRow approve(
+            @PathVariable String paymentId,
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestBody(required = false) ReviewRequest request
+    ) {
         Pending pending = jdbc.sql("""
                         SELECT user_id, coin_received, gem_received, status, transaction_code
                         FROM payments WHERE id = ? FOR UPDATE
@@ -107,8 +128,15 @@ public class AdminTopupController {
                     "Yêu cầu đang ở trạng thái %s, không thể duyệt.".formatted(pending.status()));
         }
 
-        jdbc.sql("UPDATE payments SET status = 'PAID', paid_at = NOW() WHERE id = ?")
-                .param(paymentId).update();
+        String note = request == null || request.note() == null ? null : request.note().trim();
+        jdbc.sql("""
+                        UPDATE payments
+                        SET status = 'PAID', paid_at = NOW(), admin_note = ?,
+                            reviewed_by = ?, reviewed_at = NOW()
+                        WHERE id = ?
+                        """)
+                .params(note, reviewer(jwt), paymentId)
+                .update();
 
         // A wallet row normally exists from registration; a seeded account may
         // predate that, so it is created on demand rather than failing here.
@@ -135,6 +163,12 @@ public class AdminTopupController {
         recordTransaction(pending.userId(), "COIN", pending.coin(), balances[0], paymentId, pending.code());
         recordTransaction(pending.userId(), "GEM", pending.gem(), balances[1], paymentId, pending.code());
 
+        notify(pending.userId(), "Nạp xu thành công",
+                "Giao dịch %s đã được xác nhận. Bạn nhận %d xu và %d ngọc.%s"
+                        .formatted(pending.code(), pending.coin(), pending.gem(),
+                                note == null || note.isBlank() ? "" : " Ghi chú: " + note),
+                paymentId);
+
         return list(null).stream()
                 .filter(row -> row.id().equals(paymentId))
                 .findFirst()
@@ -142,18 +176,59 @@ public class AdminTopupController {
                         "Top-up not found", "Không tìm thấy yêu cầu nạp này."));
     }
 
-    /** Rejects a transfer that never arrived. Nothing is credited. */
+    /**
+     * Rejects a transfer that never arrived. Nothing is credited, and the reader
+     * is told why rather than watching the request sit unexplained.
+     */
     @PostMapping("/{paymentId}/reject")
     @Transactional
-    public void reject(@PathVariable String paymentId) {
-        int updated = jdbc.sql(
-                        "UPDATE payments SET status = 'CANCELLED' WHERE id = ? AND status = 'PENDING'")
+    public void reject(
+            @PathVariable String paymentId,
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestBody(required = false) ReviewRequest request
+    ) {
+        String note = request == null || request.note() == null ? null : request.note().trim();
+
+        String userId = jdbc.sql("SELECT user_id FROM payments WHERE id = ? AND status = 'PENDING'")
                 .param(paymentId)
+                .query(String.class)
+                .optional()
+                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "topup.not_pending",
+                        "Not pending", "Chỉ có thể hủy yêu cầu đang chờ xử lý."));
+
+        String code = jdbc.sql("SELECT transaction_code FROM payments WHERE id = ?")
+                .param(paymentId).query(String.class).optional().orElse(paymentId);
+
+        jdbc.sql("""
+                        UPDATE payments
+                        SET status = 'CANCELLED', admin_note = ?, reviewed_by = ?, reviewed_at = NOW()
+                        WHERE id = ? AND status = 'PENDING'
+                        """)
+                .params(note, reviewer(jwt), paymentId)
                 .update();
-        if (updated == 0) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "topup.not_pending",
-                    "Not pending", "Chỉ có thể hủy yêu cầu đang chờ xử lý.");
-        }
+
+        notify(userId, "Yêu cầu nạp chưa hoàn tất",
+                "Giao dịch %s chưa được xác nhận.%s"
+                        .formatted(code,
+                                note == null || note.isBlank()
+                                        ? " Vui lòng kiểm tra lại nội dung chuyển khoản hoặc liên hệ hỗ trợ."
+                                        : " Lý do: " + note),
+                paymentId);
+    }
+
+    /** Drops a message in the reader's inbox about their top-up. */
+    private void notify(String userId, String title, String message, String paymentId) {
+        jdbc.sql("""
+                        INSERT INTO notifications
+                            (id, user_id, type, title, message, target_type, target_id, target_url, created_at)
+                        VALUES (?, ?, 'PAYMENT', ?, ?, 'TOPUP', ?, '/wallet', NOW())
+                        """)
+                .params(UUID.randomUUID().toString(), userId, title, message, paymentId)
+                .update();
+    }
+
+    private static String reviewer(Jwt jwt) {
+        return jwt == null ? null : jwt.getSubject();
     }
 
     private void recordTransaction(

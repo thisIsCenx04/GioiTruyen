@@ -48,6 +48,18 @@ public class TopupController {
         return topupService.createTopup(currentUser(jwt), request.packageId(), request.methodId());
     }
 
+    /**
+     * The reader states they have transferred the money. Only now does the
+     * request reach the admin queue; opening the QR screen does not.
+     */
+    @PostMapping("/topups/{paymentId}/submit")
+    public TopupService.TopupInstruction submit(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable String paymentId
+    ) {
+        return topupService.submitTopup(currentUser(jwt), paymentId);
+    }
+
     @GetMapping("/topups/{paymentId}")
     public TopupService.TopupInstruction get(
             @AuthenticationPrincipal Jwt jwt,

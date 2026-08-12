@@ -104,6 +104,8 @@ public class SecurityConfiguration {
                                 "/stories/*/chapters",
                                 "/chapters/*",
                                 "/chapters/*/access",
+                                // Reading the discussion is public; posting is not.
+                                "/comments",
                                 "/users/*",
                                 "/teams",
                                 "/teams/*",
@@ -156,6 +158,11 @@ public class SecurityConfiguration {
                         ).authenticated()
                         .requestMatchers("/notifications/**")
                         .authenticated()
+                        // Asking to become a publisher, and reading your own request.
+                        .requestMatchers("/author-applications", "/author-applications/**")
+                        .authenticated()
+                        // GET /comments is permitted above; writing needs an account.
+                        .requestMatchers("/comments", "/comments/**").authenticated()
                         // A guest may preview what quests exist; their own board
                         // and any reward claim still require an account.
                         .requestMatchers(HttpMethod.GET, "/quests/preview").permitAll()

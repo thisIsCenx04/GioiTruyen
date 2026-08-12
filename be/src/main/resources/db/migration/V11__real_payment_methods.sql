@@ -41,7 +41,7 @@ VALUES
         'accountNumber', '0898662206',
         'accountName', 'NGUYEN THI THU TRANG',
         'provider', 'Momo'),
-     'Chuyển tới số điện thoại 0898662206 (NGUYEN THI THU TRANG), ghi đúng nội dung chuyển khoản.',
+     'Quét mã hoặc chuyển tới số 0898662206 (NGUYEN THI THU TRANG), giữ nguyên nội dung chuyển khoản.',
      1, 2, '00000000-0000-0000-0000-000000000001'),
 
     ('22000000-0000-0000-0000-000000000012', 'ZaloPay', 'QR',
@@ -49,7 +49,7 @@ VALUES
         'accountNumber', '0898662206',
         'accountName', 'NGUYEN THI THU TRANG',
         'provider', 'ZaloPay'),
-     'Chuyển tới số điện thoại 0898662206 (NGUYEN THI THU TRANG), ghi đúng nội dung chuyển khoản.',
+     'Quét mã hoặc chuyển tới số 0898662206 (NGUYEN THI THU TRANG), giữ nguyên nội dung chuyển khoản.',
      1, 3, '00000000-0000-0000-0000-000000000001'),
 
     ('22000000-0000-0000-0000-000000000013', 'PayPal', 'PAYPAL',

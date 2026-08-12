@@ -10,7 +10,7 @@ import { Link } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import styles from "./notification-inbox.module.css";
-import { API_BASE_URL, apiFetch } from "@/lib/api-base";
+import { API_BASE_URL, authedFetch } from "@/lib/api-base";
 
 function time(value: string) {
   return new Intl.DateTimeFormat("vi-VN", {
@@ -29,8 +29,11 @@ function message(error: unknown) {
   return "Không thể kết nối máy chủ. Hãy thử lại.";
 }
 
+/** How often an open inbox refetches its first page. */
+const REFRESH_INTERVAL_MS = 30_000;
+
 export function NotificationInbox() {
-  const api = useMemo(() => createBrowserNotificationClient({ baseUrl: API_BASE_URL, fetchImplementation: apiFetch }), []);
+  const api = useMemo(() => createBrowserNotificationClient({ baseUrl: API_BASE_URL, fetchImplementation: authedFetch }), []);
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [unread, setUnread] = useState(0);
@@ -55,6 +58,23 @@ export function NotificationInbox() {
   useEffect(() => {
     const task = window.setTimeout(() => void load(), 0);
     return () => window.clearTimeout(task);
+  }, [load]);
+
+  // Messages arrive while the inbox sits open - a top-up being approved, for
+  // instance - so the first page is refetched periodically. A hidden tab is
+  // skipped, and paged-in older items are left alone until the reader is back
+  // at the top.
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState !== "visible") return;
+      void load();
+    };
+    const timer = window.setInterval(tick, REFRESH_INTERVAL_MS);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", tick);
+    };
   }, [load]);
 
   async function loadMore() {

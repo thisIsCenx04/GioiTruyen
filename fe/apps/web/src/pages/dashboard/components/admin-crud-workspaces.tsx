@@ -16,9 +16,15 @@ import {
   loadAdminUsers,
 } from "../admin-data";
 import { getAccessToken, refreshAccessToken } from "../../../lib/auth";
-import { type ImportedStory, parseStoryDocument, parseStoryFile } from "./story-import";
+import {
+  type ImportedStory,
+  parseStoryDocument,
+  parseStoryFile,
+  WORDS_PER_CHAPTER,
+  WORDS_PER_CHAPTER_ZHIHU,
+} from "./story-import";
 
-type DrawerMode = "archive" | "create" | "edit" | "reverse";
+type DrawerMode = "archive" | "create" | "delete" | "edit" | "reverse";
 type SortOrder = "asc" | "desc";
 type StoryChapterDraft = {
   id: string;
@@ -36,6 +42,81 @@ interface SortState<K extends string> {
 }
 
 const numberFormatter = new Intl.NumberFormat("vi-VN");
+
+/**
+ * Timestamps as an admin reads them. Every list shows when a record was made
+ * and when it last changed - without that, two similar rows are impossible to
+ * tell apart.
+ */
+/**
+ * The body of a delete drawer: a warning, and a box the admin must type the
+ * record's name into.
+ *
+ * <p>Deleting is permanent and usually cascades, so a single click is too
+ * cheap. Typing the name makes the admin read which record they are about to
+ * remove - a confirm dialog alone gets dismissed on reflex.
+ */
+function DeleteConfirmation({
+  confirmation,
+  entityLabel,
+  name,
+  onChange,
+  warning,
+}: Readonly<{
+  confirmation: string;
+  entityLabel: string;
+  name: string;
+  onChange: (value: string) => void;
+  warning: string;
+}>) {
+  return (
+    <>
+      <p className="drawerDanger">
+        <strong>Xóa vĩnh viễn.</strong> {warning}
+      </p>
+      <Field label={`Gõ lại tên ${entityLabel} để xác nhận`}>
+        <input
+          autoComplete="off"
+          onChange={(event) => onChange(event.currentTarget.value)}
+          placeholder={name}
+          value={confirmation}
+        />
+      </Field>
+      {confirmation && confirmation.trim() !== name.trim() ? (
+        <p className="drawerConfirmMismatch">Tên chưa khớp với “{name}”.</p>
+      ) : null}
+    </>
+  );
+}
+
+/** The "created / last updated" line every admin list row carries. */
+function Timestamps({
+  createdAt,
+  updatedAt,
+}: Readonly<{ createdAt?: string | null; updatedAt?: string | null }>) {
+  if (!createdAt && !updatedAt) return null;
+  return (
+    <>
+      {createdAt ? `Tạo lúc ${formatDateTime(createdAt)}` : ""}
+      {createdAt && updatedAt ? " · " : ""}
+      {updatedAt ? `Cập nhật ${formatDateTime(updatedAt)}` : ""}
+    </>
+  );
+}
+
+export function formatDateTime(value: string | null | undefined) {
+  if (!value) return "—";
+  const parsed = new Date(value.includes("T") ? value : value.replace(" ", "T"));
+  return Number.isNaN(parsed.getTime())
+    ? value
+    : parsed.toLocaleString("vi-VN", {
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+}
 
 function value(form: FormData, name: string) {
   return String(form.get(name) ?? "").trim();
@@ -462,14 +543,26 @@ function ChapterUploadList({
 
 function ChapterImportWorkspace({
   chapters,
+  collapsible = false,
   onChange,
 }: Readonly<{
   chapters: StoryChapterDraft[];
+  /** Editing a long story: chapters start folded so the list stays scannable. */
+  collapsible?: boolean;
   onChange: (chapters: StoryChapterDraft[]) => void;
 }>) {
   const [error, setError] = useState("");
   const [bulkFreeCount, setBulkFreeCount] = useState(5);
   const [bulkPrice, setBulkPrice] = useState(5);
+  const [openChapters, setOpenChapters] = useState<ReadonlySet<string>>(new Set());
+
+  const toggleChapter = (id: string) => {
+    setOpenChapters((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   const updateChapter = (id: string, patch: Partial<StoryChapterDraft>) => {
     onChange(chapters.map((chapter) => (chapter.id === id ? { ...chapter, ...patch } : chapter)));
@@ -595,8 +688,31 @@ function ChapterImportWorkspace({
       {error ? <p className="drawerError" role="alert">{error}</p> : null}
       {chapters.length === 0 ? <p>Chưa có chương. Upload file hoặc bấm + để nhập content trực tiếp.</p> : (
         <div className="chapterDraftList">
-          {chapters.map((chapter, index) => (
+          {chapters.map((chapter, index) => {
+            // Folded by default when editing, so a 59-chapter story does not
+            // render 59 textareas the admin has to scroll past.
+            const expanded = !collapsible || openChapters.has(chapter.id);
+            return (
             <article className="chapterDraftItem" key={chapter.id}>
+              {collapsible ? (
+                <button
+                  aria-expanded={expanded}
+                  className="chapterDraftToggle"
+                  onClick={() => toggleChapter(chapter.id)}
+                  type="button"
+                >
+                  <span className="chapterDraftToggleIcon">{expanded ? "−" : "+"}</span>
+                  <span className="chapterDraftToggleTitle">
+                    {chapter.title || `Chương ${index + 1}`}
+                  </span>
+                  <span className="chapterDraftToggleMeta">
+                    {chapter.accessType === "PAID" ? `${chapter.coinPrice} xu` : "Miễn phí"}
+                  </span>
+                </button>
+              ) : null}
+
+              {expanded ? (
+                <>
               <button aria-label={`Xóa chương ${index + 1}`} className="chapterDraftRemove" onClick={() => onChange(chapters.filter((item) => item.id !== chapter.id))} type="button">
                 <X aria-hidden="true" size={16} />
               </button>
@@ -644,8 +760,11 @@ function ChapterImportWorkspace({
                 <textarea onChange={(event) => updateChapter(chapter.id, { content: event.currentTarget.value })} placeholder="Nội dung chương..." rows={8} value={chapter.content} />
               </Field>
               <TagEditor label="Tag chương" onChange={(tags) => updateChapter(chapter.id, { tags })} placeholder="Ví dụ: battle, flashback" tags={chapter.tags} />
+                </>
+              ) : null}
             </article>
-          ))}
+            );
+          })}
         </div>
       )}
     </section>
@@ -671,14 +790,14 @@ function StoryFormatPicker({
 }>) {
   const options = [
     {
-      description: "Nhiều chương, đăng dần theo thời gian.",
+      description: `Tự tách chương mỗi ${WORDS_PER_CHAPTER} từ.`,
       key: "SERIAL" as const,
       title: "Truyện dài",
     },
     {
-      description: "Đọc trọn trong một trang, không chia chương.",
+      description: `Chương dài hơn: tự tách mỗi ${WORDS_PER_CHAPTER_ZHIHU} từ.`,
       key: "ONESHOT" as const,
-      title: "Truyện ngắn Zhihu",
+      title: "Truyện Zhihu",
     },
   ];
 
@@ -723,10 +842,19 @@ function GenreMultiSelect({
   onChange: (ids: string[]) => void;
   selected: string[];
 }>) {
+  const [query, setQuery] = useState("");
+
   const toggle = (id: string) => {
     onChange(selected.includes(id) ? selected.filter((value) => value !== id) : [...selected, id]);
   };
   const chosen = categories.filter((category) => selected.includes(category.id));
+
+  // Hundreds of genres do not fit on screen, so the list filters as the admin
+  // types. Diacritics are stripped on both sides: "kiem hiep" finds "Kiếm hiệp".
+  const needle = normaliseForSearch(query);
+  const visible = needle
+    ? categories.filter((category) => normaliseForSearch(category.name).includes(needle))
+    : categories;
 
   return (
     <div className="genreMultiSelect">
@@ -741,20 +869,40 @@ function GenreMultiSelect({
           ))
           : <em>Chưa chọn thể loại nào.</em>}
       </div>
+      <input
+        className="genreSearchInput"
+        onChange={(event) => setQuery(event.currentTarget.value)}
+        placeholder="Tìm thể loại… (ví dụ: kiem hiep, ngon tinh)"
+        type="search"
+        value={query}
+      />
       <div className="genreOptionGrid">
-        {categories.map((category) => (
-          <label className={selected.includes(category.id) ? "isChecked" : undefined} key={category.id}>
-            <input
-              checked={selected.includes(category.id)}
-              onChange={() => toggle(category.id)}
-              type="checkbox"
-            />
-            <span>{category.name}</span>
-          </label>
-        ))}
+        {visible.length === 0
+          ? <em className="genreNoMatch">Không có thể loại nào khớp “{query}”.</em>
+          : visible.map((category) => (
+            <label className={selected.includes(category.id) ? "isChecked" : undefined} key={category.id}>
+              <input
+                checked={selected.includes(category.id)}
+                onChange={() => toggle(category.id)}
+                type="checkbox"
+              />
+              <span>{category.name}</span>
+            </label>
+          ))}
       </div>
     </div>
   );
+}
+
+/** Lower-cased and stripped of diacritics, so search works without tone marks. */
+function normaliseForSearch(value: string) {
+  return value
+    .normalize("NFD")
+    // The combining-diacritics block, which NFD split the tone marks into.
+    .replace(/[̀-ͯ]/gu, "")
+    .replace(/đ/giu, "d")
+    .toLowerCase()
+    .trim();
 }
 
 /** The whole story in one field, for the Zhihu one-page format. */
@@ -789,9 +937,11 @@ function OneshotContentEditor({
 function StoryDocumentImport({
   busy,
   onImported,
+  wordsPerChapter,
 }: Readonly<{
   busy: boolean;
   onImported: (imported: ImportedStory) => void;
+  wordsPerChapter: number;
 }>) {
   const [error, setError] = useState("");
   const [summary, setSummary] = useState("");
@@ -803,10 +953,11 @@ function StoryDocumentImport({
     setError("");
     setSummary("");
     try {
-      const imported = await parseStoryDocument(file);
+      const imported = await parseStoryDocument(file, wordsPerChapter);
       onImported(imported);
       setSummary(
         `Đã đọc "${file.name}": ${imported.chapters.length} chương`
+        + ` (mỗi ${wordsPerChapter} từ)`
         + (imported.authorName ? ` · tác giả ${imported.authorName}` : "")
       );
     } catch (cause) {
@@ -822,8 +973,8 @@ function StoryDocumentImport({
         <div>
           <strong>Upload file truyện để tự điền</strong>
           <small>
-            Hỗ trợ .docx, .txt, .md. Hệ thống đọc tên truyện, tác giả, giới thiệu và tách chương;
-            bạn vẫn sửa tay được ở các ô bên dưới.
+            Hỗ trợ .docx, .txt, .md. Hệ thống đọc tên truyện, tác giả, giới thiệu và tự tách
+            chương mỗi {wordsPerChapter} từ; bạn vẫn sửa tay được ở các ô bên dưới.
           </small>
         </div>
         <label className="storyImportButton">
@@ -920,6 +1071,7 @@ function MutationNotice({ error, onDismiss }: Readonly<{ error: string; onDismis
  */
 function validateStoryDraft(input: Readonly<{
   chapterCount: number;
+  chapters: readonly StoryChapterDraft[];
   isOneshot: boolean;
   oneshotContent: string;
   slug: string;
@@ -936,8 +1088,20 @@ function validateStoryDraft(input: Readonly<{
     return "Slug chỉ được gồm chữ thường không dấu, số và dấu gạch ngang. "
       + "Ví dụ: tuyet-tan-kien-quan-tam. Để trống thì hệ thống tự tạo từ tên truyện.";
   }
-  if (input.isOneshot && !input.oneshotContent.trim()) {
-    return "Truyện ngắn Zhihu cần có nội dung. Hãy dán nội dung hoặc upload file truyện.";
+  // Zhihu now produces chapter rows like any other story, so either the pasted
+  // one-page text or an imported chapter list satisfies it.
+  if (input.isOneshot && input.chapterCount === 0 && !input.oneshotContent.trim()) {
+    return "Truyện Zhihu cần có nội dung. Hãy dán nội dung hoặc upload file truyện.";
+  }
+  // A PAID chapter priced at 0 unlocks for free, which reads as a bug to
+  // everyone involved: the reader gets it free and the team earns nothing.
+  const freePaidChapter = input.chapters.findIndex(
+    (chapter) => chapter.accessType === "PAID" && !(chapter.coinPrice && chapter.coinPrice > 0),
+  );
+  if (freePaidChapter >= 0) {
+    const chapter = input.chapters[freePaidChapter]!;
+    return `Chương "${chapter.title || `Chương ${freePaidChapter + 1}`}" đang để trả phí `
+      + "nhưng giá bằng 0. Hãy nhập giá lớn hơn 0 xu, hoặc chuyển chương này về miễn phí.";
   }
   return "";
 }
@@ -961,6 +1125,12 @@ export function StoryCrudWorkspace({
   const [coverPreview, setCoverPreview] = useState("");
   const [storyTags, setStoryTags] = useState<string[]>([]);
   const [chapterDrafts, setChapterDrafts] = useState<StoryChapterDraft[]>([]);
+  // Chapters are replaced wholesale on the server. Loading them into the form
+  // is not a reason to send them back, so an edit only submits the list once
+  // the admin has actually changed something in it.
+  const [chaptersDirty, setChaptersDirty] = useState(false);
+  // Typed back by the admin before a permanent delete goes through.
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
   // Controlled so an uploaded file can populate them.
   const [storyTitle, setStoryTitle] = useState("");
   const [storySlug, setStorySlug] = useState("");
@@ -974,7 +1144,6 @@ export function StoryCrudWorkspace({
   const [completionStatus, setCompletionStatus] = useState<"COMPLETED" | "ONGOING">("ONGOING");
   // A story can belong to several genres at once.
   const [storyCategoryIds, setStoryCategoryIds] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<"content" | "general">("content");
   const selected = drawer?.story;
   const isOneshot = storyFormat === "ONESHOT";
 
@@ -998,19 +1167,21 @@ export function StoryCrudWorkspace({
   }, []);
 
   useEffect(() => {
-    if (!drawer || drawer.mode === "archive") {
+    setDeleteConfirmation("");
+    if (!drawer || drawer.mode === "archive" || drawer.mode === "delete") {
       setCoverFile(null);
       setCoverPreview("");
       setStoryTags([]);
       setChapterDrafts([]);
+      setChaptersDirty(false);
       return;
     }
 
-    setActiveTab("content");
     setCoverFile(null);
     setCoverPreview(selected?.coverUrl ?? "");
     setStoryTags(selected?.tags ?? []);
     setChapterDrafts([]);
+    setChaptersDirty(false);
     setStoryTitle(selected?.title ?? "");
     setStorySlug(selected?.slug ?? "");
     setStoryAuthor(selected?.authorName ?? "");
@@ -1035,7 +1206,10 @@ export function StoryCrudWorkspace({
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         credentials: "same-origin"
       })
-        .then((res) => (res.ok ? res.json() : []))
+        .then((res) => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.json();
+        })
         .then((data: any[]) => {
           if (Array.isArray(data) && data.length > 0) {
             if (selected.storyFormat === "ONESHOT") {
@@ -1052,7 +1226,11 @@ export function StoryCrudWorkspace({
             }
           }
         })
-        .catch(() => {});
+        // Failing quietly here used to look identical to a story with no
+        // chapters, which is the state that made saving destructive.
+        .catch(() => {
+          setError("Không tải được danh sách chương. Đóng form và mở lại trước khi sửa chương.");
+        });
     }
   }, [drawer, selected]);
 
@@ -1064,13 +1242,16 @@ export function StoryCrudWorkspace({
     setBusy(true);
     setError("");
     try {
-      if (drawer.mode === "archive" && selected) {
+      if (drawer.mode === "delete" && selected) {
+        await adminMutation(`content/stories/${selected.id}/permanent`, "DELETE");
+      } else if (drawer.mode === "archive" && selected) {
         await adminMutation(`content/stories/${selected.id}`, "DELETE");
       } else {
         const form = new FormData(event.currentTarget);
 
         const problem = validateStoryDraft({
           chapterCount: chapterDrafts.length,
+          chapters: chapterDrafts,
           isOneshot,
           oneshotContent,
           slug: value(form, "slug"),
@@ -1102,13 +1283,21 @@ export function StoryCrudWorkspace({
           workflowStatus: value(form, "workflowStatus"),
         };
 
-        // A one-shot still stores its text as a chapter row - exactly one, named
-        // after the story - so the reader and unlock logic need no special case.
-        const submittedChapters: StoryChapterDraft[] = isOneshot
+        // Zhihu text pasted straight into the box is stored as a single chapter
+        // row named after the story; an imported Zhihu file has already been cut
+        // into 1400-word chapters and keeps them.
+        const loadedChapters: StoryChapterDraft[] = isOneshot && chapterDrafts.length === 0
           ? (oneshotContent.trim()
             ? [{ content: oneshotContent, id: "oneshot", tags: [], title: value(form, "title") }]
             : [])
           : chapterDrafts;
+
+        // On the server a submitted list replaces every chapter the story has.
+        // Editing metadata must therefore send nothing: re-posting a list that
+        // was merely loaded for display is what previously wiped the chapters
+        // whenever the load was partial or had not finished.
+        const sendChapters = !selected || chaptersDirty;
+        const submittedChapters = sendChapters ? loadedChapters : [];
 
         const hasUpload = Boolean(coverFile || submittedChapters.length > 0);
         const body = hasUpload ? new FormData() : payload;
@@ -1121,6 +1310,10 @@ export function StoryCrudWorkspace({
           });
           if (coverFile) {
             body.append("coverImage", coverFile);
+          }
+          // Explicit opt-in: without it the server keeps the stored chapters.
+          if (submittedChapters.length > 0) {
+            body.append("replaceChapters", "true");
           }
           // Tomcat caps a multipart request at a fixed number of parts, so each
           // chapter sends only what the server cannot work out for itself:
@@ -1176,108 +1369,79 @@ export function StoryCrudWorkspace({
             <div className="adminCrudDetails">
               <strong>{story.title}</strong>
               <small>{story.teamName} · {story.authorName} · {story.categoryName || "Chưa phân loại"}</small>
+              <small><Timestamps createdAt={story.createdAt} updatedAt={story.updatedAt} /></small>
             </div>
             <span>{translateStatus(story.workflowStatus)}</span>
             <div className="adminCrudActions">
               <button onClick={() => setDrawer({ mode: "edit", story })} type="button">Chỉnh sửa</button>
               <button onClick={() => setDrawer({ mode: "archive", story })} type="button">Ngừng hiển thị</button>
+              <button className="adminDangerAction" onClick={() => setDrawer({ mode: "delete", story })} type="button">Xóa</button>
             </div>
           </article>
         ))}
       </section>
       {drawer && (
-        <Drawer close={() => setDrawer(null)} description={selected ? selected.title : "Thêm đầu truyện mới vào thư viện."} title={drawer.mode === "archive" ? "Ngừng hiển thị truyện" : selected ? "Chỉnh sửa truyện" : "Tạo truyện"}>
+        <Drawer
+          close={() => setDrawer(null)}
+          description={selected ? selected.title : "Thêm đầu truyện mới vào thư viện."}
+          title={drawer.mode === "delete"
+            ? "Xóa truyện vĩnh viễn"
+            : drawer.mode === "archive"
+              ? "Ngừng hiển thị truyện"
+              : selected ? "Chỉnh sửa truyện" : "Tạo truyện"}
+        >
           <form className="drawerForm" onSubmit={submit}>
-            {drawer.mode === "archive" && selected ? (
+            {drawer.mode === "delete" && selected ? (
+              <DeleteConfirmation
+                confirmation={deleteConfirmation}
+                entityLabel="truyện"
+                name={selected.title}
+                onChange={setDeleteConfirmation}
+                warning="Toàn bộ chương của truyện sẽ bị xóa cùng và không khôi phục được. Nếu chỉ muốn ẩn khỏi người đọc, hãy dùng “Ngừng hiển thị”."
+              />
+            ) : drawer.mode === "archive" && selected ? (
               <p className="drawerConfirm">Truyện sẽ chuyển sang trạng thái lưu trữ và không còn xuất hiện trên client. Dữ liệu chương vẫn được giữ nguyên.</p>
             ) : (
               <>
-                {/* 2-Tab Navigation Header */}
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "0.5rem",
-                    borderBottom: "2px solid #e2e8f0",
-                    marginBottom: "1.25rem",
-                    paddingBottom: "0.25rem"
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("content")}
-                    style={{
-                      padding: "0.65rem 1.25rem",
-                      fontWeight: 700,
-                      fontSize: "0.9rem",
-                      borderRadius: "8px 8px 0 0",
-                      border: "none",
-                      background: activeTab === "content" ? "#0f6bff" : "rgba(241, 245, 249, 0.8)",
-                      color: activeTab === "content" ? "#fff" : "#475569",
-                      cursor: "pointer",
-                      transition: "all 0.2s ease"
-                    }}
-                  >
-                    📝 Edit Nội Dung & Chương ({isOneshot ? "1 phần" : `${chapterDrafts.length} chương`})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("general")}
-                    style={{
-                      padding: "0.65rem 1.25rem",
-                      fontWeight: 700,
-                      fontSize: "0.9rem",
-                      borderRadius: "8px 8px 0 0",
-                      border: "none",
-                      background: activeTab === "general" ? "#0f6bff" : "rgba(241, 245, 249, 0.8)",
-                      color: activeTab === "general" ? "#fff" : "#475569",
-                      cursor: "pointer",
-                      transition: "all 0.2s ease"
-                    }}
-                  >
-                    ⚙️ Edit Thông Tin Chung
-                  </button>
-                </div>
+                {/*
+                  One form, no tabs. Splitting the fields across tabs meant the
+                  inputs on the hidden tab were unmounted, so FormData never saw
+                  the title and every edit failed with "Chưa nhập tên truyện".
 
-                {/* TAB 1: Edit Nội Dung (Nội dung từng chương & Khoá xu) */}
-                {activeTab === "content" && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                    <StoryFormatPicker
-                      onChange={setStoryFormat}
-                      value={storyFormat}
-                    />
+                  Creating a story still leads with the file upload and the
+                  format choice; editing an existing one shows neither, because
+                  re-uploading would replace the chapters that are already there.
+                */}
+                {selected ? null : (
+                  <>
+                    <StoryFormatPicker onChange={setStoryFormat} value={storyFormat} />
                     <StoryDocumentImport
                       busy={busy}
+                      wordsPerChapter={isOneshot ? WORDS_PER_CHAPTER_ZHIHU : WORDS_PER_CHAPTER}
                       onImported={(imported) => {
                         setStoryTitle(imported.title);
                         setStorySlug(buildStorySlug(imported.title));
                         if (imported.authorName) setStoryAuthor(imported.authorName);
                         if (imported.synopsis) setStorySynopsis(imported.synopsis);
                         setCompletionStatus(imported.completionStatus);
-                        if (isOneshot) {
-                          setOneshotContent(imported.chapters.map((chapter) => chapter.content).join("\n\n"));
-                        } else {
-                          setChapterDrafts(imported.chapters.map((chapter, index) => ({
-                            content: chapter.content,
-                            id: `imported-${index}-${Date.now()}`,
-                            tags: [],
-                            title: chapter.title,
-                            accessType: "FREE",
-                            coinPrice: 0,
-                          })));
-                        }
+                        // Both formats produce real chapter rows; only the word
+                        // budget differs. Zhihu used to collapse back into one
+                        // field here, which undid the split that just ran.
+                        setChaptersDirty(true);
+                        setChapterDrafts(imported.chapters.map((chapter, index) => ({
+                          content: chapter.content,
+                          id: `imported-${index}-${Date.now()}`,
+                          tags: [],
+                          title: chapter.title,
+                          accessType: "FREE",
+                          coinPrice: 0,
+                        })));
                       }}
                     />
-                    {isOneshot ? (
-                      <OneshotContentEditor onChange={setOneshotContent} value={oneshotContent} />
-                    ) : (
-                      <ChapterImportWorkspace chapters={chapterDrafts} onChange={setChapterDrafts} />
-                    )}
-                  </div>
+                  </>
                 )}
 
-                {/* TAB 2: Edit Thông Tin Chung (Tên, Ảnh bìa, Tác giả, Synopsis, Thể loại, Team, Status...) */}
-                {activeTab === "general" && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                     <div className="storyCoverUpload">
                       <div className="storyCoverPreview">
                         {coverPreview ? <img alt="" src={coverPreview} /> : <ImagePlus aria-hidden="true" size={34} />}
@@ -1388,20 +1552,45 @@ export function StoryCrudWorkspace({
                       )}
                     </div>
                     <TagEditor label="Tag truyện" onChange={setStoryTags} placeholder="Ví dụ: shounen, fantasy" tags={storyTags} />
-                  </div>
-                )}
+
+                    {isOneshot && !selected ? (
+                      <OneshotContentEditor
+                        onChange={(next) => {
+                          setChaptersDirty(true);
+                          setOneshotContent(next);
+                        }}
+                        value={oneshotContent}
+                      />
+                    ) : (
+                      <ChapterImportWorkspace
+                        chapters={chapterDrafts}
+                        collapsible={Boolean(selected)}
+                        onChange={(next) => {
+                          setChaptersDirty(true);
+                          setChapterDrafts(next);
+                        }}
+                      />
+                    )}
+                </div>
               </>
             )}
             <MutationNotice error={error} onDismiss={() => setError("")} />
             <FormActions
-              busy={busy}
+              // The delete button stays inert until the typed name matches:
+              // that, plus the confirm dialog, is the second step.
+              busy={busy || (drawer.mode === "delete"
+                && deleteConfirmation.trim() !== (selected?.title.trim() ?? ""))}
               close={() => setDrawer(null)}
-              confirmMessage={drawer.mode === "archive"
-                ? `Ngừng hiển thị truyện "${selected?.title}"?`
-                : selected
-                  ? `Cập nhật truyện "${selected.title}"?`
-                  : undefined}
-              submitLabel={drawer.mode === "archive" ? "Xác nhận lưu trữ" : "Lưu truyện"}
+              confirmMessage={drawer.mode === "delete"
+                ? `Xóa vĩnh viễn truyện "${selected?.title}" và toàn bộ chương?`
+                : drawer.mode === "archive"
+                  ? `Ngừng hiển thị truyện "${selected?.title}"?`
+                  : selected
+                    ? `Cập nhật truyện "${selected.title}"?`
+                    : undefined}
+              submitLabel={drawer.mode === "delete"
+                ? "Xóa vĩnh viễn"
+                : drawer.mode === "archive" ? "Xác nhận lưu trữ" : "Lưu truyện"}
             />
           </form>
         </Drawer>
@@ -1415,7 +1604,12 @@ export function CategoryCrudWorkspace({ categories: initialCategories }: Readonl
   const [drawer, setDrawer] = useState<{ mode: DrawerMode; category?: AdminCategoryRow } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const selected = drawer?.category;
+
+  useEffect(() => {
+    setDeleteConfirmation("");
+  }, [drawer]);
 
   const refreshData = async () => {
     try {
@@ -1438,7 +1632,9 @@ export function CategoryCrudWorkspace({ categories: initialCategories }: Readonl
     setBusy(true);
     setError("");
     try {
-      if (drawer.mode === "archive" && selected) {
+      if (drawer.mode === "delete" && selected) {
+        await adminMutation(`content/categories/${selected.id}/permanent`, "DELETE");
+      } else if (drawer.mode === "archive" && selected) {
         await adminMutation(`content/categories/${selected.id}`, "DELETE");
       } else {
         const form = new FormData(event.currentTarget);
@@ -1477,15 +1673,31 @@ export function CategoryCrudWorkspace({ categories: initialCategories }: Readonl
       <section className="adminCrudPanel">
         {sortedList.map((category) => (
           <article key={category.id}>
-            <div className="adminCrudDetails"><strong>{category.name}</strong><small>{category.description}</small></div>
+            <div className="adminCrudDetails">
+              <strong>{category.name}</strong>
+              <small>{category.description}</small>
+              <small><Timestamps createdAt={category.createdAt} updatedAt={category.updatedAt} /></small>
+            </div>
             <span>{category.active ? "Đang hiển thị" : "Đã ẩn"}</span>
-            <div className="adminCrudActions"><button onClick={() => setDrawer({ mode: "edit", category })} type="button">Chỉnh sửa</button><button onClick={() => setDrawer({ mode: "archive", category })} type="button">Ẩn thể loại</button></div>
+            <div className="adminCrudActions">
+              <button onClick={() => setDrawer({ mode: "edit", category })} type="button">Chỉnh sửa</button>
+              <button onClick={() => setDrawer({ mode: "archive", category })} type="button">Ẩn thể loại</button>
+              <button className="adminDangerAction" onClick={() => setDrawer({ mode: "delete", category })} type="button">Xóa</button>
+            </div>
           </article>
         ))}
       </section>
-      {drawer && <Drawer close={() => setDrawer(null)} description={selected?.description ?? "Thể loại giúp reader tìm đúng mạch truyện yêu thích."} title={drawer.mode === "archive" ? "Ẩn thể loại" : selected ? "Chỉnh sửa thể loại" : "Tạo thể loại"}>
+      {drawer && <Drawer close={() => setDrawer(null)} description={selected?.description ?? "Thể loại giúp reader tìm đúng mạch truyện yêu thích."} title={drawer.mode === "delete" ? "Xóa thể loại vĩnh viễn" : drawer.mode === "archive" ? "Ẩn thể loại" : selected ? "Chỉnh sửa thể loại" : "Tạo thể loại"}>
         <form className="drawerForm" onSubmit={submit}>
-          {drawer.mode === "archive" && selected ? <p className="drawerConfirm">Thể loại sẽ ngừng xuất hiện trên client. Liên kết với truyện hiện tại vẫn được giữ.</p> : <>
+          {drawer.mode === "delete" && selected ? (
+            <DeleteConfirmation
+              confirmation={deleteConfirmation}
+              entityLabel="thể loại"
+              name={selected.name}
+              onChange={setDeleteConfirmation}
+              warning="Thể loại sẽ bị xóa khỏi hệ thống và không khôi phục được. Nếu chỉ muốn ẩn khỏi người đọc, hãy dùng “Ẩn thể loại”."
+            />
+          ) : drawer.mode === "archive" && selected ? <p className="drawerConfirm">Thể loại sẽ ngừng xuất hiện trên client. Liên kết với truyện hiện tại vẫn được giữ.</p> : <>
             <Field label="Tên thể loại"><input defaultValue={selected?.name} maxLength={120} name="name" required /></Field>
             <Field
               hint={<>Chữ thường không dấu, nối bằng dấu gạch ngang. Ví dụ: “Tiên Hiệp” → <code>tien-hiep</code></>}
@@ -1497,7 +1709,7 @@ export function CategoryCrudWorkspace({ categories: initialCategories }: Readonl
             <Field label="Thứ tự hiển thị"><input defaultValue={selected?.sortOrder ?? categories.length + 1} min={0} name="sortOrder" required type="number" /></Field>
             <label className="drawerCheck"><input defaultChecked={selected?.active ?? true} name="active" type="checkbox" /><span>Hiển thị trên client</span></label>
           </>}
-          <MutationNotice error={error} onDismiss={() => setError("")} /><FormActions busy={busy} close={() => setDrawer(null)} confirmMessage={drawer.mode === "archive" ? `Ẩn thể loại "${selected?.name}"?` : selected ? `Cập nhật thể loại "${selected.name}"?` : undefined} submitLabel={drawer.mode === "archive" ? "Xác nhận ẩn" : "Lưu thể loại"} />
+          <MutationNotice error={error} onDismiss={() => setError("")} /><FormActions busy={busy || (drawer.mode === "delete" && deleteConfirmation.trim() !== (selected?.name.trim() ?? ""))} close={() => setDrawer(null)} confirmMessage={drawer.mode === "delete" ? `Xóa vĩnh viễn thể loại "${selected?.name}"?` : drawer.mode === "archive" ? `Ẩn thể loại "${selected?.name}"?` : selected ? `Cập nhật thể loại "${selected.name}"?` : undefined} submitLabel={drawer.mode === "delete" ? "Xóa vĩnh viễn" : drawer.mode === "archive" ? "Xác nhận ẩn" : "Lưu thể loại"} />
         </form>
       </Drawer>}
     </>
@@ -1510,7 +1722,12 @@ export function TeamCrudWorkspace({ teams: initialTeams, users: initialUsers }: 
   const [drawer, setDrawer] = useState<{ mode: DrawerMode; team?: AdminTeamRow } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const selected = drawer?.team;
+
+  useEffect(() => {
+    setDeleteConfirmation("");
+  }, [drawer]);
 
   const refreshData = async () => {
     try {
@@ -1533,7 +1750,8 @@ export function TeamCrudWorkspace({ teams: initialTeams, users: initialUsers }: 
     if (!drawer) return;
     setBusy(true); setError("");
     try {
-      if (drawer.mode === "archive" && selected) await adminMutation(`content/teams/${selected.id}`, "DELETE");
+      if (drawer.mode === "delete" && selected) await adminMutation(`content/teams/${selected.id}/permanent`, "DELETE");
+      else if (drawer.mode === "archive" && selected) await adminMutation(`content/teams/${selected.id}`, "DELETE");
       else {
         const form = new FormData(event.currentTarget);
         await adminMutation(selected ? `content/teams/${selected.id}` : "content/teams", selected ? "PUT" : "POST", {
@@ -1556,11 +1774,35 @@ export function TeamCrudWorkspace({ teams: initialTeams, users: initialUsers }: 
   return <>
     <WorkspaceHeader action={() => setDrawer({ mode: "create" })} eyebrow="Đối tác nội dung" title="Quản lý team" />
     <SortToolbar columns={columns} onSort={toggleSort} sortState={sortState} />
-    <section className="adminCrudPanel">{sortedList.map((team) => <article key={team.id}><div className="adminCrudDetails"><strong>{team.name}</strong><small>{team.ownerName} · {team.memberCount} thành viên</small></div><span>{translateStatus(team.state)}</span><div className="adminCrudActions"><button onClick={() => setDrawer({ mode: "edit", team })} type="button">Xét duyệt / sửa</button><button onClick={() => setDrawer({ mode: "archive", team })} type="button">Tạm khóa</button></div></article>)}</section>
-    {drawer && <Drawer close={() => setDrawer(null)} description={selected?.description ?? "Tạo hồ sơ team và chỉ định chủ sở hữu."} title={drawer.mode === "archive" ? "Tạm khóa team" : selected ? "Cập nhật team" : "Tạo team"}><form className="drawerForm" onSubmit={submit}>
-      {drawer.mode === "archive" && selected ? <p className="drawerConfirm">Team sẽ bị tạm khóa. Truyện đã xuất bản vẫn được giữ để admin tiếp tục xử lý.</p> : <>
+    <section className="adminCrudPanel">
+      {sortedList.map((team) => (
+        <article key={team.id}>
+          <div className="adminCrudDetails">
+            <strong>{team.name}</strong>
+            <small>{team.ownerName} · {team.memberCount} thành viên</small>
+            <small><Timestamps createdAt={team.createdAt} updatedAt={team.updatedAt} /></small>
+          </div>
+          <span>{translateStatus(team.state)}</span>
+          <div className="adminCrudActions">
+            <button onClick={() => setDrawer({ mode: "edit", team })} type="button">Xét duyệt / sửa</button>
+            <button onClick={() => setDrawer({ mode: "archive", team })} type="button">Tạm khóa</button>
+            <button className="adminDangerAction" onClick={() => setDrawer({ mode: "delete", team })} type="button">Xóa</button>
+          </div>
+        </article>
+      ))}
+    </section>
+    {drawer && <Drawer close={() => setDrawer(null)} description={selected?.description ?? "Tạo hồ sơ team và chỉ định chủ sở hữu."} title={drawer.mode === "delete" ? "Xóa team vĩnh viễn" : drawer.mode === "archive" ? "Tạm khóa team" : selected ? "Cập nhật team" : "Tạo team"}><form className="drawerForm" onSubmit={submit}>
+      {drawer.mode === "delete" && selected ? (
+        <DeleteConfirmation
+          confirmation={deleteConfirmation}
+          entityLabel="team"
+          name={selected.name}
+          onChange={setDeleteConfirmation}
+          warning="Team và toàn bộ thành viên sẽ bị xóa, không khôi phục được. Nếu chỉ muốn dừng hoạt động, hãy dùng “Tạm khóa”."
+        />
+      ) : drawer.mode === "archive" && selected ? <p className="drawerConfirm">Team sẽ bị tạm khóa. Truyện đã xuất bản vẫn được giữ để admin tiếp tục xử lý.</p> : <>
         <Field label="Tên team"><input defaultValue={selected?.name} maxLength={160} name="name" required /></Field><Field hint={<>Chữ thường không dấu, nối bằng dấu gạch ngang. Ví dụ: “Nhà Dịch Ánh Trăng” → <code>nha-dich-anh-trang</code></>} label="Slug (đường dẫn)"><input defaultValue={selected?.slug} maxLength={80} name="slug" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="nha-dich-anh-trang" required /></Field><Field label="Giới thiệu"><textarea defaultValue={selected?.description} maxLength={2000} name="description" required rows={5} /></Field><Field label="Chủ sở hữu"><select defaultValue={selected?.ownerUserId} name="ownerUserId" required><option value="">Chọn người dùng</option>{users.map((user) => <option key={user.id} value={user.id}>{user.displayName || user.email}</option>)}</select></Field><Field label="Trạng thái"><select defaultValue={selected?.state ?? "PENDING_REVIEW"} name="state"><option value="PENDING_REVIEW">Chờ xét duyệt</option><option value="ACTIVE">Đang hoạt động</option><option value="SUSPENDED">Tạm khóa</option></select></Field>
-      </>}<MutationNotice error={error} onDismiss={() => setError("")} /><FormActions busy={busy} close={() => setDrawer(null)} confirmMessage={drawer.mode === "archive" ? `Tạm khóa team "${selected?.name}"?` : selected ? `Cập nhật team "${selected.name}"?` : undefined} submitLabel={drawer.mode === "archive" ? "Xác nhận tạm khóa" : "Lưu team"} />
+      </>}<MutationNotice error={error} onDismiss={() => setError("")} /><FormActions busy={busy || (drawer.mode === "delete" && deleteConfirmation.trim() !== (selected?.name.trim() ?? ""))} close={() => setDrawer(null)} confirmMessage={drawer.mode === "delete" ? `Xóa vĩnh viễn team "${selected?.name}"?` : drawer.mode === "archive" ? `Tạm khóa team "${selected?.name}"?` : selected ? `Cập nhật team "${selected.name}"?` : undefined} submitLabel={drawer.mode === "delete" ? "Xóa vĩnh viễn" : drawer.mode === "archive" ? "Xác nhận tạm khóa" : "Lưu team"} />
     </form></Drawer>}
   </>;
 }
@@ -1570,7 +1812,12 @@ export function UserCrudWorkspace({ users: initialUsers }: Readonly<{ users: Adm
   const [drawer, setDrawer] = useState<{ mode: DrawerMode; user?: AdminUserRow } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const selected = drawer?.user;
+
+  useEffect(() => {
+    setDeleteConfirmation("");
+  }, [drawer]);
 
   const refreshData = async () => {
     try {
@@ -1590,7 +1837,8 @@ export function UserCrudWorkspace({ users: initialUsers }: Readonly<{ users: Adm
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!drawer) return; setBusy(true); setError("");
     try {
-      if (drawer.mode === "archive" && selected) await adminMutation(`content/users/${selected.id}`, "DELETE");
+      if (drawer.mode === "delete" && selected) await adminMutation(`content/users/${selected.id}/permanent`, "DELETE");
+      else if (drawer.mode === "archive" && selected) await adminMutation(`content/users/${selected.id}`, "DELETE");
       else { const form = new FormData(event.currentTarget); await adminMutation(selected ? `content/users/${selected.id}` : "content/users", selected ? "PUT" : "POST", { bio: value(form, "bio"), displayName: value(form, "displayName"), email: value(form, "email"), ...(selected ? {} : { password: value(form, "password") }), roles: roles(form), state: value(form, "state") }); }
       setDrawer(null); await refreshData();
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Không thể lưu thay đổi."); } finally { setBusy(false); }
@@ -1604,7 +1852,7 @@ export function UserCrudWorkspace({ users: initialUsers }: Readonly<{ users: Adm
     { key: "createdAt", label: "Ngày tham gia" },
   ];
 
-  return <><WorkspaceHeader action={() => setDrawer({ mode: "create" })} eyebrow="Tài khoản và phân quyền" title="Quản lý người dùng" /><SortToolbar columns={columns} onSort={toggleSort} sortState={sortState} /><section className="adminCrudPanel">{sortedList.map((user) => <article key={user.id}><div className="adminCrudDetails"><strong>{user.displayName || user.email}</strong><small>{user.email} · Ví {numberFormatter.format(user.availableXu)} XU · {user.roles}</small></div><span>{translateStatus(user.state)}</span><div className="adminCrudActions"><button onClick={() => setDrawer({ mode: "edit", user })} type="button">Chỉnh sửa</button><button onClick={() => setDrawer({ mode: "archive", user })} type="button">Tạm khóa</button></div></article>)}</section>{drawer && <Drawer close={() => setDrawer(null)} description={selected?.email ?? "Tạo tài khoản thử nghiệm hoặc tài khoản vận hành."} title={drawer.mode === "archive" ? "Tạm khóa người dùng" : selected ? "Chỉnh sửa người dùng" : "Tạo người dùng"}><form className="drawerForm" onSubmit={submit}>{drawer.mode === "archive" && selected ? <p className="drawerConfirm">Tài khoản sẽ bị tạm khóa và toàn bộ phiên đăng nhập cũ mất hiệu lực.</p> : <><Field label="Tên hiển thị"><input defaultValue={selected?.displayName} maxLength={100} name="displayName" required /></Field><Field label="Email"><input defaultValue={selected?.email} maxLength={254} name="email" required type="email" /></Field>{!selected && <Field label="Mật khẩu ban đầu"><input minLength={12} name="password" required type="password" /></Field>}<Field label="Giới thiệu"><textarea defaultValue={selected?.bio} maxLength={1000} name="bio" rows={4} /></Field><Field label="Vai trò, cách nhau bằng dấu phẩy"><input defaultValue={selected?.roles || "USER"} name="roles" required /></Field><Field label="Trạng thái"><select defaultValue={selected?.state ?? "ACTIVE"} name="state"><option value="ACTIVE">Đang hoạt động</option><option value="SUSPENDED">Tạm khóa</option></select></Field></>}<MutationNotice error={error} onDismiss={() => setError("")} /><FormActions busy={busy} close={() => setDrawer(null)} confirmMessage={drawer.mode === "archive" ? `Tạm khóa tài khoản "${selected?.email}"?` : selected ? `Cập nhật tài khoản "${selected.email}"?` : undefined} submitLabel={drawer.mode === "archive" ? "Xác nhận tạm khóa" : "Lưu người dùng"} /></form></Drawer>}</>;
+  return <><WorkspaceHeader action={() => setDrawer({ mode: "create" })} eyebrow="Tài khoản và phân quyền" title="Quản lý người dùng" /><SortToolbar columns={columns} onSort={toggleSort} sortState={sortState} /><section className="adminCrudPanel">{sortedList.map((user) => <article key={user.id}><div className="adminCrudDetails"><strong>{user.displayName || user.email}</strong><small>{user.email} · Ví {numberFormatter.format(user.availableXu)} xu · {user.roles}</small><small><Timestamps createdAt={user.createdAt} updatedAt={user.updatedAt} /></small></div><span>{translateStatus(user.state)}</span><div className="adminCrudActions"><button onClick={() => setDrawer({ mode: "edit", user })} type="button">Chỉnh sửa</button><button onClick={() => setDrawer({ mode: "archive", user })} type="button">Tạm khóa</button><button className="adminDangerAction" onClick={() => setDrawer({ mode: "delete", user })} type="button">Xóa</button></div></article>)}</section>{drawer && <Drawer close={() => setDrawer(null)} description={selected?.email ?? "Tạo tài khoản thử nghiệm hoặc tài khoản vận hành."} title={drawer.mode === "delete" ? "Xóa tài khoản vĩnh viễn" : drawer.mode === "archive" ? "Tạm khóa người dùng" : selected ? "Chỉnh sửa người dùng" : "Tạo người dùng"}><form className="drawerForm" onSubmit={submit}>{drawer.mode === "delete" && selected ? <DeleteConfirmation confirmation={deleteConfirmation} entityLabel="tài khoản (email)" name={selected.email} onChange={setDeleteConfirmation} warning="Tài khoản sẽ bị xóa khỏi hệ thống và không khôi phục được. Nếu chỉ muốn chặn đăng nhập, hãy dùng “Tạm khóa”." /> : drawer.mode === "archive" && selected ? <p className="drawerConfirm">Tài khoản sẽ bị tạm khóa và toàn bộ phiên đăng nhập cũ mất hiệu lực.</p> : <><Field label="Tên hiển thị"><input defaultValue={selected?.displayName} maxLength={100} name="displayName" required /></Field><Field label="Email"><input defaultValue={selected?.email} maxLength={254} name="email" required type="email" /></Field>{!selected && <Field label="Mật khẩu ban đầu"><input minLength={12} name="password" required type="password" /></Field>}<Field label="Giới thiệu"><textarea defaultValue={selected?.bio} maxLength={1000} name="bio" rows={4} /></Field><Field label="Vai trò, cách nhau bằng dấu phẩy"><input defaultValue={selected?.roles || "USER"} name="roles" required /></Field><Field label="Trạng thái"><select defaultValue={selected?.state ?? "ACTIVE"} name="state"><option value="ACTIVE">Đang hoạt động</option><option value="SUSPENDED">Tạm khóa</option></select></Field></>}<MutationNotice error={error} onDismiss={() => setError("")} /><FormActions busy={busy || (drawer.mode === "delete" && deleteConfirmation.trim() !== (selected?.email.trim() ?? ""))} close={() => setDrawer(null)} confirmMessage={drawer.mode === "delete" ? `Xóa vĩnh viễn tài khoản "${selected?.email}"?` : drawer.mode === "archive" ? `Tạm khóa tài khoản "${selected?.email}"?` : selected ? `Cập nhật tài khoản "${selected.email}"?` : undefined} submitLabel={drawer.mode === "delete" ? "Xóa vĩnh viễn" : drawer.mode === "archive" ? "Xác nhận tạm khóa" : "Lưu người dùng"} /></form></Drawer>}</>;
 }
 
 export function CashFlowCrudWorkspace({ entries: initialEntries, users: initialUsers }: Readonly<{ entries: AdminCashFlowRow[]; users: AdminUserRow[] }>) {
@@ -1614,6 +1862,13 @@ export function CashFlowCrudWorkspace({ entries: initialEntries, users: initialU
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const selected = drawer?.entry;
+  // Reversing moves real balances, so the button stays inert until the admin
+  // ticks the confirmation.
+  const [confirmed, setConfirmed] = useState(false);
+
+  useEffect(() => {
+    setConfirmed(false);
+  }, [drawer]);
 
   const refreshData = async () => {
     try {
@@ -1649,5 +1904,135 @@ export function CashFlowCrudWorkspace({ entries: initialEntries, users: initialU
     { key: "createdAt", label: "Thời gian" },
   ];
 
-  return <><WorkspaceHeader action={() => setDrawer({ mode: "create" })} eyebrow="Sổ cái XU" title="Dòng tiền" /><SortToolbar columns={columns} onSort={toggleSort} sortState={sortState} /><section className="adminCrudPanel">{sortedList.map((entry) => <article key={entry.id}><div className="adminCrudDetails"><strong>{entry.description}</strong><small>{entry.userEmail} · {entry.referenceType}/{entry.referenceId}</small></div><span>{entry.amountXu > 0 ? "+" : ""}{numberFormatter.format(entry.amountXu)} XU</span><div className="adminCrudActions"><button disabled={entry.entryType === "REVERSAL"} onClick={() => setDrawer({ entry, mode: "reverse" })} type="button">Hoàn ngược</button></div></article>)}</section>{drawer && <Drawer close={() => setDrawer(null)} description={selected ? `Bút toán ${selected.id}` : "Mỗi thay đổi được ghi thành một bút toán mới để bảo toàn lịch sử."} title={selected ? "Hoàn ngược giao dịch" : "Tạo bút toán"}><form className="drawerForm" onSubmit={submit}>{selected ? <><p className="drawerConfirm">Hệ thống sẽ tạo bút toán mới với số tiền đối ứng. Bản ghi gốc không bị xóa.</p><Field label="Lý do hoàn ngược"><textarea maxLength={300} name="reason" required rows={4} /></Field></> : <><Field label="Người dùng"><select name="userId" required><option value="">Chọn tài khoản</option>{users.map((user) => <option key={user.id} value={user.id}>{user.displayName || user.email}</option>)}</select></Field><div className="drawerFieldGrid"><Field label="Loại giao dịch"><select name="entryType"><option value="TOPUP">Nạp XU</option><option value="DONATION">Ủng hộ</option><option value="ADJUSTMENT">Điều chỉnh</option><option value="REWARD">Thưởng</option></select></Field><Field label="Số XU"><input name="amountXu" required type="number" /></Field></div><Field label="Loại tham chiếu"><input defaultValue="ADMIN_ADJUSTMENT" name="referenceType" pattern="[A-Z_]{3,40}" required /></Field><Field label="Mã tham chiếu"><input defaultValue="admin-adjustment" maxLength={100} name="referenceId" required /></Field><Field label="Nội dung"><textarea maxLength={500} name="description" required rows={4} /></Field></>}<MutationNotice error={error} onDismiss={() => setError("")} /><FormActions busy={busy} close={() => setDrawer(null)} submitLabel={selected ? "Tạo bút toán hoàn ngược" : "Ghi bút toán"} /></form></Drawer>}</>;
+  return (
+    <>
+      <WorkspaceHeader
+        action={() => setDrawer({ mode: "create" })}
+        eyebrow="Sổ cái xu"
+        title="Quản lý doanh thu"
+      />
+      <SortToolbar columns={columns} onSort={toggleSort} sortState={sortState} />
+      <section className="adminCrudPanel">
+        {sortedList.map((entry) => (
+          <article key={entry.id}>
+            <div className="adminCrudDetails">
+              <strong>{ENTRY_TYPE_LABELS[entry.entryType] ?? entry.description}</strong>
+              <small>{entry.description}</small>
+              <small>Tài khoản: {entry.userEmail}</small>
+              <small>Tham chiếu: {REFERENCE_LABELS[entry.referenceType] ?? entry.referenceType}</small>
+              <small>Ghi nhận lúc {formatDateTime(entry.createdAt)}</small>
+            </div>
+            <span>{entry.amountXu > 0 ? "+" : ""}{numberFormatter.format(entry.amountXu)} xu</span>
+            <div className="adminCrudActions">
+              <button
+                disabled={entry.entryType === "REVERSAL"}
+                onClick={() => setDrawer({ entry, mode: "reverse" })}
+                type="button"
+              >
+                {entry.entryType === "REVERSAL" ? "Đã hoàn tiền" : "Hoàn tiền"}
+              </button>
+            </div>
+          </article>
+        ))}
+      </section>
+
+      {drawer && (
+        <Drawer
+          close={() => setDrawer(null)}
+          description={selected
+            ? `Bút toán ${selected.id} · ghi nhận lúc ${formatDateTime(selected.createdAt)}`
+            : "Mỗi thay đổi được ghi thành một bút toán mới để bảo toàn lịch sử."}
+          title={selected ? "Hoàn tiền giao dịch" : "Tạo bút toán"}
+        >
+          <form className="drawerForm" onSubmit={submit}>
+            {selected ? (
+              <>
+                <p className="drawerConfirm">
+                  Hệ thống sẽ tạo bút toán mới với số tiền đối ứng
+                  ({numberFormatter.format(-selected.amountXu)} xu). Bản ghi gốc không bị xóa.
+                </p>
+                <Field label="Lý do hoàn tiền (bắt buộc)">
+                  <textarea
+                    maxLength={300}
+                    name="reason"
+                    placeholder="Ví dụ: giao dịch trùng, người dùng báo sai số tiền…"
+                    required
+                    rows={4}
+                  />
+                </Field>
+                {/* Money moves on submit, so the intent is confirmed explicitly
+                    rather than relying on the reader not to misclick. */}
+                <label className="drawerConfirmCheck">
+                  <input
+                    checked={confirmed}
+                    onChange={(event) => setConfirmed(event.currentTarget.checked)}
+                    type="checkbox"
+                  />
+                  <span>Tôi xác nhận hoàn {numberFormatter.format(Math.abs(selected.amountXu))} xu cho {selected.userEmail}.</span>
+                </label>
+              </>
+            ) : (
+              <>
+                <Field label="Người dùng">
+                  <select name="userId" required>
+                    <option value="">Chọn tài khoản</option>
+                    {users.map((user) => (
+                      <option key={user.id} value={user.id}>{user.displayName || user.email}</option>
+                    ))}
+                  </select>
+                </Field>
+                <div className="drawerFieldGrid">
+                  <Field label="Loại giao dịch">
+                    <select name="entryType">
+                      <option value="TOPUP">Nạp xu</option>
+                      <option value="DONATION">Ủng hộ</option>
+                      <option value="ADJUSTMENT">Điều chỉnh</option>
+                      <option value="REWARD">Thưởng</option>
+                    </select>
+                  </Field>
+                  <Field label="Số xu">
+                    <input name="amountXu" required type="number" />
+                  </Field>
+                </div>
+                <Field label="Loại tham chiếu">
+                  <input defaultValue="ADMIN_ADJUSTMENT" name="referenceType" pattern="[A-Z_]{3,40}" required />
+                </Field>
+                <Field label="Mã tham chiếu">
+                  <input defaultValue="admin-adjustment" maxLength={100} name="referenceId" required />
+                </Field>
+                <Field label="Nội dung">
+                  <textarea maxLength={500} name="description" required rows={4} />
+                </Field>
+              </>
+            )}
+            <MutationNotice error={error} onDismiss={() => setError("")} />
+            <FormActions
+              busy={busy || (Boolean(selected) && !confirmed)}
+              close={() => setDrawer(null)}
+              submitLabel={selected ? "Xác nhận hoàn tiền" : "Ghi bút toán"}
+            />
+          </form>
+        </Drawer>
+      )}
+    </>
+  );
 }
+
+/** Ledger vocabulary, in the language the admin screen is written in. */
+const ENTRY_TYPE_LABELS: Record<string, string> = {
+  ADJUSTMENT: "Điều chỉnh thủ công",
+  DONATION: "Ủng hộ đội ngũ",
+  PURCHASE: "Mua chương",
+  REVERSAL: "Bút toán hoàn tiền",
+  REWARD: "Thưởng nhiệm vụ",
+  TOPUP: "Nạp xu",
+  WITHDRAWAL: "Rút tiền",
+};
+
+const REFERENCE_LABELS: Record<string, string> = {
+  ADMIN_ADJUSTMENT: "Điều chỉnh của quản trị viên",
+  PURCHASE_ORDER: "Đơn mua chương",
+  QUEST: "Nhiệm vụ",
+  STORY_PROMOTION: "Bố cáo truyện",
+  TOPUP: "Yêu cầu nạp xu",
+};

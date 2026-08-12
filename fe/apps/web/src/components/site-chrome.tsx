@@ -1,5 +1,4 @@
 import { BrandMark } from "@gioitruyen/ui";
-import { Bell, Moon } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { ReactNode } from "react";
 
@@ -7,8 +6,10 @@ import { BackToTop } from "@/components/back-to-top";
 import { HeaderAuthNav } from "@/components/header-auth-nav";
 import { HeaderSearch } from "@/components/header-search";
 import { MainNav } from "@/components/main-nav";
+import { NotificationBell } from "@/components/notification-bell";
 import { QuestTimeTracker } from "@/components/quest-time-tracker";
 import { SocialLinks } from "@/components/social-links";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export function SiteHeader() {
   return (
@@ -20,16 +21,8 @@ export function SiteHeader() {
         <HeaderSearch />
         <div className="headerActions">
           <SocialLinks compact />
-          <button aria-label="Đổi giao diện sáng tối" className="headerIcon" type="button">
-            <Moon aria-hidden="true" />
-          </button>
-          <Link
-            aria-label="Thông báo"
-            className="headerIcon notifyIcon"
-            to={"/notifications" as string}
-          >
-            <Bell aria-hidden="true" />
-          </Link>
+          <ThemeToggle />
+          <NotificationBell />
           <HeaderAuthNav />
         </div>
       </div>
@@ -41,22 +34,50 @@ export function SiteHeader() {
 }
 
 export function SiteFooter() {
+  const year = new Date().getFullYear();
+
   return (
     <footer className="siteFooter">
-      <div>
-        <BrandMark />
-        <p>Đọc có nhịp. Viết có người đồng hành.</p>
-        <SocialLinks />
+      <div className="siteFooterInner">
+        <div className="footerBrand">
+          <BrandMark />
+          <p>Đọc có nhịp. Viết có người đồng hành.</p>
+          <SocialLinks />
+        </div>
+
+        <nav aria-label="Khám phá">
+          <h3>Khám phá</h3>
+          <Link to={"/stories" as string}>Kho truyện</Link>
+          <Link to={"/categories" as string}>Thể loại</Link>
+          <Link to={"/rankings" as string}>Bảng xếp hạng</Link>
+          <Link to={"/zhihu" as string}>Truyện Zhihu</Link>
+          <Link to={"/missions" as string}>Nhiệm vụ</Link>
+        </nav>
+
+        <nav aria-label="Dành cho tác giả">
+          <h3>Dành cho tác giả</h3>
+          <Link to={"/dang-ky-dang-truyen" as string}>Đăng ký đăng truyện</Link>
+          <Link to={"/teams" as string}>Nhóm xuất bản</Link>
+          <Link to={"/publishing-rules" as string}>Quy định đăng truyện</Link>
+          <Link to={"/affiliate-links" as string}>Gắn link</Link>
+        </nav>
+
+        <nav aria-label="Hỗ trợ và pháp lý">
+          <h3>Hỗ trợ &amp; pháp lý</h3>
+          <Link to={"/about" as string}>Về chúng tôi</Link>
+          <Link to={"/wallet" as string}>Nạp xu</Link>
+          <Link to={"/terms" as string}>Điều khoản sử dụng</Link>
+          <Link to={"/privacy-policy" as string}>Chính sách bảo mật</Link>
+        </nav>
       </div>
-      <nav aria-label="Thông tin Giới Truyện">
-        <Link to={"/about" as string}>Về chúng tôi</Link>
-        <Link to={"/terms" as string}>Điều khoản sử dụng</Link>
-        <Link to={"/publishing-rules" as string}>Quy định đăng truyện</Link>
-        <Link to={"/privacy-policy" as string}>Chính sách bảo mật</Link>
-        <Link to={"/missions" as string}>Nhiệm vụ</Link>
-        <Link to={"/affiliate-links" as string}>Gắn link</Link>
-        <Link to="/teams">Đăng ký nhóm xuất bản</Link>
-      </nav>
+
+      <div className="siteFooterBase">
+        <small>© {year} Giới Truyện. Mọi tác phẩm thuộc bản quyền của tác giả và nhóm dịch.</small>
+        <span className="siteFooterBaseLinks">
+          <Link to={"/terms" as string}>Điều khoản</Link>
+          <Link to={"/privacy-policy" as string}>Bảo mật</Link>
+        </span>
+      </div>
     </footer>
   );
 }

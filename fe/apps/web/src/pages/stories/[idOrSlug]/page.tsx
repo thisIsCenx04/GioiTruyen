@@ -10,12 +10,14 @@ import { useNavigate, useLocation, useParams } from "react-router-dom";
 const cache = <T extends (...args: any[]) => any>(fn: T) => fn;
 
 import { CatalogStoryCard } from "@/components/catalog-story-card";
+import { ChapterListItem } from "@/components/chapter-list-item";
 import { Comments } from "@/components/comments";
 import { DonationJourney } from "@/components/donation-journey";
 import { PublicShell } from "@/components/site-chrome";
 import { StoryRelations } from "@/components/story-relations";
 import { StoryReportButton } from "@/components/story-report-button";
 import { StoryShareButton } from "@/components/story-share-button";
+import { coverUrl, StoryCoverPlaceholder } from "@/components/story-cover";
 import { loadStoryDetail } from "@/lib/catalog";
 
 type StoryPageProps = Readonly<{
@@ -42,6 +44,14 @@ function statusLabel(status: "ONGOING" | "COMPLETED" | "HIATUS") {
 }
 
 const chaptersPerPage = 20;
+
+/** What the admin chose when publishing, as the reader sees it. */
+const STORY_TYPE_LABELS: Record<string, string> = {
+  AUDIO: "Truyện audio",
+  EXCLUSIVE: "Truyện độc quyền",
+  ORIGINAL: "Truyện sáng tác",
+  TEXT: "Truyện chữ",
+};
 
 function pageWindow(currentPage: number, totalPages: number) {
   const pages = new Set([1, totalPages, currentPage - 1, currentPage, currentPage + 1]);
@@ -100,6 +110,7 @@ export default async function StoryPage({ params, searchParams }: StoryPageProps
   const readingMinutes = oneshotWords > 0 ? Math.max(1, Math.ceil(oneshotWords / 200)) : 0;
   const publishedAt = new Date(story.publishedAt).toLocaleDateString("vi-VN");
   const updatedAt = new Date(story.updatedAt).toLocaleDateString("vi-VN");
+  const cover = coverUrl(story.coverAssetId);
 
   return (
     <PublicShell>
@@ -111,7 +122,9 @@ export default async function StoryPage({ params, searchParams }: StoryPageProps
 
         <article className="storyDetailCard">
           <div className="detailCover storyDetailCover" data-tone={story.origin === "ORIGINAL" ? "teal" : "indigo"}>
-            <span>{story.title.slice(0, 1)}</span>
+            {cover
+              ? <img alt={`Bìa ${story.title}`} className="coverImage" src={cover} />
+              : <StoryCoverPlaceholder />}
             <small>{story.completionStatus === "COMPLETED" ? "FULL" : "MỚI"}</small>
           </div>
 
@@ -119,7 +132,10 @@ export default async function StoryPage({ params, searchParams }: StoryPageProps
             <h1>{story.title}</h1>
             <dl className="storyMetadata">
               <div><dt>Cập nhật</dt><dd>{updatedAt}</dd></div>
-              <div><dt>Loại</dt><dd><span className="metadataBadge">{story.origin === "ORIGINAL" ? "Truyện sáng tác" : "Truyện chuyển ngữ"}</span></dd></div>
+              {/* storyType is what the admin picked when publishing. origin is
+                  merely "has an original title", which is why an exclusive
+                  story used to be labelled as the author's own work. */}
+              <div><dt>Loại</dt><dd><span className="metadataBadge">{STORY_TYPE_LABELS[story.storyType] ?? "Truyện chữ"}</span></dd></div>
               <div>
                 <dt>Thể loại</dt>
                 <dd className="metadataCategories">
@@ -201,13 +217,7 @@ export default async function StoryPage({ params, searchParams }: StoryPageProps
                   <>
                     <ol>
                       {pagedChapters.map((chapter) => (
-                        <li key={chapter.id}>
-                          <Link to={`/truyen/${story.slug}/chuong-${chapter.number}` as string}>
-                            <span>Chương {chapter.number}</span>
-                            <strong>{chapter.title}</strong>
-                            <time dateTime={chapter.publishedAt}>{new Date(chapter.publishedAt).toLocaleDateString("vi-VN")}</time>
-                          </Link>
-                        </li>
+                        <ChapterListItem chapter={chapter} key={chapter.id} storySlug={story.slug} />
                       ))}
                     </ol>
                     {totalPages > 1 && (

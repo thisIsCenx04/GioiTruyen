@@ -44,7 +44,13 @@ public final class PromotionDtos {
             String startsAt,
             String endsAt,
             String status,
-            int daysRemaining
+            int daysRemaining,
+            /** Why an admin approved or rejected it; null while pending. */
+            String reviewNote,
+            String reviewedAt,
+            String createdAt,
+            /** Who paid, so the review queue can name them. */
+            String purchasedByEmail
     ) {}
 
     public record PromotionOverview(

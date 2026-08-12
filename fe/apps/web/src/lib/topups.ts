@@ -90,6 +90,21 @@ export async function createTopup(packageId: string, methodId: string): Promise<
   return (await response.json()) as TopupInstruction;
 }
 
+/**
+ * Tells the server the reader has made the transfer.
+ *
+ * Creating a top-up only opens a draft; this is what puts it in front of an
+ * admin, and it is the step the server rate limits.
+ */
+export async function submitTopup(paymentId: string): Promise<TopupInstruction> {
+  const response = await authed(`/topups/${paymentId}/submit`, { method: "POST" });
+  if (!response.ok) {
+    const problem = (await response.json().catch(() => null)) as { detail?: string } | null;
+    throw new Error(problem?.detail ?? "Không gửi được xác nhận chuyển khoản. Vui lòng thử lại.");
+  }
+  return (await response.json()) as TopupInstruction;
+}
+
 /** Polled while the reader waits for an admin to confirm the transfer. */
 export async function loadTopup(paymentId: string): Promise<TopupInstruction | null> {
   const response = await authed(`/topups/${paymentId}`);

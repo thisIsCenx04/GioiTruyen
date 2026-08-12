@@ -11,6 +11,7 @@ import {
   loadPaymentMethods,
   loadTopup,
   loadTopupHistory,
+  submitTopup,
   type DepositPackage,
   type PaymentMethodView,
   type TopupHistoryRow,
@@ -21,6 +22,7 @@ const money = new Intl.NumberFormat("vi-VN");
 
 const STATUS_LABELS: Record<string, string> = {
   CANCELLED: "Đã hủy",
+  DRAFT: "Chưa gửi",
   FAILED: "Thất bại",
   PAID: "Đã cộng xu",
   PENDING: "Chờ xác nhận",
@@ -40,6 +42,7 @@ export function TopupWorkspace() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const signedIn = isLoggedIn();
 
   useEffect(() => {
@@ -76,6 +79,20 @@ export function TopupWorkspace() {
       // Clipboard permission can be denied; the value stays selectable.
     }
   }, []);
+
+  async function confirmTransfer() {
+    if (!instruction) return;
+    setSubmitting(true);
+    setError("");
+    try {
+      setInstruction(await submitTopup(instruction.paymentId));
+      void loadTopupHistory().then(setHistory);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Không gửi được xác nhận chuyển khoản.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   async function start() {
     setBusy(true);
@@ -201,6 +218,23 @@ export function TopupWorkspace() {
               Chuyển đúng số tiền và giữ nguyên nội dung <strong>{instruction.transferNote}</strong>.
               Sai nội dung sẽ khiến hệ thống không đối chiếu được giao dịch.
             </p>
+
+            {/* Only this button queues the request for review. Looking at the
+                QR code, or reloading the page, costs the admin nothing. */}
+            {instruction.status === "DRAFT" ? (
+              <div className="topupConfirm">
+                <p>Sau khi chuyển khoản xong, bấm nút bên dưới để gửi yêu cầu tới quản trị viên.</p>
+                <button disabled={submitting} onClick={() => void confirmTransfer()} type="button">
+                  {submitting ? "Đang gửi…" : "Tôi đã chuyển khoản"}
+                </button>
+              </div>
+            ) : null}
+
+            {instruction.status === "PENDING" ? (
+              <p className="topupPendingNote">
+                Đã gửi yêu cầu. Quản trị viên sẽ đối chiếu và cộng xu cho bạn, thường trong vài phút.
+              </p>
+            ) : null}
           </>
         ) : (
           <div className="topupEmpty">

@@ -1,3 +1,5 @@
+import { clearTokens, getAccessToken, refreshAccessToken } from "@/lib/auth";
+
 /**
  * Base path for every private API call made from the browser.
  *
@@ -39,6 +41,34 @@ export const apiFetch: typeof fetch = (input, init) => {
     return fetch(new Request(new URL(rewritten + url.search, url.origin), input), init);
   }
   return fetch(input, init);
+};
+
+/**
+ * `apiFetch` plus the reader's bearer token, retrying once after a refresh.
+ *
+ * The generated clients send no Authorization header, so every call needing an
+ * account came back 401. Components read that as "not signed in" and rendered a
+ * login prompt to readers who were, in fact, signed in.
+ */
+export const authedFetch: typeof fetch = async (input, init) => {
+  const send = (token: string | null) => {
+    if (!token) return apiFetch(input, init);
+    const headers = new Headers(init?.headers);
+    headers.set("Authorization", `Bearer ${token}`);
+    return apiFetch(input, { ...init, credentials: "same-origin", headers });
+  };
+
+  const response = await send(getAccessToken());
+  if (response.status !== 401) return response;
+
+  const renewed = await refreshAccessToken();
+  if (renewed) return send(renewed);
+
+  // Neither token works any more. `logged_in` is a plain cookie with no
+  // expiry tied to the session, so leaving it set makes the UI keep insisting
+  // the reader is signed in while every request comes back 401.
+  clearTokens();
+  return response;
 };
 
 function rewrite(path: string): string {

@@ -6,12 +6,35 @@ import {
   type RankingStory,
 } from "@gioitruyen/api-client";
 import { apiFetch } from "@/lib/api-base";
+import { getAccessToken } from "@/lib/auth";
 
 const apiBaseUrl = (
   (typeof process !== "undefined" && process.env?.API_INTERNAL_URL) || "/api/v1"
 ).replace(/\/+$/u, "");
 
 export const catalog = createPublicCatalogClient({ baseUrl: apiBaseUrl });
+
+/**
+ * The same catalog, but identifying the reader when a token is present.
+ *
+ * Chapter listings report whether each paid chapter is unlocked, which the
+ * server can only answer if it knows who is asking. Anonymous calls report
+ * every paid chapter as locked, so a reader who had already bought one still
+ * saw the padlock.
+ */
+const identifiedFetch: typeof fetch = (input, init) => {
+  const token = getAccessToken();
+  if (!token) return apiFetch(input, init);
+  const headers = new Headers(init?.headers);
+  headers.set("Authorization", `Bearer ${token}`);
+  return apiFetch(input, { ...init, headers });
+};
+
+const identifiedCatalog = createPublicCatalogClient({
+  baseUrl: apiBaseUrl,
+  fetchImplementation: identifiedFetch,
+});
+
 const publicTeams = createBrowserTeamClient({ baseUrl: apiBaseUrl, fetchImplementation: apiFetch });
 
 /**
@@ -138,7 +161,8 @@ export async function loadTagStories(slug: string) {
 export async function loadStoryDetail(identifier: string) {
   const [rawStory, chapters, taxonomy, sections, rankingBoards] = await Promise.all([
     withTimeout(catalog.story(identifier), 10000, null),
-    withTimeout(catalog.chapters(identifier), 10000, defaultChapters),
+    // Identified: the padlocks depend on which chapters this reader owns.
+    withTimeout(identifiedCatalog.chapters(identifier), 10000, defaultChapters),
     withTimeout(catalog.categories(), 10000, defaultTaxonomy),
     withTimeout(catalog.storySections(), 10000, []),
     withTimeout(catalog.rankingBoards(), 10000, []),

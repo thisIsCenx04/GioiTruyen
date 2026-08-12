@@ -11,10 +11,13 @@ import { Link } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 
+import { ChapterAdGate } from "./chapter-ad-gate";
 import { Comments } from "./comments";
+import { CopyGuard } from "./copy-guard";
 import styles from "./chapter-reader.module.css";
+import { ReaderAdBanner } from "./reader-ad-banner";
 import { StoryReportButton } from "./story-report-button";
-import { API_BASE_URL, apiFetch } from "@/lib/api-base";
+import { API_BASE_URL, authedFetch } from "@/lib/api-base";
 
 function safeUUID(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -36,8 +39,8 @@ export function ChapterReader({
   storySlug?: string;
   storyTitle?: string;
 }>) {
-  const sessions = useMemo(() => createBrowserReadingSessionClient({ baseUrl: API_BASE_URL, fetchImplementation: apiFetch }), []);
-  const progressApi = useMemo(() => createBrowserReadingClient({ baseUrl: API_BASE_URL, fetchImplementation: apiFetch }), []);
+  const sessions = useMemo(() => createBrowserReadingSessionClient({ baseUrl: API_BASE_URL, fetchImplementation: authedFetch }), []);
+  const progressApi = useMemo(() => createBrowserReadingClient({ baseUrl: API_BASE_URL, fetchImplementation: authedFetch }), []);
   const grant = useRef<ReadingSessionGrant | null>(null);
   const sequence = useRef(1);
   const completed = useRef(false);
@@ -152,6 +155,10 @@ export function ChapterReader({
     };
   }, [chapter.id, chapter.storyId, complete, heartbeat, position, progressApi]);
 
+  // Set when the reader asks for the next chapter; the interstitial navigates.
+  const [adGateHref, setAdGateHref] = useState("");
+  const nextHref = chapter.next ? `/truyen/${storySlug}/chuong-${chapter.next.number}` : "";
+
   function resize(delta: number) {
     setFontSize((current) => {
       const next = Math.min(26, Math.max(17, current + delta));
@@ -162,6 +169,7 @@ export function ChapterReader({
 
   return (
     <main className={styles.reader} data-theme={night ? "night" : "paper"}>
+      <CopyGuard attribution={`gioitruyen.com/truyen/${storySlug}`} />
       <div aria-hidden="true" className={styles.bookmark}
         style={{ "--read-progress": `${read}%` } as CSSProperties} />
       <nav aria-label="Đường dẫn" className={styles.breadcrumbs}>
@@ -196,8 +204,13 @@ export function ChapterReader({
             }}>{night ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}</button>
           </div>
         </header>
-        <div className={styles.prose}
+        {/* The global class is what CopyGuard scopes itself to; the module
+            class carries the typography. */}
+        <div className={`chapterProse ${styles.prose}`}
           dangerouslySetInnerHTML={{ __html: chapter.contentHtml }} />
+        {/* A house banner sits inside the chapter; the interstitial below
+            handles the move to the next one. */}
+        <ReaderAdBanner seed={chapter.id} />
         <nav aria-label="Điều hướng chương" className={styles.chapterNav}>
           {chapter.previous ? (
             <Link to={`/truyen/${storySlug}/chuong-${chapter.previous.number}` as string}>
@@ -206,11 +219,14 @@ export function ChapterReader({
           ) : <span />}
           <Link className={styles.storyLink} to={`/truyen/${storySlug}` as string}>Danh sách chương</Link>
           {chapter.next ? (
-            <Link to={`/truyen/${storySlug}/chuong-${chapter.next.number}` as string}>
+            <button onClick={() => setAdGateHref(nextHref)} type="button">
               Chương sau <ChevronRight aria-hidden="true" />
-            </Link>
+            </button>
           ) : <span />}
         </nav>
+        {adGateHref ? (
+          <ChapterAdGate href={adGateHref} onClose={() => setAdGateHref("")} />
+        ) : null}
         <div className={styles.reportAction}>
           <StoryReportButton targetId={chapter.id} targetType="chapter" />
         </div>

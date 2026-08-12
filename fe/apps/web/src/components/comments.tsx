@@ -15,7 +15,7 @@ import type { CSSProperties } from "react";
 
 import { loginHref } from "@/lib/auth";
 import styles from "./comments.module.css";
-import { API_BASE_URL, apiFetch } from "@/lib/api-base";
+import { API_BASE_URL, authedFetch } from "@/lib/api-base";
 
 type Props = Readonly<{
   targetId: string;
@@ -23,7 +23,7 @@ type Props = Readonly<{
 }>;
 
 function ReactionButton({ commentId }: Readonly<{ commentId: string }>) {
-  const api = useMemo(() => createBrowserReactionClient({ baseUrl: API_BASE_URL, fetchImplementation: apiFetch }), []);
+  const api = useMemo(() => createBrowserReactionClient({ baseUrl: API_BASE_URL, fetchImplementation: authedFetch }), []);
   const [reaction, setReaction] = useState<{
     active: boolean;
     count: number;
@@ -69,8 +69,8 @@ function ReactionButton({ commentId }: Readonly<{ commentId: string }>) {
 export function Comments({ targetId, targetType }: Props) {
   // This client builds its base URL internally and takes no baseUrl option, so
   // apiFetch is what redirects it onto /api/v1.
-  const api = useMemo(() => createBrowserCommentClient({ fetchImplementation: apiFetch }), []);
-  const reports = useMemo(() => createBrowserReportClient({ baseUrl: API_BASE_URL, fetchImplementation: apiFetch }), []);
+  const api = useMemo(() => createBrowserCommentClient({ fetchImplementation: authedFetch }), []);
+  const reports = useMemo(() => createBrowserReportClient({ baseUrl: API_BASE_URL, fetchImplementation: authedFetch }), []);
   const [items, setItems] = useState<readonly CommunityComment[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [owned, setOwned] = useState<ReadonlySet<string>>(new Set());

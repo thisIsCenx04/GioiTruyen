@@ -50,3 +50,11 @@
   font-size: .68rem;
   padding-left: .45rem;
 }
+
+/* A failed request says so instead of silently doing nothing. */
+.error {
+  color: #b42318;
+  flex-basis: 100%;
+  font-size: .72rem;
+  margin: .35rem 0 0;
+}

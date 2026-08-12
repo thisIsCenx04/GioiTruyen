@@ -3,6 +3,8 @@ package com.storyplatform.catalog.api;
 import com.storyplatform.catalog.application.PublicCatalogService;
 import com.storyplatform.catalog.application.dto.CatalogDtos;
 import java.util.List;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -67,17 +69,27 @@ public class PublicCatalogController {
         return catalogService.story(identifier);
     }
 
+    // Both endpoints stay public: reading is open to guests, and a paid chapter
+    // is withheld by the service rather than by requiring a login to ask.
     @GetMapping("/stories/{identifier}/chapters")
     public CatalogDtos.ChapterPage chapters(
             @PathVariable String identifier,
-            @RequestParam(defaultValue = "100") int limit
+            @RequestParam(defaultValue = "100") int limit,
+            @AuthenticationPrincipal Jwt jwt
     ) {
-        return catalogService.chapters(identifier, limit);
+        return catalogService.chapters(identifier, limit, readerId(jwt));
     }
 
     @GetMapping("/chapters/{chapterId}")
-    public CatalogDtos.PublishedChapterDetail chapter(@PathVariable String chapterId) {
-        return catalogService.chapter(chapterId);
+    public CatalogDtos.PublishedChapterDetail chapter(
+            @PathVariable String chapterId,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return catalogService.chapter(chapterId, readerId(jwt));
+    }
+
+    private static String readerId(Jwt jwt) {
+        return jwt == null ? null : jwt.getSubject();
     }
 
     @GetMapping("/search")

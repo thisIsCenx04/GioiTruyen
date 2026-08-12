@@ -23,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class StoryMediaStorage {
 
     private static final long MAX_COVER_BYTES = 5L * 1024 * 1024;
+    private static final long MAX_AVATAR_BYTES = 2L * 1024 * 1024;
     private static final long MAX_TEXT_BYTES = 2L * 1024 * 1024;
     private static final Set<String> ALLOWED_IMAGE_TYPES =
             Set.of("image/png", "image/jpeg", "image/webp", "image/gif");
@@ -76,6 +77,49 @@ public class StoryMediaStorage {
                     "Could not store cover", "Could not store the cover image: " + exception.getMessage());
         }
         return publicPrefix + "/stories/" + storedName;
+    }
+
+    /**
+     * Stores a reader's avatar and returns its public URL.
+     *
+     * <p>Smaller cap than a cover: an avatar is displayed at a few dozen
+     * pixels, so anything larger is wasted bandwidth on every page it appears.
+     */
+    public String storeAvatar(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw badRequest("avatar.missing", "No avatar file was uploaded");
+        }
+        if (file.getSize() > MAX_AVATAR_BYTES) {
+            throw badRequest("avatar.too_large", "Ảnh đại diện tối đa 2MB.");
+        }
+
+        String extension = extensionOf(file.getOriginalFilename());
+        if (!ALLOWED_EXTENSIONS.contains(extension)) {
+            throw badRequest("avatar.unsupported",
+                    "Ảnh đại diện phải là PNG, JPEG, WEBP hoặc GIF.");
+        }
+        String contentType = file.getContentType();
+        if (contentType != null && !ALLOWED_IMAGE_TYPES.contains(contentType.toLowerCase(Locale.ROOT))) {
+            throw badRequest("avatar.unsupported",
+                    "Ảnh đại diện phải là PNG, JPEG, WEBP hoặc GIF.");
+        }
+
+        // Generated name, as with covers: a crafted filename must not be able
+        // to escape the upload directory or overwrite someone else's file.
+        String storedName = UUID.randomUUID() + "." + extension;
+        Path target = uploadRoot.resolve("avatars").resolve(storedName).normalize();
+        if (!target.startsWith(uploadRoot)) {
+            throw badRequest("avatar.invalid", "Resolved upload path is outside the upload directory");
+        }
+
+        try {
+            Files.createDirectories(target.getParent());
+            file.transferTo(target);
+        } catch (IOException exception) {
+            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "avatar.write_failed",
+                    "Could not store avatar", "Không lưu được ảnh đại diện: " + exception.getMessage());
+        }
+        return publicPrefix + "/avatars/" + storedName;
     }
 
     /** Reads an uploaded chapter file as UTF-8 text. */

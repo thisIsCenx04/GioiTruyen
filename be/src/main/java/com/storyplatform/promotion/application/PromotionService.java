@@ -37,6 +37,22 @@ public class PromotionService {
     private static final String TRANSACTION_TYPE = "PURCHASE";
     private static final String REFERENCE_TYPE = "STORY_PROMOTION";
 
+    /**
+     * Columns every booking view needs. Kept in one place because
+     * {@link #toBooking(ResultSet)} reads all of them and a query that forgot
+     * one failed only at runtime.
+     */
+    private static final String BOOKING_SELECT = """
+            SELECT p.id, p.story_id, s.title AS story_title, s.slug AS story_slug,
+                   p.team_id, t.name AS team_name, p.duration_days, p.coin_paid,
+                   p.starts_at, p.ends_at, p.status, p.review_note, p.reviewed_at,
+                   p.created_at, u.email AS purchased_by_email
+            FROM story_promotions p
+            JOIN stories s ON s.id = p.story_id
+            JOIN teams t ON t.id = p.team_id
+            JOIN users u ON u.id = p.purchased_by
+            """;
+
     private final JdbcClient jdbc;
 
     public PromotionService(JdbcClient jdbc) {
@@ -103,13 +119,7 @@ public class PromotionService {
 
     @Transactional(readOnly = true)
     public List<PromotionBooking> bookings(UUID userId) {
-        String sql = """
-                SELECT p.id, p.story_id, s.title AS story_title, s.slug AS story_slug,
-                       p.team_id, t.name AS team_name, p.duration_days, p.coin_paid,
-                       p.starts_at, p.ends_at, p.status
-                FROM story_promotions p
-                JOIN stories s ON s.id = p.story_id
-                JOIN teams t ON t.id = p.team_id
+        String sql = BOOKING_SELECT + """
                 WHERE
                 """
                 + (isAdmin(userId) ? " 1 = 1 " : """
@@ -144,6 +154,8 @@ public class PromotionService {
         Instant endsAt = startsAt.plus(Duration.ofDays(pkg.durationDays()));
         requireWithinCap(now, endsAt);
 
+        // Coins are taken now, so a request cannot be placed without the means
+        // to pay for it. A rejection refunds them in full.
         chargeWallet(userId, pkg.priceCoin(), storyId, story.title());
 
         UUID id = UUID.randomUUID();
@@ -151,7 +163,7 @@ public class PromotionService {
                         INSERT INTO story_promotions
                             (id, story_id, team_id, purchased_by, package_id, duration_days, coin_paid,
                              starts_at, ends_at, status, created_at, updated_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?)
                         """)
                 .params(id.toString(), storyId.toString(), story.teamId(), userId.toString(),
                         pkg.id(), pkg.durationDays(), pkg.priceCoin(),
@@ -162,10 +174,129 @@ public class PromotionService {
         return findBooking(id);
     }
 
+    /**
+     * Approves a booking, which is when its days actually start counting.
+     *
+     * <p>The window is recalculated from the approval rather than the request:
+     * a booking sitting in the queue overnight would otherwise burn a day of
+     * the slot the buyer paid for.
+     */
     @Transactional
-    public PromotionBooking extend(UUID userId, UUID promotionId, ExtendPromotionRequest request) {
-        BookingRow booking = jdbc.sql("""
-                        SELECT id, story_id, team_id, ends_at, status
+    public PromotionBooking approve(UUID promotionId, String reviewerId, String note) {
+        BookingRow booking = requireBooking(promotionId);
+        if (!"PENDING".equals(booking.status())) {
+            throw new ApiException(HttpStatus.CONFLICT, "promotion.not_pending",
+                    "Lượt bố cáo không còn chờ duyệt",
+                    "Yêu cầu này đã được xử lý (%s).".formatted(booking.status()));
+        }
+
+        Instant now = Instant.now();
+        int durationDays = jdbc.sql("SELECT duration_days FROM story_promotions WHERE id = ?")
+                .param(promotionId.toString())
+                .query(Integer.class)
+                .single();
+
+        // Queue behind whatever is already running for this story.
+        Instant startsAt = activeEndsAt(UUID.fromString(booking.storyId()))
+                .filter(end -> end.isAfter(now))
+                .orElse(now);
+        Instant endsAt = startsAt.plus(Duration.ofDays(durationDays));
+
+        jdbc.sql("""
+                        UPDATE story_promotions
+                        SET status = 'ACTIVE', starts_at = ?, ends_at = ?,
+                            review_note = ?, reviewed_by = ?, reviewed_at = ?, updated_at = ?
+                        WHERE id = ?
+                        """)
+                .params(Timestamp.from(startsAt), Timestamp.from(endsAt), note, reviewerId,
+                        Timestamp.from(now), Timestamp.from(now), promotionId.toString())
+                .update();
+
+        notifyBuyer(booking, "Bố cáo đã được duyệt",
+                "Truyện của bạn sẽ hiển thị tại khu Bố cáo trang chủ trong %d ngày.%s"
+                        .formatted(durationDays, note == null || note.isBlank() ? "" : " Ghi chú: " + note));
+
+        return findBooking(promotionId);
+    }
+
+    /** Rejects a booking, refunds the coins, and tells the buyer why. */
+    @Transactional
+    public PromotionBooking reject(UUID promotionId, String reviewerId, String reason) {
+        if (reason == null || reason.isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "promotion.reason_required",
+                    "Thiếu lý do từ chối",
+                    "Hãy nhập lý do từ chối; người đăng ký sẽ nhận được nội dung này.");
+        }
+        BookingRow booking = requireBooking(promotionId);
+        if (!"PENDING".equals(booking.status())) {
+            throw new ApiException(HttpStatus.CONFLICT, "promotion.not_pending",
+                    "Lượt bố cáo không còn chờ duyệt",
+                    "Yêu cầu này đã được xử lý (%s).".formatted(booking.status()));
+        }
+
+        Instant now = Instant.now();
+        long coinPaid = jdbc.sql("SELECT coin_paid FROM story_promotions WHERE id = ?")
+                .param(promotionId.toString())
+                .query(Long.class)
+                .single();
+
+        jdbc.sql("""
+                        UPDATE story_promotions
+                        SET status = 'REJECTED', review_note = ?, reviewed_by = ?,
+                            reviewed_at = ?, updated_at = ?
+                        WHERE id = ?
+                        """)
+                .params(reason.trim(), reviewerId, Timestamp.from(now), Timestamp.from(now),
+                        promotionId.toString())
+                .update();
+
+        refundWallet(booking.purchasedBy(), coinPaid, promotionId);
+
+        notifyBuyer(booking, "Bố cáo bị từ chối",
+                "Yêu cầu bố cáo đã bị từ chối và %d xu đã được hoàn lại ví của bạn. Lý do: %s"
+                        .formatted(coinPaid, reason.trim()));
+
+        return findBooking(promotionId);
+    }
+
+    /** Returns the coins a rejected booking took, and records the movement. */
+    private void refundWallet(String userId, long coin, UUID promotionId) {
+        if (coin <= 0) {
+            return;
+        }
+        jdbc.sql("UPDATE wallets SET coin_balance = coin_balance + ?, updated_at = NOW(3) WHERE user_id = ?")
+                .params(coin, userId)
+                .update();
+
+        long balance = jdbc.sql("SELECT coin_balance FROM wallets WHERE user_id = ?")
+                .param(userId)
+                .query(Long.class)
+                .single();
+
+        jdbc.sql("""
+                        INSERT INTO wallet_transactions
+                            (id, user_id, currency, type, amount, balance_after,
+                             reference_type, reference_id, description, created_at)
+                        VALUES (?, ?, 'COIN', 'REFUND', ?, ?, ?, ?, ?, NOW(3))
+                        """)
+                .params(UUID.randomUUID().toString(), userId, coin, balance,
+                        REFERENCE_TYPE, promotionId.toString(), "Hoàn xu bố cáo bị từ chối")
+                .update();
+    }
+
+    private void notifyBuyer(BookingRow booking, String title, String message) {
+        jdbc.sql("""
+                        INSERT INTO notifications
+                            (id, user_id, type, title, message, target_type, target_id, target_url, created_at)
+                        VALUES (?, ?, 'SYSTEM', ?, ?, 'PROMOTION', ?, '/promotions', NOW(3))
+                        """)
+                .params(UUID.randomUUID().toString(), booking.purchasedBy(), title, message, booking.id())
+                .update();
+    }
+
+    private BookingRow requireBooking(UUID promotionId) {
+        return jdbc.sql("""
+                        SELECT id, story_id, team_id, purchased_by, ends_at, status
                         FROM story_promotions WHERE id = ?
                         """)
                 .param(promotionId.toString())
@@ -173,10 +304,16 @@ public class PromotionService {
                         rs.getString("id"),
                         rs.getString("story_id"),
                         rs.getString("team_id"),
+                        rs.getString("purchased_by"),
                         rs.getTimestamp("ends_at").toInstant(),
                         rs.getString("status")))
                 .optional()
                 .orElseThrow(() -> notFound("promotion.not_found", "Không tìm thấy lượt bố cáo"));
+    }
+
+    @Transactional
+    public PromotionBooking extend(UUID userId, UUID promotionId, ExtendPromotionRequest request) {
+        BookingRow booking = requireBooking(promotionId);
 
         if (!"ACTIVE".equals(booking.status())) {
             throw new ApiException(HttpStatus.CONFLICT, "promotion.not_active",
@@ -356,18 +493,25 @@ public class PromotionService {
     }
 
     private PromotionBooking findBooking(UUID id) {
-        return jdbc.sql("""
-                        SELECT p.id, p.story_id, s.title AS story_title, s.slug AS story_slug,
-                               p.team_id, t.name AS team_name, p.duration_days, p.coin_paid,
-                               p.starts_at, p.ends_at, p.status
-                        FROM story_promotions p
-                        JOIN stories s ON s.id = p.story_id
-                        JOIN teams t ON t.id = p.team_id
-                        WHERE p.id = ?
-                        """)
+        return jdbc.sql(BOOKING_SELECT + " WHERE p.id = ?")
                 .param(id.toString())
                 .query((rs, rowNum) -> toBooking(rs))
                 .single();
+    }
+
+    /** The admin review queue: pending first, then the most recent decisions. */
+    @Transactional(readOnly = true)
+    public List<PromotionBooking> reviewQueue(String status) {
+        String filter = status == null || status.isBlank() ? null
+                : status.trim().toUpperCase(java.util.Locale.ROOT);
+        return jdbc.sql(BOOKING_SELECT + """
+                        WHERE (? IS NULL OR p.status = ?)
+                        ORDER BY p.status = 'PENDING' DESC, p.created_at DESC
+                        LIMIT 200
+                        """)
+                .params(filter, filter)
+                .query((rs, rowNum) -> toBooking(rs))
+                .list();
     }
 
     private static PromotableStory toPromotableStory(ResultSet rs) throws SQLException {
@@ -400,7 +544,12 @@ public class PromotionService {
                 rs.getTimestamp("starts_at").toInstant().toString(),
                 endsAt.toString(),
                 rs.getString("status"),
-                "ACTIVE".equals(rs.getString("status")) ? daysRemaining(endsAt) : 0
+                "ACTIVE".equals(rs.getString("status")) ? daysRemaining(endsAt) : 0,
+                rs.getString("review_note"),
+                rs.getTimestamp("reviewed_at") == null
+                        ? null : rs.getTimestamp("reviewed_at").toInstant().toString(),
+                rs.getTimestamp("created_at").toInstant().toString(),
+                rs.getString("purchased_by_email")
         );
     }
 
@@ -424,5 +573,6 @@ public class PromotionService {
 
     private record PackageRow(String id, int durationDays, long priceCoin) {}
 
-    private record BookingRow(String id, String storyId, String teamId, Instant endsAt, String status) {}
+    private record BookingRow(
+            String id, String storyId, String teamId, String purchasedBy, Instant endsAt, String status) {}
 }

@@ -292,12 +292,78 @@ public class MonetizationFlowService {
         );
     }
 
+    /**
+     * Moves a team's earnings into the owner's wallet, and updates the team's
+     * running total.
+     *
+     * <p>The cache on the teams row is a reporting figure, not money anyone can
+     * spend. Updating only that left donations and chapter sales visible in the
+     * team's statistics while the owner's balance never moved, so nothing could
+     * actually be withdrawn or spent.
+     */
     private void incrementTeamRevenue(UUID teamId, long netCoin) {
         jdbc.update(
                 "UPDATE teams SET revenue_coin_cache = revenue_coin_cache + :netCoin, updated_at = :updatedAt WHERE id = :teamId",
                 new MapSqlParameterSource()
                         .addValue("netCoin", netCoin)
                         .addValue("updatedAt", Instant.now())
+                        .addValue("teamId", teamId.toString())
+        );
+
+        if (netCoin <= 0) {
+            return;
+        }
+
+        String ownerId = jdbc.query(
+                        "SELECT created_by FROM teams WHERE id = :teamId",
+                        new MapSqlParameterSource("teamId", teamId.toString()),
+                        (rs, rowNum) -> rs.getString("created_by"))
+                .stream()
+                .findFirst()
+                .orElse(null);
+        if (ownerId == null) {
+            return;
+        }
+
+        // A team created before wallets existed may have none; create on demand
+        // rather than silently dropping the earnings.
+        jdbc.update(
+                """
+                        INSERT IGNORE INTO wallets (id, user_id, coin_balance, gem_balance, updated_at)
+                        VALUES (:id, :userId, 0, 0, NOW())
+                        """,
+                new MapSqlParameterSource()
+                        .addValue("id", UUID.randomUUID().toString())
+                        .addValue("userId", ownerId)
+        );
+        jdbc.update(
+                """
+                        UPDATE wallets SET coin_balance = coin_balance + :netCoin, updated_at = NOW()
+                        WHERE user_id = :userId
+                        """,
+                new MapSqlParameterSource()
+                        .addValue("netCoin", netCoin)
+                        .addValue("userId", ownerId)
+        );
+
+        Long balance = jdbc.queryForObject(
+                "SELECT coin_balance FROM wallets WHERE user_id = :userId",
+                new MapSqlParameterSource("userId", ownerId),
+                Long.class
+        );
+        jdbc.update(
+                """
+                        INSERT INTO wallet_transactions
+                            (id, user_id, currency, type, amount, balance_after,
+                             reference_type, reference_id, description, created_at)
+                        VALUES (:id, :userId, 'COIN', 'EARNING', :amount, :balanceAfter,
+                                'TEAM_EARNING', :teamId, 'Doanh thu nhóm', NOW())
+                        """,
+                new MapSqlParameterSource()
+                        .addValue("id", UUID.randomUUID().toString())
+                        .addValue("userId", ownerId)
+                        .addValue("amount", netCoin)
+                        .addValue("balanceAfter", balance == null ? netCoin : balance)
                         .addValue("teamId", teamId.toString())
         );
     }

@@ -621,18 +621,70 @@ button:disabled { cursor: wait; opacity: 0.55; }
   padding-left: 0;
 }
 
+/* The rail itself never scrolls: the brand stays at the top and the operator
+   card with its logout button stays pinned at the bottom. Only the tab list
+   between them scrolls, and its scrollbar is hidden - the rail is short enough
+   that a visible bar was only ever cosmetic clutter. */
 .adminSidebar {
   background: #fff;
   border-right: 1px solid #dfeaf6;
   box-shadow: .8rem 0 2rem rgb(24 47 100 / 5%);
   color: #0b1228;
+  display: flex;
+  flex-direction: column;
   height: 100vh;
   min-height: 100vh;
-  overflow: auto;
+  overflow: hidden;
   padding: 0.5rem;
   position: sticky;
   top: 0;
   width: auto;
+}
+
+.adminSidebar > .adminBrand,
+.adminSidebar > .adminNavLabel,
+.adminSidebar > .adminOperator {
+  flex: none;
+}
+
+.adminSidebar > nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.adminSidebar > nav::-webkit-scrollbar {
+  display: none;
+}
+
+/* The spacer only had a job while the rail was one scrolling column. */
+.adminSidebarSpacer {
+  display: none;
+}
+
+.adminSidebarFooterLink {
+  flex: none;
+  padding: .35rem 0 0;
+}
+
+.adminSidebarFooterLink a {
+  align-items: center;
+  background: #f4f8fd;
+  border: 1px solid #e2ebf6;
+  border-radius: .5rem;
+  color: #48566f;
+  display: flex;
+  font-size: .76rem;
+  font-weight: 700;
+  gap: .5rem;
+  padding: .5rem .75rem;
+  text-decoration: none;
+}
+
+.adminSidebarFooterLink a:hover {
+  background: #eaf2fd;
+  color: #0f6bff;
 }
 
 .adminBrand {
@@ -1353,6 +1405,52 @@ button:disabled { cursor: wait; opacity: 0.55; }
 
 .mutationToast button:hover {
   color: #475569;
+}
+
+/* Chapter accordion: editing a long story folds each chapter to one row. */
+.chapterDraftToggle {
+  align-items: center;
+  background: #f6faff;
+  border: 0;
+  border-radius: .5rem;
+  cursor: pointer;
+  display: flex;
+  gap: .6rem;
+  padding: .6rem .7rem;
+  text-align: left;
+  width: 100%;
+}
+
+.chapterDraftToggle:hover { background: #eaf2fb; }
+
+.chapterDraftToggleIcon {
+  align-items: center;
+  background: #dbe7f5;
+  border-radius: .35rem;
+  color: #0b5ed7;
+  display: flex;
+  flex: 0 0 auto;
+  font-weight: 900;
+  height: 1.3rem;
+  justify-content: center;
+  width: 1.3rem;
+}
+
+.chapterDraftToggleTitle {
+  color: #122039;
+  flex: 1;
+  font-size: .82rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chapterDraftToggleMeta {
+  color: #6b7f99;
+  flex: 0 0 auto;
+  font-size: .72rem;
+  font-weight: 700;
 }
 
 /* Genre multi-select: a story belongs to several genres at once. */
@@ -2085,10 +2183,14 @@ button:disabled { cursor: wait; opacity: 0.55; }
  * .adminContentShell, which is the dashboard's only scroll container.
  */
 .adminTopbar {
-  background: var(--dash-bg, #f8fbff) !important;
+  /* Fully opaque, not a translucent token: content scrolling underneath was
+     showing through the heading and the two texts overlapped illegibly. */
+  background: #f4f8fd !important;
+  border-bottom: 1px solid #e2ebf6 !important;
+  box-shadow: 0 .5rem 1rem -.5rem rgb(17 26 58 / 10%) !important;
   position: sticky !important;
   top: 0 !important;
-  z-index: 4 !important;
+  z-index: 20 !important;
   /* Cancels the shell padding so the sticky band spans the full width. */
   margin-left: calc(-1 * clamp(1.25rem, 2.5vw, 2.25rem)) !important;
   margin-right: calc(-1 * clamp(1.25rem, 2.5vw, 2.25rem)) !important;
@@ -2148,20 +2250,28 @@ button:disabled { cursor: wait; opacity: 0.55; }
 .adminDashboard {
   margin: 0 auto !important;
   max-width: 100% !important;
+  min-width: 0 !important;
   padding: 1.75rem clamp(1.25rem, 2.5vw, 2.25rem) 4rem !important;
 }
 
-/* ── Top bar (page header) ── */
+/* ── Top bar (page header) ──
+   Layout only. Background, padding and the sticky offsets are set once above;
+   repeating them here previously cancelled the sticky band and let the list
+   scroll straight through the heading. */
 .adminTopbar {
   align-items: center !important;
-  background: transparent !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
   display: flex !important;
+  flex-wrap: wrap !important;
+  gap: .75rem !important;
   justify-content: space-between !important;
   margin-bottom: 1.5rem !important;
-  padding: 0 !important;
+  min-width: 0 !important;
+}
+
+/* The filter control must not push the band wider than the shell. */
+.adminTopbar > select {
+  flex: 0 1 auto !important;
+  max-width: 100% !important;
 }
 
 .adminTopbar p {
@@ -2447,6 +2557,165 @@ button:disabled { cursor: wait; opacity: 0.55; }
   flex-wrap: wrap !important;
   gap: .45rem !important;
   justify-content: flex-end !important;
+}
+
+/* Destructive actions read as destructive before they are pressed. */
+.adminDangerAction {
+  border-color: #e4b4b4 !important;
+  color: #b42318 !important;
+}
+
+.adminDangerAction:hover {
+  background: #fef2f2 !important;
+}
+
+.drawerDanger {
+  background: #fef2f2 !important;
+  border: 1px solid #f3c4c4 !important;
+  border-radius: .55rem !important;
+  color: #7f1d1d !important;
+  font-size: .78rem !important;
+  line-height: 1.5 !important;
+  margin: 0 0 .8rem !important;
+  padding: .75rem .85rem !important;
+}
+
+.drawerConfirmMismatch {
+  color: #b42318 !important;
+  font-size: .72rem !important;
+  margin: .35rem 0 0 !important;
+}
+
+/* An irreversible money movement asks for a deliberate second action. */
+.drawerConfirmCheck {
+  align-items: flex-start !important;
+  background: #fff7ed !important;
+  border: 1px solid #fed7aa !important;
+  border-radius: .55rem !important;
+  cursor: pointer !important;
+  display: flex !important;
+  gap: .55rem !important;
+  margin-top: .75rem !important;
+  padding: .7rem .8rem !important;
+}
+
+.drawerConfirmCheck input {
+  flex: none !important;
+  margin-top: .1rem !important;
+}
+
+.drawerConfirmCheck span {
+  color: #9a3412 !important;
+  font-size: .76rem !important;
+  font-weight: 700 !important;
+  line-height: 1.45 !important;
+}
+
+/* ---- Top-up review queue ------------------------------------------------
+   One list holding both the queue and the history. A row waiting on a
+   decision is tinted green across its whole width so it reads at a glance;
+   anything already settled recedes into grey. */
+
+.topupReviewList {
+  display: grid !important;
+  gap: .6rem !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+.topupReviewRow {
+  border: 1px solid var(--card-border) !important;
+  border-radius: .7rem !important;
+  display: grid !important;
+  gap: .25rem !important;
+  min-width: 0 !important;
+  padding: .7rem .85rem !important;
+}
+
+.topupReviewRow.isPending {
+  background: #ecfdf3 !important;
+  border-color: #86e0a8 !important;
+}
+
+.topupReviewRow.isSettled {
+  background: #f3f4f6 !important;
+  border-color: #e0e3e8 !important;
+  opacity: .78 !important;
+}
+
+.topupReviewHead {
+  align-items: center !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: .5rem !important;
+  justify-content: space-between !important;
+}
+
+.topupReviewHead strong {
+  font-size: .85rem !important;
+  font-weight: 800 !important;
+}
+
+.topupReviewStatus {
+  border-radius: 999px !important;
+  flex: none !important;
+  font-size: .66rem !important;
+  font-weight: 800 !important;
+  padding: .2rem .55rem !important;
+}
+
+.isPending .topupReviewStatus { background: #12864a !important; color: #fff !important; }
+.isSettled .topupReviewStatus { background: #d5d9e0 !important; color: #4b5563 !important; }
+
+.topupReviewMeta,
+.topupReviewNote {
+  color: var(--text-muted) !important;
+  font-size: .72rem !important;
+  line-height: 1.45 !important;
+  margin: 0 !important;
+  overflow-wrap: anywhere !important;
+}
+
+.topupReviewNote { color: #b45309 !important; font-weight: 700 !important; }
+
+/* Note field and both buttons sit on one line; the field takes the slack. */
+.topupReviewActions {
+  align-items: center !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: .4rem !important;
+  margin-top: .35rem !important;
+  min-width: 0 !important;
+}
+
+.topupReviewActions input {
+  background: #fff !important;
+  border: 1px solid #b7d9c4 !important;
+  border-radius: .45rem !important;
+  color: var(--text-primary) !important;
+  flex: 1 1 12rem !important;
+  font-size: .73rem !important;
+  min-width: 0 !important;
+  padding: .42rem .6rem !important;
+}
+
+.topupReviewActions button {
+  border: 1px solid transparent !important;
+  border-radius: .45rem !important;
+  cursor: pointer !important;
+  flex: none !important;
+  font-size: .72rem !important;
+  font-weight: 800 !important;
+  padding: .45rem .85rem !important;
+}
+
+.topupReviewActions button:disabled { cursor: not-allowed !important; opacity: .6 !important; }
+.topupApprove { background: #12864a !important; color: #fff !important; }
+.topupReject { background: #fff !important; border-color: #e4b4b4 !important; color: #b42318 !important; }
+
+@media (max-width: 640px) {
+  .topupReviewActions input { flex: 1 1 100% !important; }
+  .topupReviewActions button { flex: 1 1 45% !important; }
 }
 
 .adminCrudPanel button {

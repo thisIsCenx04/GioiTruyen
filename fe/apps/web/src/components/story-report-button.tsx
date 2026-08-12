@@ -10,7 +10,7 @@ import { Link } from "react-router-dom";
 import { useMemo, useState } from "react";
 
 import { loginHref } from "@/lib/auth";
-import { API_BASE_URL, apiFetch } from "@/lib/api-base";
+import { API_BASE_URL, authedFetch } from "@/lib/api-base";
 
 const reasons: ReadonlyArray<Readonly<{ value: ReportReason; label: string }>> = [
   { value: "broken_content", label: "Nội dung bị lỗi hoặc thiếu" },
@@ -27,7 +27,7 @@ export function StoryReportButton({
   targetId: string;
   targetType?: "story" | "chapter";
 }>) {
-  const api = useMemo(() => createBrowserReportClient({ baseUrl: API_BASE_URL, fetchImplementation: apiFetch }), []);
+  const api = useMemo(() => createBrowserReportClient({ baseUrl: API_BASE_URL, fetchImplementation: authedFetch }), []);
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<ReportReason>("broken_content");
   const [detail, setDetail] = useState("");

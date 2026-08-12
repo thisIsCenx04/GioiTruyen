@@ -9,7 +9,7 @@ import {
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import styles from "./withdrawal-workspace.module.css";
-import { API_BASE_URL, apiFetch } from "@/lib/api-base";
+import { API_BASE_URL, authedFetch } from "@/lib/api-base";
 
 const stateCopy: Record<WithdrawalState, string> = {
   APPROVED: "Đã duyệt",
@@ -59,7 +59,7 @@ function safeUUID(): string {
 }
 
 export function WithdrawalWorkspace({ teamId }: Readonly<{ teamId: string }>) {
-  const api = useMemo(() => createBrowserWalletClient({ baseUrl: API_BASE_URL, fetchImplementation: apiFetch }), []);
+  const api = useMemo(() => createBrowserWalletClient({ baseUrl: API_BASE_URL, fetchImplementation: authedFetch }), []);
   const [items, setItems] = useState<WithdrawalReceipt[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);

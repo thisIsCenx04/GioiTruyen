@@ -1,8 +1,10 @@
 package com.storyplatform.monetization.application;
 
 import com.storyplatform.shared.api.ApiException;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -119,9 +121,44 @@ public class TopupService {
                 .list();
     }
 
+    /** Reader-confirmed top-ups allowed per window, per account. */
+    private static final int MAX_SUBMISSIONS_PER_WINDOW = 3;
+    /** Length of that window, in minutes. */
+    private static final int SUBMISSION_WINDOW_MINUTES = 1;
+    /** A draft nobody confirmed is reused for this long before a new one opens. */
+    private static final int DRAFT_REUSE_MINUTES = 30;
+
     /**
-     * Opens a top-up and returns everything needed to pay it. Nothing is
-     * credited here - that waits for an admin to confirm the transfer.
+     * Refuses a submission once the reader has already made
+     * {@value #MAX_SUBMISSIONS_PER_WINDOW} in the current window.
+     *
+     * <p>The limit sits on submissions rather than on requests: a reader may
+     * open the payment screen and refresh the QR as often as they like, because
+     * none of that asks anyone to do anything.
+     */
+    public static void checkSubmissionRate(long recentSubmissions) {
+        if (recentSubmissions < MAX_SUBMISSIONS_PER_WINDOW) {
+            return;
+        }
+        throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "topup.too_many_submissions",
+                "Too many top-up submissions",
+                ("Bạn đã gửi %d yêu cầu nạp trong %d phút vừa qua. "
+                        + "Vui lòng đợi ít phút rồi thử lại, hoặc liên hệ hỗ trợ nếu yêu cầu cũ chưa được duyệt.")
+                        .formatted(MAX_SUBMISSIONS_PER_WINDOW, SUBMISSION_WINDOW_MINUTES),
+                Duration.ofMinutes(SUBMISSION_WINDOW_MINUTES));
+    }
+
+    /**
+     * Opens a top-up and returns everything needed to pay it.
+     *
+     * <p>The row starts as a DRAFT, which no admin ever sees. Showing a QR code
+     * is not a claim that money moved, and treating it as one meant every reload
+     * of the wallet page queued another request for review. The reader turns a
+     * draft into a real request with {@link #submitTopup}.
+     *
+     * <p>Reopening the screen with the same package and method reuses the draft
+     * that is already open, so the transfer note the reader may have copied
+     * stays valid.
      */
     @Transactional
     public TopupInstruction createTopup(UUID userId, String packageId, String methodId) {
@@ -137,25 +174,112 @@ public class TopupService {
                 .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "topup.invalid_method",
                         "Unknown payment method", "Phương thức thanh toán không khả dụng."));
 
+        long coin = pack.coinAmount() + pack.bonusCoin();
+        long gem = pack.gemAmount() + pack.bonusGem();
+
+        Optional<String[]> reusable = jdbc.sql("""
+                        SELECT id, transaction_code
+                        FROM payments
+                        WHERE user_id = ? AND status = 'DRAFT'
+                          AND deposit_package_id = ? AND payment_method_id = ?
+                          AND created_at > NOW() - INTERVAL ? MINUTE
+                        ORDER BY created_at DESC
+                        LIMIT 1
+                        """)
+                .params(userId.toString(), packageId, methodId, DRAFT_REUSE_MINUTES)
+                .query((rs, rowNum) -> new String[] { rs.getString("id"), rs.getString("transaction_code") })
+                .optional();
+
+        if (reusable.isPresent()) {
+            String[] draft = reusable.get();
+            return instruction(draft[0], draft[1], pack, method, coin, gem, "DRAFT");
+        }
+
         String paymentId = UUID.randomUUID().toString();
         // Short, unambiguous, and free of characters a bank note would strip.
         String transactionCode = "GT" + paymentId.replace("-", "").substring(0, 8).toUpperCase(java.util.Locale.ROOT);
-
-        long coin = pack.coinAmount() + pack.bonusCoin();
-        long gem = pack.gemAmount() + pack.bonusGem();
 
         jdbc.sql("""
                         INSERT INTO payments
                             (id, user_id, payment_method_id, deposit_package_id, amount_vnd,
                              coin_received, gem_received, transaction_code, status, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', NOW())
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'DRAFT', NOW())
                         """)
                 .params(paymentId, userId.toString(), methodId, packageId, pack.priceVnd(),
                         coin, gem, transactionCode)
                 .update();
 
-        return instruction(paymentId, transactionCode, pack, method, coin, gem, "PENDING");
+        return instruction(paymentId, transactionCode, pack, method, coin, gem, "DRAFT");
     }
+
+    /**
+     * The reader states they have made the transfer, putting the request in
+     * front of an admin.
+     *
+     * <p>This is the only path into the review queue, and the only one that is
+     * rate limited: a reader may confirm at most
+     * {@value #MAX_SUBMISSIONS_PER_WINDOW} transfers per
+     * {@value #SUBMISSION_WINDOW_MINUTES} minute. Browsing packages and
+     * regenerating QR codes stays free.
+     */
+    @Transactional
+    public TopupInstruction submitTopup(UUID userId, String paymentId) {
+        String status = jdbc.sql("SELECT status FROM payments WHERE id = ? AND user_id = ?")
+                .params(paymentId, userId.toString())
+                .query(String.class)
+                .optional()
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "topup.not_found",
+                        "Top-up not found", "Không tìm thấy yêu cầu nạp này."));
+
+        if ("PENDING".equals(status)) {
+            // Pressing twice is not an error; the request is already queued.
+            return getTopup(userId, paymentId);
+        }
+        if (!"DRAFT".equals(status)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "topup.not_draft",
+                    "Not a draft",
+                    "Yêu cầu này đã được xử lý, không thể gửi lại. Hãy tạo yêu cầu nạp mới.");
+        }
+
+        long recent = jdbc.sql("""
+                        SELECT COUNT(*) FROM payments
+                        WHERE user_id = ? AND submitted_at > NOW() - INTERVAL ? MINUTE
+                        """)
+                .params(userId.toString(), SUBMISSION_WINDOW_MINUTES)
+                .query(Long.class)
+                .single();
+        checkSubmissionRate(recent);
+
+        jdbc.sql("""
+                        UPDATE payments
+                        SET status = 'PENDING', submitted_at = NOW()
+                        WHERE id = ? AND user_id = ? AND status = 'DRAFT'
+                        """)
+                .params(paymentId, userId.toString())
+                .update();
+
+        return getTopup(userId, paymentId);
+    }
+
+    /**
+     * Drops drafts and unconfirmed requests that nobody acted on, so the admin
+     * queue and the reader's history stay meaningful.
+     */
+    @Transactional
+    public int expireStaleTopups() {
+        return jdbc.sql("""
+                        UPDATE payments
+                        SET status = 'CANCELLED',
+                            admin_note = 'Tự động hủy: quá hạn chờ xác nhận chuyển khoản'
+                        WHERE status IN ('DRAFT', 'PENDING')
+                          AND created_at < NOW() - INTERVAL ? MINUTE
+                        """)
+                .param(STALE_TOPUP_MINUTES)
+                .update();
+    }
+
+    /** How long an unconfirmed request survives before it is cancelled. */
+    private static final int STALE_TOPUP_MINUTES = 120;
 
     /** Re-reads an existing top-up, so a reader can reopen the payment screen. */
     @Transactional(readOnly = true)
@@ -202,7 +326,8 @@ public class TopupService {
                                m.name AS method_name
                         FROM payments p
                         LEFT JOIN payment_methods m ON m.id = p.payment_method_id
-                        WHERE p.user_id = ?
+                        -- Drafts are half-finished screens, not history.
+                        WHERE p.user_id = ? AND p.status <> 'DRAFT'
                         ORDER BY p.created_at DESC
                         LIMIT 50
                         """)

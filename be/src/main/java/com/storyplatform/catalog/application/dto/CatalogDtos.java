@@ -79,6 +79,8 @@ public final class CatalogDtos {
             String slug,
             String title,
             String synopsis,
+            /** Public path to the cover image; null while the story has none. */
+            String coverAssetId,
             List<String> categoryIds,
             String origin,
             String language,
@@ -105,7 +107,13 @@ public final class CatalogDtos {
             String slug,
             String title,
             String publishedAt,
-            int version
+            int version,
+            /** FREE or PAID. */
+            String accessType,
+            /** Coins needed to unlock; 0 for a free chapter. */
+            long coinPrice,
+            /** True when this reader may open it: free, or already bought. */
+            boolean unlocked
     ) {
     }
 
@@ -122,11 +130,18 @@ public final class CatalogDtos {
             int version,
             String revisionId,
             int revisionNo,
+            /** Empty while the chapter is locked - the text is never sent. */
             String contentHtml,
             int wordCount,
             String etag,
             ChapterLink previous,
-            ChapterLink next
+            ChapterLink next,
+            /** FREE or PAID. */
+            String accessType,
+            /** Coins needed to unlock; 0 for a free chapter. */
+            long coinPrice,
+            /** False when the reader must pay before the text is returned. */
+            boolean unlocked
     ) {
     }
 

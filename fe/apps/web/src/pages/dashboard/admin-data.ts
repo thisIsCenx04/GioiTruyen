@@ -48,6 +48,7 @@ export type AdminStoryRow = {
   workflowStatus: string;
   completionStatus: string;
   updatedAt: string | null;
+  createdAt: string | null;
 };
 
 export type AdminCategoryRow = {
@@ -58,6 +59,8 @@ export type AdminCategoryRow = {
   sortOrder: number;
   active: boolean;
   version: number;
+  createdAt: string | null;
+  updatedAt: string | null;
 };
 
 export type AdminTeamRow = {
@@ -70,6 +73,7 @@ export type AdminTeamRow = {
   state: string;
   memberCount: number;
   updatedAt: string | null;
+  createdAt: string | null;
 };
 
 export type AdminUserRow = {
@@ -81,6 +85,7 @@ export type AdminUserRow = {
   roles: string;
   availableXu: number;
   createdAt: string | null;
+  updatedAt: string | null;
 };
 
 export type AdminCashFlowRow = {

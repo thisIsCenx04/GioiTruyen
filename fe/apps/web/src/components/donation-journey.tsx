@@ -9,7 +9,7 @@ import { Link } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import styles from "./donation-journey.module.css";
-import { API_BASE_URL, apiFetch } from "@/lib/api-base";
+import { API_BASE_URL, authedFetch } from "@/lib/api-base";
 
 const options = [100, 500, 1_000, 5_000] as const;
 
@@ -52,7 +52,11 @@ export function DonationJourney({
   teamId,
   variant = "default",
 }: DonationJourneyProps) {
-  const api = useMemo(() => createBrowserWalletClient({ baseUrl: API_BASE_URL, fetchImplementation: apiFetch }), []);
+  // Donating moves coins between accounts, so the call has to carry the token.
+  const api = useMemo(
+    () => createBrowserWalletClient({ baseUrl: API_BASE_URL, fetchImplementation: authedFetch }),
+    [],
+  );
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [amount, setAmount] = useState(500);
@@ -112,6 +116,11 @@ export function DonationJourney({
   }
 
   return (
+    <>
+      {/* Only the floating variant is a dialog; the inline one sits in the page. */}
+      {variant === "action" ? (
+        <div className={styles.actionBackdrop} onClick={() => setOpen(false)} role="presentation" />
+      ) : null}
       <section className={`${styles.panel} ${variant === "action" ? styles.actionPanel : ""}`} aria-label="Ủng hộ đội ngũ sáng tác">
       <div className={styles.heading}>
         <div>
@@ -238,6 +247,7 @@ export function DonationJourney({
           )}
         </>
       )}
-    </section>
+      </section>
+    </>
   );
 }

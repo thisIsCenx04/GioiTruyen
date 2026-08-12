@@ -2,6 +2,8 @@ import type { HomeStorySummary } from "@gioitruyen/api-client";
 import { Bookmark, Eye, Volume2 } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { coverUrl, StoryCoverPlaceholder } from "./story-cover";
+
 const tones = ["indigo", "vermilion", "teal", "amber"] as const;
 const numberFormatter = new Intl.NumberFormat("vi-VN", {
   maximumFractionDigits: 1,
@@ -20,6 +22,7 @@ export function CatalogStoryCard({
   hrefBase?: "/audio" | "/stories";
 }>) {
   const publishedDate = new Date(story.publishedAt).toLocaleDateString("vi-VN");
+  const cover = coverUrl(story.coverAssetId);
   const PrimaryMetricIcon = metricIcon === "audio" ? Volume2 : Eye;
   const href = hrefBase === "/stories"
     ? (`/truyen/${story.slug}` as string)
@@ -33,6 +36,9 @@ export function CatalogStoryCard({
         data-tone={tones[index % tones.length]}
         to={href}
       >
+        {cover
+          ? <img alt={`Bìa ${story.title}`} className="coverImage" loading="lazy" src={cover} />
+          : <StoryCoverPlaceholder />}
         <span className="coverMetric">
           <span title={metricIcon === "audio" ? "Lượt nghe" : "Lượt xem"}>
             <PrimaryMetricIcon aria-hidden="true" /> {numberFormatter.format(story.viewCount ?? 0)}

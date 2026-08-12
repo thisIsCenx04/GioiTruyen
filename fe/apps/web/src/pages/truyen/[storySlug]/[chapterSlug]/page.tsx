@@ -41,32 +41,49 @@ const load = cache(async (storySlug: string, chapterSlug: string) => {
     chapter.slug === chapterSlug || chapter.number === number);
   if (!chapterSummary) throw new Error("Not Found");
 
+  /** What the reader can spend, for the "not enough coin" message. */
+  const readerCoinBalance = async () => {
+    if (!accessToken) return 0;
+    try {
+      const response = await authorizedFetch(`${apiBaseUrl}/wallets/me`);
+      if (!response.ok) return 0;
+      const wallet = (await response.json()) as { coinBalance?: number };
+      return wallet.coinBalance ?? 0;
+    } catch {
+      return 0;
+    }
+  };
+
   try {
+    const chapter = await catalog.chapter(chapterSummary.id);
+
+    // The server withholds the text of a paid chapter, so the locked state is
+    // read from the response rather than inferred from a failed request. The
+    // old code only showed the paywall when the call threw, which it never did.
+    if (chapter.unlocked) {
+      return { access: null, chapter, story };
+    }
     return {
-      access: null,
-      chapter: await catalog.chapter(chapterSummary.id),
+      access: {
+        authenticated: Boolean(accessToken),
+        availableXu: await readerCoinBalance(),
+        chapterId: chapter.id,
+        chapterTitle: chapter.title,
+        priceXu: chapter.coinPrice,
+        storyId: story.id,
+        unlocked: false,
+      } satisfies ChapterAccessView,
+      chapter: null,
       story,
     };
   } catch (error) {
     if (error instanceof StoryApiError && error.problem.status === 404) throw new Error("Not Found");
-    try {
-      const response = await authorizedFetch(`${apiBaseUrl}/chapters/${encodeURIComponent(chapterSummary.id)}/access`);
-      if (response.ok) {
-        return {
-          access: (await response.json()) as ChapterAccessView,
-          chapter: null,
-          story,
-        };
-      }
-    } catch {
-      // ignore
-    }
     const fallbackAccess: ChapterAccessView = {
       authenticated: Boolean(accessToken),
       availableXu: 0,
       chapterId: chapterSummary.id,
       chapterTitle: chapterSummary.title,
-      priceXu: 10,
+      priceXu: chapterSummary.coinPrice,
       storyId: story.id,
       unlocked: false,
     };

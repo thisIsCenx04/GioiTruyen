@@ -5,6 +5,7 @@ import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useState } from "react";
 
 import { API_BASE_URL } from "@/lib/api-base";
+import { getAccessToken, refreshAccessToken } from "@/lib/auth";
 
 export type ChapterAccessView = Readonly<{
   chapterId: string;
@@ -33,12 +34,26 @@ export function ChapterUnlock({
     setBusy(true);
     setError("");
     try {
-      const response = await fetch(`${API_BASE_URL}/chapters/${access.chapterId}/unlock`, {
-        method: "POST",
-      });
+      // Unlocking spends the reader's coins, so the request must be
+      // authenticated; without the token it came back 401 every time.
+      const send = (token: string | null) => {
+        const headers = new Headers({ Accept: "application/json" });
+        if (token) headers.set("Authorization", `Bearer ${token}`);
+        return fetch(`${API_BASE_URL}/chapters/${access.chapterId}/unlock`, {
+          credentials: "same-origin",
+          headers,
+          method: "POST",
+        });
+      };
+      let response = await send(getAccessToken());
+      if (response.status === 401) {
+        const renewed = await refreshAccessToken();
+        if (renewed) response = await send(renewed);
+      }
       if (!response.ok) {
-        const problem = await response.json().catch(() => null) as { title?: string } | null;
-        throw new Error(problem?.title ?? "Không thể mở khóa chương.");
+        const problem = await response.json().catch(() => null) as
+          { detail?: string; title?: string } | null;
+        throw new Error(problem?.detail ?? problem?.title ?? "Không thể mở khóa chương.");
       }
       navigate(0);
     } catch (cause) {
@@ -47,6 +62,9 @@ export function ChapterUnlock({
       setBusy(false);
     }
   }
+
+  const shortfall = access.priceXu - access.availableXu;
+  const cannotAfford = access.authenticated && shortfall > 0;
 
   return (
     <main className="chapterUnlockPage">
@@ -58,11 +76,25 @@ export function ChapterUnlock({
           <div><dt>Giá chương</dt><dd>{access.priceXu.toLocaleString("vi-VN")} XU</dd></div>
           {access.authenticated && <div><dt>Số dư hiện tại</dt><dd>{access.availableXu.toLocaleString("vi-VN")} XU</dd></div>}
         </dl>
+        {cannotAfford && (
+          <p className="unlockShortfall">
+            Bạn còn thiếu <b>{shortfall.toLocaleString("vi-VN")} xu</b> để mở khóa chương này.
+          </p>
+        )}
         {error && <p className="unlockError" role="alert">{error}</p>}
         <div className="unlockActions">
-          {access.authenticated ? <button disabled={busy || access.availableXu < access.priceXu} onClick={() => void unlock()} type="button">{busy ? "Đang mở khóa..." : "Mở khóa chương"}</button> : <Link to={`/login?returnTo=${encodeURIComponent(returnTo)}` as string}>Đăng nhập để mở khóa</Link>}
-          <Link to={storyHref as string}>Về trang truyện</Link>
-          {access.authenticated && access.availableXu < access.priceXu && <Link to="/wallet">Nạp thêm XU</Link>}
+          {!access.authenticated && (
+            <Link className="unlockPrimary" to={`/login?returnTo=${encodeURIComponent(returnTo)}` as string}>
+              Đăng nhập để mở khóa
+            </Link>
+          )}
+          {access.authenticated && !cannotAfford && (
+            <button className="unlockPrimary" disabled={busy} onClick={() => void unlock()} type="button">
+              {busy ? "Đang mở khóa..." : `Dùng ${access.priceXu.toLocaleString("vi-VN")} xu để mở khóa`}
+            </button>
+          )}
+          {cannotAfford && <Link className="unlockPrimary" to="/wallet">Nạp xu</Link>}
+          <Link className="unlockSecondary" to={storyHref as string}>Quay lại</Link>
         </div>
       </section>
     </main>

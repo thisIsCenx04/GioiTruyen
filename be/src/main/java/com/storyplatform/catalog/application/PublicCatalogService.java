@@ -283,7 +283,8 @@ public class PublicCatalogService {
         return jdbc.query(
                         """
                                 SELECT id, team_id, slug, title, short_description, description, original_title,
-                                       story_format, story_type, progress_status, published_at, updated_at
+                                       cover_url, story_format, story_type, progress_status,
+                                       published_at, updated_at
                                 FROM stories
                                 WHERE (id = :identifier OR slug = :identifier)
                                   AND status = 'PUBLISHED'
@@ -297,6 +298,7 @@ public class PublicCatalogService {
                                 rs.getString("slug"),
                                 rs.getString("title"),
                                 firstText(rs.getString("description"), rs.getString("short_description")),
+                                rs.getString("cover_url"),
                                 categoryIds(rs.getString("id")),
                                 rs.getString("original_title") == null ? "ORIGINAL" : "TRANSLATED",
                                 "vi-VN",
@@ -313,39 +315,61 @@ public class PublicCatalogService {
                 .orElseThrow(() -> notFound("Story not found"));
     }
 
-    public CatalogDtos.ChapterPage chapters(String identifier, int limit) {
+    public CatalogDtos.ChapterPage chapters(String identifier, int limit, String readerId) {
         String storyId = resolveStoryId(identifier);
         List<CatalogDtos.PublicChapter> items = jdbc.query(
                 """
-                        SELECT id, story_id, chapter_number, slug, title, published_at
-                        FROM chapters
-                        WHERE story_id = :storyId
-                          AND status = 'PUBLISHED'
-                          AND published_at IS NOT NULL
-                        ORDER BY chapter_number ASC
+                        SELECT c.id, c.story_id, c.chapter_number, c.slug, c.title, c.published_at,
+                               c.access_type, c.coin_price,
+                               (u.chapter_id IS NOT NULL) AS is_unlocked
+                        FROM chapters c
+                        LEFT JOIN chapter_unlocks u
+                               ON u.chapter_id = c.id AND u.user_id = :readerId
+                        WHERE c.story_id = :storyId
+                          AND c.status = 'PUBLISHED'
+                          AND c.published_at IS NOT NULL
+                        ORDER BY c.chapter_number ASC
                         LIMIT :limit
                         """,
                 new MapSqlParameterSource()
                         .addValue("storyId", storyId)
+                        // A guest matches no unlock row, so every paid chapter
+                        // shows as locked rather than failing the join.
+                        .addValue("readerId", readerId == null ? "" : readerId)
                         .addValue("limit", Math.max(1, Math.min(limit, 100))),
                 (rs, rowNum) -> chapter(rs)
         );
         return new CatalogDtos.ChapterPage(items, null, false);
     }
 
-    public CatalogDtos.PublishedChapterDetail chapter(String chapterId) {
+    /**
+     * A chapter as the reader is allowed to see it.
+     *
+     * <p>A paid chapter that this reader has not bought comes back with its
+     * metadata but no text at all. Filtering the content in the browser was
+     * never enough: the API returned the whole chapter, so anyone could read it
+     * by opening the URL directly or looking at the network response.
+     */
+    public CatalogDtos.PublishedChapterDetail chapter(String chapterId, String readerId) {
         return jdbc.query(
                         """
-                                SELECT id, story_id, chapter_number, slug, title, content, published_at, updated_at
-                                FROM chapters
-                                WHERE id = :chapterId
-                                  AND status = 'PUBLISHED'
-                                  AND published_at IS NOT NULL
+                                SELECT c.id, c.story_id, c.chapter_number, c.slug, c.title, c.content,
+                                       c.access_type, c.coin_price, c.published_at, c.updated_at,
+                                       (u.chapter_id IS NOT NULL) AS is_unlocked
+                                FROM chapters c
+                                LEFT JOIN chapter_unlocks u
+                                       ON u.chapter_id = c.id AND u.user_id = :readerId
+                                WHERE c.id = :chapterId
+                                  AND c.status = 'PUBLISHED'
+                                  AND c.published_at IS NOT NULL
                                 LIMIT 1
                                 """,
-                        Map.of("chapterId", chapterId),
+                        Map.of("chapterId", chapterId, "readerId", readerId == null ? "" : readerId),
                         (rs, rowNum) -> {
                             String content = rs.getString("content");
+                            boolean paid = "PAID".equalsIgnoreCase(rs.getString("access_type"));
+                            long coinPrice = rs.getLong("coin_price");
+                            boolean unlocked = !paid || rs.getBoolean("is_unlocked");
                             return new CatalogDtos.PublishedChapterDetail(
                                     rs.getString("id"),
                                     rs.getString("story_id"),
@@ -356,11 +380,15 @@ public class PublicCatalogService {
                                     1,
                                     rs.getString("id") + "-r1",
                                     1,
-                                    contentHtml(content),
-                                    wordCount(content),
+                                    // The text itself is withheld, not merely hidden.
+                                    unlocked ? contentHtml(content) : "",
+                                    unlocked ? wordCount(content) : 0,
                                     instantString(rs, "updated_at"),
                                     adjacentChapter(rs.getString("story_id"), rs.getBigDecimal("chapter_number"), "<"),
-                                    adjacentChapter(rs.getString("story_id"), rs.getBigDecimal("chapter_number"), ">")
+                                    adjacentChapter(rs.getString("story_id"), rs.getBigDecimal("chapter_number"), ">"),
+                                    paid ? "PAID" : "FREE",
+                                    coinPrice,
+                                    unlocked
                             );
                         }
                 ).stream()
@@ -557,6 +585,7 @@ public class PublicCatalogService {
     }
 
     private CatalogDtos.PublicChapter chapter(ResultSet rs) throws SQLException {
+        boolean paid = "PAID".equalsIgnoreCase(rs.getString("access_type"));
         return new CatalogDtos.PublicChapter(
                 rs.getString("id"),
                 rs.getString("story_id"),
@@ -564,7 +593,10 @@ public class PublicCatalogService {
                 rs.getString("slug"),
                 rs.getString("title"),
                 instantString(rs, "published_at"),
-                1
+                1,
+                paid ? "PAID" : "FREE",
+                rs.getLong("coin_price"),
+                !paid || rs.getBoolean("is_unlocked")
         );
     }
 

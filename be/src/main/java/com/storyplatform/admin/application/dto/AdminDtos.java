@@ -1,5 +1,8 @@
 package com.storyplatform.admin.application.dto;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.List;
 
 /**
@@ -9,6 +12,17 @@ import java.util.List;
 public final class AdminDtos {
 
     private AdminDtos() {}
+
+    /**
+     * Reads a nullable timestamp column as an ISO string.
+     *
+     * <p>Every admin list shows when a record was created and last changed;
+     * without those, two similar rows cannot be told apart.
+     */
+    public static String timestamp(ResultSet rs, String column) throws SQLException {
+        Timestamp value = rs.getTimestamp(column);
+        return value == null ? null : value.toInstant().toString();
+    }
 
     public record ChartPoint(String label, long value) {}
 
@@ -48,7 +62,8 @@ public final class AdminDtos {
             String storyType,
             String workflowStatus,
             String completionStatus,
-            String updatedAt
+            String updatedAt,
+            String createdAt
     ) {}
 
     public record AdminChapterRow(
@@ -69,7 +84,9 @@ public final class AdminDtos {
             String description,
             int sortOrder,
             boolean active,
-            int version
+            int version,
+            String createdAt,
+            String updatedAt
     ) {}
 
     public record AdminTeamRow(
@@ -81,7 +98,8 @@ public final class AdminDtos {
             String description,
             String state,
             long memberCount,
-            String updatedAt
+            String updatedAt,
+            String createdAt
     ) {}
 
     public record AdminUserRow(
@@ -92,7 +110,8 @@ public final class AdminDtos {
             String state,
             String roles,
             long availableXu,
-            String createdAt
+            String createdAt,
+            String updatedAt
     ) {}
 
     public record AdminCashFlowRow(

@@ -45,7 +45,8 @@ public class AdminStoryController {
      */
     private static final String LIST_SQL = """
             SELECT s.id, s.slug, s.title, s.original_author, s.short_description, s.cover_url,
-                   s.story_format, s.story_type, s.status, s.progress_status, s.updated_at, s.team_id,
+                   s.story_format, s.story_type, s.status, s.progress_status,
+                   s.created_at, s.updated_at, s.team_id,
                    -- A tab cannot appear in a tag label, so it is a safe joiner.
                    (SELECT GROUP_CONCAT(st.label ORDER BY st.label SEPARATOR '\t')
                     FROM story_tags st WHERE st.story_id = s.id) AS tag_labels,
@@ -120,7 +121,8 @@ public class AdminStoryController {
                         rs.getString("story_type"),
                         rs.getString("status"),
                         rs.getString("progress_status"),
-                        instantText(rs.getTimestamp("updated_at"))
+                        instantText(rs.getTimestamp("updated_at")),
+                        instantText(rs.getTimestamp("created_at"))
                 ))
                 .list();
     }
@@ -178,7 +180,12 @@ public class AdminStoryController {
 
     private AdminStoryRow saveMultipart(UUID id, MultipartHttpServletRequest request) {
         AdminStoryRow row = save(id, fromForm(request), storyMedia.storeCover(request.getFile("coverImage")));
-        replaceChapters(UUID.fromString(row.id()), readChapters(request));
+        // Chapters are replaced wholesale, so an edit that submits an incomplete
+        // list would delete the rest. Only an explicit opt-in touches them; a
+        // plain metadata edit leaves the existing chapters alone.
+        if (id == null || "true".equalsIgnoreCase(request.getParameter("replaceChapters"))) {
+            replaceChapters(UUID.fromString(row.id()), readChapters(request));
+        }
         return row;
     }
 
@@ -193,6 +200,43 @@ public class AdminStoryController {
         story.setStatus(StoryStatus.HIDDEN);
         story.setUpdatedAt(Instant.now());
         storyRepository.save(story);
+    }
+
+    /**
+     * Removes a story and its chapters for good.
+     *
+     * <p>Hiding is the everyday action and stays the default; this exists for
+     * mistakes and duplicates. A story anyone has paid to read is refused
+     * instead: deleting it would strip chapters from readers who bought them
+     * and leave the purchase records pointing at nothing.
+     */
+    @DeleteMapping("/{id}/permanent")
+    @Transactional
+    public void deletePermanently(@PathVariable UUID id) {
+        Story story = find(id);
+
+        // Both are checked: purchase_orders is ON DELETE RESTRICT, so a paid
+        // story would otherwise fail on a foreign key with an opaque message.
+        long unlocks = jdbc.sql("""
+                        SELECT (SELECT COUNT(*) FROM chapter_unlocks u
+                                JOIN chapters c ON c.id = u.chapter_id
+                                WHERE c.story_id = :storyId)
+                             + (SELECT COUNT(*) FROM purchase_orders WHERE story_id = :storyId)
+                        """)
+                .param("storyId", id.toString())
+                .query(Long.class)
+                .optional()
+                .orElse(0L);
+        if (unlocks > 0) {
+            throw new ApiException(HttpStatus.CONFLICT, "story.has_purchases",
+                    "Story has purchased chapters",
+                    ("Truyện \"%s\" đã có %d giao dịch trả phí nên không thể xóa. "
+                            + "Hãy dùng \"Ngừng hiển thị\" để ẩn truyện khỏi người đọc.")
+                            .formatted(story.getTitle(), unlocks));
+        }
+
+        // story_genres, story_tags and chapters cascade from the stories row.
+        jdbc.sql("DELETE FROM stories WHERE id = ?").param(id.toString()).update();
     }
 
     private AdminStoryRow save(UUID id, UpsertStoryRequest request) {
@@ -425,7 +469,8 @@ public class AdminStoryController {
                 (story.getStoryType() == null ? StoryType.TEXT : story.getStoryType()).name(),
                 story.getStatus().name(),
                 story.getProgressStatus().name(),
-                story.getUpdatedAt() == null ? null : story.getUpdatedAt().toString()
+                story.getUpdatedAt() == null ? null : story.getUpdatedAt().toString(),
+                story.getCreatedAt() == null ? null : story.getCreatedAt().toString()
         );
     }
 
@@ -433,10 +478,39 @@ public class AdminStoryController {
      * Chapters submitted from the drawer replace the story's existing set. Rows
      * that were already purchased are kept so unlock history stays valid.
      */
+    /**
+     * Refuses a replacement that would leave the story with fewer chapters than
+     * it has now.
+     *
+     * <p>A truncated upload - a dropped connection, a request that hit the part
+     * limit, a form that submitted before its chapter list finished loading -
+     * arrives as a short but non-empty list, which is indistinguishable from a
+     * deliberate one. Since replacing deletes first, applying it would destroy
+     * chapters nobody meant to touch. Removing chapters is a delete, not an
+     * edit, so refusing here costs nothing that another operation cannot do.
+     */
+    public static void checkNoChapterLoss(long existing, int submitted) {
+        if (submitted >= existing) {
+            return;
+        }
+        throw new ApiException(HttpStatus.BAD_REQUEST, "story.chapters_would_be_lost",
+                "Chapter list is shorter than the stored one",
+                ("Truyện đang có %d chương nhưng chỉ nhận được %d chương. "
+                        + "Yêu cầu bị từ chối để không mất chương. "
+                        + "Hãy tải lại trang rồi thử lại, hoặc dùng thao tác xóa chương riêng.")
+                        .formatted(existing, submitted));
+    }
+
     private void replaceChapters(UUID storyId, List<ChapterDraft> chapters) {
         if (chapters.isEmpty()) {
             return;
         }
+
+        long existing = jdbc.sql("SELECT COUNT(*) FROM chapters WHERE story_id = ?")
+                .param(storyId.toString())
+                .query(Long.class)
+                .single();
+        checkNoChapterLoss(existing, chapters.size());
 
         UUID createdBy = jdbc.sql("SELECT created_by FROM stories WHERE id = ?")
                 .param(storyId.toString()).query(String.class).single().transform(UUID::fromString);
@@ -477,6 +551,14 @@ public class AdminStoryController {
 
             String accessTypeVal = "PAID".equalsIgnoreCase(chapter.accessType()) ? "PAID" : "FREE";
             long coinPriceVal = (chapter.coinPrice() != null && chapter.coinPrice() > 0) ? chapter.coinPrice() : 0L;
+            // A PAID chapter priced at zero would unlock for free, so the two
+            // fields are checked against each other rather than separately.
+            if ("PAID".equals(accessTypeVal) && coinPriceVal <= 0) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "chapter.paid_needs_price",
+                        "Paid chapter has no price",
+                        "Chương \"%s\" đang để trả phí nhưng giá bằng 0. Hãy nhập giá lớn hơn 0 xu."
+                                .formatted(title));
+            }
 
             jdbc.sql("""
                             INSERT INTO chapters (id, story_id, chapter_number, title, slug, content,

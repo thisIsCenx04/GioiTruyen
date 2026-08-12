@@ -124,6 +124,22 @@
   margin: 0;
 }
 
+/* Points Google users at the login page instead of a duplicate button. */
+.socialHint {
+  background: #eef4ff;
+  border-radius: 0.55rem;
+  color: #42506f;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  margin: 0;
+  padding: 0.7rem 0.85rem;
+}
+
+.socialHint a {
+  color: #2b47a8;
+  font-weight: 800;
+}
+
 .check {
   align-items: flex-start;
   color: #525a74;
@@ -194,19 +210,15 @@
 }
 
 /*
- * The register form runs long (name, email, two passwords, terms), so the
- * submit row used to sit below the fold with nothing hinting it was there.
- * Sticking it to the bottom of the viewport keeps "Tạo tài khoản" and the
- * "Đã có tài khoản" link reachable at any scroll position.
+ * Plain flow, not sticky. Sticking this row to the bottom made it float over
+ * the terms checkbox and the password hint, hiding the very things the reader
+ * has to read before submitting. The form is short enough to fit without it,
+ * especially now that the social buttons are gone from registration.
  */
 .actions {
-  background: linear-gradient(180deg, rgb(255 255 255 / 0%), rgb(255 255 255 / 92%) 35%);
-  bottom: 0;
   justify-content: space-between;
-  margin-top: 0.35rem;
-  padding: 0.75rem 0 0.25rem;
-  position: sticky;
-  z-index: 2;
+  margin-top: 0.5rem;
+  padding-top: 0.25rem;
 }
 
 .actions a,

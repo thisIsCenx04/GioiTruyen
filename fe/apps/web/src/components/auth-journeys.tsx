@@ -83,7 +83,11 @@ function Status({
   return <div aria-live="polite" />;
 }
 
-function SocialAuthLinks({ mode }: Readonly<{ mode: "login" | "register" }>) {
+/**
+ * Only the login form shows these. Google sign-in creates the account when it
+ * does not exist, so registration needs no separate provider button.
+ */
+function SocialAuthLinks() {
   const [searchParams] = useSearchParams();
   const returnToParam = safeInternalPath(searchParams.get("returnTo"));
   const targetReturnTo = returnToParam ?? "/";
@@ -92,14 +96,14 @@ function SocialAuthLinks({ mode }: Readonly<{ mode: "login" | "register" }>) {
     <div className={styles.socialAuth} aria-label="Đăng nhập mạng xã hội">
       <a href={`/api/v1/auth/oauth2/google/authorize?returnTo=${encodeURIComponent(targetReturnTo)}`}>
         <span aria-hidden="true">G</span>
-        {mode === "login" ? "Đăng nhập bằng Google" : "Đăng ký bằng Google"}
+        Đăng nhập bằng Google
       </a>
       <button
         onClick={() => setFacebookNotice("Đăng nhập Facebook đang phát triển.")}
         type="button"
       >
         <span aria-hidden="true">f</span>
-        {mode === "login" ? "Đăng nhập bằng Facebook" : "Đăng ký bằng Facebook"}
+        Đăng nhập bằng Facebook
       </button>
       {facebookNotice ? <em role="status">{facebookNotice}</em> : null}
       <small>Hoặc dùng email</small>
@@ -184,7 +188,7 @@ export function LoginJourney() {
 
   return (
     <form className={styles.form} onSubmit={submit}>
-      <SocialAuthLinks mode="login" />
+      <SocialAuthLinks />
       <Status error={error || oauthNotice} message={socialMessage} />
       <div className={styles.field}>
         <label htmlFor="login-email">Email</label>
@@ -268,7 +272,16 @@ export function RegisterJourney() {
 
   return (
     <form className={styles.form} onSubmit={submit}>
-      <SocialAuthLinks mode="register" />
+      {/*
+        No Google/Facebook buttons here on purpose: signing in with Google
+        creates the account when it does not exist yet, so a separate
+        "register with Google" is the same action under another name and only
+        makes the form look longer than it is.
+      */}
+      <p className={styles.socialHint}>
+        Dùng Google? Bạn không cần đăng ký — bấm{" "}
+        <Link to={routes.login}>đăng nhập bằng Google</Link>, tài khoản sẽ được tạo tự động.
+      </p>
       <Status error={error} message={message} />
       <div className={styles.field}>
         <label htmlFor="register-email">Email</label>

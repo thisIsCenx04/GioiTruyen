@@ -11,7 +11,7 @@ import { Link } from "react-router-dom";
 import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import styles from "./monetization-review-console.module.css";
-import { apiFetch } from "@/lib/api-base";
+import { authedFetch } from "@/lib/api-base";
 
 type ReviewKind = "TOPUP" | "WITHDRAWAL";
 type Decision = "APPROVE" | "REJECT";
@@ -53,7 +53,7 @@ function safeUUID(): string {
 }
 
 export function MonetizationReviewConsole() {
-  const api = useMemo(() => createBrowserAdminMonetizationClient({ fetchImplementation: apiFetch }), []);
+  const api = useMemo(() => createBrowserAdminMonetizationClient({ fetchImplementation: authedFetch }), []);
   const auth = useMemo(() => createBrowserAuthClient({ baseUrl: "/api/v1/auth" }), []);
   const [kind, setKind] = useState<ReviewKind>("TOPUP");
   const [decision, setDecision] = useState<Decision>("APPROVE");

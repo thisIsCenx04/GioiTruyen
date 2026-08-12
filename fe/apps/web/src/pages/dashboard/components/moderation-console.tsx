@@ -10,7 +10,7 @@ import {
 } from "@gioitruyen/api-client";
 import { BrandMark, StatusPill } from "@gioitruyen/ui";
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { apiFetch } from "@/lib/api-base";
+import { authedFetch } from "@/lib/api-base";
 
 function message(error: unknown) {
   if (error instanceof StoryApiError) {
@@ -38,7 +38,7 @@ function time(value: string | null) {
 }
 
 export function ModerationConsole() {
-  const api = useMemo(() => createBrowserModerationClient({ fetchImplementation: apiFetch }), []);
+  const api = useMemo(() => createBrowserModerationClient({ fetchImplementation: authedFetch }), []);
   const auth = useMemo(() => createBrowserAuthClient({ baseUrl: "/api/v1/auth" }), []);
   const [cases, setCases] = useState<ModerationCase[]>([]);
   const [detail, setDetail] = useState<ModerationReviewDetail | null>(null);

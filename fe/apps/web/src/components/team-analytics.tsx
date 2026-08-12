@@ -9,7 +9,7 @@ import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 
 import styles from "./team-analytics.module.css";
-import { API_BASE_URL, apiFetch } from "@/lib/api-base";
+import { API_BASE_URL, authedFetch } from "@/lib/api-base";
 
 type Period = TeamAnalyticsReport["period"];
 
@@ -38,7 +38,7 @@ function reasonName(code: string) {
 }
 
 export function TeamAnalytics({ teamId }: Readonly<{ teamId: string }>) {
-  const client = useMemo(() => createBrowserTeamClient({ baseUrl: API_BASE_URL, fetchImplementation: apiFetch }), []);
+  const client = useMemo(() => createBrowserTeamClient({ baseUrl: API_BASE_URL, fetchImplementation: authedFetch }), []);
   const [period, setPeriod] = useState<Period>("30D");
   const [report, setReport] = useState<TeamAnalyticsReport | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "forbidden" | "error">(

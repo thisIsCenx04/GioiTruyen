@@ -1,5 +1,7 @@
 package com.storyplatform.admin.api;
 
+import static com.storyplatform.admin.application.dto.AdminDtos.timestamp;
+
 import com.storyplatform.admin.application.dto.AdminDtos.AdminUserRow;
 import com.storyplatform.admin.application.dto.AdminDtos.UpsertUserRequest;
 import com.storyplatform.auth.domain.User;
@@ -28,7 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminUserController {
 
     private static final String LIST_SQL = """
-            SELECT u.id, u.email, u.display_name, u.status, u.role, u.created_at,
+            SELECT u.id, u.email, u.display_name, u.status, u.role, u.created_at, u.updated_at,
                    p.bio,
                    COALESCE(w.coin_balance, 0) AS coin_balance
             FROM users u
@@ -59,8 +61,8 @@ public class AdminUserController {
                         rs.getString("status"),
                         rs.getString("role"),
                         rs.getLong("coin_balance"),
-                        rs.getTimestamp("created_at") == null
-                                ? null : rs.getTimestamp("created_at").toInstant().toString()
+                        timestamp(rs, "created_at"),
+                        timestamp(rs, "updated_at")
                 ))
                 .list();
     }
@@ -136,6 +138,37 @@ public class AdminUserController {
         user.setStatus(UserStatus.BANNED);
         user.setUpdatedAt(Instant.now());
         userRepository.save(user);
+    }
+
+    /**
+     * Removes an account outright.
+     *
+     * <p>Refused as soon as money or content is attached: payments, purchases
+     * and owned teams are all ON DELETE RESTRICT, and an account that spent
+     * coins is part of the ledger. Banning is the action for everything else.
+     */
+    @DeleteMapping("/{id}/permanent")
+    @Transactional
+    public void deletePermanently(@PathVariable UUID id) {
+        User user = find(id);
+        long attachments = jdbc.sql("""
+                        SELECT (SELECT COUNT(*) FROM payments WHERE user_id = :userId)
+                             + (SELECT COUNT(*) FROM purchase_orders WHERE user_id = :userId)
+                             + (SELECT COUNT(*) FROM wallet_transactions WHERE user_id = :userId)
+                             + (SELECT COUNT(*) FROM teams WHERE created_by = :userId)
+                        """)
+                .param("userId", id.toString())
+                .query(Long.class)
+                .optional()
+                .orElse(0L);
+        if (attachments > 0) {
+            throw new ApiException(HttpStatus.CONFLICT, "user.has_history",
+                    "Account has financial history",
+                    ("Tài khoản \"%s\" đã có %d bản ghi giao dịch hoặc team nên không thể xóa. "
+                            + "Hãy dùng \"Tạm khóa\" để vô hiệu hóa tài khoản.")
+                            .formatted(user.getEmail(), attachments));
+        }
+        jdbc.sql("DELETE FROM users WHERE id = ?").param(id.toString()).update();
     }
 
     private void upsertProfile(UUID userId, String bio) {
@@ -218,7 +251,8 @@ public class AdminUserController {
                 user.getStatus().name(),
                 user.getRole().name(),
                 coinBalance,
-                user.getCreatedAt() == null ? null : user.getCreatedAt().toString()
+                user.getCreatedAt() == null ? null : user.getCreatedAt().toString(),
+                user.getUpdatedAt() == null ? null : user.getUpdatedAt().toString()
         );
     }
 }
