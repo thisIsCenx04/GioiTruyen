@@ -395,3 +395,41 @@
   margin-bottom: .4rem;
   padding: .65rem .8rem;
 }
+
+/*
+  The reveal button sits inside the field rather than beside it, so the input
+  keeps the full width of the form and the control stays where a reader's eye
+  already is when they mistype.
+*/
+.passwordField {
+  position: relative;
+}
+
+.passwordField input {
+  /* Room for the button, so long passwords never run underneath it. */
+  padding-right: 2.9rem;
+  width: 100%;
+}
+
+.passwordToggle {
+  align-items: center;
+  background: none;
+  border: 0;
+  border-radius: .4rem;
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  padding: .35rem;
+  position: absolute;
+  right: .5rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.passwordToggle:hover { color: #1d3557; }
+
+.passwordToggle svg {
+  height: 1.15rem;
+  width: 1.15rem;
+}

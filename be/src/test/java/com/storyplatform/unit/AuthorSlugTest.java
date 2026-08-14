@@ -36,4 +36,27 @@ class AuthorSlugTest {
     void emptyWhenNothingRemains() {
         assertThat(AuthorApplicationService.slugify("!!!")).isEmpty();
     }
+
+    @Test
+    @DisplayName("normalizes phone numbers to standard 0xxxxxxxxx format")
+    void normalizesPhoneNumbers() {
+        assertThat(AuthorApplicationService.normalizePhone("0912 345 678")).isEqualTo("0912345678");
+        assertThat(AuthorApplicationService.normalizePhone("+84912345678")).isEqualTo("0912345678");
+        assertThat(AuthorApplicationService.normalizePhone("84912345678")).isEqualTo("0912345678");
+        assertThat(AuthorApplicationService.normalizePhone("0912-345-678")).isEqualTo("0912345678");
+        assertThat(AuthorApplicationService.normalizePhone(null)).isNull();
+        assertThat(AuthorApplicationService.normalizePhone("   ")).isNull();
+    }
+
+    @Test
+    @DisplayName("normalizes facebook URLs and strips trailing slash/tracking params")
+    void normalizesFacebookUrls() {
+        assertThat(AuthorApplicationService.normalizeFacebook("facebook.com/myteam/"))
+                .isEqualTo("https://facebook.com/myteam");
+        assertThat(AuthorApplicationService.normalizeFacebook("https://www.facebook.com/myteam?mibextid=abc"))
+                .isEqualTo("https://www.facebook.com/myteam");
+        assertThat(AuthorApplicationService.normalizeFacebook("http://fb.com/groups/myteam/"))
+                .isEqualTo("https://fb.com/groups/myteam");
+        assertThat(AuthorApplicationService.normalizeFacebook(null)).isNull();
+    }
 }

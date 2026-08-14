@@ -37,7 +37,8 @@ class AuthServiceRefreshTest {
                 mock(PasswordEncoder.class),
                 mock(JwtEncoder.class),
                 jdbc,
-                new LoginAttemptLimiter()
+                new LoginAttemptLimiter(),
+                "2026-07-24"
         );
     }
 

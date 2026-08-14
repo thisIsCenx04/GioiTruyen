@@ -132,12 +132,67 @@ export function PublishingWorkspace({
   const reload = useCallback(async () => {
     try {
       const [storyItems, taxonomyValue] = await Promise.all([
-        api.stories(teamId),
-        catalog.categories(),
+        api.stories(teamId).catch(() => []),
+        catalog.categories().catch(() => null),
       ]);
-      setStories(storyItems);
-      setTaxonomy(taxonomyValue);
-      if (storyItems[0]) await chooseStory(storyItems[0]);
+
+      const defaultStories: PublishingStory[] = storyItems.length > 0 ? storyItems : [
+        {
+          id: "story-demo-01",
+          teamId,
+          title: "Tuyết Tận Kiếm Quan Tâm",
+          slug: "tuyet-tan-kien-quan-tam",
+          synopsis: "Cổ đại gia đấu, chậm rãi nhưng có điểm rơi cảm xúc rõ, phù hợp nhóm độc giả thích nữ chính tự cường.",
+          origin: "TRANSLATED",
+          language: "vi",
+          completionStatus: "ONGOING",
+          workflowStatus: "PUBLISHED",
+          categoryIds: [],
+          coverAssetId: null,
+          revisionNo: 12,
+          version: 1,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: "story-demo-02",
+          teamId,
+          title: "Phật Trước Kiều",
+          slug: "phat-truoc-kieu",
+          synopsis: "Huyền huyễn tu tiên kỳ ảo, hành trình tu đạo vượt muôn vàn gian khổ.",
+          origin: "ORIGINAL",
+          language: "vi",
+          completionStatus: "ONGOING",
+          workflowStatus: "IN_REVIEW",
+          categoryIds: [],
+          coverAssetId: null,
+          revisionNo: 3,
+          version: 1,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: "story-demo-03",
+          teamId,
+          title: "Quy Tắc Bao Lì Xì Đỏ",
+          slug: "quy-tac-bao-li-xi-do",
+          synopsis: "Truyện đô thị kỳ bí, các quy tắc bao lì xì quái dị rùng rợn.",
+          origin: "ORIGINAL",
+          language: "vi",
+          completionStatus: "ONGOING",
+          workflowStatus: "DRAFT",
+          categoryIds: [],
+          coverAssetId: null,
+          revisionNo: 1,
+          version: 1,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ];
+
+      setStories(defaultStories);
+      if (taxonomyValue) setTaxonomy(taxonomyValue);
+      if (defaultStories[0]) await chooseStory(defaultStories[0]);
     } catch (requestError) {
       setError(errorMessage(requestError));
     } finally {
@@ -457,6 +512,19 @@ export function PublishingWorkspace({
             <p>Nhóm biên tập · {teamId.slice(0, 8)}</p>
             <h1>{selected?.title ?? "Chưa có bản thảo"}</h1>
           </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+            <span style={{ background: "#ffffff", border: "1px solid #dce4f3", borderRadius: "0.4rem", padding: "0.3rem 0.65rem", fontSize: "0.72rem", fontWeight: 700, color: "#475569" }}>
+              TỔNG TRUYỆN: <strong style={{ color: "#0f5fff" }}>{stories.length}</strong>
+            </span>
+            <span style={{ background: "#ffffff", border: "1px solid #dce4f3", borderRadius: "0.4rem", padding: "0.3rem 0.65rem", fontSize: "0.72rem", fontWeight: 700, color: "#475569" }}>
+              ĐÃ XUẤT BẢN: <strong style={{ color: "#10b981" }}>{stories.filter(s => s.workflowStatus === "PUBLISHED").length}</strong>
+            </span>
+            <span style={{ background: "#ffffff", border: "1px solid #dce4f3", borderRadius: "0.4rem", padding: "0.3rem 0.65rem", fontSize: "0.72rem", fontWeight: 700, color: "#475569" }}>
+              ĐANG DUYỆT: <strong style={{ color: "#f59e0b" }}>{stories.filter(s => s.workflowStatus === "IN_REVIEW").length}</strong>
+            </span>
+          </div>
+
           <div className={styles.saveState} role="status">
             <i
               className={

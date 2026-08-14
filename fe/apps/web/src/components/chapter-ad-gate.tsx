@@ -1,6 +1,6 @@
 "use client";
 
-import { Play } from "lucide-react";
+import { Play, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -48,6 +48,9 @@ export function ChapterAdGate({
   return (
     <div className="adGateOverlay" role="presentation">
       <div aria-labelledby="adGateTitle" aria-modal="true" className="adGateDialog" role="dialog">
+        <button className="adGateCloseIconBtn" onClick={onClose} type="button" aria-label="Đóng">
+          <X size={18} />
+        </button>
         <img alt="Giới Truyện" className="adGateLogo" src="/logo-full.png" />
 
         <h2 id="adGateTitle">Quảng cáo giúp Giới Truyện duy trì hệ thống.</h2>

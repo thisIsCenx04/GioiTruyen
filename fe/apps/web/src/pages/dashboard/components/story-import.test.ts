@@ -87,6 +87,37 @@ describe("parseStoryDocument", () => {
     expect(imported.chapters[0]!.title).toBe("Chương 1: Mở đầu");
   });
 
+  it.each([
+    ["no separator", "Chương 1 Mở đầu", "Chương 2 Tiếp theo"],
+    ["en dash", "Chương 1 – Mở đầu", "Chương 2 – Tiếp theo"],
+    ["decorated", "*** Chương 1: Mở đầu ***", "*** Chương 2: Tiếp theo ***"],
+    ["hồi", "Hồi 1: Mở đầu", "Hồi 2: Tiếp theo"],
+  ])("splits headings written with %s", async (_style, first, second) => {
+    const imported = await parseStoryDocument(fakeFile("truyen.txt", [
+      "Tên Truyện",
+      "",
+      first,
+      "Nội dung một.",
+      "",
+      second,
+      "Nội dung hai.",
+    ].join("\n")));
+
+    expect(imported.chapters).toHaveLength(2);
+    expect(imported.chapters[1]!.content).toBe("Nội dung hai.");
+  });
+
+  it("keeps the body of a file that has no blank line after its title", async () => {
+    // Without a blank separator the whole file used to count as header, so the
+    // story arrived with no chapters at all.
+    const imported = await parseStoryDocument(fakeFile("truyen.txt", [
+      "Tên Truyện",
+      ...paragraphs(60),
+    ].join("\n")));
+
+    expect(imported.chapters.length).toBeGreaterThan(1);
+  });
+
   it("still cuts an over-long chapter that the file declared as one heading", async () => {
     // A single heading covering 1800 words is more than a chapter's worth, so
     // the budget applies even though the document has headings of its own.

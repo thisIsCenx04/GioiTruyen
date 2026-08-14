@@ -227,7 +227,7 @@ export default function UserProfilePage() {
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
     try {
-      const res = await fetch("/api/v1/auth/change-password", {
+      const res = await fetch("/api/v1/change-password", {
         method: "POST",
         headers,
         credentials: "same-origin",

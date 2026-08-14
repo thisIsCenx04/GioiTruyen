@@ -11,6 +11,8 @@ type AuthorApplication = {
   userName: string | null;
   teamName: string;
   penName: string | null;
+  phoneNumber: string | null;
+  facebookUrl: string | null;
   introduction: string;
   sampleWork: string | null;
   status: string;
@@ -157,7 +159,16 @@ export default function AdminAuthorApplicationsPage() {
 
                 <p className="topupReviewMeta">
                   <b>{row.userName ?? "—"}</b> ({row.userEmail})
-                  {row.penName ? ` · bút danh ${row.penName}` : ""}
+                  {row.penName ? ` · bút danh: ${row.penName}` : ""}
+                </p>
+                <p className="topupReviewMeta" style={{ color: "#0f5fff", fontWeight: 600 }}>
+                  📞 SĐT: {row.phoneNumber || "Chưa cung cấp"}
+                  {row.facebookUrl ? (
+                    <>
+                      {" · "}
+                      🌐 FB: <a href={row.facebookUrl} target="_blank" rel="noreferrer" style={{ color: "#0f5fff", textDecoration: "underline" }}>{row.facebookUrl}</a>
+                    </>
+                  ) : null}
                 </p>
                 <p className="topupReviewMeta">{row.introduction}</p>
                 {row.sampleWork ? (

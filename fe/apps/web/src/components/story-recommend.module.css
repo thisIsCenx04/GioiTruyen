@@ -1,0 +1,93 @@
+.trigger {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #d7e3f4;
+  border-radius: .6rem;
+  color: #1d3557;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-weight: 600;
+  gap: .45rem;
+  padding: .55rem .9rem;
+  text-decoration: none;
+}
+
+.trigger:hover { border-color: #7aa7db; }
+.trigger svg { height: 1.05rem; width: 1.05rem; }
+.trigger small { color: #64748b; font-weight: 500; }
+
+/*
+  Fixed to the viewport, not the page: the reader opens this from wherever they
+  are in a long story page, and the dialog has to meet them there rather than
+  somewhere further down that they would have to scroll to find.
+*/
+.overlay {
+  align-items: center;
+  background: rgb(10 18 32 / 55%);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 1rem;
+  position: fixed;
+  z-index: 200;
+}
+
+.dialog {
+  background: #fff;
+  border-radius: .9rem;
+  box-shadow: 0 1.5rem 3rem rgb(10 20 45 / 25%);
+  /* Tall on a short screen scrolls inside itself, never off the viewport. */
+  max-height: min(88dvh, calc(100dvh - 2rem));
+  overflow-y: auto;
+  padding: 1.5rem;
+  width: min(28rem, calc(100vw - 2rem));
+}
+
+.dialog h2 { font-size: 1.3rem; margin: 0 0 .35rem; }
+.lede { color: #475569; font-size: .92rem; margin: 0 0 1.1rem; }
+
+.amounts {
+  display: grid;
+  gap: .6rem;
+  grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr));
+  margin-bottom: 1rem;
+}
+
+.amounts button {
+  background: #1d3557;
+  border: 0;
+  border-radius: .55rem;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  padding: .65rem .5rem;
+}
+
+.amounts button:disabled { cursor: not-allowed; opacity: .55; }
+.amounts button:hover:not(:disabled) { background: #16324f; }
+
+.facts { display: grid; gap: .4rem; margin: 0 0 1.1rem; }
+.facts > div { display: flex; justify-content: space-between; }
+.facts dt { color: #64748b; font-size: .9rem; margin: 0; }
+.facts dd { font-weight: 600; margin: 0; }
+
+.notice { color: #15803d; font-size: .9rem; margin: 0 0 .75rem; }
+.error { color: #b91c1c; font-size: .9rem; margin: 0 0 .75rem; }
+
+.actions { display: flex; gap: .6rem; justify-content: flex-end; }
+
+.secondary {
+  background: #f1f5f9;
+  border: 0;
+  border-radius: .55rem;
+  color: #1d3557;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  padding: .55rem .9rem;
+  text-decoration: none;
+}
+
+.secondary:hover { background: #e2e8f0; }

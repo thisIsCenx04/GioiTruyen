@@ -21,7 +21,7 @@ export function AdminLoginForm() {
     setError("");
     const form = new FormData(event.currentTarget);
     try {
-      const response = await fetch("/api/v1/auth/login", {
+      const response = await fetch("/api/v1/login", {
         body: JSON.stringify({
           email: String(form.get("email") ?? ""),
           password: String(form.get("password") ?? ""),

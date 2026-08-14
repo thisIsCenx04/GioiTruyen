@@ -13,7 +13,6 @@ import PageL2F1ZGlv from './pages/audio/page';
 import PageL2F1ZGlvLzppZE9yU2x1Zw from './pages/audio/[idOrSlug]/page';
 import PageL2F1dGgvZm9yZ290LXBhc3N3b3Jk from './pages/auth/forgot-password/page';
 import PageL2F1dGgvZ29vZ2xlL2NhbGxiYWNr from './pages/auth/google/callback/page';
-import PageL2F1dGgvbG9naW4 from './pages/auth/login/page';
 import PageL2F1dGgvbWZh from './pages/auth/mfa/page';
 import PageL2F1dGgvcmVnaXN0ZXI from './pages/auth/register/page';
 import PageL2F1dGgvcmVzZXQtcGFzc3dvcmQ from './pages/auth/reset-password/page';
@@ -288,9 +287,12 @@ function App() {
           <Route path="/audio/:idOrSlug" element={<WrappedPageL2F1ZGlvLzppZE9yU2x1Zw />} />
           <Route path="/auth/forgot-password" element={<PageL2F1dGgvZm9yZ290LXBhc3N3b3Jk />} />
           <Route path="/auth/google/callback" element={<PageL2F1dGgvZ29vZ2xlL2NhbGxiYWNr />} />
-          <Route path="/auth/login" element={<PageL2F1dGgvbG9naW4 />} />
+          {/* Sign-in and sign-up live at the bare paths; the /auth/* forms are
+              kept as redirects so older links and bookmarks still land. */}
+          <Route path="/auth/login" element={<Navigate replace to="/login" />} />
           <Route path="/auth/mfa" element={<PageL2F1dGgvbWZh />} />
-          <Route path="/auth/register" element={<PageL2F1dGgvcmVnaXN0ZXI />} />
+          <Route path="/auth/register" element={<Navigate replace to="/register" />} />
+          <Route path="/register" element={<PageL2F1dGgvcmVnaXN0ZXI />} />
           <Route path="/auth/reset-password" element={<WrappedPageL2F1dGgvcmVzZXQtcGFzc3dvcmQ />} />
           <Route path="/auth/verify" element={<WrappedPageL2F1dGgvdmVyaWZ5 />} />
           <Route path="/categories" element={<WrappedPageL2NhdGVnb3JpZXM />} />

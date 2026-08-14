@@ -54,7 +54,7 @@ function safeUUID(): string {
 
 export function MonetizationReviewConsole() {
   const api = useMemo(() => createBrowserAdminMonetizationClient({ fetchImplementation: authedFetch }), []);
-  const auth = useMemo(() => createBrowserAuthClient({ baseUrl: "/api/v1/auth" }), []);
+  const auth = useMemo(() => createBrowserAuthClient({ baseUrl: "/api/v1" }), []);
   const [kind, setKind] = useState<ReviewKind>("TOPUP");
   const [decision, setDecision] = useState<Decision>("APPROVE");
   const [switches, setSwitches] = useState<MonetizationKillSwitch[]>([]);

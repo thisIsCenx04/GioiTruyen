@@ -2,14 +2,45 @@ import { strFromU8, unzipSync } from "fflate";
 
 export type ImportedChapter = { content: string; title: string };
 
+/** Words an uploaded file may put in front of a chapter number. */
+const CHAPTER_WORD = "(?:ch(?:ương|uong)|chapter|hồi|hoi|kỳ|ky|第)";
+
+/** Decoration real documents wrap headings in, e.g. "*** Chương 1 ***". */
+const HEADING_DECORATION = /^[\s*#=~_]+|[\s*#=~_]+$/gu;
+
+/**
+ * A heading followed by its number, then optionally a title. The separator is
+ * optional and may be any dash: "Chương 1 Mở đầu" and "Chương 1 – Mở đầu" are
+ * as common in uploaded files as "Chương 1: Mở đầu", and requiring a colon or
+ * hyphen made those files parse as a single chapter.
+ */
+const HEADING_PREFIX = new RegExp(
+  `^${CHAPTER_WORD}?\\s*(\\d+)\\s*章?\\s*[:.\\-–—]?\\s*`,
+  "iu",
+);
+
+const NUMBERED_HEADING = new RegExp(`^${CHAPTER_WORD}\\s*\\d+`, "iu");
+
+/**
+ * Longest a line may be and still count as a heading. The separator is no
+ * longer required, so a paragraph opening with "Chương 3 kết thúc..." would
+ * otherwise read as a new chapter; a real heading is never this long.
+ */
+const MAX_HEADING_LENGTH = 120;
+
 function isChapterHeading(line: string) {
-  return /^(?:ch(?:ương|uong)|chapter|第)?\s*\d+(?:\s*[:.\-]\s*.*)?$/iu.test(line.trim());
+  const clean = line.trim().replace(HEADING_DECORATION, "");
+  if (!clean || clean.length > MAX_HEADING_LENGTH) return false;
+  if (NUMBERED_HEADING.test(clean)) return true;
+  // A bare number on its own line is how many raw exports mark a chapter.
+  return /^\d+(?:\s*[:.\-–—]\s*.*)?$/u.test(clean);
 }
 
 function chapterTitle(line: string, index: number) {
-  const clean = line.trim();
-  const number = clean.match(/\d+/u)?.[0] ?? String(index + 1);
-  const suffix = clean.replace(/^(?:ch(?:ương|uong)|chapter|第)?\s*\d+\s*[:.\-]?\s*/iu, "").trim();
+  const clean = line.trim().replace(HEADING_DECORATION, "");
+  const match = HEADING_PREFIX.exec(clean);
+  const number = match?.[1] ?? String(index + 1);
+  const suffix = (match ? clean.slice(match[0].length) : clean).trim();
   return suffix ? `Chương ${number}: ${suffix}` : `Chương ${number}`;
 }
 
@@ -43,8 +74,10 @@ function docxLines(bytes: Uint8Array) {
   const document = new DOMParser().parseFromString(strFromU8(documentXml), "application/xml");
   return Array.from(document.getElementsByTagNameNS("*", "p"))
     .map((paragraph) => Array.from(paragraph.getElementsByTagNameNS("*", "t"), (node) => node.textContent ?? "").join(""))
-    .map((line) => line.trim())
-    .filter(Boolean);
+    // Blank paragraphs are kept: they are what separates the header block from
+    // the story body, and dropping them made a .docx without chapter headings
+    // parse as header-only, so it arrived with no chapters at all.
+    .map((line) => line.trim());
 }
 
 export async function parseStoryFile(file: File): Promise<ImportedChapter[]> {
@@ -220,7 +253,10 @@ export async function parseStoryDocument(
   let bodyStartIndex = firstChapterIndex;
   if (!hasHeadings) {
     let sawContent = false;
-    bodyStartIndex = lines.length;
+    // No blank line anywhere means the file has no header block to skip; the
+    // first line is the title and everything after it is story. Treating the
+    // whole file as header left the story with no chapters at all.
+    bodyStartIndex = lines.findIndex((line) => line.trim()) + 1;
     for (let index = 0; index < lines.length; index++) {
       const line = lines[index] ?? "";
       if (sawContent && !line.trim()) {
@@ -295,7 +331,13 @@ function enforceWordBudget(chapters: ImportedChapter[], wordsPerChapter: number)
         content: part.content,
         // Parts stay tied to the heading they came from, so a reader can see
         // that "Chương 3 (2/4)" continues the chapter the author wrote.
-        title: `${chapter.title} (${index + 1}/${parts.length})`,
+        //
+        // A chapter over the limit does not always split - one unbroken
+        // paragraph has nowhere to cut - and numbering that single result
+        // "(1/1)" told the reader about a division that never happened.
+        title: parts.length > 1
+          ? `${chapter.title} (${index + 1}/${parts.length})`
+          : chapter.title,
       });
     });
   }

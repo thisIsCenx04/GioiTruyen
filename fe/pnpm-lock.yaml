@@ -54,6 +54,12 @@ importers:
 
   apps/web:
     dependencies:
+      '@gioitruyen/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
+      '@gioitruyen/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       clsx:
         specifier: ^2.1.0
         version: 2.1.1
@@ -101,6 +107,8 @@ importers:
         specifier: ^5.2.0
         version: 5.4.21(@types/node@24.10.2)(lightningcss@1.33.0)
 
+  packages/api-client: {}
+
   packages/ui:
     dependencies:
       react:
@@ -109,6 +117,10 @@ importers:
       react-dom:
         specifier: ^18.0.0
         version: 18.3.1(react@18.3.1)
+    devDependencies:
+      '@types/react':
+        specifier: ^18.2.66
+        version: 18.3.31
 
 packages:
 

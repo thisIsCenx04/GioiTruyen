@@ -29,7 +29,7 @@ public class PublicCatalogService {
     private static final String STORY_SUMMARY_SELECT = """
             SELECT s.id, s.team_id, t.name AS team_name, s.slug, s.title, s.cover_url,
                    s.story_format, s.story_type, s.published_at, s.view_count_cache,
-                   s.favorite_count_cache
+                   s.favorite_count_cache, s.original_author
             FROM stories s
             JOIN teams t ON t.id = s.team_id
             WHERE %s
@@ -38,6 +38,8 @@ public class PublicCatalogService {
     private static final String ONESHOT_FILTER = "s.story_format = 'ONESHOT'";
     /** Everything except one-page stories, so the main catalog stays serial-only. */
     private static final String SERIAL_FILTER = "s.story_format <> 'ONESHOT'";
+    /** Most chapters one page may carry; the story itself is unbounded. */
+    private static final int MAX_CHAPTER_PAGE_SIZE = 100;
     /** Cards per shelf on the catalog pages. */
     private static final int SHELF_SIZE = 8;
 
@@ -107,7 +109,8 @@ public class PublicCatalogService {
                 """
                         SELECT p.id AS promotion_id, p.tag_label,
                                s.id, s.team_id, t.name AS team_name, s.slug, s.title, s.cover_url,
-                               s.story_format, s.published_at, s.view_count_cache, s.favorite_count_cache
+                               s.story_format, s.published_at, s.view_count_cache, s.favorite_count_cache,
+                               s.original_author
                         FROM story_promotions p
                         JOIN stories s ON s.id = p.story_id
                         JOIN teams t ON t.id = s.team_id
@@ -315,8 +318,35 @@ public class PublicCatalogService {
                 .orElseThrow(() -> notFound("Story not found"));
     }
 
-    public CatalogDtos.ChapterPage chapters(String identifier, int limit, String readerId) {
+    /**
+     * One page of a story's chapters.
+     *
+     * <p>Paged by offset rather than a cursor because the reader needs to jump:
+     * a thousand-chapter story is fifty pages, and someone returning to it wants
+     * the last page, not fifty presses of "next". That requires a total, which a
+     * cursor cannot give.
+     *
+     * <p>The page size is capped, not the story: an earlier cap of 100 applied
+     * to the whole list, so chapter 101 onwards could neither be listed nor
+     * opened - the reader page resolves a chapter from this same list.
+     */
+    public CatalogDtos.ChapterPage chapters(String identifier, int page, int size, String readerId) {
         String storyId = resolveStoryId(identifier);
+        int safeSize = Math.max(1, Math.min(size, MAX_CHAPTER_PAGE_SIZE));
+        int safePage = Math.max(1, page);
+
+        long total = jdbc.queryForObject(
+                """
+                        SELECT COUNT(*) FROM chapters
+                        WHERE story_id = :storyId
+                          AND status = 'PUBLISHED'
+                          AND published_at IS NOT NULL
+                        """,
+                new MapSqlParameterSource("storyId", storyId),
+                Long.class
+        );
+        int totalPages = total == 0 ? 0 : (int) Math.ceil((double) total / safeSize);
+
         List<CatalogDtos.PublicChapter> items = jdbc.query(
                 """
                         SELECT c.id, c.story_id, c.chapter_number, c.slug, c.title, c.published_at,
@@ -329,17 +359,18 @@ public class PublicCatalogService {
                           AND c.status = 'PUBLISHED'
                           AND c.published_at IS NOT NULL
                         ORDER BY c.chapter_number ASC
-                        LIMIT :limit
+                        LIMIT :limit OFFSET :offset
                         """,
                 new MapSqlParameterSource()
                         .addValue("storyId", storyId)
                         // A guest matches no unlock row, so every paid chapter
                         // shows as locked rather than failing the join.
                         .addValue("readerId", readerId == null ? "" : readerId)
-                        .addValue("limit", Math.max(1, Math.min(limit, 100))),
+                        .addValue("limit", safeSize)
+                        .addValue("offset", (long) (safePage - 1) * safeSize),
                 (rs, rowNum) -> chapter(rs)
         );
-        return new CatalogDtos.ChapterPage(items, null, false);
+        return new CatalogDtos.ChapterPage(items, safePage, safeSize, total, totalPages);
     }
 
     /**
@@ -350,6 +381,42 @@ public class PublicCatalogService {
      * never enough: the API returned the whole chapter, so anyone could read it
      * by opening the URL directly or looking at the network response.
      */
+    /**
+     * The chapter a reader asked for by number, e.g. "chuong-12" of a story.
+     *
+     * <p>Resolved here rather than by scanning the chapter list, which only ever
+     * held one page of it.
+     */
+    public CatalogDtos.PublishedChapterDetail chapterByNumber(
+            String identifier, String number, String readerId) {
+        String storyId = resolveStoryId(identifier);
+        java.math.BigDecimal chapterNumber;
+        try {
+            chapterNumber = new java.math.BigDecimal(number.trim());
+        } catch (NumberFormatException exception) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "chapter.not_found",
+                    "Chapter not found", "Không tìm thấy chương này.");
+        }
+        String chapterId = jdbc.query(
+                        """
+                                SELECT id FROM chapters
+                                WHERE story_id = :storyId
+                                  AND chapter_number = :number
+                                  AND status = 'PUBLISHED'
+                                  AND published_at IS NOT NULL
+                                LIMIT 1
+                                """,
+                        new MapSqlParameterSource()
+                                .addValue("storyId", storyId)
+                                .addValue("number", chapterNumber),
+                        (rs, rowNum) -> rs.getString("id"))
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "chapter.not_found",
+                        "Chapter not found", "Không tìm thấy chương này."));
+        return chapter(chapterId, readerId);
+    }
+
     public CatalogDtos.PublishedChapterDetail chapter(String chapterId, String readerId) {
         return jdbc.query(
                         """
@@ -416,6 +483,29 @@ public class PublicCatalogService {
      * own surfaces so a short story never competes for a shelf slot meant for a
      * novel. Pass an explicit filter to opt into the other format.
      */
+    /**
+     * The stories a reader kept, newest first.
+     *
+     * <p>Shares the summary shape with every shelf, so a saved story renders
+     * with the same card the reader saved it from.
+     */
+    public List<CatalogDtos.HomeStorySummary> library(String userId) {
+        return jdbc.query(
+                """
+                        SELECT s.id, s.team_id, t.name AS team_name, s.slug, s.title, s.cover_url,
+                               s.story_format, s.story_type, s.published_at, s.view_count_cache,
+                               s.favorite_count_cache, s.original_author
+                        FROM library_items l
+                        JOIN stories s ON s.id = l.story_id
+                        JOIN teams t ON t.id = s.team_id
+                        WHERE l.user_id = :userId AND s.status = 'PUBLISHED'
+                        ORDER BY l.created_at DESC
+                        """,
+                new MapSqlParameterSource("userId", userId),
+                (rs, rowNum) -> summary(rs)
+        );
+    }
+
     private List<CatalogDtos.HomeStorySummary> summaries(String orderBy, int limit) {
         return summaries(orderBy, limit, SERIAL_FILTER);
     }
@@ -460,7 +550,7 @@ public class PublicCatalogService {
                 """
                         SELECT r.`rank`, r.score, s.id, s.team_id, t.name AS team_name, s.slug, s.title,
                                s.cover_url, s.story_format, s.published_at, s.view_count_cache,
-                               s.favorite_count_cache
+                               s.favorite_count_cache, s.original_author
                         FROM ranking_snapshots r
                         JOIN stories s ON s.id = r.story_id
                         JOIN teams t ON t.id = s.team_id
@@ -475,7 +565,10 @@ public class PublicCatalogService {
                 Map.of("rankingType", rankingType),
                 (rs, rowNum) -> new CatalogDtos.RankingStory(
                         rs.getInt("rank"),
-                        rs.getLong("score"),
+                        // The gem total behind a recommendation ranking stays
+                        // private: the order is public, the amount spent is
+                        // not, or the board becomes a spending leaderboard.
+                        "GEM_RECOMMENDATION".equals(rankingType) ? 0L : rs.getLong("score"),
                         summary(rs)
                 )
         );
@@ -558,7 +651,8 @@ public class PublicCatalogService {
                 rs.getLong("view_count_cache"),
                 rs.getLong("favorite_count_cache"),
                 storyFormat(rs),
-                storyType(rs)
+                storyType(rs),
+                hasColumn(rs, "original_author") ? rs.getString("original_author") : null
         );
     }
 

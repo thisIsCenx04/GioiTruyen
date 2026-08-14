@@ -77,7 +77,7 @@ public class GoogleOAuthController {
     }
 
     private String loginUrl(String status) {
-        return frontendUrl("/auth/login") + "?oauth=google&status=" + status;
+        return frontendUrl("/login") + "?oauth=google&status=" + status;
     }
 
     private String frontendUrl(String path) {

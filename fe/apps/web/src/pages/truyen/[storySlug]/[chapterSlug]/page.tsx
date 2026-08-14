@@ -32,13 +32,14 @@ const load = cache(async (storySlug: string, chapterSlug: string) => {
     baseUrl: apiBaseUrl,
     fetchImplementation: authorizedFetch,
   });
-  const [story, chapters] = await Promise.all([
-    catalog.story(storySlug),
-    catalog.chapters(storySlug),
-  ]);
+  // Resolved on the server from the number in the URL. Scanning the chapter
+  // list only ever worked while the whole list arrived at once; now that it is
+  // paged, chapter 500 is not on the page the reader page would have asked for.
   const number = chapterNumber(chapterSlug);
-  const chapterSummary = chapters.items.find((chapter) =>
-    chapter.slug === chapterSlug || chapter.number === number);
+  const [story, chapterSummary] = await Promise.all([
+    catalog.story(storySlug),
+    catalog.chapterByNumber(storySlug, number ?? chapterSlug).catch(() => null),
+  ]);
   if (!chapterSummary) throw new Error("Not Found");
 
   /** What the reader can spend, for the "not enough coin" message. */
@@ -55,7 +56,9 @@ const load = cache(async (storySlug: string, chapterSlug: string) => {
   };
 
   try {
-    const chapter = await catalog.chapter(chapterSummary.id);
+    // Already the full chapter: chapterByNumber returns the same detail the
+    // by-id endpoint would, so fetching it again would only cost a round trip.
+    const chapter = chapterSummary;
 
     // The server withholds the text of a paid chapter, so the locked state is
     // read from the response rather than inferred from a failed request. The

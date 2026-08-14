@@ -45,7 +45,8 @@ export interface StatusPillProps {
   status?: string;
   label?: string;
   children?: React.ReactNode;
-  tone?: "success" | "warning" | "error" | "info" | "neutral";
+  /** "active"/"attention" are what the workspace consoles label a live or stalled item with. */
+  tone?: "success" | "warning" | "error" | "info" | "neutral" | "active" | "attention";
   className?: string;
 }
 
@@ -57,6 +58,9 @@ export function StatusPill({ status, label, children, tone = "info", className }
     error: "#fee2e2",
     info: "#e0f2fe",
     neutral: "#f1f5f9",
+    // A held item reads as live, one waiting on someone reads as a warning.
+    active: "#dcfce7",
+    attention: "#fef3c7",
   };
   const colorMap = {
     success: "#15803d",
@@ -64,6 +68,8 @@ export function StatusPill({ status, label, children, tone = "info", className }
     error: "#b91c1c",
     info: "#0369a1",
     neutral: "#475569",
+    active: "#15803d",
+    attention: "#b45309",
   };
 
   return (

@@ -47,7 +47,6 @@ export function CatalogStoryCard({
             <Bookmark aria-hidden="true" /> {numberFormatter.format(story.saveCount ?? 0)}
           </span>
         </span>
-        <span className="coverLabel">{story.title}</span>
       </Link>
       <div className="catalogCardBody">
         <h3>

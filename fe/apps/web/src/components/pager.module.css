@@ -1,0 +1,51 @@
+.pager {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem;
+  justify-content: center;
+  padding: 1.25rem 0;
+}
+
+.pager button {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #d7e3f4;
+  border-radius: .45rem;
+  color: #1d3557;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  justify-content: center;
+  /* Fixed box so the row keeps its rhythm from "1" to "1000". */
+  min-width: 2.25rem;
+  padding: .45rem .55rem;
+}
+
+.pager button:hover:not(:disabled):not(.current) {
+  background: #eef4fc;
+  border-color: #7aa7db;
+}
+
+.pager button:disabled {
+  color: #b6c2d2;
+  cursor: not-allowed;
+}
+
+.current {
+  background: #1d3557 !important;
+  border-color: #1d3557 !important;
+  color: #fff !important;
+  font-weight: 700;
+}
+
+.gap {
+  color: #94a3b8;
+  padding: 0 .15rem;
+  user-select: none;
+}
+
+.pager svg {
+  height: 1rem;
+  width: 1rem;
+}

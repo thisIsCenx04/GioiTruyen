@@ -13,10 +13,12 @@ import { CatalogStoryCard } from "@/components/catalog-story-card";
 import { ChapterListItem } from "@/components/chapter-list-item";
 import { Comments } from "@/components/comments";
 import { DonationJourney } from "@/components/donation-journey";
+import { StoryRecommend } from "@/components/story-recommend";
 import { PublicShell } from "@/components/site-chrome";
 import { StoryRelations } from "@/components/story-relations";
 import { StoryReportButton } from "@/components/story-report-button";
 import { StoryShareButton } from "@/components/story-share-button";
+import { StoryComboPurchase } from "@/components/story-combo-purchase";
 import { coverUrl, StoryCoverPlaceholder } from "@/components/story-cover";
 import { loadStoryDetail } from "@/lib/catalog";
 
@@ -27,9 +29,9 @@ type StoryPageProps = Readonly<{
 
 const numberFormatter = new Intl.NumberFormat("vi-VN");
 
-const loadStory = cache(async (identifier: string) => {
+const loadStory = cache(async (identifier: string, page: number) => {
   try {
-    return { ...(await loadStoryDetail(identifier)), state: "ready" as const };
+    return { ...(await loadStoryDetail(identifier, page)), state: "ready" as const };
   } catch (error) {
     return error instanceof StoryApiError && error.problem.status === 404
       ? { state: "missing" as const }
@@ -65,7 +67,9 @@ function pageWindow(currentPage: number, totalPages: number) {
 export default async function StoryPage({ params, searchParams }: StoryPageProps) {
   const { idOrSlug } = await params;
   const query = await searchParams;
-  const result = await loadStory(idOrSlug);
+  const requestedPage = Number(query?.page ?? "1");
+  const askedPage = Number.isFinite(requestedPage) ? Math.max(Math.trunc(requestedPage), 1) : 1;
+  const result = await loadStory(idOrSlug, askedPage);
   if (result.state === "missing" || (result.state === "ready" && !result.story)) throw new Error("Not Found");
   if (result.state === "unavailable") {
     return (
@@ -83,22 +87,21 @@ export default async function StoryPage({ params, searchParams }: StoryPageProps
   if (!story) throw new Error("Not Found");
   const categories = result.categories ?? [];
   const relatedStories = result.relatedStories ?? [];
+  // The server pages the list now, so this renders what it sent rather than
+  // slicing a full list it no longer receives - a thousand-chapter story used
+  // to arrive capped at 100, which put chapter 101 onwards out of reach.
   const chapterItems = result.chapters?.items ?? [];
-  const orderedChapters = [...chapterItems].sort((left, right) => left.number - right.number);
-  const totalPages = Math.max(1, Math.ceil(orderedChapters.length / chaptersPerPage));
-  const requestedPage = Number(query?.page ?? "1");
-  const currentPage = Number.isFinite(requestedPage)
-    ? Math.min(Math.max(Math.trunc(requestedPage), 1), totalPages)
-    : 1;
-  const pagedChapters = orderedChapters.slice(
-    (currentPage - 1) * chaptersPerPage,
-    currentPage * chaptersPerPage,
-  );
+  const pagedChapters = [...chapterItems].sort((left, right) => left.number - right.number);
+  const totalChapters = result.chapters?.total ?? pagedChapters.length;
+  const totalPages = Math.max(1, result.chapters?.totalPages ?? 1);
+  const currentPage = Math.min(askedPage, totalPages);
   const visiblePages = pageWindow(currentPage, totalPages);
   const summary = result.summary;
   const team = result.team;
-  const firstChapter = orderedChapters[0];
-  const latestChapter = orderedChapters.at(-1);
+  // The ends of the whole story, not of the page being read: "Đọc tập mới" has
+  // to reach the newest chapter even when the reader is looking at page one.
+  const firstChapter = result.firstChapter ?? pagedChapters[0];
+  const latestChapter = result.latestChapter ?? pagedChapters.at(-1);
   // A Zhihu-style short story is read on this page, so it shows its text instead
   // of a table of contents and never links out to a chapter route.
   const isOneshot = story.storyFormat === "ONESHOT";
@@ -153,7 +156,14 @@ export default async function StoryPage({ params, searchParams }: StoryPageProps
 
             <div className="storyActionBar" aria-label="Thao tác với truyện">
               <StoryRelations storyId={story.id} />
+              <StoryRecommend storyId={story.id} />
               <DonationJourney storyTitle={story.title} teamId={story.teamId} variant="action" />
+              <StoryComboPurchase
+                chaptersCount={totalChapters}
+                completionStatus={story.completionStatus}
+                storyId={story.id}
+                storyTitle={story.title}
+              />
               {isOneshot ? (
                 <a className="storyAction storyActionStart" href="#oneshot-body"><BookOpen /> Đọc truyện</a>
               ) : (
@@ -211,9 +221,9 @@ export default async function StoryPage({ params, searchParams }: StoryPageProps
               <div id="chapter-list">
                 <header>
                   <h2 id="chapters-title">Danh sách chương</h2>
-                  <span>{chapterItems.length} chương · {chaptersPerPage} chương/trang</span>
+                  <span>{totalChapters} chương · {chaptersPerPage} chương/trang</span>
                 </header>
-                {orderedChapters.length > 0 ? (
+                {pagedChapters.length > 0 ? (
                   <>
                     <ol>
                       {pagedChapters.map((chapter) => (

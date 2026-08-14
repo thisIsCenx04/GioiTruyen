@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** A reader asking for permission to publish. */
 @RestController
-@RequestMapping("/author-applications")
+@RequestMapping({"/author-applications", "/teams/applications"})
 public class AuthorApplicationController {
 
     private final AuthorApplicationService service;

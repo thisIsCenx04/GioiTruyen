@@ -5,6 +5,7 @@ import {
   StoryApiError,
   type AuthSession,
 } from "@gioitruyen/api-client";
+import { Eye, EyeOff } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useNavigate, useLocation, useParams, useSearchParams } from "react-router-dom";
 import {
@@ -22,12 +23,34 @@ type LoginResponse = Readonly<{
   refreshToken?: string;
 }>;
 
-const auth = createBrowserAuthClient({ baseUrl: "/api/v1/auth" });
+/**
+ * Puts the reader into a signed-in state after the API hands back a token pair.
+ *
+ * Both journeys end here: registering already returns the same pair as logging
+ * in, so making the new account sign in immediately is a matter of storing what
+ * the response carried rather than asking for the password a second time.
+ */
+function startSession(session: LoginResponse): void {
+  document.cookie = "logged_in=true; path=/; max-age=2592000; SameSite=Lax";
+  if (!session?.accessToken) {
+    return;
+  }
+  document.cookie = `access_token=${encodeURIComponent(session.accessToken)}; path=/; max-age=2592000; SameSite=Lax`;
+  localStorage.setItem("access_token", session.accessToken);
+  if (session.refreshToken) {
+    document.cookie = `refresh_token=${encodeURIComponent(session.refreshToken)}; path=/; max-age=2592000; SameSite=Lax`;
+    localStorage.setItem("refresh_token", session.refreshToken);
+  }
+  // The header watches this to swap the sign-in link for the profile menu.
+  window.dispatchEvent(new Event("auth-change"));
+}
+
+const auth = createBrowserAuthClient({ baseUrl: "/api/v1" });
 const routes = {
   forgotPassword: "/auth/forgot-password" as string,
   login: "/login" as string,
   mfa: "/auth/mfa" as string,
-  register: "/auth/register" as string,
+  register: "/register" as string,
 };
 
 const messages: Readonly<Record<string, string>> = {
@@ -151,16 +174,7 @@ export function LoginJourney() {
         String(values.get("password")),
         needsMfa ? String(values.get("mfaCode")) : undefined,
       )) as unknown as LoginResponse;
-      document.cookie = "logged_in=true; path=/; max-age=2592000; SameSite=Lax";
-      if (res && res.accessToken) {
-        document.cookie = `access_token=${encodeURIComponent(res.accessToken)}; path=/; max-age=2592000; SameSite=Lax`;
-        localStorage.setItem("access_token", res.accessToken);
-        if (res.refreshToken) {
-          document.cookie = `refresh_token=${encodeURIComponent(res.refreshToken)}; path=/; max-age=2592000; SameSite=Lax`;
-          localStorage.setItem("refresh_token", res.refreshToken);
-        }
-      }
-      window.dispatchEvent(new Event("auth-change"));
+      startSession(res);
       const destination = getPostLoginDestination(
         res.accessToken ?? null,
         searchParams.get("returnTo"),
@@ -247,22 +261,30 @@ export function RegisterJourney() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
     setError("");
-    const values = new FormData(event.currentTarget);
+    // Held before the first await: React clears currentTarget once the
+    // synchronous handler returns, so reaching for it afterwards threw a
+    // TypeError that the catch below reported as "không kết nối được máy chủ" -
+    // even though the account had just been created.
+    const form = event.currentTarget;
+    const values = new FormData(form);
     try {
-      await auth.register(
+      const res = (await auth.register(
         String(values.get("email")),
         String(values.get("password")),
         values.get("acceptedTerms") === "on",
-      );
-      setMessage(
-        "Tài khoản đã được tạo. Bạn có thể đăng nhập ngay.",
-      );
-      event.currentTarget.reset();
+      )) as unknown as LoginResponse;
+      setMessage("Tạo tài khoản thành công. Đang đưa bạn vào trang chủ…");
+      form.reset();
+      // Registering returns a token pair, so the new account is signed in here
+      // rather than being sent to the login form to retype what it just typed.
+      startSession(res);
+      window.location.href = "/";
     } catch (requestError) {
       setError(errorMessage(requestError));
     } finally {
@@ -297,18 +319,33 @@ export function RegisterJourney() {
       </div>
       <div className={styles.field}>
         <label htmlFor="register-password">Mật khẩu</label>
-        <input
-          aria-describedby="password-hint"
-          autoComplete="new-password"
-          id="register-password"
-          maxLength={128}
-          minLength={12}
-          name="password"
-          required
-          type="password"
-        />
+        <div className={styles.passwordField}>
+          <input
+            aria-describedby="password-hint"
+            autoComplete="new-password"
+            id="register-password"
+            maxLength={128}
+            minLength={8}
+            name="password"
+            // Mirrors the server's rule so the browser catches it before the
+            // round trip; the server still enforces it either way.
+            pattern="(?=.*[A-Z])(?=.*\d).*"
+            required
+            title="Ít nhất 8 ký tự, có chữ in hoa và chữ số."
+            type={showPassword ? "text" : "password"}
+          />
+          <button
+            aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+            aria-pressed={showPassword}
+            className={styles.passwordToggle}
+            onClick={() => setShowPassword((visible) => !visible)}
+            type="button"
+          >
+            {showPassword ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+          </button>
+        </div>
         <p className={styles.hint} id="password-hint">
-          Dùng ít nhất 12 ký tự. Một cụm từ dài, riêng biệt sẽ dễ nhớ và an toàn hơn.
+          Ít nhất 8 ký tự, có ít nhất một chữ in hoa và một chữ số.
         </p>
       </div>
       <label className={styles.check}>

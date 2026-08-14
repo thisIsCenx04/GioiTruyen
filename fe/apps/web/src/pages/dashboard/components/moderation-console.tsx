@@ -39,7 +39,7 @@ function time(value: string | null) {
 
 export function ModerationConsole() {
   const api = useMemo(() => createBrowserModerationClient({ fetchImplementation: authedFetch }), []);
-  const auth = useMemo(() => createBrowserAuthClient({ baseUrl: "/api/v1/auth" }), []);
+  const auth = useMemo(() => createBrowserAuthClient({ baseUrl: "/api/v1" }), []);
   const [cases, setCases] = useState<ModerationCase[]>([]);
   const [detail, setDetail] = useState<ModerationReviewDetail | null>(null);
   const [chapterIndex, setChapterIndex] = useState(0);

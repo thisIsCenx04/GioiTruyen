@@ -21,7 +21,8 @@ public final class CatalogDtos {
             /** SERIAL or ONESHOT - cards link straight into a one-page read. */
             String storyFormat,
             /** TEXT, AUDIO, EXCLUSIVE or ORIGINAL - drives the shelf badges. */
-            String storyType
+            String storyType,
+            String originalAuthor
     ) {
     }
 
@@ -145,7 +146,17 @@ public final class CatalogDtos {
     ) {
     }
 
-    public record ChapterPage(List<PublicChapter> items, String nextCursor, boolean hasMore) {
+    /**
+     * One page of chapters, with enough to draw a numbered pager: a reader on a
+     * thousand-chapter story needs to reach page 50 directly.
+     */
+    public record ChapterPage(
+            List<PublicChapter> items,
+            int page,
+            int size,
+            long total,
+            int totalPages
+    ) {
     }
 
     public record SearchHit(HomeStorySummary story, double score, List<String> highlights) {

@@ -122,7 +122,7 @@ export async function refreshAccessToken(): Promise<string | null> {
 
   inFlightRefresh = (async () => {
     try {
-      const response = await fetch("/api/v1/auth/refresh", {
+      const response = await fetch("/api/v1/refresh", {
         body: JSON.stringify({ refreshToken }),
         headers: { "Content-Type": "application/json" },
         method: "POST",

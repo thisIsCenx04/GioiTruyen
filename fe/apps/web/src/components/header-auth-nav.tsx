@@ -3,11 +3,22 @@
 import { BookMarked, LogOut, ShieldCheck, Target, UserRound, WalletCards } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { isAdminUser, isLoggedIn as checkIsLoggedIn, loginHref } from "@/lib/auth";
+import {
+  getAccessToken,
+  isAdminUser,
+  isLoggedIn as checkIsLoggedIn,
+  loginHref,
+  refreshAccessToken,
+} from "@/lib/auth";
+
+const money = new Intl.NumberFormat("vi-VN");
+
+type HeaderWallet = { coinBalance: number; gemBalance: number };
 
 export function HeaderAuthNav() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [wallet, setWallet] = useState<HeaderWallet | null>(null);
 
   useEffect(() => {
     const updateAuthState = () => {
@@ -26,6 +37,37 @@ export function HeaderAuthNav() {
       window.removeEventListener("auth-change", updateAuthState);
     };
   }, []);
+
+  // Loaded once the reader is known to be signed in; a guest has no balance to
+  // fetch and asking would only produce a 401 on every page.
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setWallet(null);
+      return undefined;
+    }
+    let cancelled = false;
+    const load = async () => {
+      const send = (token: string | null) =>
+        fetch("/api/v1/wallets/me", {
+          headers: token
+            ? { Accept: "application/json", Authorization: `Bearer ${token}` }
+            : { Accept: "application/json" },
+        });
+      try {
+        let response = await send(getAccessToken());
+        if (response.status === 401) {
+          const renewed = await refreshAccessToken();
+          if (renewed) response = await send(renewed);
+        }
+        if (response.ok && !cancelled) setWallet((await response.json()) as HeaderWallet);
+      } catch {
+        // A balance is decoration in the header; failing to read it must not
+        // break the navigation around it.
+      }
+    };
+    void load();
+    return () => { cancelled = true; };
+  }, [isLoggedIn]);
 
   async function handleLogout() {
     try {
@@ -51,7 +93,7 @@ export function HeaderAuthNav() {
         <Link className="headerLoginBtn" to={loginHref()}>
           Đăng nhập
         </Link>
-        <Link className="headerRegisterBtn" to={"/auth/register" as string}>
+        <Link className="headerRegisterBtn" to={"/register" as string}>
           Đăng ký
         </Link>
       </div>
@@ -86,7 +128,16 @@ export function HeaderAuthNav() {
         </Link>
         <Link to={"/wallet" as string}>
           <WalletCards aria-hidden="true" />
-          Ví của bạn
+          {/* Label and balance stack in their own column: side by side, a
+              six-figure balance pushed "Ví của bạn" onto a second line. */}
+          <span className="headerWalletText">
+            <span>Ví của bạn</span>
+            {wallet ? (
+              <small className="headerWalletBalance">
+                {money.format(wallet.coinBalance)} xu · {money.format(wallet.gemBalance)} ngọc
+              </small>
+            ) : null}
+          </span>
         </Link>
         <Link to={"/account" as string}>
           <UserRound aria-hidden="true" />

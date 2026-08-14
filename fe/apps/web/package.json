@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@gioitruyen/api-client": "workspace:*",
+    "@gioitruyen/ui": "workspace:*",
     "clsx": "^2.1.0",
     "date-fns": "^3.6.0",
     "fflate": "^0.8.3",

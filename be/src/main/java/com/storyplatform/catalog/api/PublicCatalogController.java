@@ -2,6 +2,8 @@ package com.storyplatform.catalog.api;
 
 import com.storyplatform.catalog.application.PublicCatalogService;
 import com.storyplatform.catalog.application.dto.CatalogDtos;
+import com.storyplatform.engagement.application.StoryViewRecorder;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -14,9 +16,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class PublicCatalogController {
 
     private final PublicCatalogService catalogService;
+    private final StoryViewRecorder viewRecorder;
 
-    public PublicCatalogController(PublicCatalogService catalogService) {
+    public PublicCatalogController(
+            PublicCatalogService catalogService,
+            StoryViewRecorder viewRecorder
+    ) {
         this.catalogService = catalogService;
+        this.viewRecorder = viewRecorder;
     }
 
     @GetMapping("/home")
@@ -74,22 +81,71 @@ public class PublicCatalogController {
     @GetMapping("/stories/{identifier}/chapters")
     public CatalogDtos.ChapterPage chapters(
             @PathVariable String identifier,
-            @RequestParam(defaultValue = "100") int limit,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal Jwt jwt
     ) {
-        return catalogService.chapters(identifier, limit, readerId(jwt));
+        return catalogService.chapters(identifier, page, size, readerId(jwt));
+    }
+
+    /**
+     * Resolves a chapter from its number within a story.
+     *
+     * <p>The reader URL carries "chuong-12", and the page used to find that in
+     * the chapter list - which only worked while the whole list came back in one
+     * response. With the list paged, chapter 500 lives on a page the reader page
+     * never asked for, so the lookup belongs on the server.
+     */
+    @GetMapping("/stories/{identifier}/chapters/by-number/{number}")
+    public CatalogDtos.PublishedChapterDetail chapterByNumber(
+            @PathVariable String identifier,
+            @PathVariable String number,
+            @AuthenticationPrincipal Jwt jwt,
+            HttpServletRequest request
+    ) {
+        CatalogDtos.PublishedChapterDetail detail =
+                catalogService.chapterByNumber(identifier, number, readerId(jwt));
+        if (detail.unlocked()) {
+            viewRecorder.recordChapterView(
+                    detail.storyId(), detail.id(), readerId(jwt), clientIp(request));
+        }
+        return detail;
     }
 
     @GetMapping("/chapters/{chapterId}")
     public CatalogDtos.PublishedChapterDetail chapter(
             @PathVariable String chapterId,
-            @AuthenticationPrincipal Jwt jwt
+            @AuthenticationPrincipal Jwt jwt,
+            HttpServletRequest request
     ) {
-        return catalogService.chapter(chapterId, readerId(jwt));
+        CatalogDtos.PublishedChapterDetail detail = catalogService.chapter(chapterId, readerId(jwt));
+        // Only a chapter the reader can actually read counts. A locked one comes
+        // back without its text, so counting it would inflate the figure with
+        // paywall bounces rather than reading.
+        if (detail.unlocked()) {
+            viewRecorder.recordChapterView(
+                    detail.storyId(), detail.id(), readerId(jwt), clientIp(request));
+        }
+        return detail;
     }
 
     private static String readerId(Jwt jwt) {
         return jwt == null ? null : jwt.getSubject();
+    }
+
+    /**
+     * The caller's address as far as it can be trusted.
+     *
+     * <p>Behind nginx every request arrives from localhost, so the forwarded
+     * header is read first; its leftmost entry is the original client. It is
+     * only ever hashed for de-duplication, never stored or shown.
+     */
+    private static String clientIp(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) {
+            return forwarded.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 
     @GetMapping("/search")

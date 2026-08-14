@@ -41,19 +41,24 @@ public class AuthService {
     private final JwtEncoder jwtEncoder;
     private final NamedParameterJdbcTemplate jdbc;
     private final LoginAttemptLimiter loginAttemptLimiter;
+    /** Stored with each sign-up so it stays clear what was agreed to. */
+    private final String consentVersion;
 
     public AuthService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             JwtEncoder jwtEncoder,
             NamedParameterJdbcTemplate jdbc,
-            LoginAttemptLimiter loginAttemptLimiter
+            LoginAttemptLimiter loginAttemptLimiter,
+            @org.springframework.beans.factory.annotation.Value(
+                    "${app.identity.registration.current-consent-version}") String consentVersion
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtEncoder = jwtEncoder;
         this.jdbc = jdbc;
         this.loginAttemptLimiter = loginAttemptLimiter;
+        this.consentVersion = consentVersion;
     }
 
     @Transactional
@@ -92,9 +97,13 @@ public class AuthService {
         jdbc.update(
                 """
                         INSERT INTO users (id, email, username, password_hash, display_name,
-                                           role, status, email_verified_at, created_at, updated_at)
+                                           role, status, email_verified_at,
+                                           terms_accepted_at, terms_version,
+                                           created_at, updated_at)
                         VALUES (:id, :email, :username, :passwordHash, :displayName,
-                                :role, :status, :emailVerifiedAt, :createdAt, :updatedAt)
+                                :role, :status, :emailVerifiedAt,
+                                :termsAcceptedAt, :termsVersion,
+                                :createdAt, :updatedAt)
                         """,
                 Map.ofEntries(
                         Map.entry("id", userId.toString()),
@@ -105,6 +114,10 @@ public class AuthService {
                         Map.entry("role", user.getRole().name()),
                         Map.entry("status", user.getStatus().name()),
                         Map.entry("emailVerifiedAt", java.sql.Timestamp.from(now)),
+                        // Validation already refused anything but true, so the
+                        // moment the row is written is the moment they agreed.
+                        Map.entry("termsAcceptedAt", java.sql.Timestamp.from(now)),
+                        Map.entry("termsVersion", consentVersion),
                         Map.entry("createdAt", java.sql.Timestamp.from(now)),
                         Map.entry("updatedAt", java.sql.Timestamp.from(now))
                 )

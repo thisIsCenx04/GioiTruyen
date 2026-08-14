@@ -23,23 +23,54 @@ import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class SecurityConfiguration {
 
+    /** HS256 is defined over a 256-bit key; a shorter one is not a valid key. */
+    private static final int MINIMUM_JWT_SECRET_BYTES = 32;
+
+    /**
+     * The one key both halves of the token flow use.
+     *
+     * <p>Validated here rather than left to fail deep inside Nimbus: an absent
+     * key used to fall back to a value committed in the repository, so a
+     * deployment that forgot to set {@code JWT_SIGNING_KEY} signed its tokens
+     * with a secret anyone could read - and an ADMIN token is only a signature
+     * away from full access to /admin/**.
+     */
     @Bean
-    JwtDecoder jwtDecoder(@Value("${app.security.jwt-secret}") String jwtSecret) {
-        SecretKey secretKey = new SecretKeySpec(jwtSecret.getBytes(java.nio.charset.StandardCharsets.UTF_8), "HmacSHA256");
-        return NimbusJwtDecoder.withSecretKey(secretKey)
+    SecretKey jwtSigningKey(@Value("${app.security.jwt-secret}") String jwtSecret) {
+        byte[] key = jwtSecret == null
+                ? new byte[0]
+                : jwtSecret.trim().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        if (key.length == 0) {
+            throw new IllegalStateException(
+                    "JWT_SIGNING_KEY is not set. Tokens cannot be signed without it. "
+                            + "Set JWT_SIGNING_KEY (at least " + MINIMUM_JWT_SECRET_BYTES
+                            + " bytes) in the environment before starting the backend.");
+        }
+        if (key.length < MINIMUM_JWT_SECRET_BYTES) {
+            throw new IllegalStateException(
+                    "JWT_SIGNING_KEY is only " + key.length + " bytes; HS256 requires at least "
+                            + MINIMUM_JWT_SECRET_BYTES + ".");
+        }
+        return new SecretKeySpec(key, "HmacSHA256");
+    }
+
+    @Bean
+    JwtDecoder jwtDecoder(SecretKey jwtSigningKey) {
+        return NimbusJwtDecoder.withSecretKey(jwtSigningKey)
                 .macAlgorithm(MacAlgorithm.HS256)
                 .build();
     }
 
     @Bean
-    JwtEncoder jwtEncoder(@Value("${app.security.jwt-secret}") String jwtSecret) {
-        return new NimbusJwtEncoder(new ImmutableSecret<>(jwtSecret.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+    JwtEncoder jwtEncoder(SecretKey jwtSigningKey) {
+        return new NimbusJwtEncoder(new ImmutableSecret<>(jwtSigningKey));
     }
 
     @Bean
@@ -47,10 +78,31 @@ public class SecurityConfiguration {
         return new BCryptPasswordEncoder();
     }
 
+    /**
+     * Cross-origin callers, named one by one.
+     *
+     * <p>The previous {@code "*"} pattern combined with allowed credentials made
+     * Spring echo back whichever Origin asked, so any website on the internet
+     * could call this API as the visitor and read the reply. Credentials are
+     * still allowed - the deployed frontend shares the API's origin and never
+     * needs CORS at all, so the cost of naming the rest is small.
+     */
     @Bean
-    CorsConfigurationSource corsConfigurationSource() {
+    CorsConfigurationSource corsConfigurationSource(
+            @Value("${app.security.allowed-origins}") String allowedOrigins
+    ) {
+        List<String> origins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .toList();
+        if (origins.contains("*")) {
+            throw new IllegalStateException(
+                    "CORS_ALLOWED_ORIGINS cannot be \"*\" while credentials are allowed. "
+                            + "List each origin that may call the API.");
+        }
+
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*"));
+        configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
@@ -62,10 +114,11 @@ public class SecurityConfiguration {
     @Bean
     SecurityFilterChain applicationSecurity(
             HttpSecurity http,
-            SecurityProblemHandler problemHandler
+            SecurityProblemHandler problemHandler,
+            CorsConfigurationSource corsConfigurationSource
     ) throws Exception {
         return http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .formLogin(form -> form.disable())
                 .httpBasic(basic -> basic.disable())
                 .csrf(csrf -> csrf.disable())
@@ -102,6 +155,9 @@ public class SecurityConfiguration {
                                 "/stories",
                                 "/stories/*",
                                 "/stories/*/chapters",
+                                // Resolving "chuong-12" to a chapter is as
+                                // public as the chapter list it replaced.
+                                "/stories/*/chapters/by-number/*",
                                 "/chapters/*",
                                 "/chapters/*/access",
                                 // Reading the discussion is public; posting is not.
@@ -132,12 +188,12 @@ public class SecurityConfiguration {
                         ).permitAll()
                         .requestMatchers(
                                 HttpMethod.POST,
-                                "/auth/register",
-                                "/auth/email/verify",
-                                "/auth/login",
-                                "/auth/refresh",
-                                "/auth/password/forgot",
-                                "/auth/password/reset",
+                                "/register",
+                                "/login",
+                                "/refresh",
+                                "/email/verify",
+                                "/password/forgot",
+                                "/password/reset",
                                 "/reading-sessions",
                                 "/reading-sessions/*/heartbeats",
                                 "/reading-sessions/*/complete",
@@ -149,12 +205,12 @@ public class SecurityConfiguration {
                                 "/auth/oauth2/**"
                         ).permitAll()
                         .requestMatchers(
-                                "/auth/logout",
-                                "/auth/sessions",
-                                "/auth/sessions/*",
-                                "/auth/mfa/challenge",
-                                "/auth/mfa/verify",
-                                "/auth/reauth/grants"
+                                "/logout",
+                                "/sessions",
+                                "/sessions/*",
+                                "/mfa/challenge",
+                                "/mfa/verify",
+                                "/reauth/grants"
                         ).authenticated()
                         .requestMatchers("/notifications/**")
                         .authenticated()
@@ -205,7 +261,10 @@ public class SecurityConfiguration {
                         .requestMatchers("/me/library").authenticated()
                         .requestMatchers(
                                 "/stories/*/favorite",
-                                "/stories/*/follow"
+                                "/stories/*/follow",
+                                // Spending gems on a story, and reading back
+                                // what you personally gave it.
+                                "/stories/*/recommend"
                         ).authenticated()
                         .requestMatchers(
                                 HttpMethod.POST,

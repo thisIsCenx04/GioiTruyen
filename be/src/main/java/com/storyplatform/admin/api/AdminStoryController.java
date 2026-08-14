@@ -613,8 +613,14 @@ public class AdminStoryController {
             if (title == null && content == null) {
                 break;
             }
+            // Dropping an empty chapter here made it vanish without a word: the
+            // submitted list simply came back one chapter shorter than what the
+            // admin saw in the form. Refusing says which chapter is at fault.
             if (content == null || content.isBlank()) {
-                continue;
+                throw new ApiException(HttpStatus.BAD_REQUEST, "chapter.empty_content",
+                        "Chapter has no content",
+                        "Chương %d (\"%s\") chưa có nội dung nên không thể lưu. Hãy nhập nội dung hoặc xóa chương này."
+                                .formatted(index + 1, title == null ? "" : title));
             }
             chapters.add(new ChapterDraft(title, slug, content, accessType, coinPrice));
         }

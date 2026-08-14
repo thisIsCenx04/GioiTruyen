@@ -181,7 +181,7 @@ export default function QuestsPage() {
                 </Link>
                 <Link
                   className="questLoginSecondary"
-                  to={`/auth/register?returnTo=${encodeURIComponent("/quests")}`}
+                  to={`/register?returnTo=${encodeURIComponent("/quests")}`}
                 >
                   Đăng ký
                 </Link>

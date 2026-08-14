@@ -17,6 +17,27 @@ public class PublicTeamController {
         this.jdbc = jdbc;
     }
 
+    @GetMapping("/teams")
+    public java.util.List<TeamResponse> listTeams() {
+        return jdbc.query(
+                """
+                        SELECT id, slug, name, description, status
+                        FROM teams
+                        WHERE status = 'ACTIVE'
+                        ORDER BY name ASC
+                        """,
+                Map.of(),
+                (rs, rowNum) -> new TeamResponse(
+                        rs.getString("id"),
+                        rs.getString("slug"),
+                        rs.getString("name"),
+                        rs.getString("description"),
+                        rs.getString("status"),
+                        1
+                )
+        );
+    }
+
     @GetMapping("/teams/{teamId}")
     public TeamResponse team(@PathVariable String teamId) {
         return jdbc.query(

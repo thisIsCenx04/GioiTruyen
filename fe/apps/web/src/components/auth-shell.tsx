@@ -56,11 +56,11 @@ export function AuthShell({
 export function JourneyHeading({
   children,
   lead,
-}: Readonly<{ children: ReactNode; lead: string }>) {
+}: Readonly<{ children: ReactNode; lead?: string }>) {
   return (
     <>
       <h2 className={styles.sheetTitle}>{children}</h2>
-      <p className={styles.lede}>{lead}</p>
+      {lead ? <p className={styles.lede}>{lead}</p> : null}
     </>
   );
 }

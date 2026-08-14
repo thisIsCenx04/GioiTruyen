@@ -9,11 +9,14 @@ import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Sign-up and sign-in sit directly under the API root: /login, /register,
+ * /refresh. The endpoints are named after what they do, so an extra "auth"
+ * segment in front added nothing a reader of the URL did not already know.
+ */
 @RestController
-@RequestMapping("/auth")
 public class AuthController {
 
     private final AuthService authService;

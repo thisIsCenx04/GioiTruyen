@@ -340,8 +340,8 @@ public class TopupService {
                         rs.getLong("gem_received"),
                         rs.getString("method_name"),
                         rs.getString("status"),
-                        String.valueOf(rs.getTimestamp("created_at")),
-                        rs.getTimestamp("paid_at") == null ? null : String.valueOf(rs.getTimestamp("paid_at"))))
+                        instantText(rs.getTimestamp("created_at")),
+                        instantText(rs.getTimestamp("paid_at"))))
                 .list();
     }
 
@@ -390,6 +390,18 @@ public class TopupService {
 
     private static String text(Object value) {
         return value == null ? "" : String.valueOf(value);
+    }
+
+    /**
+     * ISO-8601, because the browser is what reads these.
+     *
+     * <p>{@code Timestamp.toString()} produces "2026-08-13 10:37:12.0", which is
+     * not a format {@code new Date(...)} is required to understand: V8 happens
+     * to accept it while Firefox and Safari return an invalid date, so the
+     * wallet history showed nothing on those browsers.
+     */
+    private static String instantText(java.sql.Timestamp timestamp) {
+        return timestamp == null ? null : timestamp.toInstant().toString();
     }
 
     private record Payment(

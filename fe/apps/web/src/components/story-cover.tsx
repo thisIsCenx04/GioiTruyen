@@ -26,7 +26,7 @@ export function StoryCoverPlaceholder() {
         <path d="M4 5.5V19a1 1 0 0 0 1 1h14" strokeLinecap="round" strokeLinejoin="round" />
         <path d="M8 8.5h7M8 12h7" strokeLinecap="round" />
       </svg>
-      <span>Bổ sung ảnh bìa</span>
+      <span>Chưa có ảnh bìa</span>
     </span>
   );
 }

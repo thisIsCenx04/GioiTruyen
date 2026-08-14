@@ -79,7 +79,17 @@ const defaultHomeData = {
 };
 
 const defaultTaxonomy = { version: "1.0", groups: [] };
-const defaultChapters = { items: [] as PublicChapter[], nextCursor: null, hasMore: false };
+/** Chapters shown per page of the story list; the pager is sized from this. */
+export const CHAPTERS_PER_PAGE = 20;
+
+/** Stands in when the chapter request fails, so the page renders an empty list. */
+const defaultChapters = {
+  items: [] as PublicChapter[],
+  page: 1,
+  size: CHAPTERS_PER_PAGE,
+  total: 0,
+  totalPages: 0,
+};
 
 export async function loadHome() {
   const outcome: LoadOutcome = { degraded: false };
@@ -158,11 +168,15 @@ export async function loadTagStories(slug: string) {
   );
 }
 
-export async function loadStoryDetail(identifier: string) {
+export async function loadStoryDetail(identifier: string, page = 1) {
   const [rawStory, chapters, taxonomy, sections, rankingBoards] = await Promise.all([
     withTimeout(catalog.story(identifier), 10000, null),
     // Identified: the padlocks depend on which chapters this reader owns.
-    withTimeout(identifiedCatalog.chapters(identifier), 10000, defaultChapters),
+    withTimeout(
+      identifiedCatalog.chapters(identifier, page, CHAPTERS_PER_PAGE),
+      10000,
+      defaultChapters,
+    ),
     withTimeout(catalog.categories(), 10000, defaultTaxonomy),
     withTimeout(catalog.storySections(), 10000, []),
     withTimeout(catalog.rankingBoards(), 10000, []),
@@ -200,5 +214,31 @@ export async function loadStoryDetail(identifier: string) {
     ? await withTimeout(catalog.chapter(oneshotChapterId), 10000, null)
     : null;
 
-  return { categories, chapters, oneshotChapter, relatedStories, story, summary, team };
+  // "Đọc từ đầu" and "Đọc tập mới" point at the ends of the whole story, not of
+  // the page being viewed, so they are fetched as single rows rather than by
+  // pulling every chapter back just to look at the first and last.
+  const [firstPage, lastPage] = await Promise.all([
+    withTimeout(identifiedCatalog.chapters(identifier, 1, 1), 10000, defaultChapters),
+    chapters.total > 1
+      ? withTimeout(
+          identifiedCatalog.chapters(identifier, chapters.total, 1),
+          10000,
+          defaultChapters,
+        )
+      : Promise.resolve(defaultChapters),
+  ]);
+  const firstChapter = firstPage.items[0] ?? null;
+  const latestChapter = lastPage.items[0] ?? firstChapter;
+
+  return {
+    categories,
+    chapters,
+    firstChapter,
+    latestChapter,
+    oneshotChapter,
+    relatedStories,
+    story,
+    summary,
+    team,
+  };
 }

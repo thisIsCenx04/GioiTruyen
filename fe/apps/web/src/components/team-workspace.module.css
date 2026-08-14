@@ -422,6 +422,54 @@
   padding: 0.8rem 1rem;
 }
 
+.teamDashboardTabs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.75rem 0;
+  margin: 1.25rem 0;
+  border-bottom: 2px solid #dce4f3;
+}
+
+.teamDashboardTabs a,
+.teamDashboardTabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.65rem 1.15rem;
+  border-radius: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 750;
+  color: #475569;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.teamDashboardTabs a:hover,
+.teamDashboardTabs button:hover {
+  background: #f1f5f9;
+  color: #0f5fff;
+  border-color: #94a3b8;
+}
+
+.teamDashboardTabs a[aria-current="page"],
+.teamDashboardTabs button[data-active="true"] {
+  background: #0f5fff;
+  color: #ffffff;
+  border-color: #0f5fff;
+  box-shadow: 0 4px 12px rgba(15, 95, 255, 0.25);
+}
+
+.teamDashboardTabs svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
 .error {
   background: #ffe9e7;
   border-color: var(--workspace-coral);

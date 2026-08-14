@@ -38,6 +38,8 @@ public class AuthorApplicationService {
             String penName,
             String introduction,
             String sampleWork,
+            String phoneNumber,
+            String facebookUrl,
             String status,
             String reviewNote,
             String reviewedAt,
@@ -47,12 +49,20 @@ public class AuthorApplicationService {
     ) {
     }
 
-    public record ApplyRequest(String teamName, String penName, String introduction, String sampleWork) {
+    public record ApplyRequest(
+            String teamName,
+            String penName,
+            String introduction,
+            String sampleWork,
+            String phoneNumber,
+            String facebookUrl
+    ) {
     }
 
     private static final String SELECT = """
             SELECT a.id, a.user_id, u.email AS user_email, u.display_name AS user_name,
-                   a.team_name, a.pen_name, a.introduction, a.sample_work, a.status,
+                   a.team_name, a.pen_name, a.introduction, a.sample_work,
+                   a.phone_number, a.facebook_url, a.status,
                    a.review_note, a.reviewed_at, a.created_team_id, a.created_at, a.updated_at
             FROM author_applications a
             JOIN users u ON u.id = a.user_id
@@ -85,7 +95,7 @@ public class AuthorApplicationService {
     @Transactional
     public ApplicationView apply(UUID userId, ApplyRequest request) {
         String teamName = requireText(request.teamName(), "Tên nhóm đăng truyện");
-        String introduction = requireText(request.introduction(), "Phần giới thiệu");
+        String introduction = requireText(request.introduction(), "Phần giới thiệu / Ghi chú");
         if (introduction.length() > MAX_INTRODUCTION) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "author.introduction_too_long",
                     "Introduction too long",
@@ -118,14 +128,53 @@ public class AuthorApplicationService {
                     "Bạn đã gửi một yêu cầu và đang chờ duyệt.");
         }
 
+        String normalizedPhone = normalizePhone(request.phoneNumber());
+        if (normalizedPhone != null) {
+            if (normalizedPhone.length() < 9 || normalizedPhone.length() > 12) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "author.invalid_phone",
+                        "Invalid phone number",
+                        "Số điện thoại không hợp lệ (yêu cầu từ 9 đến 11 chữ số).");
+            }
+            boolean phoneInUse = jdbc.sql("""
+                            SELECT COUNT(*) FROM author_applications
+                            WHERE phone_number = ? AND status IN ('PENDING', 'APPROVED')
+                            """)
+                    .param(normalizedPhone)
+                    .query(Long.class)
+                    .single() > 0;
+            if (phoneInUse) {
+                throw new ApiException(HttpStatus.CONFLICT, "author.phone_number_in_use",
+                        "Phone number already in use",
+                        "Số điện thoại %s đã được sử dụng để gửi yêu cầu và đang chờ duyệt hoặc đã được cấp quyền."
+                                .formatted(normalizedPhone));
+            }
+        }
+
+        String normalizedFb = normalizeFacebook(request.facebookUrl());
+        if (normalizedFb != null) {
+            boolean fbInUse = jdbc.sql("""
+                            SELECT COUNT(*) FROM author_applications
+                            WHERE facebook_url = ? AND status IN ('PENDING', 'APPROVED')
+                            """)
+                    .param(normalizedFb)
+                    .query(Long.class)
+                    .single() > 0;
+            if (fbInUse) {
+                throw new ApiException(HttpStatus.CONFLICT, "author.facebook_url_in_use",
+                        "Facebook URL already in use",
+                        "Link Facebook/Fanpage này đã được sử dụng để gửi yêu cầu và đang chờ duyệt hoặc đã được cấp quyền.");
+            }
+        }
+
         String id = UUID.randomUUID().toString();
         jdbc.sql("""
                         INSERT INTO author_applications
-                            (id, user_id, team_name, pen_name, introduction, sample_work, status)
-                        VALUES (?, ?, ?, ?, ?, ?, 'PENDING')
+                            (id, user_id, team_name, pen_name, introduction, sample_work, phone_number, facebook_url, status)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')
                         """)
                 .params(id, userId.toString(), teamName, trimToNull(request.penName()),
-                        introduction, trimToNull(request.sampleWork()))
+                        introduction, trimToNull(request.sampleWork()),
+                        normalizedPhone, normalizedFb)
                 .update();
 
         return findById(id);
@@ -212,6 +261,47 @@ public class AuthorApplicationService {
         return application;
     }
 
+    public static String normalizePhone(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String digits = raw.replaceAll("[^0-9+]", "").trim();
+        if (digits.startsWith("+84")) {
+            digits = "0" + digits.substring(3);
+        } else if (digits.startsWith("84") && digits.length() >= 11) {
+            digits = "0" + digits.substring(2);
+        }
+        return digits.isBlank() ? null : digits;
+    }
+
+    public static String normalizeFacebook(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String url = raw.trim();
+        if (url.startsWith("http://")) {
+            url = "https://" + url.substring(7);
+        } else if (!url.startsWith("https://")) {
+            url = "https://" + url;
+        }
+        while (url.endsWith("/")) {
+            url = url.substring(0, url.length() - 1);
+        }
+        int queryIdx = url.indexOf("?");
+        if (queryIdx > 0 && (url.contains("facebook.com") || url.contains("fb.com"))) {
+            if (url.contains("profile.php") && url.contains("id=")) {
+                int idIdx = url.indexOf("id=");
+                int nextAmp = url.indexOf("&", idIdx);
+                if (nextAmp > 0) {
+                    url = url.substring(0, nextAmp);
+                }
+            } else {
+                url = url.substring(0, queryIdx);
+            }
+        }
+        return url.toLowerCase(Locale.ROOT);
+    }
+
     /**
      * "Nhà Dịch Ánh Trăng" -> "nha-dich-anh-trang".
      *
@@ -279,6 +369,8 @@ public class AuthorApplicationService {
                 rs.getString("pen_name"),
                 rs.getString("introduction"),
                 rs.getString("sample_work"),
+                rs.getString("phone_number"),
+                rs.getString("facebook_url"),
                 rs.getString("status"),
                 rs.getString("review_note"),
                 instant(rs, "reviewed_at"),

@@ -128,9 +128,20 @@
   line-height: 1.95;
   margin: 0 auto;
   max-width: 67rem;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .prose p { margin: 0 0 1.35em; }
+
+@media print {
+  .prose {
+    display: none !important;
+  }
+}
 
 .chapterNav {
   align-items: center;

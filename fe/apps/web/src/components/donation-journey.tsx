@@ -58,6 +58,7 @@ export function DonationJourney({
     [],
   );
   const [open, setOpen] = useState(false);
+  const panelRef = useRef<HTMLElement>(null);
   const [confirming, setConfirming] = useState(false);
   const [amount, setAmount] = useState(500);
   const [note, setNote] = useState("");
@@ -102,6 +103,17 @@ export function DonationJourney({
     }
   }
 
+  // Puts the caret in the panel once it opens, so the reader continues inside
+  // the form rather than from the button behind it, and holds the page still
+  // underneath the floating variant.
+  useEffect(() => {
+    if (!open || variant !== "action") return undefined;
+    panelRef.current?.focus();
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [open, variant]);
+
   if (!open) {
     return (
       <button
@@ -121,7 +133,7 @@ export function DonationJourney({
       {variant === "action" ? (
         <div className={styles.actionBackdrop} onClick={() => setOpen(false)} role="presentation" />
       ) : null}
-      <section className={`${styles.panel} ${variant === "action" ? styles.actionPanel : ""}`} aria-label="Ủng hộ đội ngũ sáng tác">
+      <section className={`${styles.panel} ${variant === "action" ? styles.actionPanel : ""}`} aria-label="Ủng hộ đội ngũ sáng tác" ref={panelRef} tabIndex={-1}>
       <div className={styles.heading}>
         <div>
           <span>Gửi một lời cảm ơn</span>

@@ -9,6 +9,8 @@ type Application = {
   id: string;
   teamName: string;
   penName: string | null;
+  phoneNumber: string | null;
+  facebookUrl: string | null;
   introduction: string;
   status: string;
   reviewNote: string | null;
@@ -63,8 +65,10 @@ export function AuthorApplicationForm() {
     try {
       const response = await authedFetch(`${API_BASE_URL}/author-applications`, {
         body: JSON.stringify({
+          facebookUrl: String(form.get("facebookUrl") ?? "").trim(),
           introduction: String(form.get("introduction") ?? "").trim(),
           penName: String(form.get("penName") ?? "").trim(),
+          phoneNumber: String(form.get("phoneNumber") ?? "").trim(),
           sampleWork: String(form.get("sampleWork") ?? "").trim(),
           teamName: String(form.get("teamName") ?? "").trim(),
         }),
@@ -105,6 +109,8 @@ export function AuthorApplicationForm() {
         </p>
         <dl className="authorApplyFacts">
           <div><dt>Tên nhóm</dt><dd>{application.teamName}</dd></div>
+          {application.phoneNumber ? <div><dt>Số điện thoại</dt><dd>{application.phoneNumber}</dd></div> : null}
+          {application.facebookUrl ? <div><dt>Facebook / Fanpage</dt><dd><a href={application.facebookUrl} rel="noreferrer" target="_blank">{application.facebookUrl}</a></dd></div> : null}
           {application.penName ? <div><dt>Bút danh</dt><dd>{application.penName}</dd></div> : null}
         </dl>
         {application.status === "APPROVED" ? (
@@ -134,15 +140,23 @@ export function AuthorApplicationForm() {
 
       <form className="authorApplyForm" onSubmit={submit}>
         <label>
-          <span>Tên nhóm đăng truyện</span>
+          <span>Tên nhóm đăng truyện *</span>
           <input maxLength={160} name="teamName" placeholder="Ví dụ: Nhà Dịch Ánh Trăng" required />
+        </label>
+        <label>
+          <span>Số điện thoại liên hệ *</span>
+          <input maxLength={30} name="phoneNumber" placeholder="Ví dụ: 0912345678" required type="tel" />
+        </label>
+        <label>
+          <span>Link Facebook / Fanpage *</span>
+          <input maxLength={500} name="facebookUrl" placeholder="https://facebook.com/your.page" required type="url" />
         </label>
         <label>
           <span>Bút danh (không bắt buộc)</span>
           <input maxLength={120} name="penName" />
         </label>
         <label>
-          <span>Giới thiệu về bạn và nội dung dự định đăng</span>
+          <span>Giới thiệu về bạn và nội dung dự định đăng *</span>
           <textarea maxLength={2000} name="introduction" required rows={5} />
         </label>
         <label>

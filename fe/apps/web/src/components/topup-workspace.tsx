@@ -20,6 +20,26 @@ import {
 
 const money = new Intl.NumberFormat("vi-VN");
 
+/**
+ * Day, month and year in full rather than a shortened form: a top-up is a
+ * payment record, and "13/8/26" is not what someone matches against a bank
+ * statement.
+ */
+const timestamp = new Intl.DateTimeFormat("vi-VN", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+function formatMoment(value: string | null): string {
+  if (!value) return "—";
+  const parsed = new Date(value);
+  // A timestamp the browser cannot read must not render as "Invalid Date".
+  return Number.isNaN(parsed.getTime()) ? "—" : timestamp.format(parsed);
+}
+
 const STATUS_LABELS: Record<string, string> = {
   CANCELLED: "Đã hủy",
   DRAFT: "Chưa gửi",
@@ -255,6 +275,10 @@ export function TopupWorkspace() {
             {history.map((row) => (
               <li key={row.id}>
                 <span className="topupHistoryCode">{row.transactionCode}</span>
+                {/* Paid-at when the money landed, created-at while it has not. */}
+                <span className="topupHistoryDate">
+                  {formatMoment(row.paidAt ?? row.createdAt)}
+                </span>
                 <span>{money.format(row.amountVnd)}đ</span>
                 <span>{money.format(row.coinReceived)} xu · {money.format(row.gemReceived)} ngọc</span>
                 <span>{row.methodName ?? "—"}</span>

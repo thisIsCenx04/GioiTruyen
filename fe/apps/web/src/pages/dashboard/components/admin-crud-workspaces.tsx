@@ -1,8 +1,9 @@
-"use client";
-
-import { ImagePlus, Paperclip, Plus, X } from "lucide-react";
+import { Eye, ImagePlus, Paperclip, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
+import { coverUrl } from "@/components/story-cover";
+import tableStyles from "./admin-table.module.css";
 import {
   type AdminCashFlowRow,
   type AdminCategoryRow,
@@ -16,6 +17,7 @@ import {
   loadAdminUsers,
 } from "../admin-data";
 import { getAccessToken, refreshAccessToken } from "../../../lib/auth";
+import { AdminTable, StatBar, type Column, type Stat } from "./admin-table";
 import {
   type ImportedStory,
   parseStoryDocument,
@@ -23,6 +25,21 @@ import {
   WORDS_PER_CHAPTER,
   WORDS_PER_CHAPTER_ZHIHU,
 } from "./story-import";
+
+/** How a story is labelled by kind, matching what the publish form offers. */
+const STORY_TYPE_LABELS: Record<string, string> = {
+  AUDIO: "Truyện audio",
+  EXCLUSIVE: "Độc quyền",
+  ORIGINAL: "Sáng tác",
+  TEXT: "Truyện chữ",
+};
+
+/** Where the story stands, as the catalog reports it. */
+const COMPLETION_LABELS: Record<string, string> = {
+  COMPLETED: "Hoàn thành",
+  HIATUS: "Tạm ngưng",
+  ONGOING: "Đang ra",
+};
 
 type DrawerMode = "archive" | "create" | "delete" | "edit" | "reverse";
 type SortOrder = "asc" | "desc";
@@ -42,6 +59,17 @@ interface SortState<K extends string> {
 }
 
 const numberFormatter = new Intl.NumberFormat("vi-VN");
+
+export function formatShortDate(value: string | null | undefined) {
+  if (!value) return "—";
+  const parsed = new Date(value.includes("T") ? value : value.replace(" ", "T"));
+  if (Number.isNaN(parsed.getTime())) return value;
+  const day = String(parsed.getDate()).padStart(2, "0");
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const year = String(parsed.getFullYear()).slice(-2);
+  return `${day}/${month}/${year}`;
+}
+
 
 /**
  * Timestamps as an admin reads them. Every list shows when a record was made
@@ -1027,15 +1055,52 @@ function FormActions({ busy, close, confirmMessage, submitLabel }: Readonly<{
   );
 }
 
-function WorkspaceHeader({ action, eyebrow, title }: Readonly<{
+function WorkspaceHeader({
+  action,
+  actionLabel = "Tạo mới",
+  eyebrow,
+  stats,
+  title,
+}: Readonly<{
   action: () => void;
+  actionLabel?: string;
   eyebrow: string;
+  stats?: readonly Stat[];
   title: string;
 }>) {
   return (
-    <header className="adminTopbar">
-      <div><p>{eyebrow}</p><h1>{title}</h1></div>
-      <button onClick={action} type="button">Tạo mới</button>
+    <header className="adminTopbar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap", marginBottom: "0.85rem" }}>
+      <div>
+        <p style={{ margin: 0, fontSize: "0.68rem", color: "#64748b", textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.05em" }}>{eyebrow}</p>
+        <h1 style={{ margin: "0.15rem 0 0", fontSize: "1.35rem", fontWeight: 850, color: "#0f172a" }}>{title}</h1>
+      </div>
+
+      {stats && stats.length > 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", flexWrap: "wrap", margin: "0 auto 0 1rem" }}>
+          {stats.map((stat) => (
+            <div
+              key={stat.label}
+              style={{
+                background: "#ffffff",
+                border: "1px solid #dfeaf6",
+                borderRadius: "0.5rem",
+                padding: "0.35rem 0.75rem",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.45rem",
+                boxShadow: "0 1px 3px rgba(15, 23, 42, 0.04)",
+              }}
+            >
+              <span style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>{stat.label}:</span>
+              <strong style={{ fontSize: "0.92rem", color: "#0f5fff", fontWeight: 850 }}>{stat.value}</strong>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <button onClick={action} type="button">
+        {actionLabel}
+      </button>
     </header>
   );
 }
@@ -1144,6 +1209,7 @@ export function StoryCrudWorkspace({
   const [completionStatus, setCompletionStatus] = useState<"COMPLETED" | "ONGOING">("ONGOING");
   // A story can belong to several genres at once.
   const [storyCategoryIds, setStoryCategoryIds] = useState<string[]>([]);
+  const [comboPriceXu, setComboPriceXu] = useState<number | "">("");
   const selected = drawer?.story;
   const isOneshot = storyFormat === "ONESHOT";
 
@@ -1350,36 +1416,182 @@ export function StoryCrudWorkspace({
     }
   }
 
-  const columns: Array<{ key: keyof AdminStoryRow; label: string }> = [
-    { key: "title", label: "Tên truyện" },
-    { key: "authorName", label: "Tác giả" },
-    { key: "teamName", label: "Nhóm dịch" },
-    { key: "categoryName", label: "Thể loại" },
-    { key: "workflowStatus", label: "Trạng thái" },
-    { key: "updatedAt", label: "Cập nhật" },
+function formatShortDate(value: string | null | undefined) {
+  if (!value) return "—";
+  const parsed = new Date(value.includes("T") ? value : value.replace(" ", "T"));
+  if (Number.isNaN(parsed.getTime())) return value;
+  const day = String(parsed.getDate()).padStart(2, "0");
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const year = String(parsed.getFullYear()).slice(-2);
+  return `${day}/${month}/${year}`;
+}
+
+  const storyColumns: Array<Column<AdminStoryRow, string>> = [
+    {
+      key: "coverUrl",
+      label: "Bìa",
+      render: (story) => {
+        const url = story.coverUrl ? coverUrl(story.coverUrl) : "";
+        return (
+          <div style={{ width: "36px", height: "48px", borderRadius: "4px", overflow: "hidden", background: "#e2e8f0", flexShrink: 0 }}>
+            {url ? (
+              <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ) : (
+              <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#0f172a", color: "#fff", fontWeight: 800, fontSize: "12px" }}>
+                {story.title.trim().slice(0, 1).toUpperCase() || "G"}
+              </div>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      key: "title",
+      label: "Tên truyện",
+      render: (story) => (
+        <div>
+          <strong style={{ fontSize: "0.88rem", color: "#0f172a", display: "block" }}>{story.title}</strong>
+          <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
+            {story.authorName ? `Tác giả: ${story.authorName}` : ""}
+            {story.authorName && story.teamName ? " · " : ""}
+            {story.teamName ? `Nhóm: ${story.teamName}` : ""}
+          </span>
+        </div>
+      ),
+      sortValue: (story) => story.title,
+    },
+    {
+      key: "storyType",
+      label: "Loại truyện",
+      render: (story) => STORY_TYPE_LABELS[story.storyType ?? "TEXT"] ?? story.storyType ?? "Truyện chữ",
+      sortValue: (story) => story.storyType ?? "TEXT",
+    },
+    {
+      key: "updatedAt",
+      label: "Ngày",
+      render: (story) => <span style={{ fontSize: "0.82rem", color: "#475569" }}>{formatShortDate(story.updatedAt || story.createdAt)}</span>,
+      sortValue: (story) => story.updatedAt ?? story.createdAt,
+    },
+    {
+      key: "completionStatus",
+      label: "Tiến độ",
+      render: (story) => COMPLETION_LABELS[story.completionStatus] ?? story.completionStatus,
+      sortValue: (story) => story.completionStatus,
+    },
+    {
+      key: "workflowStatus",
+      label: "Trạng thái",
+      render: (story) => {
+        const label = translateStatus(story.workflowStatus);
+        const isPub = story.workflowStatus === "PUBLISHED";
+        const isPend = story.workflowStatus === "PENDING_REVIEW";
+        return (
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.3rem",
+              padding: "0.2rem 0.6rem",
+              borderRadius: "9999px",
+              fontSize: "0.75rem",
+              fontWeight: 750,
+              background: isPub ? "#dcfce7" : isPend ? "#fef3c7" : "#f1f5f9",
+              color: isPub ? "#15803d" : isPend ? "#b45309" : "#475569",
+              border: `1px solid ${isPub ? "#86efac" : isPend ? "#fde68a" : "#cbd5e1"}`,
+            }}
+          >
+            {isPub ? "✔ " : isPend ? "⏳ " : "📝 "}
+            {label}
+          </span>
+        );
+      },
+      sortValue: (story) => story.workflowStatus,
+    },
+  ];
+
+  const storyFilters = [
+    {
+      id: "category",
+      label: "Thể loại",
+      matches: (story: AdminStoryRow, value: string) =>
+        (story.categoryNames ?? [story.categoryName ?? ""]).includes(value),
+      options: [...new Set(stories.flatMap((story) => story.categoryNames ?? [story.categoryName ?? ""]))]
+        .filter(Boolean)
+        .sort((left, right) => left.localeCompare(right, "vi"))
+        .map((name) => ({ label: name, value: name })),
+    },
+    {
+      id: "completion",
+      label: "Tiến độ",
+      matches: (story: AdminStoryRow, value: string) => story.completionStatus === value,
+      options: Object.entries(COMPLETION_LABELS).map(([value, label]) => ({ label, value })),
+    },
+    {
+      id: "type",
+      label: "Loại",
+      matches: (story: AdminStoryRow, value: string) => (story.storyType ?? "TEXT") === value,
+      options: Object.entries(STORY_TYPE_LABELS).map(([value, label]) => ({ label, value })),
+    },
+  ];
+
+  const storyStats = [
+    { label: "Tổng truyện", value: stories.length },
+    { label: "Hoàn thành", value: stories.filter((s) => s.completionStatus === "COMPLETED").length },
+    { label: "Đang ra", value: stories.filter((s) => s.completionStatus === "ONGOING").length },
+    { label: "Tạm ngưng", value: stories.filter((s) => s.completionStatus === "HIATUS").length },
+    { label: "Độc quyền", value: stories.filter((s) => s.storyType === "EXCLUSIVE").length },
   ];
 
   return (
     <>
-      <WorkspaceHeader action={() => setDrawer({ mode: "create" })} eyebrow="Nội dung xuất bản" title="Quản lý truyện" />
-      <SortToolbar columns={columns} onSort={toggleSort} sortState={sortState} />
-      <section className="adminCrudPanel">
-        {sortedList.length === 0 ? <p className="adminEmptyState">Chưa có truyện trong thư viện.</p> : sortedList.map((story) => (
-          <article key={story.id}>
-            <div className="adminCrudDetails">
-              <strong>{story.title}</strong>
-              <small>{story.teamName} · {story.authorName} · {story.categoryName || "Chưa phân loại"}</small>
-              <small><Timestamps createdAt={story.createdAt} updatedAt={story.updatedAt} /></small>
-            </div>
-            <span>{translateStatus(story.workflowStatus)}</span>
-            <div className="adminCrudActions">
-              <button onClick={() => setDrawer({ mode: "edit", story })} type="button">Chỉnh sửa</button>
-              <button onClick={() => setDrawer({ mode: "archive", story })} type="button">Ngừng hiển thị</button>
-              <button className="adminDangerAction" onClick={() => setDrawer({ mode: "delete", story })} type="button">Xóa</button>
-            </div>
-          </article>
-        ))}
-      </section>
+      <WorkspaceHeader
+        action={() => setDrawer({ mode: "create" })}
+        eyebrow="Nội dung xuất bản"
+        stats={storyStats}
+        title="Quản lý truyện"
+      />
+      <AdminTable
+        actions={(story) => (
+          <div className={tableStyles.actionIconsGroup}>
+            <Link
+              to={`/truyen/${story.slug}`}
+              target="_blank"
+              className={tableStyles.iconBtn}
+              title="Xem chi tiết / Đọc thử"
+            >
+              <Eye size={15} />
+            </Link>
+            <button
+              onClick={() => setDrawer({ mode: "edit", story })}
+              className={tableStyles.iconBtn}
+              title="Chỉnh sửa truyện"
+              type="button"
+            >
+              <Pencil size={15} />
+            </button>
+            <button
+              onClick={() => setDrawer({ mode: "delete", story })}
+              className={`${tableStyles.iconBtn} ${tableStyles.iconBtnDanger}`}
+              title="Xóa vĩnh viễn"
+              type="button"
+            >
+              <Trash2 size={15} />
+            </button>
+          </div>
+        )}
+        columns={storyColumns}
+        emptyMessage="Chưa có truyện trong thư viện."
+        filters={storyFilters}
+        rowKey={(story) => story.id}
+        rowClassName={(story) => {
+          if (story.workflowStatus === "PUBLISHED") return tableStyles.rowPublished;
+          if (story.workflowStatus === "PENDING_REVIEW") return tableStyles.rowPending;
+          return tableStyles.rowDraft;
+        }}
+        rows={stories}
+        searchPlaceholder="Tìm theo tên truyện, nhóm dịch hoặc tác giả…"
+        searchValues={(story) => [story.title, story.teamName, story.authorName]}
+      />
       {drawer && (
         <Drawer
           close={() => setDrawer(null)}
@@ -1550,6 +1762,51 @@ export function StoryCrudWorkspace({
                           </select>
                         </Field>
                       )}
+
+                      {completionStatus === "COMPLETED" && !isOneshot && (() => {
+                        const rawPaidChapters = chapterDrafts.filter((ch) => ch.accessType === "PAID" || (ch.coinPrice || 0) > 0);
+                        const rawTotalXu = chapterDrafts.reduce((sum, ch) => sum + (ch.coinPrice || 0), 0);
+
+                        const totalChaptersCount = chapterDrafts.length > 0 ? chapterDrafts.length : 20;
+                        const paidChaptersCount = rawPaidChapters.length > 0
+                          ? rawPaidChapters.length
+                          : Math.max(1, totalChaptersCount - 3);
+
+                        const totalRetailPrice = rawTotalXu > 0
+                          ? rawTotalXu
+                          : (paidChaptersCount * 10);
+
+                        return (
+                          <div
+                            style={{
+                              gridColumn: "1 / -1",
+                              background: "linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%)",
+                              border: "2px solid #6366f1",
+                              borderRadius: "8px",
+                              padding: "0.85rem 1rem",
+                              marginTop: "0.5rem",
+                              boxShadow: "0 4px 14px rgba(99, 102, 241, 0.15)",
+                            }}
+                          >
+                            <div style={{ marginBottom: "0.45rem", fontSize: "0.84rem", color: "#1e1b4b", fontWeight: 700 }}>
+                              Đang có <span style={{ color: "#4f46e5", fontWeight: 850 }}>{paidChaptersCount} chương đang khóa</span>, tổng xu mua lẻ là <span style={{ color: "#4f46e5", fontWeight: 850 }}>{totalRetailPrice} Xu</span>.
+                            </div>
+
+                            <Field label="Giá Combo Full (Xu)">
+                              <input
+                                type="number"
+                                min={0}
+                                max={totalRetailPrice || 99999}
+                                name="comboPriceXu"
+                                placeholder="Nhập số Xu"
+                                style={{ borderColor: "#818cf8", fontWeight: 700 }}
+                                value={comboPriceXu}
+                                onChange={(e) => setComboPriceXu(e.target.value === "" ? "" : Number(e.target.value))}
+                              />
+                            </Field>
+                          </div>
+                        );
+                      })()}
                     </div>
                     <TagEditor label="Tag truyện" onChange={setStoryTags} placeholder="Ví dụ: shounen, fantasy" tags={storyTags} />
 
@@ -1659,34 +1916,111 @@ export function CategoryCrudWorkspace({ categories: initialCategories }: Readonl
     }
   }
 
-  const columns: Array<{ key: keyof AdminCategoryRow; label: string }> = [
-    { key: "name", label: "Tên thể loại" },
-    { key: "sortOrder", label: "Thứ tự" },
-    { key: "slug", label: "Đường dẫn" },
-    { key: "active", label: "Trạng thái hiển thị" },
+  const categoryColumns: Array<Column<AdminCategoryRow, string>> = [
+    {
+      key: "name",
+      label: "Tên thể loại",
+      render: (cat) => (
+        <div>
+          <strong style={{ fontSize: "0.88rem", color: "#0f172a", display: "block" }}>{cat.name}</strong>
+          <span style={{ fontSize: "0.75rem", color: "#64748b" }}>{cat.description}</span>
+        </div>
+      ),
+      sortValue: (cat) => cat.name,
+    },
+    {
+      key: "slug",
+      label: "Slug (đường dẫn)",
+      render: (cat) => (
+        <code style={{ fontSize: "0.78rem", background: "#f1f5f9", padding: "0.2rem 0.45rem", borderRadius: "4px", color: "#0f5fff" }}>
+          {cat.slug}
+        </code>
+      ),
+      sortValue: (cat) => cat.slug,
+    },
+    {
+      key: "sortOrder",
+      label: "Thứ tự",
+      numeric: true,
+      render: (cat) => cat.sortOrder,
+      sortValue: (cat) => cat.sortOrder,
+    },
+    {
+      key: "updatedAt",
+      label: "Cập nhật",
+      render: (cat) => formatShortDate(cat.updatedAt || cat.createdAt),
+      sortValue: (cat) => cat.updatedAt || cat.createdAt,
+    },
+    {
+      key: "active",
+      label: "Trạng thái",
+      render: (cat) => (
+        <span
+          style={{
+            padding: "0.2rem 0.55rem",
+            borderRadius: "4px",
+            fontSize: "0.72rem",
+            fontWeight: 750,
+            background: cat.active ? "#dcfce7" : "#f1f5f9",
+            color: cat.active ? "#15803d" : "#64748b",
+          }}
+        >
+          {cat.active ? "Đang hiển thị" : "Đã ẩn"}
+        </span>
+      ),
+    },
+  ];
+
+  const categoryStats = [
+    { label: "Tổng thể loại", value: categories.length },
+    { label: "Đang hiển thị", value: categories.filter((c) => c.active).length },
+    { label: "Đã ẩn", value: categories.filter((c) => !c.active).length },
   ];
 
   return (
     <>
-      <WorkspaceHeader action={() => setDrawer({ mode: "create" })} eyebrow="Danh mục thư viện" title="Quản lý thể loại" />
-      <SortToolbar columns={columns} onSort={toggleSort} sortState={sortState} />
-      <section className="adminCrudPanel">
-        {sortedList.map((category) => (
-          <article key={category.id}>
-            <div className="adminCrudDetails">
-              <strong>{category.name}</strong>
-              <small>{category.description}</small>
-              <small><Timestamps createdAt={category.createdAt} updatedAt={category.updatedAt} /></small>
-            </div>
-            <span>{category.active ? "Đang hiển thị" : "Đã ẩn"}</span>
-            <div className="adminCrudActions">
-              <button onClick={() => setDrawer({ mode: "edit", category })} type="button">Chỉnh sửa</button>
-              <button onClick={() => setDrawer({ mode: "archive", category })} type="button">Ẩn thể loại</button>
-              <button className="adminDangerAction" onClick={() => setDrawer({ mode: "delete", category })} type="button">Xóa</button>
-            </div>
-          </article>
-        ))}
-      </section>
+      <WorkspaceHeader
+        action={() => setDrawer({ mode: "create" })}
+        eyebrow="Danh mục thư viện"
+        stats={categoryStats}
+        title="Quản lý thể loại"
+      />
+      <AdminTable
+        actions={(category) => (
+          <div className={tableStyles.actionIconsGroup}>
+            <button
+              className={tableStyles.iconBtn}
+              onClick={() => setDrawer({ category, mode: "edit" })}
+              title="Chỉnh sửa thể loại"
+              type="button"
+            >
+              <Pencil style={{ width: "0.85rem", height: "0.85rem" }} />
+            </button>
+            <button
+              className={tableStyles.iconBtn}
+              onClick={() => setDrawer({ category, mode: "archive" })}
+              title={category.active ? "Ẩn thể loại" : "Hiện thể loại"}
+              type="button"
+            >
+              <Eye style={{ width: "0.85rem", height: "0.85rem" }} />
+            </button>
+            <button
+              className={`${tableStyles.iconBtn} ${tableStyles.iconBtnDanger}`}
+              onClick={() => setDrawer({ category, mode: "delete" })}
+              title="Xóa vĩnh viễn thể loại"
+              type="button"
+            >
+              <Trash2 style={{ width: "0.85rem", height: "0.85rem" }} />
+            </button>
+          </div>
+        )}
+        columns={categoryColumns}
+        rowClassName={(category) => (category.active ? tableStyles.rowPublished : tableStyles.rowDraft)}
+        rowKey={(category) => category.id}
+        rows={categories}
+        searchPlaceholder="Tìm theo tên thể loại, slug..."
+        searchValues={(category) => [category.name, category.slug, category.description]}
+      />
       {drawer && <Drawer close={() => setDrawer(null)} description={selected?.description ?? "Thể loại giúp reader tìm đúng mạch truyện yêu thích."} title={drawer.mode === "delete" ? "Xóa thể loại vĩnh viễn" : drawer.mode === "archive" ? "Ẩn thể loại" : selected ? "Chỉnh sửa thể loại" : "Tạo thể loại"}>
         <form className="drawerForm" onSubmit={submit}>
           {drawer.mode === "delete" && selected ? (
@@ -1763,48 +2097,132 @@ export function TeamCrudWorkspace({ teams: initialTeams, users: initialUsers }: 
     finally { setBusy(false); }
   }
 
-  const columns: Array<{ key: keyof AdminTeamRow; label: string }> = [
-    { key: "name", label: "Tên team" },
-    { key: "ownerName", label: "Chủ sở hữu" },
-    { key: "memberCount", label: "Số thành viên" },
-    { key: "state", label: "Trạng thái" },
-    { key: "updatedAt", label: "Cập nhật" },
+  const teamColumns: Array<Column<AdminTeamRow, string>> = [
+    {
+      key: "name",
+      label: "Tên team",
+      render: (team) => (
+        <div>
+          <strong style={{ fontSize: "0.88rem", color: "#0f172a", display: "block" }}>{team.name}</strong>
+          <span style={{ fontSize: "0.75rem", color: "#64748b" }}>{team.description}</span>
+        </div>
+      ),
+      sortValue: (team) => team.name,
+    },
+    {
+      key: "ownerName",
+      label: "Chủ sở hữu",
+      render: (team) => team.ownerName || "Chưa phân công",
+      sortValue: (team) => team.ownerName || "",
+    },
+    {
+      key: "memberCount",
+      label: "Số thành viên",
+      numeric: true,
+      render: (team) => team.memberCount,
+      sortValue: (team) => team.memberCount,
+    },
+    {
+      key: "state",
+      label: "Trạng thái",
+      render: (team) => {
+        const isLive = team.state === "ACTIVE";
+        const isPending = team.state === "PENDING_REVIEW";
+        return (
+          <span
+            style={{
+              padding: "0.2rem 0.55rem",
+              borderRadius: "4px",
+              fontSize: "0.72rem",
+              fontWeight: 750,
+              background: isLive ? "#dcfce7" : isPending ? "#fef3c7" : "#f1f5f9",
+              color: isLive ? "#15803d" : isPending ? "#b45309" : "#64748b",
+            }}
+          >
+            {translateStatus(team.state)}
+          </span>
+        );
+      },
+      sortValue: (team) => team.state,
+    },
+    {
+      key: "updatedAt",
+      label: "Cập nhật",
+      render: (team) => formatShortDate(team.updatedAt || team.createdAt),
+      sortValue: (team) => team.updatedAt || team.createdAt,
+    },
   ];
 
-  return <>
-    <WorkspaceHeader action={() => setDrawer({ mode: "create" })} eyebrow="Đối tác nội dung" title="Quản lý team" />
-    <SortToolbar columns={columns} onSort={toggleSort} sortState={sortState} />
-    <section className="adminCrudPanel">
-      {sortedList.map((team) => (
-        <article key={team.id}>
-          <div className="adminCrudDetails">
-            <strong>{team.name}</strong>
-            <small>{team.ownerName} · {team.memberCount} thành viên</small>
-            <small><Timestamps createdAt={team.createdAt} updatedAt={team.updatedAt} /></small>
+  const teamStats = [
+    { label: "Tổng số team", value: teams.length },
+    { label: "Đang hoạt động", value: teams.filter((t) => t.state === "ACTIVE").length },
+    { label: "Chờ xét duyệt", value: teams.filter((t) => t.state === "PENDING_REVIEW").length },
+    { label: "Tạm khóa", value: teams.filter((t) => t.state === "SUSPENDED").length },
+    { label: "Tổng thành viên", value: teams.reduce((acc, t) => acc + (t.memberCount || 0), 0) },
+  ];
+
+  return (
+    <>
+      <WorkspaceHeader
+        action={() => setDrawer({ mode: "create" })}
+        eyebrow="Đối tác nội dung"
+        stats={teamStats}
+        title="Quản lý team"
+      />
+      <AdminTable
+        actions={(team) => (
+          <div className={tableStyles.actionIconsGroup}>
+            <button
+              className={tableStyles.iconBtn}
+              onClick={() => setDrawer({ mode: "edit", team })}
+              title="Xét duyệt / Sửa team"
+              type="button"
+            >
+              <Pencil style={{ width: "0.85rem", height: "0.85rem" }} />
+            </button>
+            <button
+              className={tableStyles.iconBtn}
+              onClick={() => setDrawer({ mode: "archive", team })}
+              title="Tạm khóa team"
+              type="button"
+            >
+              <Eye style={{ width: "0.85rem", height: "0.85rem" }} />
+            </button>
+            <button
+              className={`${tableStyles.iconBtn} ${tableStyles.iconBtnDanger}`}
+              onClick={() => setDrawer({ mode: "delete", team })}
+              title="Xóa team vĩnh viễn"
+              type="button"
+            >
+              <Trash2 style={{ width: "0.85rem", height: "0.85rem" }} />
+            </button>
           </div>
-          <span>{translateStatus(team.state)}</span>
-          <div className="adminCrudActions">
-            <button onClick={() => setDrawer({ mode: "edit", team })} type="button">Xét duyệt / sửa</button>
-            <button onClick={() => setDrawer({ mode: "archive", team })} type="button">Tạm khóa</button>
-            <button className="adminDangerAction" onClick={() => setDrawer({ mode: "delete", team })} type="button">Xóa</button>
-          </div>
-        </article>
-      ))}
-    </section>
-    {drawer && <Drawer close={() => setDrawer(null)} description={selected?.description ?? "Tạo hồ sơ team và chỉ định chủ sở hữu."} title={drawer.mode === "delete" ? "Xóa team vĩnh viễn" : drawer.mode === "archive" ? "Tạm khóa team" : selected ? "Cập nhật team" : "Tạo team"}><form className="drawerForm" onSubmit={submit}>
-      {drawer.mode === "delete" && selected ? (
-        <DeleteConfirmation
-          confirmation={deleteConfirmation}
-          entityLabel="team"
-          name={selected.name}
-          onChange={setDeleteConfirmation}
-          warning="Team và toàn bộ thành viên sẽ bị xóa, không khôi phục được. Nếu chỉ muốn dừng hoạt động, hãy dùng “Tạm khóa”."
-        />
-      ) : drawer.mode === "archive" && selected ? <p className="drawerConfirm">Team sẽ bị tạm khóa. Truyện đã xuất bản vẫn được giữ để admin tiếp tục xử lý.</p> : <>
-        <Field label="Tên team"><input defaultValue={selected?.name} maxLength={160} name="name" required /></Field><Field hint={<>Chữ thường không dấu, nối bằng dấu gạch ngang. Ví dụ: “Nhà Dịch Ánh Trăng” → <code>nha-dich-anh-trang</code></>} label="Slug (đường dẫn)"><input defaultValue={selected?.slug} maxLength={80} name="slug" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="nha-dich-anh-trang" required /></Field><Field label="Giới thiệu"><textarea defaultValue={selected?.description} maxLength={2000} name="description" required rows={5} /></Field><Field label="Chủ sở hữu"><select defaultValue={selected?.ownerUserId} name="ownerUserId" required><option value="">Chọn người dùng</option>{users.map((user) => <option key={user.id} value={user.id}>{user.displayName || user.email}</option>)}</select></Field><Field label="Trạng thái"><select defaultValue={selected?.state ?? "PENDING_REVIEW"} name="state"><option value="PENDING_REVIEW">Chờ xét duyệt</option><option value="ACTIVE">Đang hoạt động</option><option value="SUSPENDED">Tạm khóa</option></select></Field>
-      </>}<MutationNotice error={error} onDismiss={() => setError("")} /><FormActions busy={busy || (drawer.mode === "delete" && deleteConfirmation.trim() !== (selected?.name.trim() ?? ""))} close={() => setDrawer(null)} confirmMessage={drawer.mode === "delete" ? `Xóa vĩnh viễn team "${selected?.name}"?` : drawer.mode === "archive" ? `Tạm khóa team "${selected?.name}"?` : selected ? `Cập nhật team "${selected.name}"?` : undefined} submitLabel={drawer.mode === "delete" ? "Xóa vĩnh viễn" : drawer.mode === "archive" ? "Xác nhận tạm khóa" : "Lưu team"} />
-    </form></Drawer>}
-  </>;
+        )}
+        columns={teamColumns}
+        rowClassName={(team) => (team.state === "ACTIVE" ? tableStyles.rowPublished : team.state === "PENDING_REVIEW" ? tableStyles.rowPending : tableStyles.rowDraft)}
+        rowKey={(team) => team.id}
+        rows={teams}
+        searchPlaceholder="Tìm theo tên team, đại diện, giới thiệu..."
+        searchValues={(team) => [team.name, team.ownerName, team.description, team.slug]}
+      />
+      {drawer && <Drawer close={() => setDrawer(null)} description={selected?.description ?? "Tạo hồ sơ team và chỉ định chủ sở hữu."} title={drawer.mode === "delete" ? "Xóa team vĩnh viễn" : drawer.mode === "archive" ? "Tạm khóa team" : selected ? "Cập nhật team" : "Tạo team"}>
+        <form className="drawerForm" onSubmit={submit}>
+          {drawer.mode === "delete" && selected ? (
+            <DeleteConfirmation
+              confirmation={deleteConfirmation}
+              entityLabel="team"
+              name={selected.name}
+              onChange={setDeleteConfirmation}
+              warning="Team và toàn bộ thành viên sẽ bị xóa, không khôi phục được. Nếu chỉ muốn dừng hoạt động, hãy dùng “Tạm khóa”."
+            />
+          ) : drawer.mode === "archive" && selected ? <p className="drawerConfirm">Team sẽ bị tạm khóa. Truyện đã xuất bản vẫn được giữ để admin tiếp tục xử lý.</p> : <>
+            <Field label="Tên team"><input defaultValue={selected?.name} maxLength={160} name="name" required /></Field><Field hint={<>Chữ thường không dấu, nối bằng dấu gạch ngang. Ví dụ: “Nhà Dịch Ánh Trăng” → <code>nha-dich-anh-trang</code></>} label="Slug (đường dẫn)"><input defaultValue={selected?.slug} maxLength={80} name="slug" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="nha-dich-anh-trang" required /></Field><Field label="Giới thiệu"><textarea defaultValue={selected?.description} maxLength={2000} name="description" required rows={5} /></Field><Field label="Chủ sở hữu"><select defaultValue={selected?.ownerUserId} name="ownerUserId" required><option value="">Chọn người dùng</option>{users.map((user) => <option key={user.id} value={user.id}>{user.displayName || user.email}</option>)}</select></Field><Field label="Trạng thái"><select defaultValue={selected?.state ?? "PENDING_REVIEW"} name="state"><option value="PENDING_REVIEW">Chờ xét duyệt</option><option value="ACTIVE">Đang hoạt động</option><option value="SUSPENDED">Tạm khóa</option></select></Field>
+          </>}
+          <MutationNotice error={error} onDismiss={() => setError("")} /><FormActions busy={busy || (drawer.mode === "delete" && deleteConfirmation.trim() !== (selected?.name.trim() ?? ""))} close={() => setDrawer(null)} confirmMessage={drawer.mode === "delete" ? `Xóa vĩnh viễn team "${selected?.name}"?` : drawer.mode === "archive" ? `Tạm khóa team "${selected?.name}"?` : selected ? `Cập nhật team "${selected.name}"?` : undefined} submitLabel={drawer.mode === "delete" ? "Xóa vĩnh viễn" : drawer.mode === "archive" ? "Xác nhận tạm khóa" : "Lưu team"} />
+        </form>
+      </Drawer>}
+    </>
+  );
 }
 
 export function UserCrudWorkspace({ users: initialUsers }: Readonly<{ users: AdminUserRow[] }>) {
@@ -1844,15 +2262,131 @@ export function UserCrudWorkspace({ users: initialUsers }: Readonly<{ users: Adm
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Không thể lưu thay đổi."); } finally { setBusy(false); }
   }
 
-  const columns: Array<{ key: keyof AdminUserRow; label: string }> = [
-    { key: "displayName", label: "Tên / Email" },
-    { key: "availableXu", label: "Số dư Xu" },
-    { key: "roles", label: "Vai trò" },
-    { key: "state", label: "Trạng thái" },
-    { key: "createdAt", label: "Ngày tham gia" },
+  const userColumns: Array<Column<AdminUserRow, string>> = [
+    {
+      key: "displayName",
+      label: "Tên / Email",
+      render: (user) => (
+        <div>
+          <strong style={{ fontSize: "0.88rem", color: "#0f172a", display: "block" }}>{user.displayName || user.email}</strong>
+          <span style={{ fontSize: "0.75rem", color: "#64748b" }}>{user.email}</span>
+        </div>
+      ),
+      sortValue: (user) => user.displayName || user.email,
+    },
+    {
+      key: "availableXu",
+      label: "Số dư Xu",
+      numeric: true,
+      render: (user) => `${numberFormatter.format(user.availableXu)} xu`,
+      sortValue: (user) => user.availableXu,
+    },
+    {
+      key: "roles",
+      label: "Vai trò",
+      render: (user) => {
+        const isAdmin = user.roles?.toUpperCase().includes("ADMIN");
+        return (
+          <span
+            style={{
+              padding: "0.2rem 0.55rem",
+              borderRadius: "4px",
+              fontSize: "0.72rem",
+              fontWeight: 750,
+              background: isAdmin ? "#dbeafe" : "#f1f5f9",
+              color: isAdmin ? "#1d4ed8" : "#475569",
+            }}
+          >
+            {isAdmin ? "Quản trị viên" : "Độc giả"}
+          </span>
+        );
+      },
+      sortValue: (user) => user.roles,
+    },
+    {
+      key: "state",
+      label: "Trạng thái",
+      render: (user) => {
+        const isActive = user.state === "ACTIVE";
+        return (
+          <span
+            style={{
+              padding: "0.2rem 0.55rem",
+              borderRadius: "4px",
+              fontSize: "0.72rem",
+              fontWeight: 750,
+              background: isActive ? "#dcfce7" : "#fee2e2",
+              color: isActive ? "#15803d" : "#b91c1c",
+            }}
+          >
+            {translateStatus(user.state)}
+          </span>
+        );
+      },
+      sortValue: (user) => user.state,
+    },
+    {
+      key: "createdAt",
+      label: "Ngày tham gia",
+      render: (user) => formatShortDate(user.createdAt),
+      sortValue: (user) => user.createdAt,
+    },
   ];
 
-  return <><WorkspaceHeader action={() => setDrawer({ mode: "create" })} eyebrow="Tài khoản và phân quyền" title="Quản lý người dùng" /><SortToolbar columns={columns} onSort={toggleSort} sortState={sortState} /><section className="adminCrudPanel">{sortedList.map((user) => <article key={user.id}><div className="adminCrudDetails"><strong>{user.displayName || user.email}</strong><small>{user.email} · Ví {numberFormatter.format(user.availableXu)} xu · {user.roles}</small><small><Timestamps createdAt={user.createdAt} updatedAt={user.updatedAt} /></small></div><span>{translateStatus(user.state)}</span><div className="adminCrudActions"><button onClick={() => setDrawer({ mode: "edit", user })} type="button">Chỉnh sửa</button><button onClick={() => setDrawer({ mode: "archive", user })} type="button">Tạm khóa</button><button className="adminDangerAction" onClick={() => setDrawer({ mode: "delete", user })} type="button">Xóa</button></div></article>)}</section>{drawer && <Drawer close={() => setDrawer(null)} description={selected?.email ?? "Tạo tài khoản thử nghiệm hoặc tài khoản vận hành."} title={drawer.mode === "delete" ? "Xóa tài khoản vĩnh viễn" : drawer.mode === "archive" ? "Tạm khóa người dùng" : selected ? "Chỉnh sửa người dùng" : "Tạo người dùng"}><form className="drawerForm" onSubmit={submit}>{drawer.mode === "delete" && selected ? <DeleteConfirmation confirmation={deleteConfirmation} entityLabel="tài khoản (email)" name={selected.email} onChange={setDeleteConfirmation} warning="Tài khoản sẽ bị xóa khỏi hệ thống và không khôi phục được. Nếu chỉ muốn chặn đăng nhập, hãy dùng “Tạm khóa”." /> : drawer.mode === "archive" && selected ? <p className="drawerConfirm">Tài khoản sẽ bị tạm khóa và toàn bộ phiên đăng nhập cũ mất hiệu lực.</p> : <><Field label="Tên hiển thị"><input defaultValue={selected?.displayName} maxLength={100} name="displayName" required /></Field><Field label="Email"><input defaultValue={selected?.email} maxLength={254} name="email" required type="email" /></Field>{!selected && <Field label="Mật khẩu ban đầu"><input minLength={12} name="password" required type="password" /></Field>}<Field label="Giới thiệu"><textarea defaultValue={selected?.bio} maxLength={1000} name="bio" rows={4} /></Field><Field label="Vai trò, cách nhau bằng dấu phẩy"><input defaultValue={selected?.roles || "USER"} name="roles" required /></Field><Field label="Trạng thái"><select defaultValue={selected?.state ?? "ACTIVE"} name="state"><option value="ACTIVE">Đang hoạt động</option><option value="SUSPENDED">Tạm khóa</option></select></Field></>}<MutationNotice error={error} onDismiss={() => setError("")} /><FormActions busy={busy || (drawer.mode === "delete" && deleteConfirmation.trim() !== (selected?.email.trim() ?? ""))} close={() => setDrawer(null)} confirmMessage={drawer.mode === "delete" ? `Xóa vĩnh viễn tài khoản "${selected?.email}"?` : drawer.mode === "archive" ? `Tạm khóa tài khoản "${selected?.email}"?` : selected ? `Cập nhật tài khoản "${selected.email}"?` : undefined} submitLabel={drawer.mode === "delete" ? "Xóa vĩnh viễn" : drawer.mode === "archive" ? "Xác nhận tạm khóa" : "Lưu người dùng"} /></form></Drawer>}</>;
+  const userStats = [
+    { label: "Tổng tài khoản", value: users.length },
+    { label: "Đang hoạt động", value: users.filter((u) => u.state === "ACTIVE").length },
+    { label: "Quản trị viên", value: users.filter((u) => u.roles?.toUpperCase().includes("ADMIN")).length },
+    { label: "Tạm khóa", value: users.filter((u) => u.state === "SUSPENDED").length },
+    { label: "Tổng số dư xu", value: `${numberFormatter.format(users.reduce((acc, u) => acc + (u.availableXu || 0), 0))} xu` },
+  ];
+
+  return (
+    <>
+      <WorkspaceHeader
+        action={() => setDrawer({ mode: "create" })}
+        eyebrow="Tài khoản và phân quyền"
+        stats={userStats}
+        title="Quản lý người dùng"
+      />
+      <AdminTable
+        actions={(user) => (
+          <div className={tableStyles.actionIconsGroup}>
+            <button
+              className={tableStyles.iconBtn}
+              onClick={() => setDrawer({ mode: "edit", user })}
+              title="Chỉnh sửa tài khoản"
+              type="button"
+            >
+              <Pencil style={{ width: "0.85rem", height: "0.85rem" }} />
+            </button>
+            <button
+              className={tableStyles.iconBtn}
+              onClick={() => setDrawer({ mode: "archive", user })}
+              title="Tạm khóa tài khoản"
+              type="button"
+            >
+              <Eye style={{ width: "0.85rem", height: "0.85rem" }} />
+            </button>
+            <button
+              className={`${tableStyles.iconBtn} ${tableStyles.iconBtnDanger}`}
+              onClick={() => setDrawer({ mode: "delete", user })}
+              title="Xóa tài khoản vĩnh viễn"
+              type="button"
+            >
+              <Trash2 style={{ width: "0.85rem", height: "0.85rem" }} />
+            </button>
+          </div>
+        )}
+        columns={userColumns}
+        rowClassName={(user) => (user.state === "ACTIVE" ? tableStyles.rowPublished : tableStyles.rowDraft)}
+        rowKey={(user) => user.id}
+        rows={users}
+        searchPlaceholder="Tìm theo tên, email, vai trò..."
+      />
+      {drawer && <Drawer close={() => setDrawer(null)} description={selected?.email ?? "Tạo tài khoản thử nghiệm hoặc tài khoản vận hành."} title={drawer.mode === "delete" ? "Xóa tài khoản vĩnh viễn" : drawer.mode === "archive" ? "Tạm khóa người dùng" : selected ? "Chỉnh sửa người dùng" : "Tạo người dùng"}><form className="drawerForm" onSubmit={submit}>{drawer.mode === "delete" && selected ? <DeleteConfirmation confirmation={deleteConfirmation} entityLabel="tài khoản (email)" name={selected.email} onChange={setDeleteConfirmation} warning="Tài khoản sẽ bị xóa khỏi hệ thống và không khôi phục được. Nếu chỉ muốn chặn đăng nhập, hãy dùng “Tạm khóa”." /> : drawer.mode === "archive" && selected ? <p className="drawerConfirm">Tài khoản sẽ bị tạm khóa và toàn bộ phiên đăng nhập cũ mất hiệu lực.</p> : <><Field label="Tên hiển thị"><input defaultValue={selected?.displayName} maxLength={100} name="displayName" required /></Field><Field label="Email"><input defaultValue={selected?.email} maxLength={254} name="email" required type="email" /></Field>{!selected && <Field label="Mật khẩu ban đầu"><input minLength={12} name="password" required type="password" /></Field>}<Field label="Giới thiệu"><textarea defaultValue={selected?.bio} maxLength={1000} name="bio" rows={4} /></Field><Field label="Vai trò"><select defaultValue={selected?.roles?.toUpperCase().includes("ADMIN") ? "ADMIN" : "READER"} name="roles"><option value="READER">Độc giả</option><option value="ADMIN">Quản trị viên</option></select></Field><Field label="Trạng thái"><select defaultValue={selected?.state ?? "ACTIVE"} name="state"><option value="ACTIVE">Đang hoạt động</option><option value="SUSPENDED">Tạm khóa</option></select></Field></>}<MutationNotice error={error} onDismiss={() => setError("")} /><FormActions busy={busy || (drawer.mode === "delete" && deleteConfirmation.trim() !== (selected?.email.trim() ?? ""))} close={() => setDrawer(null)} confirmMessage={drawer.mode === "delete" ? `Xóa vĩnh viễn tài khoản "${selected?.email}"?` : drawer.mode === "archive" ? `Tạm khóa tài khoản "${selected?.email}"?` : selected ? `Cập nhật tài khoản "${selected.email}"?` : undefined} submitLabel={drawer.mode === "delete" ? "Xóa vĩnh viễn" : drawer.mode === "archive" ? "Xác nhận tạm khóa" : "Lưu người dùng"} /></form></Drawer>}
+    </>
+  );
 }
 
 export function CashFlowCrudWorkspace({ entries: initialEntries, users: initialUsers }: Readonly<{ entries: AdminCashFlowRow[]; users: AdminUserRow[] }>) {
@@ -1896,45 +2430,95 @@ export function CashFlowCrudWorkspace({ entries: initialEntries, users: initialU
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Không thể lưu thay đổi."); } finally { setBusy(false); }
   }
 
-  const columns: Array<{ key: keyof AdminCashFlowRow; label: string }> = [
-    { key: "amountXu", label: "Số XU" },
-    { key: "userEmail", label: "Email người dùng" },
-    { key: "entryType", label: "Loại giao dịch" },
-    { key: "referenceType", label: "Tham chiếu" },
-    { key: "createdAt", label: "Thời gian" },
+  const cashFlowColumns: Array<Column<AdminCashFlowRow, string>> = [
+    {
+      key: "entryType",
+      label: "Giao dịch",
+      render: (entry) => (
+        <div>
+          <strong style={{ fontSize: "0.88rem", color: "#0f172a", display: "block" }}>
+            {ENTRY_TYPE_LABELS[entry.entryType] ?? entry.description}
+          </strong>
+          <span style={{ fontSize: "0.75rem", color: "#64748b" }}>{entry.description}</span>
+        </div>
+      ),
+      sortValue: (entry) => entry.entryType,
+    },
+    {
+      key: "amountXu",
+      label: "Số Xu",
+      numeric: true,
+      render: (entry) => (
+        <strong style={{ color: entry.amountXu > 0 ? "#16a34a" : "#dc2626", fontSize: "0.9rem" }}>
+          {entry.amountXu > 0 ? "+" : ""}{numberFormatter.format(entry.amountXu)} xu
+        </strong>
+      ),
+      sortValue: (entry) => entry.amountXu,
+    },
+    {
+      key: "userEmail",
+      label: "Tài khoản",
+      render: (entry) => entry.userEmail || "—",
+      sortValue: (entry) => entry.userEmail || "",
+    },
+    {
+      key: "referenceType",
+      label: "Tham chiếu",
+      render: (entry) => REFERENCE_LABELS[entry.referenceType] ?? entry.referenceType,
+      sortValue: (entry) => entry.referenceType,
+    },
+    {
+      key: "createdAt",
+      label: "Thời gian",
+      render: (entry) => formatShortDate(entry.createdAt),
+      sortValue: (entry) => entry.createdAt,
+    },
+  ];
+
+  const cashFlowStats = [
+    { label: "Tổng bút toán", value: entries.length },
+    {
+      label: "Tổng xu nạp (+)",
+      value: `${numberFormatter.format(entries.filter((e) => e.amountXu > 0).reduce((acc, e) => acc + e.amountXu, 0))} xu`,
+    },
+    {
+      label: "Tổng xu hoàn (-)",
+      value: `${numberFormatter.format(Math.abs(entries.filter((e) => e.amountXu < 0).reduce((acc, e) => acc + e.amountXu, 0)))} xu`,
+    },
+    { label: "Giao dịch nạp", value: entries.filter((e) => e.entryType === "TOPUP").length },
+    { label: "Bút toán hoàn tiền", value: entries.filter((e) => e.entryType === "REVERSAL").length },
   ];
 
   return (
     <>
       <WorkspaceHeader
         action={() => setDrawer({ mode: "create" })}
+        actionLabel="Tạo bút toán"
         eyebrow="Sổ cái xu"
+        stats={cashFlowStats}
         title="Quản lý doanh thu"
       />
-      <SortToolbar columns={columns} onSort={toggleSort} sortState={sortState} />
-      <section className="adminCrudPanel">
-        {sortedList.map((entry) => (
-          <article key={entry.id}>
-            <div className="adminCrudDetails">
-              <strong>{ENTRY_TYPE_LABELS[entry.entryType] ?? entry.description}</strong>
-              <small>{entry.description}</small>
-              <small>Tài khoản: {entry.userEmail}</small>
-              <small>Tham chiếu: {REFERENCE_LABELS[entry.referenceType] ?? entry.referenceType}</small>
-              <small>Ghi nhận lúc {formatDateTime(entry.createdAt)}</small>
-            </div>
-            <span>{entry.amountXu > 0 ? "+" : ""}{numberFormatter.format(entry.amountXu)} xu</span>
-            <div className="adminCrudActions">
-              <button
-                disabled={entry.entryType === "REVERSAL"}
-                onClick={() => setDrawer({ entry, mode: "reverse" })}
-                type="button"
-              >
-                {entry.entryType === "REVERSAL" ? "Đã hoàn tiền" : "Hoàn tiền"}
-              </button>
-            </div>
-          </article>
-        ))}
-      </section>
+      <AdminTable
+        actions={(entry) => (
+          <div className={tableStyles.actionIconsGroup}>
+            <button
+              className={tableStyles.iconBtn}
+              disabled={entry.entryType === "REVERSAL"}
+              onClick={() => setDrawer({ entry, mode: "reverse" })}
+              title={entry.entryType === "REVERSAL" ? "Đã hoàn tiền" : "Hoàn tiền"}
+              type="button"
+            >
+              <RotateCcw style={{ width: "0.85rem", height: "0.85rem" }} />
+            </button>
+          </div>
+        )}
+        columns={cashFlowColumns}
+        rowClassName={(entry) => (entry.amountXu > 0 ? tableStyles.rowPublished : tableStyles.rowDraft)}
+        rowKey={(entry) => entry.id}
+        rows={entries}
+        searchPlaceholder="Tìm theo email, loại giao dịch, nội dung..."
+        searchValues={(entry) => [entry.userEmail, entry.description, entry.entryType, entry.referenceType]}
+      />
 
       {drawer && (
         <Drawer

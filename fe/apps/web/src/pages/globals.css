@@ -312,9 +312,12 @@ main { min-height: 100vh; }
   animation: routeEnter 180ms ease both;
 }
 
-html[data-route-pending="true"] .routeSurface {
-  filter: saturate(.96);
-}
+/*
+  No filter on .routeSurface: like a transform, a filter makes it the containing
+  block for `position: fixed` children, which moved every dialog off the
+  viewport for as long as the flag was set. The progress bar already reports
+  that a route is loading, so this added little and cost a lot.
+*/
 
 .siteHeader {
   grid-template-columns: auto minmax(28rem, 1fr) minmax(18rem, 28rem) auto auto auto;
@@ -523,9 +526,19 @@ html[data-route-pending="true"] .routeSurface {
   100% { transform: scaleX(.92); }
 }
 
+/*
+  Opacity only, deliberately.
+
+  This animation runs with `both`, so its final frame stays applied - and a
+  transform that stays applied, even `translateY(0)`, makes .routeSurface a
+  containing block for every `position: fixed` descendant. Every dialog on the
+  site (đề cử, donate, mở khoá chương) was then positioned against the whole
+  page rather than the viewport, so `top: 50%` landed halfway down the document
+  and the reader had to scroll to find the box they had just opened.
+*/
 @keyframes routeEnter {
-  from { opacity: .78; transform: translateY(.25rem); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: .78; }
+  to { opacity: 1; }
 }
 
 @keyframes skeletonPulse {
@@ -717,8 +730,8 @@ html[data-route-pending="true"] .routeSurface {
 .storyDetailContentGrid {
   align-items: start;
   display: grid;
-  gap: 1.25rem;
-  grid-template-columns: minmax(0, 3fr) minmax(20rem, 2fr);
+  gap: 1.5rem;
+  grid-template-columns: minmax(0, 1fr) 22rem;
   margin: 1.25rem auto 0;
   max-width: 80rem;
 }
@@ -1040,11 +1053,13 @@ html[data-route-pending="true"] .routeSurface {
   display: grid;
   font-size: .8rem;
   gap: .5rem;
-  grid-template-columns: 7rem 6rem 1fr 8rem 7rem;
+  /* code · date · amount · coins+gems · method · status */
+  grid-template-columns: 7rem 9.5rem 6rem 1fr 8rem 7rem;
   padding: .55rem 0;
 }
 
 .topupHistoryCode { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .76rem; }
+.topupHistoryDate { color: #64748b; font-size: .76rem; white-space: nowrap; }
 
 @media (max-width: 60rem) {
   .topupWorkspace { grid-template-columns: 1fr; }
@@ -1498,6 +1513,11 @@ html[data-route-pending="true"] .routeSurface {
 }
 
 .storyRecommendations {
+  background: white;
+  border: 1px solid #d8e3f4;
+  border-radius: .8rem;
+  box-shadow: 0 .8rem 2rem rgb(36 62 115 / 8%);
+  padding: 1.1rem 1.15rem;
   min-width: 0;
 }
 
@@ -1566,14 +1586,16 @@ html[data-route-pending="true"] .routeSurface {
 .storyReportNotice { display: grid; gap: .8rem; padding-top: 1rem; }
 .storyReportNotice p { margin: 0; }
 
-@media (max-width: 64rem) {
+@media (max-width: 68rem) {
   .storyDetailCard { grid-template-columns: 13rem minmax(0, 1fr); }
   .storyDetailCover { min-height: 16rem; }
-  .storyDetailContentGrid { grid-template-columns: minmax(0, 3fr) minmax(17rem, 2fr); }
+  .storyDetailContentGrid { grid-template-columns: minmax(0, 1fr); }
+  .storyRecommendationGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
 @media (max-width: 48rem) {
   .storyDetailContentGrid { grid-template-columns: minmax(0, 1fr); }
+  .storyRecommendationGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 42rem) {
@@ -4921,45 +4943,50 @@ html[data-route-pending="true"] .routeSurface {
   margin-bottom: 3.5rem;
 }
 
-/* ── Left Form Card ── */
+/* ── Square Cartoon Form Card ── */
 .teamsFormCard {
   background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 1.2rem;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
-  padding: 2rem 1.75rem;
+  border: 2.5px solid #071739;
+  border-radius: 6px;
+  box-shadow: 7px 7px 0px #071739;
+  padding: 2.2rem 1.85rem;
   display: flex;
   flex-direction: column;
 }
 
-.teamsFormOverlay {
-  align-self: center;
-  box-shadow: 0 1.2rem 3.2rem rgb(4 12 32 / 28%);
+.cartoonFormBox {
   max-width: 27rem;
   position: relative;
   z-index: 3;
-  margin-top: 1.1rem;
+  background: #ffffff;
+}
+
+.cartoonBadge {
+  display: inline-block;
+  background: #fbbf24;
+  color: #071739;
+  border: 2px solid #071739;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  padding: 0.25rem 0.65rem;
+  margin-bottom: 0.75rem;
+  box-shadow: 2px 2px 0px #071739;
 }
 
 .formHeader h1 {
-  font-size: 1.55rem;
-  font-weight: 850;
-  color: #0f172a;
-  margin: 0 0 0.5rem;
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: #071739;
+  margin: 0 0 1.25rem;
   letter-spacing: -0.02em;
-}
-
-.formHeader p {
-  font-size: 0.82rem;
-  color: #64748b;
-  margin: 0 0 1.5rem;
-  line-height: 1.5;
 }
 
 .teamsFormStack {
   display: flex;
   flex-direction: column;
-  gap: 1.1rem;
+  gap: 1.15rem;
 }
 
 .teamsFieldGroup {
@@ -4969,43 +4996,137 @@ html[data-route-pending="true"] .routeSurface {
 }
 
 .teamsFieldGroup label {
-  font-size: 0.8rem;
-  font-weight: 750;
-  color: #1e293b;
+  font-size: 0.82rem;
+  font-weight: 850;
+  color: #071739;
 }
 
-.teamsInput,
-.teamsTextarea {
+.cartoonInput {
   background: #f8fafc;
-  border: 1px solid #cbd5e1;
-  border-radius: 0.6rem;
+  border: 2px solid #071739 !important;
+  border-radius: 4px !important;
   padding: 0.75rem 0.9rem;
-  font-size: 0.86rem;
-  color: #0f172a;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #071739;
   outline: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: all 0.15s ease;
   width: 100%;
 }
 
-.teamsInput:focus,
-.teamsTextarea:focus {
-  border-color: #0f5fff;
+.cartoonInput:focus {
   background: #ffffff;
-  box-shadow: 0 0 0 3px rgba(15, 95, 255, 0.12);
+  border-color: #0f5fff !important;
+  box-shadow: 3px 3px 0px #0f5fff;
+}
+
+.cartoonSubmitBtn {
+  background: #0f5fff;
+  color: #ffffff;
+  border: 2.5px solid #071739;
+  border-radius: 4px;
+  padding: 0.9rem 1.4rem;
+  font-size: 0.92rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  box-shadow: 4px 4px 0px #071739;
+  transition: all 0.12s ease;
+  margin-top: 0.35rem;
+}
+
+.cartoonSubmitBtn:hover:not(:disabled) {
+  background: #004ecc;
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0px #071739;
+}
+
+.cartoonSubmitBtn:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px #071739;
+}
+
+.cartoonSubmitBtn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.cartoonPendingBox {
+  background: #fffbeb;
+  border: 2.5px solid #071739;
+  border-radius: 4px;
+  padding: 1.25rem;
+  color: #92400e;
+  box-shadow: 5px 5px 0px #071739;
+}
+
+/* ── Hero Side Cartoon Styling ── */
+.cartoonHeroText {
+  text-align: left;
+}
+
+.heroCartoonTag {
+  display: inline-block;
+  background: #0f5fff;
+  color: #ffffff;
+  border: 2px solid #ffffff;
+  border-radius: 4px;
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  padding: 0.25rem 0.65rem;
+  margin-bottom: 0.85rem;
+  box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.4);
+}
+
+.cartoonHeroText h1 {
+  font-size: clamp(2rem, 3.5vw, 2.75rem);
+  font-weight: 900;
+  line-height: 1.25;
+  color: #ffffff;
+  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  margin: 0 0 0.85rem;
+}
+
+.cartoonHeroText p {
+  font-size: clamp(0.95rem, 1.4vw, 1.1rem);
+  color: #e2e8f0;
+  line-height: 1.6;
+  margin: 0 0 1.75rem;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.cartoonHighlights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.cartoonBadgeItem {
+  background: rgba(7, 23, 57, 0.9);
+  border: 2px solid #38bdf8;
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 0.84rem;
+  font-weight: 850;
+  padding: 0.55rem 0.9rem;
+  box-shadow: 3px 3px 0px #071739;
 }
 
 .teamsTextarea {
   resize: vertical;
 }
 
-.teamsAlertBox {
+.cartoonAlertBox {
   background: #eff6ff;
-  border: 1px solid #dbeafe;
-  border-radius: 0.6rem;
-  padding: 0.85rem 1rem;
-  font-size: 0.76rem;
-  color: #1e40af;
+  border: 2px solid #071739;
+  border-radius: 4px;
+  padding: 0.75rem 0.9rem;
+  font-size: 0.78rem;
+  font-weight: 750;
+  color: #071739;
   line-height: 1.45;
+  box-shadow: 2px 2px 0px rgba(7, 23, 57, 0.2);
 }
 
 .teamsAlertBox p {
@@ -7031,6 +7152,171 @@ button {
   font-size: .62rem;
 }
 
+.adGateOverlay {
+  align-items: center;
+  background: rgb(8 15 28 / 65%);
+  backdrop-filter: blur(4px);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 0.75rem;
+  position: fixed;
+  z-index: 220;
+}
+
+.adGateDialog {
+  background: #fff;
+  border-radius: 0.85rem;
+  box-shadow: 0 1rem 2.5rem rgb(8 18 40 / 30%);
+  max-height: 90vh;
+  max-width: 24rem;
+  overflow-y: auto;
+  padding: 1.25rem 1.1rem 1rem;
+  position: relative;
+  text-align: center;
+  width: 100%;
+}
+
+.adGateCloseIconBtn {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  background: #f1f5f9;
+  border: 0;
+  border-radius: 50%;
+  width: 1.85rem;
+  height: 1.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.adGateCloseIconBtn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.adGateLogo {
+  height: 2.2rem;
+  margin: 0.2rem auto 0.6rem;
+  object-fit: contain;
+}
+
+.adGateDialog h2 {
+  font-size: 0.95rem;
+  line-height: 1.35;
+  margin: 0 0 0.35rem;
+  color: #0f172a;
+}
+
+.adGateLead {
+  color: var(--muted, #6b7891);
+  font-size: 0.76rem;
+  line-height: 1.45;
+  margin: 0 0 0.75rem;
+}
+
+.adGateSlot {
+  background: #f4f8fd;
+  border-radius: 0.5rem;
+  margin-bottom: 0.75rem;
+  min-height: 180px;
+  overflow: hidden;
+}
+
+.adGateContinue {
+  align-items: center;
+  background: #0f5fff;
+  border: 0;
+  border-radius: 0.5rem;
+  color: #ffffff;
+  cursor: pointer;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: space-between;
+  padding: 0.65rem 0.85rem;
+  text-align: left;
+  width: 100%;
+  box-shadow: 0 4px 12px rgba(15, 95, 255, 0.25);
+  transition: all 0.15s ease;
+}
+
+.adGateContinue:disabled {
+  background: #cbd5e1;
+  color: #64748b;
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.adGateContinue strong {
+  display: block;
+  font-size: 0.82rem;
+  color: inherit;
+}
+
+.adGateContinue small {
+  color: rgba(255, 255, 255, 0.85);
+  display: block;
+  font-size: 0.68rem;
+  margin-top: 0.1rem;
+}
+
+.adGateContinue:disabled small {
+  color: #64748b;
+}
+
+.adGateContinue svg {
+  color: #ffffff;
+  flex: none;
+}
+
+.adGateSkip {
+  background: none;
+  border: 0;
+  color: var(--muted, #6b7891);
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin-top: 0.5rem;
+  padding: 0.3rem;
+  text-decoration: underline;
+}
+
+@media (max-width: 36rem) {
+  .adGateDialog {
+    max-width: 92vw;
+    padding: 1rem 0.85rem 0.75rem;
+    border-radius: 0.75rem;
+  }
+
+  .adGateLogo {
+    height: 1.8rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .adGateDialog h2 {
+    font-size: 0.88rem;
+  }
+
+  .adGateLead {
+    font-size: 0.72rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .adGateSlot {
+    min-height: 150px;
+    margin-bottom: 0.6rem;
+  }
+
+  .adGateContinue {
+    padding: 0.55rem 0.75rem;
+  }
+}
+
 @media (max-width: 34rem) {
   .coverPlaceholder svg { height: 2rem; width: 2rem; }
   .coverPlaceholder span { font-size: .58rem; }
@@ -7657,3 +7943,61 @@ button {
 
 /* The reader has its own paper/night setting; leave it alone. */
 :root[data-theme="dark"] [data-theme="paper"] { color-scheme: light; }
+
+/*
+  Wallet link in the account menu: the label holds its line, the balance sits
+  on the next one, indented under it. Kept apart so a long number never pushes
+  "Ví của bạn" into wrapping.
+*/
+.headerWalletText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.headerWalletText > span { white-space: nowrap; }
+
+.headerWalletBalance {
+  color: #64748b;
+  font-size: .74rem;
+  font-weight: 600;
+  /* One step in from the label, so it reads as belonging to it. */
+  padding-left: .75rem;
+  padding-top: .15rem;
+  white-space: nowrap;
+}
+
+/* Room for six-figure balances before anything has to give. */
+.profileMenu > div { min-width: 15rem; }
+
+/* ── Content Copy Protection ────────────────────────────────────────── */
+.chapterProse,
+.manuscript,
+.oneshotBody,
+.storyDetailSynopsis {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+@media print {
+  .chapterProse,
+  .manuscript,
+  .oneshotBody,
+  .storyDetailCover,
+  .storyDetailSynopsis {
+    display: none !important;
+  }
+
+  body::after {
+    content: "Bản quyền nội dung thuộc về Giới Truyện (gioitruyen.com). Nghiêm cấm sao chép hoặc in ấn trái phép.";
+    display: block;
+    font-size: 1.25rem;
+    color: #b91c1c;
+    text-align: center;
+    padding: 3rem;
+  }
+}
+

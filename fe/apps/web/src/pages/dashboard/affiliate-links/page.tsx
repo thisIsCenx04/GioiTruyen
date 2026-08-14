@@ -73,7 +73,10 @@ export default function AffiliateLinksAdminPage() {
 
   async function addLink(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    // Held before the first await: React clears currentTarget once the
+    // synchronous handler returns, so resetting it later threw instead.
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const targetUrl = String(form.get("targetUrl") ?? "").trim();
     const name = String(form.get("name") ?? "").trim();
 
@@ -103,7 +106,7 @@ export default function AffiliateLinksAdminPage() {
         }),
       });
       setNotice("Đã thêm link affiliate.");
-      event.currentTarget.reset();
+      formElement.reset();
       await refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Không thêm được link.");

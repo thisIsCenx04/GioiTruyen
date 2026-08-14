@@ -178,7 +178,7 @@ export default function PromotionPage() {
           <section className={styles.card}>
             <p className={styles.signedOut}>
               <AlertCircle aria-hidden="true" size={18} />
-              Hãy <Link to="/auth/login?returnTo=/bo-cao">đăng nhập</Link> bằng tài khoản thuộc nhóm
+              Hãy <Link to="/login?returnTo=/bo-cao">đăng nhập</Link> bằng tài khoản thuộc nhóm
               dịch để đăng ký bố cáo.
             </p>
           </section>
