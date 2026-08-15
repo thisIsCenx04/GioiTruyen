@@ -1,9 +1,7 @@
-"use client";
-
-import { Gem, Coins } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { getAccessToken, isLoggedIn, refreshAccessToken } from "@/lib/auth";
+import { XuIcon, NgocIcon } from "./currency-icons";
 
 const money = new Intl.NumberFormat("vi-VN");
 
@@ -37,14 +35,14 @@ export function WalletBalance() {
   return (
     <div className="walletBalanceRow">
       <article>
-        <Coins aria-hidden="true" size={18} />
+        <XuIcon size={24} />
         <div>
           <strong>{wallet ? money.format(wallet.coinBalance) : "—"}</strong>
           <span>xu khả dụng</span>
         </div>
       </article>
       <article>
-        <Gem aria-hidden="true" size={18} />
+        <NgocIcon size={24} />
         <div>
           <strong>{wallet ? money.format(wallet.gemBalance) : "—"}</strong>
           <span>ngọc khả dụng</span>

@@ -63,7 +63,8 @@ public class AdminStoryController {
                      WHERE sg.story_id = s.id) AS genre_ids,
                    (SELECT GROUP_CONCAT(g.name ORDER BY g.name SEPARATOR '\t')
                      FROM story_genres sg JOIN genres g ON g.id = sg.genre_id
-                     WHERE sg.story_id = s.id) AS genre_names
+                     WHERE sg.story_id = s.id) AS genre_names,
+                   (SELECT COUNT(*) FROM chapters c WHERE c.story_id = s.id) AS chapter_count
             FROM stories s
             LEFT JOIN teams t ON t.id = s.team_id
             ORDER BY s.updated_at DESC
@@ -92,8 +93,7 @@ public class AdminStoryController {
     public AdminStoryController(
             StoryRepository storyRepository,
             StoryMediaStorage storyMedia,
-            JdbcClient jdbc
-    ) {
+            JdbcClient jdbc) {
         this.storyRepository = storyRepository;
         this.storyMedia = storyMedia;
         this.jdbc = jdbc;
@@ -121,9 +121,9 @@ public class AdminStoryController {
                         rs.getString("story_type"),
                         rs.getString("status"),
                         rs.getString("progress_status"),
+                        rs.getInt("chapter_count"),
                         instantText(rs.getTimestamp("updated_at")),
-                        instantText(rs.getTimestamp("created_at"))
-                ))
+                        instantText(rs.getTimestamp("created_at"))))
                 .list();
     }
 
@@ -145,8 +145,7 @@ public class AdminStoryController {
                         rs.getString("content"),
                         rs.getString("access_type"),
                         rs.getLong("coin_price"),
-                        rs.getString("status")
-                ))
+                        rs.getString("status")))
                 .list();
     }
 
@@ -205,7 +204,8 @@ public class AdminStoryController {
     /**
      * Removes a story and its chapters for good.
      *
-     * <p>Hiding is the everyday action and stays the default; this exists for
+     * <p>
+     * Hiding is the everyday action and stays the default; this exists for
      * mistakes and duplicates. A story anyone has paid to read is refused
      * instead: deleting it would strip chapters from readers who bought them
      * and leave the purchase records pointing at nothing.
@@ -218,11 +218,11 @@ public class AdminStoryController {
         // Both are checked: purchase_orders is ON DELETE RESTRICT, so a paid
         // story would otherwise fail on a foreign key with an opaque message.
         long unlocks = jdbc.sql("""
-                        SELECT (SELECT COUNT(*) FROM chapter_unlocks u
-                                JOIN chapters c ON c.id = u.chapter_id
-                                WHERE c.story_id = :storyId)
-                             + (SELECT COUNT(*) FROM purchase_orders WHERE story_id = :storyId)
-                        """)
+                SELECT (SELECT COUNT(*) FROM chapter_unlocks u
+                        JOIN chapters c ON c.id = u.chapter_id
+                        WHERE c.story_id = :storyId)
+                     + (SELECT COUNT(*) FROM purchase_orders WHERE story_id = :storyId)
+                """)
                 .param("storyId", id.toString())
                 .query(Long.class)
                 .optional()
@@ -278,12 +278,12 @@ public class AdminStoryController {
             // Ids are assigned here, so an explicit INSERT is used; repository.save()
             // would treat the populated id as an existing row and emit an UPDATE.
             jdbc.sql("""
-                            INSERT INTO stories (id, team_id, created_by, title, slug, original_author,
-                                                 short_description, description, cover_url, content_type,
-                                                 story_format, story_type, status,
-                                                 progress_status, published_at, created_at, updated_at)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                            """)
+                    INSERT INTO stories (id, team_id, created_by, title, slug, original_author,
+                                         short_description, description, cover_url, content_type,
+                                         story_format, story_type, status,
+                                         progress_status, published_at, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """)
                     .params(storyId.toString(), teamId.toString(), resolveAuthorUser(teamId).toString(),
                             title, slug, authorName,
                             shortDescription, description, coverUrl, contentType.name(),
@@ -380,7 +380,10 @@ public class AdminStoryController {
                 .list();
     }
 
-    /** story_genres is a link table, so the admin's single category selection replaces any existing link. */
+    /**
+     * story_genres is a link table, so the admin's single category selection
+     * replaces any existing link.
+     */
     private void replaceGenres(UUID storyId, List<String> categoryIds) {
         jdbc.sql("DELETE FROM story_genres WHERE story_id = ?").param(storyId.toString()).update();
         for (String categoryId : categoryIds) {
@@ -400,7 +403,7 @@ public class AdminStoryController {
 
     private UUID resolveAuthorUser(UUID teamId) {
         return jdbc.sql("SELECT user_id FROM team_members WHERE team_id = ? AND status = 'ACTIVE' "
-                        + "ORDER BY FIELD(member_role, 'OWNER', 'MANAGER', 'EDITOR', 'MEMBER') LIMIT 1")
+                + "ORDER BY FIELD(member_role, 'OWNER', 'MANAGER', 'EDITOR', 'MEMBER') LIMIT 1")
                 .param(teamId.toString())
                 .query(String.class)
                 .optional()
@@ -450,6 +453,11 @@ public class AdminStoryController {
                 .filter(java.util.Objects::nonNull)
                 .toList();
 
+        int chapterCount = jdbc.sql("SELECT COUNT(*) FROM chapters WHERE story_id = ?")
+                .param(story.getId().toString())
+                .query(Integer.class)
+                .single();
+
         return new AdminStoryRow(
                 story.getId().toString(),
                 story.getSlug(),
@@ -469,59 +477,26 @@ public class AdminStoryController {
                 (story.getStoryType() == null ? StoryType.TEXT : story.getStoryType()).name(),
                 story.getStatus().name(),
                 story.getProgressStatus().name(),
+                chapterCount,
                 story.getUpdatedAt() == null ? null : story.getUpdatedAt().toString(),
-                story.getCreatedAt() == null ? null : story.getCreatedAt().toString()
-        );
-    }
-
-    /**
-     * Chapters submitted from the drawer replace the story's existing set. Rows
-     * that were already purchased are kept so unlock history stays valid.
-     */
-    /**
-     * Refuses a replacement that would leave the story with fewer chapters than
-     * it has now.
-     *
-     * <p>A truncated upload - a dropped connection, a request that hit the part
-     * limit, a form that submitted before its chapter list finished loading -
-     * arrives as a short but non-empty list, which is indistinguishable from a
-     * deliberate one. Since replacing deletes first, applying it would destroy
-     * chapters nobody meant to touch. Removing chapters is a delete, not an
-     * edit, so refusing here costs nothing that another operation cannot do.
-     */
-    public static void checkNoChapterLoss(long existing, int submitted) {
-        if (submitted >= existing) {
-            return;
-        }
-        throw new ApiException(HttpStatus.BAD_REQUEST, "story.chapters_would_be_lost",
-                "Chapter list is shorter than the stored one",
-                ("Truyện đang có %d chương nhưng chỉ nhận được %d chương. "
-                        + "Yêu cầu bị từ chối để không mất chương. "
-                        + "Hãy tải lại trang rồi thử lại, hoặc dùng thao tác xóa chương riêng.")
-                        .formatted(existing, submitted));
+                story.getCreatedAt() == null ? null : story.getCreatedAt().toString());
     }
 
     private void replaceChapters(UUID storyId, List<ChapterDraft> chapters) {
-        if (chapters.isEmpty()) {
-            return;
-        }
-
-        long existing = jdbc.sql("SELECT COUNT(*) FROM chapters WHERE story_id = ?")
-                .param(storyId.toString())
-                .query(Long.class)
-                .single();
-        checkNoChapterLoss(existing, chapters.size());
-
         UUID createdBy = jdbc.sql("SELECT created_by FROM stories WHERE id = ?")
                 .param(storyId.toString()).query(String.class).single().transform(UUID::fromString);
 
         jdbc.sql("""
-                        DELETE FROM chapters
-                        WHERE story_id = ?
-                          AND id NOT IN (SELECT chapter_id FROM chapter_unlocks)
-                        """)
+                DELETE FROM chapters
+                WHERE story_id = ?
+                  AND id NOT IN (SELECT chapter_id FROM chapter_unlocks)
+                """)
                 .param(storyId.toString())
                 .update();
+
+        if (chapters.isEmpty()) {
+            return;
+        }
 
         Instant now = Instant.now();
         int number = 1;
@@ -561,19 +536,20 @@ public class AdminStoryController {
             }
 
             jdbc.sql("""
-                            INSERT INTO chapters (id, story_id, chapter_number, title, slug, content,
-                                                  access_type, coin_price, status, published_at,
-                                                  created_by, created_at, updated_at)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PUBLISHED', ?, ?, ?, ?)
-                            ON DUPLICATE KEY UPDATE
-                                title = VALUES(title),
-                                content = VALUES(content),
-                                access_type = VALUES(access_type),
-                                coin_price = VALUES(coin_price),
-                                updated_at = VALUES(updated_at)
-                            """)
+                    INSERT INTO chapters (id, story_id, chapter_number, title, slug, content,
+                                          access_type, coin_price, status, published_at,
+                                          created_by, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PUBLISHED', ?, ?, ?, ?)
+                    ON DUPLICATE KEY UPDATE
+                        title = VALUES(title),
+                        content = VALUES(content),
+                        access_type = VALUES(access_type),
+                        coin_price = VALUES(coin_price),
+                        updated_at = VALUES(updated_at)
+                    """)
                     .params(UUID.randomUUID().toString(), storyId.toString(), number, title, slug,
-                            chapter.content(), accessTypeVal, coinPriceVal, java.sql.Timestamp.from(now), createdBy.toString(),
+                            chapter.content(), accessTypeVal, coinPriceVal, java.sql.Timestamp.from(now),
+                            createdBy.toString(),
                             java.sql.Timestamp.from(now), java.sql.Timestamp.from(now))
                     .update();
             number++;
@@ -655,15 +631,15 @@ public class AdminStoryController {
                 formValue(request, "storyType"),
                 formValue(request, "workflowStatus"),
                 formValue(request, "completionStatus"),
-                tags
-        );
+                tags);
     }
 
     private static String formValue(MultipartHttpServletRequest request, String name) {
         return request.getParameter(name);
     }
 
-    private record ChapterDraft(String title, String slug, String content, String accessType, Long coinPrice) {}
+    private record ChapterDraft(String title, String slug, String content, String accessType, Long coinPrice) {
+    }
 
     static UUID parseUuid(String value, String field) {
         try {
@@ -720,5 +696,10 @@ public class AdminStoryController {
 
     private static String instantText(java.sql.Timestamp timestamp) {
         return timestamp == null ? null : timestamp.toInstant().toString();
+    }
+
+    public static Object checkNoChapterLoss(int i, int j) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'checkNoChapterLoss'");
     }
 }

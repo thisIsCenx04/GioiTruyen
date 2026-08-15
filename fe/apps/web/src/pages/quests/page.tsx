@@ -4,6 +4,7 @@ import { Check, Gem, Gift, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+import { XuIcon, NgocIcon } from "@/components/currency-icons";
 import { PublicShell } from "@/components/site-chrome";
 import { isLoggedIn } from "@/lib/auth";
 import {
@@ -133,10 +134,10 @@ export default function QuestsPage() {
                 </div>
 
                 <div className="questCardSide">
-                  <span className="questReward">
-                    {quest.rewardCoin > 0 ? <b>{quest.rewardCoin} xu</b> : null}
+                  <span className="questReward" style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+                    {quest.rewardCoin > 0 ? <b style={{ display: "inline-flex", alignItems: "center", gap: "0.2rem" }}>{quest.rewardCoin} <XuIcon size={16} /></b> : null}
                     {quest.rewardGem > 0
-                      ? <b><Gem aria-hidden="true" size={12} /> {quest.rewardGem}</b>
+                      ? <b style={{ display: "inline-flex", alignItems: "center", gap: "0.2rem" }}>{quest.rewardGem} <NgocIcon size={16} /></b>
                       : null}
                   </span>
                   {quest.claimed ? (

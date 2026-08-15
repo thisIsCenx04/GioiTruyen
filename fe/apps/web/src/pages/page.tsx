@@ -1,52 +1,14 @@
-import type { HomeStorySummary, RankingBoard } from "@gioitruyen/api-client";
-import { BookOpen, Flame, MessageSquare, Sparkles, Trophy } from "lucide-react";
+import type { HomeStorySummary, PromotedHomeStory, RankingBoard } from "@gioitruyen/api-client";
+import { BookOpen, Flame, MessageSquare, Sparkles, Trophy, ArrowRight, Zap, Gift } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { CatalogStoryCard } from "@/components/catalog-story-card";
-import {
-  PromotedEmptySlot,
-  PromotedStoryCard,
-} from "@/components/promoted-story-card";
+import { PromotedStoryCard } from "@/components/promoted-story-card";
 import { CommunityChat } from "@/components/community-chat";
-import { RankingPanel } from "@/components/ranking-panel";
 import { PublicShell } from "@/components/site-chrome";
 import { loadHome } from "@/lib/catalog";
 
 export const revalidate = 60;
-
-const promotedSlots = Array.from({ length: 12 }, (_, index) => index + 1);
-
-function formatMetric(value: number, unit: string) {
-  return `${value.toLocaleString("vi-VN")}${unit ? ` ${unit}` : ""}`;
-}
-
-function getBoardRows(
-  board: RankingBoard | undefined,
-  stories: readonly HomeStorySummary[],
-  fallbackUnit: string,
-) {
-  if (board && board.stories.length > 0) {
-    return {
-      title: board.title,
-      unit: board.unit,
-      rows: board.stories.slice(0, 5).map((row) => ({
-        metric: row.metricValue,
-        rank: row.rank,
-        story: row.story,
-      })),
-    };
-  }
-
-  return {
-    title: "",
-    unit: fallbackUnit,
-    rows: stories.slice(0, 5).map((story, index) => ({
-      metric: story.viewCount ?? story.saveCount ?? (5 - index) * 1000,
-      rank: index + 1,
-      story,
-    })),
-  };
-}
 
 export default async function HomePage() {
   const home = await loadHome().catch(() => null);
@@ -62,8 +24,6 @@ export default async function HomePage() {
     ).values(),
   ];
 
-  // An outage and an empty library render identically, so a failed load must
-  // say so rather than quietly showing a library with nothing in it.
   if (!home || (home.degraded && stories.length === 0)) {
     return (
       <PublicShell>
@@ -76,26 +36,33 @@ export default async function HomePage() {
       </PublicShell>
     );
   }
+
   const categories = home.taxonomy.groups.flatMap((group) => group.categories);
-  const promotedStories = home.promotions.map((booking) => booking.story);
-  const visiblePromotions = home.promotions.slice(0, 11);
-  const bookingsBySlot = new Map(
-    visiblePromotions.map((booking) => [booking.slotPosition, booking] as const),
+  const featuredPromotions: PromotedHomeStory[] = home.promotions.length > 0
+    ? home.promotions.slice(0, 12)
+    : stories.slice(0, 6).map((story, index) => ({
+        badgeText: "ĐỀ CỬ",
+        badgeType: "DE_CU",
+        bookingId: story.id,
+        createdAt: "",
+        id: story.id,
+        slotPosition: index + 1,
+        story,
+        tagLabel: "ĐỀ CỬ",
+      }));
+
+  // Exclusive stories filter (or top curated fallback if sample data is small)
+  const exclusiveStories = stories.filter(
+    (s) => s.storyType === "EXCLUSIVE" || (s as any).story_type === "EXCLUSIVE",
   );
-  const rankingBoardsById = new Map(
-    home.rankingBoards.map((board) => [board.id, board] as const),
-  );
-  const revenueRows = getBoardRows(rankingBoardsById.get("gold"), stories, "xu");
-  const recommendationRows = getBoardRows(
-    rankingBoardsById.get("recommendations"),
-    stories,
-    "đề cử",
-  );
-  const discussionStories = stories.slice(0, 3);
+  const displayExclusiveStories = exclusiveStories.length >= 4
+    ? exclusiveStories.slice(0, 8)
+    : stories.slice(0, 8);
 
   return (
     <PublicShell>
       <div className="homeLayout homeLayoutFull">
+        {/* 1. HERO SECTION: Promoted / Featured Stories */}
         <section className="bookingBoard" aria-labelledby="booking-title">
           <header>
             <div>
@@ -108,119 +75,218 @@ export default async function HomePage() {
             </Link>
           </header>
           <div className="promotedGrid">
-            {promotedSlots.map((slot, index) => {
-              const booking = bookingsBySlot.get(slot);
-              return booking ? (
-                <PromotedStoryCard
-                  booking={booking}
-                  index={index}
-                  key={booking.bookingId}
-                />
-              ) : (
-                <PromotedEmptySlot key={`empty-${slot}`} slot={slot} />
-              );
-            })}
-          </div>
-        </section>
-
-        <div className="storyRankingLayout">
-          <div className="homeSectionStack">
-            {storySections.map((section) => (
-              <section
-                aria-labelledby={`${section.id}-title`}
-                className="storySection storySectionLarge storyListBoard"
-                key={section.id}
-              >
-                <header>
-                  <div>
-                    <h2 id={`${section.id}-title`}>
-                      <Flame aria-hidden="true" />
-                      {section.title}
-                    </h2>
-                  </div>
-                  <Link to="/stories">Xem tất cả</Link>
-                </header>
-                {section.stories.length > 0 ? (
-                  <div className="catalogGrid catalogGridLarge catalogGridVertical">
-                    {section.stories.slice(0, 8).map((story, index) => (
-                      <CatalogStoryCard
-                        index={index}
-                        key={story.id}
-                        story={story}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <p className="emptyCatalog">Danh mục này đang chờ những chương truyện đầu tiên.</p>
-                )}
-              </section>
+            {featuredPromotions.map((booking, index) => (
+              <PromotedStoryCard
+                booking={booking}
+                index={index}
+                key={booking.bookingId || booking.story.id}
+              />
             ))}
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-            <RankingPanel stories={promotedStories.length > 0 ? promotedStories : stories} />
-            <CommunityChat compact={true} />
-          </div>
-        </div>
+        </section>
 
-        <section className="homeSpotlightSection" aria-labelledby="home-spotlight-title">
+        {/* 2. SECTION TRUYỆN ĐỘC QUYỀN (Immediately under Hero Section) */}
+        <section aria-labelledby="exclusive-section-title" className="storySection storySectionLarge storyListBoard">
           <header>
             <div>
-              <p className="detailEyebrow">Cộng đồng đang chú ý</p>
-              <h2 id="home-spotlight-title">Doanh thu, đề cử và thảo luận mới</h2>
+              <h2 id="exclusive-section-title" style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
+                <Sparkles aria-hidden="true" style={{ color: "#f59e0b" }} />
+                Truyện Độc Quyền
+              </h2>
             </div>
-            <Link to={"/rankings" as string}>Xem bảng đầy đủ</Link>
+            <Link to="/stories">Xem tất cả</Link>
           </header>
-          <div className="homeSpotlightGrid">
-            <article className="homeMiniRanking" aria-labelledby="home-revenue-title">
-              <h3 id="home-revenue-title">
-                <Trophy aria-hidden="true" />
-                Bảng doanh thu
-              </h3>
-              <ol>
-                {revenueRows.rows.map((row) => (
-                  <li key={`revenue-${row.story.id}`}>
-                    <b>{row.rank}</b>
-                    <Link to={`/truyen/${row.story.slug}` as string}>{row.story.title}</Link>
-                    <span>{formatMetric(row.metric, revenueRows.unit)}</span>
-                  </li>
-                ))}
-              </ol>
-            </article>
-            <article className="homeMiniRanking" aria-labelledby="home-recommend-title">
-              <h3 id="home-recommend-title">
-                <Sparkles aria-hidden="true" />
-                Bảng đề cử
-              </h3>
-              <ol>
-                {recommendationRows.rows.map((row) => (
-                  <li key={`recommend-${row.story.id}`}>
-                    <b>{row.rank}</b>
-                    <Link to={`/truyen/${row.story.slug}` as string}>{row.story.title}</Link>
-                    <span>{formatMetric(row.metric, recommendationRows.unit)}</span>
-                  </li>
-                ))}
-              </ol>
-            </article>
-            <article className="homeDiscussionPanel" aria-labelledby="home-discussion-title">
-              <h3 id="home-discussion-title">
-                <MessageSquare aria-hidden="true" />
-                Khu thảo luận
-              </h3>
-              <div>
-                {discussionStories.map((story) => (
-                  <Link to={`/truyen/${story.slug}` as string} key={story.id}>
-                    <strong>{story.title}</strong>
-                    <span>Đọc chương mới và tham gia bình luận cùng cộng đồng.</span>
-                  </Link>
-                ))}
-              </div>
-              <Link className="homeDiscussionAction" to={"/community" as string}>
-                Vào cộng đồng
-              </Link>
-            </article>
+          <div className="catalogGrid catalogGridLarge catalogGridVertical">
+            {displayExclusiveStories.map((story, index) => (
+              <CatalogStoryCard index={index} key={`exclusive-${story.id}`} story={story} />
+            ))}
           </div>
         </section>
 
+        {/* 3. CÁC SECTION TRUYỆN THEO DANH MỤC (Mỗi section 8 card & nút Xem Tất Cả) */}
+        {storySections.map((section) => (
+          <section
+            aria-labelledby={`${section.id}-title`}
+            className="storySection storySectionLarge storyListBoard"
+            key={section.id}
+          >
+            <header>
+              <div>
+                <h2 id={`${section.id}-title`}>
+                  <Flame aria-hidden="true" />
+                  {section.title}
+                </h2>
+              </div>
+              <Link to="/stories">Xem tất cả</Link>
+            </header>
+            {section.stories.length > 0 ? (
+              <div className="catalogGrid catalogGridLarge catalogGridVertical">
+                {section.stories.slice(0, 8).map((story, index) => (
+                  <CatalogStoryCard
+                    index={index}
+                    key={story.id}
+                    story={story}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="emptyCatalog">Danh mục này đang chờ những chương truyện đầu tiên.</p>
+            )}
+          </section>
+        ))}
+
+        {/* 4. BANNER NGANG QUẢNG CÁO SỰ KIỆN & ƯU ĐÃI (Thay cho các khối chữ cũ) */}
+        <section className="eventBannersSection" aria-label="Sự kiện & Quảng cáo">
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+              gap: "1.25rem",
+              margin: "1.5rem 0",
+            }}
+          >
+            {/* Banner 1: Cuộc thi sáng tác */}
+            <div
+              style={{
+                background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)",
+                borderRadius: "1rem",
+                padding: "1.5rem",
+                color: "#ffffff",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+                minHeight: "140px",
+                position: "relative",
+                overflow: "hidden",
+                boxShadow: "0 10px 25px -5px rgba(49, 46, 129, 0.4)",
+              }}
+            >
+              <div>
+                <span
+                  style={{
+                    background: "rgba(255, 255, 255, 0.18)",
+                    backdropFilter: "blur(8px)",
+                    color: "#a5b4fc",
+                    fontSize: "0.75rem",
+                    fontWeight: 800,
+                    padding: "0.25rem 0.65rem",
+                    borderRadius: "20px",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  🔥 SỰ KIỆN HOT 2026
+                </span>
+                <h3 style={{ fontSize: "1.2rem", fontWeight: 850, margin: "0.6rem 0 0.3rem", color: "#ffffff" }}>
+                  Cuộc Thi Sáng Tác Truyện Mới
+                </h3>
+                <p style={{ fontSize: "0.85rem", color: "#c7d2fe", margin: 0 }}>
+                  Giải thưởng tổng nhuận bút lên đến 50.000.000 VNĐ cùng đặc quyền Xuất Bản Độc Quyền!
+                </p>
+              </div>
+              <div style={{ marginTop: "1rem" }}>
+                <Link
+                  to="/teams"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.4rem",
+                    background: "#6366f1",
+                    color: "#ffffff",
+                    fontWeight: 800,
+                    fontSize: "0.85rem",
+                    padding: "0.55rem 1.1rem",
+                    borderRadius: "0.6rem",
+                    textDecoration: "none",
+                  }}
+                >
+                  Tham gia ngay <ArrowRight size={14} />
+                </Link>
+              </div>
+            </div>
+
+            {/* Banner 2: Chương trình nạp xu */}
+            <div
+              style={{
+                background: "linear-gradient(135deg, #065f46 0%, #047857 100%)",
+                borderRadius: "1rem",
+                padding: "1.5rem",
+                color: "#ffffff",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+                minHeight: "140px",
+                position: "relative",
+                overflow: "hidden",
+                boxShadow: "0 10px 25px -5px rgba(4, 120, 87, 0.4)",
+              }}
+            >
+              <div>
+                <span
+                  style={{
+                    background: "rgba(255, 255, 255, 0.18)",
+                    backdropFilter: "blur(8px)",
+                    color: "#6ee7b7",
+                    fontSize: "0.75rem",
+                    fontWeight: 800,
+                    padding: "0.25rem 0.65rem",
+                    borderRadius: "20px",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  🎁 ƯU ĐÃI NẠP XU
+                </span>
+                <h3 style={{ fontSize: "1.2rem", fontWeight: 850, margin: "0.6rem 0 0.3rem", color: "#ffffff" }}>
+                  Tặng Ngay 20% Ngọc Khi Nạp Xu
+                </h3>
+                <p style={{ fontSize: "0.85rem", color: "#a7f3d0", margin: 0 }}>
+                  Áp dụng cho mọi gói nạp ví cá nhân. Tích ngọc đề cử truyện hay đẩy Top liền tay!
+                </p>
+              </div>
+              <div style={{ marginTop: "1rem" }}>
+                <Link
+                  to="/wallet"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.4rem",
+                    background: "#10b981",
+                    color: "#ffffff",
+                    fontWeight: 800,
+                    fontSize: "0.85rem",
+                    padding: "0.55rem 1.1rem",
+                    borderRadius: "0.6rem",
+                    textDecoration: "none",
+                  }}
+                >
+                  Nạp xu ngay <Gift size={14} />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 5. KHU THẢO LUẬN MỚI DÀNH TOÀN BỘ KHÔNG GIAN (Bỏ các BXH thô sơ) */}
+        <section className="homeCommunitySection" aria-label="Khu thảo luận cộng đồng" style={{ margin: "1.5rem 0" }}>
+          <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+            <div>
+              <p className="detailEyebrow" style={{ color: "#2563eb", fontWeight: 700, margin: 0, fontSize: "0.85rem" }}>Cộng đồng đang chú ý</p>
+              <h2 style={{ fontSize: "1.35rem", fontWeight: 850, color: "#0f172a", margin: "0.2rem 0 0" }}>
+                💬 Khu Thảo Luận & Bình Luận Mới
+              </h2>
+            </div>
+            <Link to="/community" style={{ color: "#2563eb", fontWeight: 700, fontSize: "0.9rem", textDecoration: "none" }}>
+              Vào cộng đồng →
+            </Link>
+          </header>
+
+          <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "1.25rem", padding: "1.25rem", boxShadow: "0 10px 30px -10px rgba(15, 23, 42, 0.08)" }}>
+            <CommunityChat compact={false} />
+          </div>
+        </section>
+
+        {/* 6. THỂ LOẠI TRUYỆN PHỔ BIẾN */}
         <section className="categorySection categorySectionLarge">
           <header>
             <h2>Thể loại truyện phổ biến</h2>
@@ -231,47 +297,12 @@ export default async function HomePage() {
               <Link
                 data-tone={index % 8}
                 to={`/categories/${category.slug}`}
-              key={category.id}
-            >
-              <strong>{category.name}</strong>
-            </Link>
+                key={category.id}
+              >
+                <strong>{category.name}</strong>
+              </Link>
             ))}
           </nav>
-        </section>
-
-        <section className="aboutBand" aria-labelledby="about-title">
-          <div>
-            <p className="detailEyebrow">Về Giới Truyện</p>
-            <h2 id="about-title">Một thư viện mở cho người đọc, tác giả và các nhóm chuyển ngữ.</h2>
-          </div>
-          <p>
-            Giới Truyện giúp bạn đọc liền mạch trên nhiều thiết bị, lưu truyện yêu thích,
-            theo dõi chương mới và ủng hộ trực tiếp người làm nội dung bằng XU. Mỗi tác phẩm
-            đều có thông tin tác giả, trạng thái xuất bản và lịch sử cập nhật rõ ràng.
-          </p>
-        </section>
-
-        <section className="publishingRules" aria-labelledby="publishing-rules-title">
-          <div>
-            <p className="detailEyebrow">Quy định trước khi đăng truyện</p>
-            <h2 id="publishing-rules-title">Tôn trọng bản quyền, người đọc và cộng đồng.</h2>
-          </div>
-          <ol>
-            <li>Truyện phải do bạn sở hữu quyền đăng hoặc có giấy phép chuyển ngữ, xuất bản.</li>
-            <li>Không đăng nội dung vi phạm pháp luật, kích động thù ghét, lộ thông tin cá nhân.</li>
-            <li>Chương mới cần có tiêu đề, nội dung hoàn chỉnh và gửi kiểm duyệt trước khi xuất bản.</li>
-            <li>Nhóm mới đăng ký phải hoàn tất hồ sơ và chờ quản trị viên duyệt quyền xuất bản.</li>
-          </ol>
-        </section>
-
-        <section className="creatorBanner creatorBannerWide">
-          <BookOpen aria-hidden="true" />
-          <div>
-            <strong>Bạn có một câu chuyện muốn được tìm thấy?</strong>
-            <p>Đăng ký nhóm xuất bản, chuẩn bị bản quyền và bắt đầu xây dựng tủ truyện của riêng bạn.</p>
-          </div>
-          <Link to={"/publishing-rules" as string}>Xem quy định</Link>
-          <Link className="primaryAction" to="/teams">Đăng ký ngay</Link>
         </section>
       </div>
     </PublicShell>

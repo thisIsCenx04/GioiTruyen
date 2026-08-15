@@ -62,6 +62,7 @@ public final class AdminDtos {
             String storyType,
             String workflowStatus,
             String completionStatus,
+            int chapterCount,
             String updatedAt,
             String createdAt
     ) {}

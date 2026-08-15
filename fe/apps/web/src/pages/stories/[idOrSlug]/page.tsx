@@ -62,7 +62,7 @@ function pageWindow(currentPage: number, totalPages: number) {
     .sort((left, right) => left - right);
 }
 
-/* generateMetadata removed */
+import { StoryDescription } from "@/components/story-description";
 
 export default async function StoryPage({ params, searchParams }: StoryPageProps) {
   const { idOrSlug } = await params;
@@ -117,7 +117,7 @@ export default async function StoryPage({ params, searchParams }: StoryPageProps
 
   return (
     <PublicShell>
-      <main className="storyDetail storyDetailPage">
+      <main className="storyDetailPage">
         <nav className="breadcrumbs" aria-label="Đường dẫn">
           <Link to="/">Trang chủ</Link><span>›</span><Link to="/stories">Truyện</Link><span>›</span>
           <strong>{story.title}</strong>
@@ -155,28 +155,32 @@ export default async function StoryPage({ params, searchParams }: StoryPageProps
             </dl>
 
             <div className="storyActionBar" aria-label="Thao tác với truyện">
-              <StoryRelations storyId={story.id} />
-              <StoryRecommend storyId={story.id} />
-              <DonationJourney storyTitle={story.title} teamId={story.teamId} variant="action" />
-              <StoryComboPurchase
-                chaptersCount={totalChapters}
-                completionStatus={story.completionStatus}
-                storyId={story.id}
-                storyTitle={story.title}
-              />
-              {isOneshot ? (
-                <a className="storyAction storyActionStart" href="#oneshot-body"><BookOpen /> Đọc truyện</a>
-              ) : (
-                <>
-                  {firstChapter && <Link className="storyAction storyActionStart" to={`/truyen/${story.slug}/chuong-${firstChapter.number}` as string}><BookOpen /> Đọc từ đầu</Link>}
-                  {latestChapter && <Link className="storyAction storyActionLatest" to={`/truyen/${story.slug}/chuong-${latestChapter.number}` as string}><Star /> Đọc tập mới</Link>}
-                </>
-              )}
-              <StoryShareButton storySlug={story.slug} storyTitle={story.title} />
-              <StoryReportButton targetId={story.id} />
+              <div className="storyActionRow">
+                <StoryRelations storyId={story.id} />
+                <StoryRecommend storyId={story.id} />
+                <DonationJourney storyTitle={story.title} teamId={story.teamId} variant="action" />
+                <StoryComboPurchase
+                  chaptersCount={totalChapters}
+                  completionStatus={story.completionStatus}
+                  storyId={story.id}
+                  storyTitle={story.title}
+                />
+              </div>
+              <div className="storyActionRow">
+                {isOneshot ? (
+                  <a className="storyAction storyActionStart" href="#oneshot-body"><BookOpen /> Đọc truyện</a>
+                ) : (
+                  <>
+                    {firstChapter && <Link className="storyAction storyActionStart" to={`/truyen/${story.slug}/chuong-${firstChapter.number}` as string}><BookOpen /> Đọc từ đầu</Link>}
+                    {latestChapter && <Link className="storyAction storyActionLatest" to={`/truyen/${story.slug}/chuong-${latestChapter.number}` as string}><Star /> Đọc tập mới</Link>}
+                  </>
+                )}
+                <StoryShareButton storySlug={story.slug} storyTitle={story.title} />
+                <StoryReportButton targetId={story.id} />
+              </div>
             </div>
 
-            <p className="storyDescription">{story.synopsis}</p>
+            <StoryDescription synopsis={story.synopsis} />
 
             {storyTags.length > 0 ? (
               <ul className="storyTagList" aria-label="Tag của truyện">
@@ -263,7 +267,7 @@ export default async function StoryPage({ params, searchParams }: StoryPageProps
           <aside className="storyRecommendations" aria-labelledby="recommendations-title">
             <header>
               <div>
-                <p className="detailEyebrow">Dành cho bạn</p>
+                <p className="detailEyebrow">Cùng thể loại</p>
                 <h2 id="recommendations-title">Truyện tương tự</h2>
               </div>
             </header>

@@ -1,9 +1,9 @@
 "use client";
 
 import { createBrowserStoryRelationClient, StoryApiError } from "@gioitruyen/api-client";
-import { Gem } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { NgocIcon } from "./currency-icons";
 
 import { isLoggedIn, loginHref } from "@/lib/auth";
 import { API_BASE_URL, authedFetch } from "@/lib/api-base";
@@ -21,10 +21,6 @@ function errorMessage(cause: unknown) {
 
 /**
  * Recommending a story with gems.
- *
- * <p>The story's total is deliberately absent: it decides the ranking order and
- * is read by the admin dashboard, but showing it here would turn the button
- * into a public spending leaderboard. A reader sees only their own giving.
  */
 export function StoryRecommend({ storyId }: Readonly<{ storyId: string }>) {
   const api = useMemo(
@@ -37,6 +33,8 @@ export function StoryRecommend({ storyId }: Readonly<{ storyId: string }>) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
+
   const dialogRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -48,7 +46,20 @@ export function StoryRecommend({ storyId }: Readonly<{ storyId: string }>) {
     return () => { cancelled = true; };
   }, [api, storyId]);
 
-  // Escape closes it, as a reader expects of any dialog.
+  // Fetch wallet balance when opening modal
+  useEffect(() => {
+    if (!open || !isLoggedIn()) return;
+    authedFetch(`${API_BASE_URL}/wallets/me`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data && typeof data.gemBalance === "number") {
+          setBalance(data.gemBalance);
+        }
+      })
+      .catch(() => undefined);
+  }, [open]);
+
+  // Escape closes it
   useEffect(() => {
     if (!open) return undefined;
     const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
@@ -56,9 +67,6 @@ export function StoryRecommend({ storyId }: Readonly<{ storyId: string }>) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  // Moves the caret into the dialog on open, so a keyboard or screen-reader
-  // user lands inside it rather than continuing from the button behind it, and
-  // the page behind stops scrolling under the overlay.
   useEffect(() => {
     if (!open) return undefined;
     dialogRef.current?.focus();
@@ -67,16 +75,17 @@ export function StoryRecommend({ storyId }: Readonly<{ storyId: string }>) {
     return () => { document.body.style.overflow = previousOverflow; };
   }, [open]);
 
-  async function give(gemAmount: number) {
-    if (busy) return;
+  async function handleConfirmGive() {
+    if (busy || selectedAmount === null || selectedAmount <= 0) return;
     setBusy(true);
     setError("");
     setNotice("");
     try {
-      const receipt = await api.recommend(storyId, gemAmount);
+      const receipt = await api.recommend(storyId, selectedAmount);
       setBalance(receipt.gemBalance);
       setMine((current) => (current ?? 0) + receipt.gemAmount);
-      setNotice(`Đã đề cử ${gemAmount} ngọc. Cảm ơn bạn!`);
+      setNotice(`Đã đề cử thành công ${selectedAmount} ngọc. Cảm ơn bạn!`);
+      setSelectedAmount(null);
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
@@ -84,10 +93,17 @@ export function StoryRecommend({ storyId }: Readonly<{ storyId: string }>) {
     }
   }
 
+  function handleCloseModal() {
+    setOpen(false);
+    setSelectedAmount(null);
+    setError("");
+    setNotice("");
+  }
+
   if (!isLoggedIn()) {
     return (
       <Link className={styles.trigger} to={loginHref()}>
-        <Gem aria-hidden="true" /> Đề cử
+        <NgocIcon size={18} /> Đề cử
       </Link>
     );
   }
@@ -95,12 +111,12 @@ export function StoryRecommend({ storyId }: Readonly<{ storyId: string }>) {
   return (
     <>
       <button className={styles.trigger} onClick={() => setOpen(true)} type="button">
-        <Gem aria-hidden="true" /> Đề cử
-        {mine ? <small>bạn đã tặng {mine}</small> : null}
+        <NgocIcon size={18} /> Đề cử
+        {mine ? <small>({mine})</small> : null}
       </button>
 
       {open ? (
-        <div className={styles.overlay} onClick={() => setOpen(false)} role="presentation">
+        <div className={styles.overlay} onClick={handleCloseModal} role="presentation">
           <section
             aria-label="Đề cử truyện bằng ngọc"
             className={styles.dialog}
@@ -108,39 +124,164 @@ export function StoryRecommend({ storyId }: Readonly<{ storyId: string }>) {
             tabIndex={-1}
             onClick={(event) => event.stopPropagation()}
             role="dialog"
+            style={{ borderRadius: "1.25rem", padding: "1.5rem" }}
           >
-            <h2>Đề cử truyện</h2>
-            <p className={styles.lede}>
-              Dùng ngọc để đẩy truyện lên bảng đề cử. Số ngọc bạn tặng chỉ mình bạn thấy.
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.4rem" }}>
+              <NgocIcon size={24} />
+              <h2 style={{ fontSize: "1.25rem", fontWeight: 800, margin: 0, color: "var(--text-primary)" }}>Đề cử truyện</h2>
+            </div>
+            <p className={styles.lede} style={{ fontSize: "0.88rem", color: "var(--text-muted)", marginBottom: "1.2rem" }}>
+              Ủng hộ cho tác giả có thêm động lực.
             </p>
 
-            <div className={styles.amounts}>
-              {AMOUNTS.map((amount) => (
-                <button
-                  disabled={busy}
-                  key={amount}
-                  onClick={() => void give(amount)}
-                  type="button"
-                >
-                  {amount} ngọc
-                </button>
-              ))}
-            </div>
+            {notice ? (
+              <div style={{ background: "var(--success-soft)", border: "1px solid var(--success-soft)", color: "var(--success)", padding: "0.75rem 1rem", borderRadius: "0.75rem", fontSize: "0.88rem", fontWeight: 700, marginBottom: "1rem" }}>
+                {notice}
+              </div>
+            ) : null}
 
-            {notice ? <p className={styles.notice} role="status">{notice}</p> : null}
-            {error ? <p className={styles.error} role="alert">{error}</p> : null}
+            {error ? (
+              <div style={{ background: "var(--danger-soft)", border: "1px solid var(--danger-soft)", color: "var(--danger)", padding: "0.75rem 1rem", borderRadius: "0.75rem", fontSize: "0.88rem", fontWeight: 700, marginBottom: "1rem" }}>
+                {error}
+              </div>
+            ) : null}
 
-            <dl className={styles.facts}>
-              <div><dt>Bạn đã đề cử</dt><dd>{mine ?? 0} ngọc</dd></div>
-              {balance !== null ? <div><dt>Ngọc còn lại</dt><dd>{balance}</dd></div> : null}
-            </dl>
+            {selectedAmount === null ? (
+              /* Step 1: Select amount */
+              <>
+                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "0.6rem" }}>
+                  Chọn số ngọc muốn đề cử:
+                </label>
 
-            <div className={styles.actions}>
-              <Link className={styles.secondary} to="/wallet">Nạp thêm</Link>
-              <button className={styles.secondary} onClick={() => setOpen(false)} type="button">
-                Đóng
-              </button>
-            </div>
+                <div className={styles.amounts} style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0.65rem", marginBottom: "1.2rem" }}>
+                  {AMOUNTS.map((amount) => (
+                    <button
+                      key={amount}
+                      onClick={() => {
+                        setError("");
+                        setNotice("");
+                        setSelectedAmount(amount);
+                      }}
+                      type="button"
+                      style={{
+                        background: "var(--accent-soft)",
+                        border: "1.5px solid var(--border-subtle)",
+                        borderRadius: "0.75rem",
+                        color: "var(--accent)",
+                        padding: "0.75rem 0.5rem",
+                        fontWeight: 800,
+                        fontSize: "0.95rem",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "0.4rem",
+                        cursor: "pointer",
+                        transition: "all 150ms ease",
+                      }}
+                    >
+                      {amount} <NgocIcon size={18} />
+                    </button>
+                  ))}
+                </div>
+
+                <div className={styles.facts} style={{ background: "var(--surface-sunken)", border: "1px solid var(--border-subtle)", borderRadius: "0.85rem", padding: "0.85rem 1rem", marginBottom: "1.25rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
+                    <span style={{ color: "var(--text-muted)", fontSize: "0.85rem", fontWeight: 600 }}>Bạn đã đề cử truyện này</span>
+                    <span style={{ fontWeight: 800, color: "var(--text-primary)", display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
+                      {mine ?? 0} <NgocIcon size={16} />
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ color: "var(--text-muted)", fontSize: "0.85rem", fontWeight: 600 }}>Số dư ngọc của bạn</span>
+                    <span style={{ fontWeight: 800, color: "var(--accent)", display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
+                      {balance === null ? "…" : <>{balance.toLocaleString("vi-VN")} <NgocIcon size={16} /></>}
+                    </span>
+                  </div>
+                </div>
+
+                <div className={styles.actions} style={{ display: "flex", gap: "0.6rem", justifyContent: "flex-end" }}>
+                  <Link className={styles.secondary} to="/wallet" style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem" }}>
+                    Nạp ngọc
+                  </Link>
+                  <button className={styles.secondary} onClick={handleCloseModal} type="button">
+                    Đóng
+                  </button>
+                </div>
+              </>
+            ) : (
+              /* Step 2: Confirm donation */
+              <div style={{ background: "var(--accent-soft)", border: "1.5px solid var(--border-subtle)", borderRadius: "1rem", padding: "1.1rem", marginBottom: "1.25rem" }}>
+                <h3 style={{ fontSize: "1rem", fontWeight: 850, color: "var(--accent-hover)", margin: "0 0 0.5rem" }}>
+                  ⚠️ Xác nhận đề cử truyện
+                </h3>
+                <p style={{ fontSize: "0.88rem", color: "var(--text-secondary)", margin: "0 0 1rem", lineHeight: 1.4 }}>
+                  Bạn có chắc chắn muốn dùng <strong style={{ color: "var(--accent)" }}>{selectedAmount} ngọc</strong> để đề cử cho bộ truyện này không?
+                </p>
+
+                <div style={{ background: "var(--surface-card)", border: "1px solid var(--accent-soft)", borderRadius: "0.75rem", padding: "0.75rem 1rem", marginBottom: "1.1rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.88rem", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
+                    <span>Số ngọc đề cử:</span>
+                    <span style={{ color: "var(--accent)", display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
+                      {selectedAmount} <NgocIcon size={18} />
+                    </span>
+                  </div>
+                  {balance !== null ? (
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                      <span>Số dư ngọc sau khi tặng:</span>
+                      <span style={{ fontWeight: 700, color: balance >= selectedAmount ? "var(--success)" : "var(--danger)" }}>
+                        {Math.max(0, balance - selectedAmount).toLocaleString("vi-VN")} ngọc
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.65rem" }}>
+                  <button
+                    disabled={busy || (balance !== null && balance < selectedAmount)}
+                    onClick={() => void handleConfirmGive()}
+                    type="button"
+                    style={{
+                      background: balance !== null && balance < selectedAmount
+                        ? "var(--border-strong)"
+                        : "linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%)",
+                      color: "var(--surface-card)",
+                      border: "none",
+                      borderRadius: "0.75rem",
+                      padding: "0.75rem 1rem",
+                      fontWeight: 850,
+                      fontSize: "0.92rem",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "0.45rem",
+                      cursor: busy || (balance !== null && balance < selectedAmount) ? "not-allowed" : "pointer",
+                      boxShadow: balance !== null && balance < selectedAmount ? "none" : "0 4px 14px rgba(2, 132, 199, 0.35)",
+                    }}
+                  >
+                    <NgocIcon size={18} />
+                    {busy ? "Đang xử lý…" : balance !== null && balance < selectedAmount ? "Không đủ ngọc để đề cử" : `Xác nhận đề cử ${selectedAmount} ngọc`}
+                  </button>
+
+                  <button
+                    disabled={busy}
+                    onClick={() => setSelectedAmount(null)}
+                    type="button"
+                    style={{
+                      background: "var(--surface-card)",
+                      border: "1px solid var(--border-strong)",
+                      borderRadius: "0.75rem",
+                      color: "var(--text-secondary)",
+                      padding: "0.6rem 1rem",
+                      fontWeight: 700,
+                      fontSize: "0.85rem",
+                      cursor: "pointer",
+                    }}
+                  >
+                    ← Chọn lại số ngọc khác
+                  </button>
+                </div>
+              </div>
+            )}
           </section>
         </div>
       ) : null}

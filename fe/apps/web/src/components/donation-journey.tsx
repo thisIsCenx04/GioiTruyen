@@ -7,6 +7,7 @@ import {
 } from "@gioitruyen/api-client";
 import { Link } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { XuIcon } from "./currency-icons";
 
 import styles from "./donation-journey.module.css";
 import { API_BASE_URL, authedFetch } from "@/lib/api-base";
@@ -121,8 +122,8 @@ export function DonationJourney({
         onClick={() => setOpen(true)}
         type="button"
       >
-        <span aria-hidden="true">✦</span>
-        Ủng hộ đội ngũ bằng XU
+        <XuIcon size={18} />
+        Donate
       </button>
     );
   }

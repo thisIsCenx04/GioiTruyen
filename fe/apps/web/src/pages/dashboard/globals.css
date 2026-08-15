@@ -1166,7 +1166,7 @@ button:disabled { cursor: wait; opacity: 0.55; }
   display: flex;
   flex-direction: column;
   height: 100%;
-  max-width: min(38rem, 100vw);
+  max-width: min(65rem, 95vw);
   overflow-y: auto;
   padding: clamp(1.2rem, 3vw, 2rem);
   position: absolute;

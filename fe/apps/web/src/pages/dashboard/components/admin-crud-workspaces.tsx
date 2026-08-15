@@ -584,12 +584,44 @@ function ChapterImportWorkspace({
   const [bulkPrice, setBulkPrice] = useState(5);
   const [openChapters, setOpenChapters] = useState<ReadonlySet<string>>(new Set());
 
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set());
+  const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false);
+  const [singleDeleteId, setSingleDeleteId] = useState<string | null>(null);
+
   const toggleChapter = (id: string) => {
     setOpenChapters((current) => {
       const next = new Set(current);
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
+  };
+
+  const toggleSelectChapter = (id: string) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === chapters.length && chapters.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(chapters.map((c) => c.id)));
+    }
+  };
+
+  const executeBulkDelete = () => {
+    onChange(chapters.filter((c) => !selectedIds.has(c.id)));
+    setSelectedIds(new Set());
+    setConfirmingBulkDelete(false);
+  };
+
+  const executeSingleDelete = (id: string) => {
+    onChange(chapters.filter((c) => c.id !== id));
+    setSingleDeleteId(null);
   };
 
   const updateChapter = (id: string, patch: Partial<StoryChapterDraft>) => {
@@ -643,7 +675,7 @@ function ChapterImportWorkspace({
     <section className="chapterUploadPanel">
       <header>
         <div>
-          <strong>Chương và nội dung</strong>
+          <strong>Chương và nội dung ({chapters.length} chương)</strong>
           <small>Upload file Word để tự tách chương, hoặc bấm + để thêm từng chương.</small>
         </div>
         <div className="chapterUploadActions">
@@ -659,6 +691,61 @@ function ChapterImportWorkspace({
           </label>
         </div>
       </header>
+
+      {/* Bulk Selection Bar */}
+      {chapters.length > 0 && (
+        <div
+          style={{
+            background: "#f8fafc",
+            border: "1px solid #cbd5e1",
+            borderRadius: "6px",
+            padding: "0.6rem 0.85rem",
+            marginBottom: "0.75rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: "0.5rem"
+          }}
+        >
+          <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 700, fontSize: "0.82rem", color: "#0f172a", cursor: "pointer", userSelect: "none" }}>
+            <input
+              type="checkbox"
+              checked={chapters.length > 0 && selectedIds.size === chapters.length}
+              onChange={toggleSelectAll}
+              style={{ width: "1.1rem", height: "1.1rem", cursor: "pointer" }}
+            />
+            <span>Chọn tất cả ({chapters.length} chương)</span>
+          </label>
+
+          {selectedIds.size > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <span style={{ fontSize: "0.8rem", color: "#475569", fontWeight: 600 }}>
+                Đã chọn: <strong style={{ color: "#0f172a" }}>{selectedIds.size}</strong>/<span>{chapters.length}</span> chương
+              </span>
+              <button
+                type="button"
+                onClick={() => setConfirmingBulkDelete(true)}
+                style={{
+                  background: "#dc2626",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "5px",
+                  padding: "0.35rem 0.8rem",
+                  fontSize: "0.78rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.35rem"
+                }}
+              >
+                <Trash2 aria-hidden="true" size={14} /> Xóa {selectedIds.size} chương đã chọn
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Bulk Pricing Bar */}
       {chapters.length > 0 && (
@@ -717,31 +804,45 @@ function ChapterImportWorkspace({
       {chapters.length === 0 ? <p>Chưa có chương. Upload file hoặc bấm + để nhập content trực tiếp.</p> : (
         <div className="chapterDraftList">
           {chapters.map((chapter, index) => {
-            // Folded by default when editing, so a 59-chapter story does not
-            // render 59 textareas the admin has to scroll past.
             const expanded = !collapsible || openChapters.has(chapter.id);
             return (
             <article className="chapterDraftItem" key={chapter.id}>
               {collapsible ? (
-                <button
-                  aria-expanded={expanded}
-                  className="chapterDraftToggle"
-                  onClick={() => toggleChapter(chapter.id)}
-                  type="button"
-                >
-                  <span className="chapterDraftToggleIcon">{expanded ? "−" : "+"}</span>
-                  <span className="chapterDraftToggleTitle">
-                    {chapter.title || `Chương ${index + 1}`}
-                  </span>
-                  <span className="chapterDraftToggleMeta">
-                    {chapter.accessType === "PAID" ? `${chapter.coinPrice} xu` : "Miễn phí"}
-                  </span>
-                </button>
+                <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
+                  <label
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ display: "flex", alignItems: "center", paddingLeft: "0.5rem", cursor: "pointer" }}
+                    title="Chọn chương này"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(chapter.id)}
+                      onChange={() => toggleSelectChapter(chapter.id)}
+                      style={{ width: "1.1rem", height: "1.1rem", cursor: "pointer" }}
+                    />
+                  </label>
+
+                  <button
+                    aria-expanded={expanded}
+                    className="chapterDraftToggle"
+                    onClick={() => toggleChapter(chapter.id)}
+                    type="button"
+                    style={{ flex: 1 }}
+                  >
+                    <span className="chapterDraftToggleIcon">{expanded ? "−" : "+"}</span>
+                    <span className="chapterDraftToggleTitle">
+                      {chapter.title || `Chương ${index + 1}`}
+                    </span>
+                    <span className="chapterDraftToggleMeta">
+                      {chapter.accessType === "PAID" ? `${chapter.coinPrice} xu` : "Miễn phí"}
+                    </span>
+                  </button>
+                </div>
               ) : null}
 
               {expanded ? (
                 <>
-              <button aria-label={`Xóa chương ${index + 1}`} className="chapterDraftRemove" onClick={() => onChange(chapters.filter((item) => item.id !== chapter.id))} type="button">
+              <button aria-label={`Xóa chương ${index + 1}`} className="chapterDraftRemove" onClick={() => setSingleDeleteId(chapter.id)} type="button">
                 <X aria-hidden="true" size={16} />
               </button>
               <Field label={`Chương ${index + 1}`}>
@@ -793,6 +894,109 @@ function ChapterImportWorkspace({
             </article>
             );
           })}
+        </div>
+      )}
+
+      {/* Confirmation Modal Overlays */}
+      {confirmingBulkDelete && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            background: "rgba(15, 23, 42, 0.65)",
+            backdropFilter: "blur(2px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "1rem"
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              border: "1px solid #cbd5e1",
+              borderRadius: "10px",
+              padding: "1.5rem",
+              maxWidth: "26rem",
+              width: "100%",
+              boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)"
+            }}
+          >
+            <h3 style={{ margin: "0 0 0.5rem 0", fontSize: "1.05rem", color: "#0f172a", fontWeight: 800 }}>
+              ⚠️ Xác nhận xóa {selectedIds.size} chương
+            </h3>
+            <p style={{ margin: "0 0 1.25rem 0", fontSize: "0.85rem", color: "#475569", lineHeight: 1.45 }}>
+              Bạn có chắc chắn muốn xóa vĩnh viễn <strong>{selectedIds.size} chương</strong> đã chọn khỏi danh sách không?
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}>
+              <button
+                type="button"
+                onClick={() => setConfirmingBulkDelete(false)}
+                style={{ background: "#e2e8f0", color: "#334155", border: "none", borderRadius: "6px", padding: "0.45rem 0.9rem", fontWeight: 600, fontSize: "0.82rem", cursor: "pointer" }}
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={executeBulkDelete}
+                style={{ background: "#dc2626", color: "#fff", border: "none", borderRadius: "6px", padding: "0.45rem 0.9rem", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer" }}
+              >
+                Xác nhận xóa {selectedIds.size} chương
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {singleDeleteId && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            background: "rgba(15, 23, 42, 0.65)",
+            backdropFilter: "blur(2px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "1rem"
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              border: "1px solid #cbd5e1",
+              borderRadius: "10px",
+              padding: "1.5rem",
+              maxWidth: "24rem",
+              width: "100%",
+              boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)"
+            }}
+          >
+            <h3 style={{ margin: "0 0 0.5rem 0", fontSize: "1rem", color: "#0f172a", fontWeight: 800 }}>
+              ⚠️ Xác nhận xóa chương
+            </h3>
+            <p style={{ margin: "0 0 1.25rem 0", fontSize: "0.85rem", color: "#475569", lineHeight: 1.45 }}>
+              Bạn có chắc chắn muốn xóa chương này khỏi danh sách không?
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}>
+              <button
+                type="button"
+                onClick={() => setSingleDeleteId(null)}
+                style={{ background: "#e2e8f0", color: "#334155", border: "none", borderRadius: "6px", padding: "0.45rem 0.9rem", fontWeight: 600, fontSize: "0.82rem", cursor: "pointer" }}
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={() => executeSingleDelete(singleDeleteId)}
+                style={{ background: "#dc2626", color: "#fff", border: "none", borderRadius: "6px", padding: "0.45rem 0.9rem", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer" }}
+              >
+                Xác nhận xóa
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </section>
@@ -1365,7 +1569,7 @@ export function StoryCrudWorkspace({
         const sendChapters = !selected || chaptersDirty;
         const submittedChapters = sendChapters ? loadedChapters : [];
 
-        const hasUpload = Boolean(coverFile || submittedChapters.length > 0);
+        const hasUpload = Boolean(coverFile || sendChapters);
         const body = hasUpload ? new FormData() : payload;
         if (body instanceof FormData) {
           // The backend reads plain form fields and chapters[i].*; sending the
@@ -1377,8 +1581,8 @@ export function StoryCrudWorkspace({
           if (coverFile) {
             body.append("coverImage", coverFile);
           }
-          // Explicit opt-in: without it the server keeps the stored chapters.
-          if (submittedChapters.length > 0) {
+          // Explicit opt-in: tell server to replace chapters in DB when chapters were modified or deleted.
+          if (sendChapters) {
             body.append("replaceChapters", "true");
           }
           // Tomcat caps a multipart request at a fixed number of parts, so each
@@ -1465,6 +1669,19 @@ function formatShortDate(value: string | null | undefined) {
       label: "Loại truyện",
       render: (story) => STORY_TYPE_LABELS[story.storyType ?? "TEXT"] ?? story.storyType ?? "Truyện chữ",
       sortValue: (story) => story.storyType ?? "TEXT",
+    },
+    {
+      key: "chapterCount",
+      label: "Số chương",
+      render: (story) => {
+        const count = story.chapterCount ?? (story as any).chapter_count ?? (story as any).chaptersCount ?? 0;
+        return (
+          <span style={{ fontSize: "0.82rem", fontWeight: 750, color: "#1e293b", background: "#f1f5f9", padding: "0.2rem 0.55rem", borderRadius: "4px", border: "1px solid #cbd5e1" }}>
+            {count} chương
+          </span>
+        );
+      },
+      sortValue: (story) => String(story.chapterCount ?? (story as any).chapter_count ?? 0),
     },
     {
       key: "updatedAt",
@@ -1734,7 +1951,7 @@ function formatShortDate(value: string | null | undefined) {
                         selected={storyCategoryIds}
                       />
                       <Field
-                        hint="Quyết định truyện xuất hiện ở kệ nào ngoài trang truyện."
+                        hint="Chọn kệ hiển thị chính ngoài trang chủ (Truyện chữ, Độc quyền, Sáng tác, Audio)."
                         label="Phân loại truyện"
                       >
                         <select defaultValue={selected?.storyType ?? "TEXT"} name="storyType">
@@ -1748,7 +1965,7 @@ function formatShortDate(value: string | null | undefined) {
                       <Field label="Xuất bản"><select defaultValue={selected?.workflowStatus ?? "DRAFT"} name="workflowStatus"><option value="DRAFT">Bản nháp</option><option value="PUBLISHED">Đã xuất bản</option><option value="PENDING_REVIEW">Chờ duyệt</option></select></Field>
                       {isOneshot ? null : (
                         <Field
-                          hint="Tự đặt thành “Đã hoàn thành” nếu dòng đầu file upload ghi như vậy."
+                          hint="Chọn 'Đã hoàn thành' khi truyện đã ra trọn bộ để mở tính năng bán Combo Full."
                           label="Tiến độ"
                         >
                           <select
@@ -2031,7 +2248,7 @@ export function CategoryCrudWorkspace({ categories: initialCategories }: Readonl
               onChange={setDeleteConfirmation}
               warning="Thể loại sẽ bị xóa khỏi hệ thống và không khôi phục được. Nếu chỉ muốn ẩn khỏi người đọc, hãy dùng “Ẩn thể loại”."
             />
-          ) : drawer.mode === "archive" && selected ? <p className="drawerConfirm">Thể loại sẽ ngừng xuất hiện trên client. Liên kết với truyện hiện tại vẫn được giữ.</p> : <>
+          ) : drawer.mode === "archive" && selected ? <p className="drawerConfirm">Thể loại sẽ ngừng xuất hiện trên giao diện đọc truyện. Liên kết với các truyện hiện tại vẫn được giữ nguyên.</p> : <>
             <Field label="Tên thể loại"><input defaultValue={selected?.name} maxLength={120} name="name" required /></Field>
             <Field
               hint={<>Chữ thường không dấu, nối bằng dấu gạch ngang. Ví dụ: “Tiên Hiệp” → <code>tien-hiep</code></>}
@@ -2039,9 +2256,9 @@ export function CategoryCrudWorkspace({ categories: initialCategories }: Readonl
             >
               <input defaultValue={selected?.slug} maxLength={80} name="slug" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="tien-hiep" required />
             </Field>
-            <Field label="Mô tả cho reader"><textarea defaultValue={selected?.description} maxLength={500} name="description" required rows={5} /></Field>
+            <Field label="Mô tả thể loại"><textarea defaultValue={selected?.description} maxLength={500} name="description" required rows={5} /></Field>
             <Field label="Thứ tự hiển thị"><input defaultValue={selected?.sortOrder ?? categories.length + 1} min={0} name="sortOrder" required type="number" /></Field>
-            <label className="drawerCheck"><input defaultChecked={selected?.active ?? true} name="active" type="checkbox" /><span>Hiển thị trên client</span></label>
+            <label className="drawerCheck"><input defaultChecked={selected?.active ?? true} name="active" type="checkbox" /><span>Hiển thị thể loại cho độc giả</span></label>
           </>}
           <MutationNotice error={error} onDismiss={() => setError("")} /><FormActions busy={busy || (drawer.mode === "delete" && deleteConfirmation.trim() !== (selected?.name.trim() ?? ""))} close={() => setDrawer(null)} confirmMessage={drawer.mode === "delete" ? `Xóa vĩnh viễn thể loại "${selected?.name}"?` : drawer.mode === "archive" ? `Ẩn thể loại "${selected?.name}"?` : selected ? `Cập nhật thể loại "${selected.name}"?` : undefined} submitLabel={drawer.mode === "delete" ? "Xóa vĩnh viễn" : drawer.mode === "archive" ? "Xác nhận ẩn" : "Lưu thể loại"} />
         </form>

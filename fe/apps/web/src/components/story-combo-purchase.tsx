@@ -94,7 +94,7 @@ export function StoryComboPurchase({
           className="storyAction"
           style={{
             background: "linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)",
-            color: "#ffffff",
+            color: "var(--surface-card)",
             borderColor: "#4f46e5",
             fontWeight: 850,
             boxShadow: "0 4px 12px rgba(99, 102, 241, 0.35)",
@@ -102,7 +102,7 @@ export function StoryComboPurchase({
           }}
         >
           <Sparkles style={{ width: "1.1rem", height: "1.1rem", color: "#fef08a" }} />
-          Mua Combo Full (-{savingsPercent}%)
+          Mua Combo Full
         </button>
       )}
 
@@ -123,7 +123,7 @@ export function StoryComboPurchase({
         >
           <div
             style={{
-              background: "#ffffff",
+              background: "var(--surface-card)",
               border: "3px solid #071739",
               borderRadius: "12px",
               boxShadow: "6px 6px 0px #071739",
@@ -140,8 +140,8 @@ export function StoryComboPurchase({
                 position: "absolute",
                 top: "0.85rem",
                 right: "0.85rem",
-                background: "#f1f5f9",
-                border: "1.5px solid #cbd5e1",
+                background: "var(--surface-sunken)",
+                border: "1.5px solid var(--border-strong)",
                 borderRadius: "50%",
                 width: "2rem",
                 height: "2rem",
@@ -173,18 +173,18 @@ export function StoryComboPurchase({
                 >
                   <CheckCircle2 style={{ width: "2.5rem", height: "2.5rem" }} />
                 </div>
-                <h3 style={{ fontSize: "1.3rem", margin: "0 0 0.5rem", color: "#0f172a", fontWeight: 850 }}>
+                <h3 style={{ fontSize: "1.3rem", margin: "0 0 0.5rem", color: "var(--text-primary)", fontWeight: 850 }}>
                   Mua Combo Thành Công!
                 </h3>
-                <p style={{ fontSize: "0.85rem", color: "#475569", margin: "0 0 1.25rem", lineHeight: 1.5 }}>
+                <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", margin: "0 0 1.25rem", lineHeight: 1.5 }}>
                   Bạn đã sở hữu trọn bộ <strong>{storyTitle}</strong>. Tất cả các chương đã được mở khóa vĩnh viễn!
                 </p>
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
                   style={{
-                    background: "#0f5fff",
-                    color: "#ffffff",
+                    background: "var(--accent)",
+                    color: "var(--surface-card)",
                     border: "2px solid #071739",
                     borderRadius: "8px",
                     boxShadow: "3px 3px 0px #071739",
@@ -219,18 +219,18 @@ export function StoryComboPurchase({
                   </span>
                 </div>
 
-                <h3 style={{ fontSize: "1.2rem", margin: "0 0 0.5rem", color: "#0f172a", fontWeight: 850 }}>
+                <h3 style={{ fontSize: "1.2rem", margin: "0 0 0.5rem", color: "var(--text-primary)", fontWeight: 850 }}>
                   Mua Combo Full Truyện
                 </h3>
-                <p style={{ fontSize: "0.82rem", color: "#64748b", margin: "0 0 1rem" }}>
+                <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", margin: "0 0 1rem" }}>
                   Tác phẩm: <strong>{storyTitle}</strong>
                 </p>
 
                 {/* Price Breakdown Box */}
                 <div
                   style={{
-                    background: "#f8fafc",
-                    border: "1.5px solid #e2e8f0",
+                    background: "var(--surface-sunken)",
+                    border: "1.5px solid var(--border-subtle)",
                     borderRadius: "8px",
                     padding: "1rem",
                     margin: "0 0 1.25rem",
@@ -239,13 +239,13 @@ export function StoryComboPurchase({
                     gap: "0.6rem",
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem", color: "#64748b" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem", color: "var(--text-muted)" }}>
                     <span>Tổng mua lẻ {estPaidChapters} chương VIP:</span>
                     <span style={{ textDecoration: "line-through" }}>{totalRetailXu} Xu</span>
                   </div>
 
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                    <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "#0f172a" }}>Giá Mua Combo Full:</span>
+                    <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--text-primary)" }}>Giá Mua Combo Full:</span>
                     <strong style={{ fontSize: "1.4rem", fontWeight: 900, color: "#7c3aed" }}>
                       {actualComboXu} Xu
                     </strong>
@@ -273,7 +273,7 @@ export function StoryComboPurchase({
                 <div
                   style={{
                     fontSize: "0.75rem",
-                    color: "#64748b",
+                    color: "var(--text-muted)",
                     marginBottom: "1.25rem",
                     display: "flex",
                     alignItems: "center",
@@ -290,9 +290,9 @@ export function StoryComboPurchase({
                     onClick={() => setIsOpen(false)}
                     style={{
                       flex: 1,
-                      background: "#f1f5f9",
-                      color: "#475569",
-                      border: "1.5px solid #cbd5e1",
+                      background: "var(--surface-sunken)",
+                      color: "var(--text-secondary)",
+                      border: "1.5px solid var(--border-strong)",
                       borderRadius: "8px",
                       padding: "0.65rem",
                       fontWeight: 750,
@@ -310,7 +310,7 @@ export function StoryComboPurchase({
                     style={{
                       flex: 2,
                       background: "linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)",
-                      color: "#ffffff",
+                      color: "var(--surface-card)",
                       border: "2px solid #071739",
                       borderRadius: "8px",
                       boxShadow: "3px 3px 0px #071739",

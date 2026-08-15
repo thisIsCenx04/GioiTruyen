@@ -6,6 +6,8 @@ import { Link } from "react-router-dom";
 
 import { ChapterUnlockDialog } from "./chapter-unlock-dialog";
 
+import { XuIcon } from "./currency-icons";
+
 export type ChapterListEntry = Readonly<{
   id: string;
   number: number;
@@ -52,7 +54,7 @@ export function ChapterListItem({
         <strong>
           {chapter.title}
           <em className="chapterLockBadge">
-            <Lock aria-hidden="true" /> {chapter.coinPrice.toLocaleString("vi-VN")} xu
+            <Lock aria-hidden="true" size={12} /> {chapter.coinPrice.toLocaleString("vi-VN")} <XuIcon size={14} />
           </em>
         </strong>
         <time dateTime={chapter.publishedAt}>{publishedLabel}</time>

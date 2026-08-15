@@ -193,14 +193,22 @@ export async function loadStoryDetail(identifier: string, page = 1) {
     ...rankingBoards.flatMap((board) => board.stories.map((row) => row.story)),
   ];
   const summary = summaries.find((item) => item.id === story.id) ?? null;
-  const relatedStories = [
+  const allCandidates = [
     ...new Map(
-      rankingBoards
-        .flatMap((board) => board.stories.map((row) => row.story))
+      sections
+        .flatMap((section) => section.stories)
+        .concat(rankingBoards.flatMap((board) => board.stories.map((row) => row.story)))
         .filter((item) => item.id !== story.id)
         .map((item) => [item.id, item] as const),
     ).values(),
-  ].slice(0, 6);
+  ];
+  const sameCategory = allCandidates.filter((item: any) =>
+    item.categoryIds?.some((catId: string) => story.categoryIds?.includes(catId))
+    || item.categoryId === (story as any).categoryId
+    || item.storyType === story.storyType
+  );
+  const otherStories = allCandidates.filter((item) => !sameCategory.includes(item));
+  const relatedStories = [...sameCategory, ...otherStories].slice(0, 6);
   const categories = taxonomy.groups
     .flatMap((group) => group.categories)
     .filter((category) => story.categoryIds.includes(category.id));

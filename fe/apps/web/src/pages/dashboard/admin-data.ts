@@ -48,6 +48,7 @@ export type AdminStoryRow = {
   workflowStatus: string;
   completionStatus: string;
   comboPriceXu?: number;
+  chapterCount?: number;
   updatedAt: string | null;
   createdAt: string | null;
 };

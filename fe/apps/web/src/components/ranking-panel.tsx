@@ -29,7 +29,7 @@ export function RankingPanel({
           type="button"
           className={period === "day" ? "activeTab" : ""}
           onClick={() => setPeriod("day")}
-          style={{ background: period === "day" ? "#0f5fff" : "transparent", color: period === "day" ? "#fff" : "inherit", border: 0, borderRadius: "0.3rem", padding: "0.3rem 0.6rem", fontWeight: 700, cursor: "pointer" }}
+          style={{ background: period === "day" ? "var(--accent)" : "transparent", color: period === "day" ? "#fff" : "inherit", border: 0, borderRadius: "0.3rem", padding: "0.3rem 0.6rem", fontWeight: 700, cursor: "pointer" }}
         >
           Ngày
         </button>
@@ -37,7 +37,7 @@ export function RankingPanel({
           type="button"
           className={period === "week" ? "activeTab" : ""}
           onClick={() => setPeriod("week")}
-          style={{ background: period === "week" ? "#0f5fff" : "transparent", color: period === "week" ? "#fff" : "inherit", border: 0, borderRadius: "0.3rem", padding: "0.3rem 0.6rem", fontWeight: 700, cursor: "pointer" }}
+          style={{ background: period === "week" ? "var(--accent)" : "transparent", color: period === "week" ? "#fff" : "inherit", border: 0, borderRadius: "0.3rem", padding: "0.3rem 0.6rem", fontWeight: 700, cursor: "pointer" }}
         >
           Tuần
         </button>
@@ -45,7 +45,7 @@ export function RankingPanel({
           type="button"
           className={period === "month" ? "activeTab" : ""}
           onClick={() => setPeriod("month")}
-          style={{ background: period === "month" ? "#0f5fff" : "transparent", color: period === "month" ? "#fff" : "inherit", border: 0, borderRadius: "0.3rem", padding: "0.3rem 0.6rem", fontWeight: 700, cursor: "pointer" }}
+          style={{ background: period === "month" ? "var(--accent)" : "transparent", color: period === "month" ? "#fff" : "inherit", border: 0, borderRadius: "0.3rem", padding: "0.3rem 0.6rem", fontWeight: 700, cursor: "pointer" }}
         >
           Tháng
         </button>
@@ -53,7 +53,7 @@ export function RankingPanel({
           type="button"
           className={period === "year" ? "activeTab" : ""}
           onClick={() => setPeriod("year")}
-          style={{ background: period === "year" ? "#0f5fff" : "transparent", color: period === "year" ? "#fff" : "inherit", border: 0, borderRadius: "0.3rem", padding: "0.3rem 0.6rem", fontWeight: 700, cursor: "pointer" }}
+          style={{ background: period === "year" ? "var(--accent)" : "transparent", color: period === "year" ? "#fff" : "inherit", border: 0, borderRadius: "0.3rem", padding: "0.3rem 0.6rem", fontWeight: 700, cursor: "pointer" }}
         >
           Năm
         </button>
