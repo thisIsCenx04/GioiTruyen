@@ -3,9 +3,11 @@ import React from "react";
 export interface BrandMarkProps {
   inverse?: boolean;
   className?: string;
+  /** Logo height in px. The site header row is ~74px tall, so 52 still clears it. */
+  size?: number;
 }
 
-export function BrandMark({ inverse, className }: BrandMarkProps) {
+export function BrandMark({ inverse, className, size = 52 }: BrandMarkProps) {
   return (
     <span
       className={className}
@@ -24,9 +26,9 @@ export function BrandMark({ inverse, className }: BrandMarkProps) {
         src="/logo-full.png"
         alt="Giới Truyện Logo"
         style={{
-          height: "36px",
+          height: `${size}px`,
           width: "auto",
-          maxHeight: "36px",
+          maxHeight: `${size}px`,
           objectFit: "contain",
         }}
         onError={(e) => {

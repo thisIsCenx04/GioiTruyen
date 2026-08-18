@@ -46,6 +46,7 @@ public class AdminStoryController {
     private static final String LIST_SQL = """
             SELECT s.id, s.slug, s.title, s.original_author, s.short_description, s.cover_url,
                    s.story_format, s.story_type, s.status, s.progress_status,
+                   s.combo_price_xu,
                    s.created_at, s.updated_at, s.team_id,
                    -- A tab cannot appear in a tag label, so it is a safe joiner.
                    (SELECT GROUP_CONCAT(st.label ORDER BY st.label SEPARATOR '\t')
@@ -122,6 +123,9 @@ public class AdminStoryController {
                         rs.getString("status"),
                         rs.getString("progress_status"),
                         rs.getInt("chapter_count"),
+                        // getLong reads SQL NULL as 0, and 0 would look like a
+                        // configured free combo instead of "no bundle deal".
+                        rs.getObject("combo_price_xu") == null ? null : rs.getLong("combo_price_xu"),
                         instantText(rs.getTimestamp("updated_at")),
                         instantText(rs.getTimestamp("created_at"))))
                 .list();
@@ -183,7 +187,13 @@ public class AdminStoryController {
         // list would delete the rest. Only an explicit opt-in touches them; a
         // plain metadata edit leaves the existing chapters alone.
         if (id == null || "true".equalsIgnoreCase(request.getParameter("replaceChapters"))) {
-            replaceChapters(UUID.fromString(row.id()), readChapters(request));
+            UUID storyId = UUID.fromString(row.id());
+            replaceChapters(storyId, readChapters(request));
+            // `row` was built before the chapters existed, so its chapterCount was
+            // whatever the story had beforehand - zero for a new story, however
+            // many chapters were just uploaded. Rebuilt here so the caller gets the
+            // count it actually saved.
+            return toRow(find(storyId), readCategoryIds(storyId), readTags(storyId));
         }
         return row;
     }
@@ -317,6 +327,13 @@ public class AdminStoryController {
             storyRepository.save(story);
         }
 
+        // Written through JDBC rather than the entity: the combo price is a
+        // monetisation setting read by MonetizationFlowService, not part of the
+        // Story aggregate the repository maps.
+        jdbc.sql("UPDATE stories SET combo_price_xu = ? WHERE id = ?")
+                .params(request.comboPriceXu(), storyId.toString())
+                .update();
+
         List<String> categoryIds = requestedCategoryIds(request);
         replaceGenres(storyId, categoryIds);
         replaceTags(storyId, request.tags());
@@ -371,6 +388,14 @@ public class AdminStoryController {
             return List.of();
         }
         return Arrays.stream(joined.split("\t")).map(String::trim).filter(tag -> !tag.isEmpty()).toList();
+    }
+
+    /** The genres currently linked to a story, for rebuilding a row from the DB. */
+    private List<String> readCategoryIds(UUID storyId) {
+        return jdbc.sql("SELECT genre_id FROM story_genres WHERE story_id = ?")
+                .param(storyId.toString())
+                .query(String.class)
+                .list();
     }
 
     private List<String> readTags(UUID storyId) {
@@ -458,6 +483,12 @@ public class AdminStoryController {
                 .query(Integer.class)
                 .single();
 
+        Long comboPriceXu = jdbc.sql("SELECT combo_price_xu FROM stories WHERE id = ?")
+                .param(story.getId().toString())
+                .query(Long.class)
+                .optional()
+                .orElse(null);
+
         return new AdminStoryRow(
                 story.getId().toString(),
                 story.getSlug(),
@@ -478,13 +509,53 @@ public class AdminStoryController {
                 story.getStatus().name(),
                 story.getProgressStatus().name(),
                 chapterCount,
+                comboPriceXu,
                 story.getUpdatedAt() == null ? null : story.getUpdatedAt().toString(),
                 story.getCreatedAt() == null ? null : story.getCreatedAt().toString());
+    }
+
+    /**
+     * A story with a combo price cannot grow.
+     *
+     * <p>The combo sells "every chapter of this story" for one figure. Adding a
+     * chapter afterwards hands it free to everyone who already bought the
+     * bundle, while the next buyer pays the same price for more - so the same
+     * offer means two different things depending on when it was taken. The
+     * publishing form warns before a combo is set; this is the guard that holds
+     * whatever the form does, including for callers that skip it.
+     *
+     * <p>Editing existing chapters and removing them stay allowed: neither
+     * changes what a past buyer was promised.
+     */
+    private void requireComboAllowsChapterCount(UUID storyId, int existing, int incoming) {
+        if (incoming <= existing) {
+            return;
+        }
+        Long comboPrice = jdbc.sql("SELECT combo_price_xu FROM stories WHERE id = ?")
+                .param(storyId.toString())
+                .query(Long.class)
+                .optional()
+                .orElse(null);
+        if (comboPrice == null || comboPrice <= 0) {
+            return;
+        }
+        throw new ApiException(HttpStatus.CONFLICT, "story.combo_locked",
+                "Combo locks the chapter list",
+                ("Truyện đang bán Combo Full nên không thể thêm chương mới "
+                        + "(hiện %d chương, đang lưu %d chương). Hãy bỏ giá Combo trước, "
+                        + "hoặc giữ nguyên số chương.").formatted(existing, incoming));
     }
 
     private void replaceChapters(UUID storyId, List<ChapterDraft> chapters) {
         UUID createdBy = jdbc.sql("SELECT created_by FROM stories WHERE id = ?")
                 .param(storyId.toString()).query(String.class).single().transform(UUID::fromString);
+
+        // Checked before the delete below, which is what would destroy them.
+        Integer existingCount = jdbc.sql("SELECT COUNT(*) FROM chapters WHERE story_id = ?")
+                .param(storyId.toString()).query(Integer.class).single();
+        int existing = existingCount == null ? 0 : existingCount;
+        checkNoChapterLoss(existing, chapters.size());
+        requireComboAllowsChapterCount(storyId, existing, chapters.size());
 
         jdbc.sql("""
                 DELETE FROM chapters
@@ -631,7 +702,21 @@ public class AdminStoryController {
                 formValue(request, "storyType"),
                 formValue(request, "workflowStatus"),
                 formValue(request, "completionStatus"),
-                tags);
+                tags,
+                parseCoin(formValue(request, "comboPriceXu")));
+    }
+
+    /** A blank or non-numeric combo price means "not configured", not an error. */
+    private static Long parseCoin(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            long parsed = Long.parseLong(value.trim());
+            return parsed > 0 ? parsed : null;
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 
     private static String formValue(MultipartHttpServletRequest request, String name) {
@@ -698,8 +783,31 @@ public class AdminStoryController {
         return timestamp == null ? null : timestamp.toInstant().toString();
     }
 
-    public static Object checkNoChapterLoss(int i, int j) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'checkNoChapterLoss'");
+    /**
+     * Refuses a re-upload that would leave the story with fewer chapters.
+     *
+     * <p>Replacing a story's chapters deletes what was there first, so an upload
+     * that came up short - a truncated file, the wrong export, a failed parse -
+     * would silently destroy the difference. A 792-chapter story re-uploaded
+     * from a 20-chapter file loses 772 chapters, and nothing would say so.
+     *
+     * <p>Growing or replacing like for like is ordinary editing and passes.
+     *
+     * @param existingCount chapters the story has now
+     * @param incomingCount chapters the upload would leave it with
+     */
+    public static void checkNoChapterLoss(int existingCount, int incomingCount) {
+        if (incomingCount >= existingCount) {
+            return;
+        }
+        throw new ApiException(
+                HttpStatus.BAD_REQUEST,
+                "story.chapters_would_be_lost",
+                "Upload would remove chapters",
+                ("Truyện đang có %d chương nhưng tệp tải lên chỉ có %d chương. "
+                        + "Thao tác này sẽ xoá mất chương, nên đã bị từ chối. "
+                        + "Hãy kiểm tra lại tệp, hoặc xoá từng chương nếu thực sự muốn giảm.")
+                        .formatted(existingCount, incomingCount)
+        );
     }
 }

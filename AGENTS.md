@@ -551,6 +551,46 @@ APP_SEED_ENABLED=false
    * create/fix the appropriate forward migration;
    * do not bypass Flyway.
 
+## 17.1 Local seed data
+
+Sample data lives in one place only:
+
+```text
+be/src/main/resources/db/seed/R__local_seed_data.sql
+```
+
+Rules:
+
+1. It is a **repeatable** (`R__`) migration, never a versioned one. Flyway
+   re-applies it whenever its content changes, which is what keeps the local
+   database matching the file. A versioned seed can only ever be applied once,
+   so regenerating it silently leaves the database behind and then fails
+   validation on the changed checksum.
+2. It is **generated**. Do not edit it by hand:
+
+```text
+npm run seed:scrape     # story metadata from monkeydd.com -> db/seed-data/*.json
+npm run seed:generate   # JSON -> R__local_seed_data.sql
+npm run seed:refresh    # both
+```
+
+3. The generator must stay deterministic - no `Math.random()`, no wall clock.
+   Non-deterministic output changes the checksum on every run and makes Flyway
+   re-apply the seed forever.
+4. Three things keep it away from production: `db/seed` is on the `locations`
+   list of the `local` profile only; the seed reads a `${seedProfile}`
+   placeholder that only `application-local.yml` defines, so Flyway aborts it
+   anywhere else; and `upload_vps.ps1` refuses to upload files matching
+   `seed|sample|demo|fixture`.
+5. Chapter bodies in the seed are locally generated placeholder text. The
+   scraper takes metadata only and does not download chapter content.
+6. `db/seed_mysql_dev.sql` and `db/entity_mysql_final.sql` are obsolete/design
+   reference: they model ids as `BINARY(16)` while the live schema uses
+   `VARCHAR(36)`. Do not run them.
+7. After deleting or renaming anything under `db/seed`, remember Maven does not
+   prune `be/target/classes`. Run `mvn -f be/pom.xml clean` (or delete the stale
+   file) or the old copy stays on the classpath and Flyway still sees it.
+
 ---
 
 # 18. Standard Commands

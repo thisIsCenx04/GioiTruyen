@@ -2,12 +2,11 @@ import { Link } from "react-router-dom";
 import { Flame, Layers, Sparkles } from "lucide-react";
 
 import { CatalogStoryCard } from "@/components/catalog-story-card";
+import { CategoryTabbedLayout } from "@/components/category-tabbed-layout";
 import { PublicShell } from "@/components/site-chrome";
 import { catalog, loadHome } from "@/lib/catalog";
 
 export const revalidate = 120;
-
-/* metadata removed */
 
 export default async function CategoriesPage() {
   const [taxonomy, homeData] = await Promise.all([
@@ -30,135 +29,26 @@ export default async function CategoriesPage() {
       ]
     : [];
 
-  // Fetch stories per category in parallel
-  const categoryStoriesMap = new Map<string, typeof allStories>();
-
-  await Promise.all(
-    categories.map(async (cat) => {
-      try {
-        const fetched = await catalog.categoryStories(cat.slug);
-        if (fetched && fetched.length > 0) {
-          categoryStoriesMap.set(cat.id, fetched);
-        }
-      } catch {
-        // Ignore errors for unpopulated categories
-      }
-    })
-  );
-
-  const categoriesWithStories = categoryStoriesMap.size;
+  // No per-category prefetch here.
+  //
+  // This used to fan out one /categories/{slug}/stories call per category, all
+  // at once. With 84 active genres that is 84 simultaneous requests against a
+  // 60-per-second burst limit, so everything past the sixtieth came back 429 -
+  // and because the fetch swallows its own errors, those genres simply looked
+  // empty. Only the open tab's stories are actually rendered, so the layout
+  // loads that one on demand instead; the tab badges read their counts from
+  // /categories, which already carries them.
+  const categoriesWithStories = categories.filter((cat) => (cat.storyCount ?? 0) > 0).length;
 
   return (
     <PublicShell>
       <div className="categoriesPageRedesignShell">
-        {/* ── Top Categories Hero Banner ── */}
-        <section className="categoriesHeroBanner">
-          <div className="categoriesHeroBg" />
-          <div className="categoriesHeroContainer">
-            <div className="categoriesHeroContent">
-              <h1>Thể loại truyện</h1>
-              <p>
-                Chọn chủ đề bạn muốn đọc &mdash; mỗi thể loại dẫn thẳng tới danh
-                sách truyện thuộc thể loại đó.
-              </p>
-
-              {/* Counted from the taxonomy the API returns; the previous row
-                  showed invented figures (25+ / 5K+ / 1M+). */}
-              <div className="categoriesStatCardsRow">
-                <div className="categoriesStatGlassCard">
-                  <div className="statIconCircle catIconCyan">
-                    <Layers size={20} />
-                  </div>
-                  <div className="statText">
-                    <strong>{categories.length}</strong>
-                    <span>thể loại</span>
-                  </div>
-                </div>
-
-                <div className="categoriesStatGlassCard">
-                  <div className="statIconCircle catIconCyan">
-                    <Sparkles size={20} />
-                  </div>
-                  <div className="statText">
-                    <strong>{allStories.length}</strong>
-                    <span>truyện đang hiển thị</span>
-                  </div>
-                </div>
-
-                <div className="categoriesStatGlassCard">
-                  <div className="statIconCircle catIconCyan">
-                    <Flame size={20} />
-                  </div>
-                  <div className="statText">
-                    <strong>{categoriesWithStories}</strong>
-                    <span>thể loại đã có truyện</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ── Category Pill Nav Grid ── */}
+        {/* ── Category Tabbed Layout Section ── */}
         <div className="categoriesMainBodyContainer">
-          <section className="categoryHeaderSection" aria-label="Danh sách thể loại">
-            <div className="categoryIntroHeader">
-              <span className="categoryBadgeEyebrow">DANH MỤC THỂ LOẠI</span>
-              <h2>Chọn thể loại</h2>
-              <p>Nhấp vào thể loại bất kỳ để chuyển nhanh tới danh sách các bộ truyện tương ứng.</p>
-            </div>
-
-            <nav className="categoryDock categoryDockColor categoryPillNavGrid" aria-label="Lọc theo thể loại">
-              {categories.map((category, index) => (
-                <a
-                  className="categoryPillButton"
-                  data-tone={index % 8}
-                  href={`#cat-${category.slug}`}
-                  key={category.id}
-                >
-                  <span className="pillDot" />
-                  <strong>{category.name}</strong>
-                </a>
-              ))}
-            </nav>
-          </section>
-
-          {/* ── Stories Grid per Category ── */}
-          <div className="homeSectionStack categoryStoriesStack">
-            {categories.map((category, catIndex) => {
-              const storiesForCat = categoryStoriesMap.get(category.id) ?? allStories.slice((catIndex * 3) % (allStories.length || 1), ((catIndex * 3) % (allStories.length || 1)) + 6);
-              if (!storiesForCat || storiesForCat.length === 0) return null;
-
-              return (
-                <section
-                  aria-labelledby={`cat-${category.slug}-title`}
-                  className="storySection storySectionLarge storyListBoard categoryBlockCard"
-                  id={`cat-${category.slug}`}
-                  key={category.id}
-                >
-                  <header className="categorySectionHeader">
-                    <div>
-                      <h2 id={`cat-${category.slug}-title`}>
-                        {category.name}
-                      </h2>
-                      <span className="catCountSub">
-                        {storiesForCat.length} bộ truyện tiêu biểu
-                      </span>
-                    </div>
-                    <Link className="catViewAllBtn" to={`/categories/${category.slug}` as string}>
-                      Xem tất cả {category.name} ↗
-                    </Link>
-                  </header>
-
-                  <div className="catalogGrid catalogGridLarge catalogGridVertical">
-                    {storiesForCat.slice(0, 8).map((story, index) => (
-                      <CatalogStoryCard index={index} key={`${category.id}-${story.id}`} story={story} />
-                    ))}
-                  </div>
-                </section>
-              );
-            })}
-          </div>
+          <CategoryTabbedLayout
+            categories={categories}
+            fallbackStories={allStories}
+          />
         </div>
       </div>
     </PublicShell>

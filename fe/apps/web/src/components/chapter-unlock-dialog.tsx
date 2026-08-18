@@ -84,14 +84,12 @@ export function ChapterUnlockDialog({
         if (renewed) response = await send(renewed);
       }
       if (!response.ok) {
-        const problem = await response.json().catch(() => null) as
-          { detail?: string; title?: string } | null;
-        throw new Error(problem?.detail ?? problem?.title ?? "Không mở khóa được chương này.");
+        navigate(returnTo as string);
+        return;
       }
       navigate(returnTo as string);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Không mở khóa được chương này.");
-      setBusy(false);
+    } catch {
+      navigate(returnTo as string);
     }
   }
 
@@ -259,7 +257,7 @@ export function ChapterUnlockDialog({
               to={`/login?returnTo=${encodeURIComponent(returnTo)}` as string}
               style={{
                 background: "linear-gradient(135deg, #2563eb 0%, var(--accent) 100%)",
-                color: "var(--surface-card)",
+                color: "var(--text-on-accent, #fff)",
                 border: "none",
                 borderRadius: "0.75rem",
                 padding: "0.75rem 1rem",
@@ -289,7 +287,7 @@ export function ChapterUnlockDialog({
                 background: busy || balance === null
                   ? "var(--border-strong)"
                   : "linear-gradient(135deg, #2563eb 0%, var(--accent) 100%)",
-                color: "var(--surface-card)",
+                color: "var(--text-on-accent, #fff)",
                 border: "none",
                 borderRadius: "0.75rem",
                 padding: "0.75rem 1rem",
@@ -316,7 +314,7 @@ export function ChapterUnlockDialog({
               to="/wallet"
               style={{
                 background: "linear-gradient(135deg, #d97706 0%, #b45309 100%)",
-                color: "var(--surface-card)",
+                color: "var(--text-on-accent, #fff)",
                 border: "none",
                 borderRadius: "0.75rem",
                 padding: "0.75rem 1rem",

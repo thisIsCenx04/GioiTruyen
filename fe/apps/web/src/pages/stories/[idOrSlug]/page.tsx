@@ -1,6 +1,7 @@
 import { StoryApiError } from "@gioitruyen/api-client";
 import {
   BookOpen,
+  Headphones,
   List,
   MessageSquare,
   Star,
@@ -19,7 +20,7 @@ import { StoryRelations } from "@/components/story-relations";
 import { StoryReportButton } from "@/components/story-report-button";
 import { StoryShareButton } from "@/components/story-share-button";
 import { StoryComboPurchase } from "@/components/story-combo-purchase";
-import { coverUrl, StoryCoverPlaceholder } from "@/components/story-cover";
+import { coverThumbUrl, coverUrl, onCoverError, StoryCoverPlaceholder } from "@/components/story-cover";
 import { loadStoryDetail } from "@/lib/catalog";
 
 type StoryPageProps = Readonly<{
@@ -31,7 +32,9 @@ const numberFormatter = new Intl.NumberFormat("vi-VN");
 
 const loadStory = cache(async (identifier: string, page: number) => {
   try {
-    return { ...(await loadStoryDetail(identifier, page)), state: "ready" as const };
+    const res = await loadStoryDetail(identifier, page);
+    if (!res) return { state: "missing" as const };
+    return { ...res, state: "ready" as const };
   } catch (error) {
     return error instanceof StoryApiError && error.problem.status === 404
       ? { state: "missing" as const }
@@ -62,6 +65,7 @@ function pageWindow(currentPage: number, totalPages: number) {
     .sort((left, right) => left - right);
 }
 
+import { ScrollToChapterList } from "@/components/scroll-to-chapter-list";
 import { StoryDescription } from "@/components/story-description";
 
 export default async function StoryPage({ params, searchParams }: StoryPageProps) {
@@ -102,15 +106,9 @@ export default async function StoryPage({ params, searchParams }: StoryPageProps
   // to reach the newest chapter even when the reader is looking at page one.
   const firstChapter = result.firstChapter ?? pagedChapters[0];
   const latestChapter = result.latestChapter ?? pagedChapters.at(-1);
-  // A Zhihu-style short story is read on this page, so it shows its text instead
-  // of a table of contents and never links out to a chapter route.
-  const isOneshot = story.storyFormat === "ONESHOT";
   // The generated client predates tags, so the field is read off the raw payload.
   const storyTags: Array<{ label: string; slug: string }> =
     (story as { tags?: Array<{ label: string; slug: string }> }).tags ?? [];
-  const oneshotHtml = result.oneshotChapter?.contentHtml ?? "";
-  const oneshotWords = result.oneshotChapter?.wordCount ?? 0;
-  const readingMinutes = oneshotWords > 0 ? Math.max(1, Math.ceil(oneshotWords / 200)) : 0;
   const publishedAt = new Date(story.publishedAt).toLocaleDateString("vi-VN");
   const updatedAt = new Date(story.updatedAt).toLocaleDateString("vi-VN");
   const cover = coverUrl(story.coverAssetId);
@@ -125,10 +123,20 @@ export default async function StoryPage({ params, searchParams }: StoryPageProps
 
         <article className="storyDetailCard">
           <div className="detailCover storyDetailCover" data-tone={story.origin === "ORIGINAL" ? "teal" : "indigo"}>
+            {/* Above the fold and the largest element on the page, so it loads
+                eagerly at high priority. Lazy-loading here would delay the very
+                image the reader is waiting for. */}
             {cover
-              ? <img alt={`Bìa ${story.title}`} className="coverImage" src={cover} />
+              ? <img alt={`Bìa ${story.title}`} className="coverImage" src={coverThumbUrl(story.coverAssetId)} onError={onCoverError(cover)} decoding="async" fetchPriority="high" loading="eager" />
               : <StoryCoverPlaceholder />}
-            <small>{story.completionStatus === "COMPLETED" ? "FULL" : "MỚI"}</small>
+            {/* Same two marks as the cards, so a story is recognisable from the
+                shelf it was clicked on. */}
+            {story.storyType === "EXCLUSIVE" ? (
+              <span className="coverTagRow"><span className="exclusiveBadge">ĐỘC QUYỀN</span></span>
+            ) : null}
+            {story.completionStatus === "COMPLETED"
+              ? <span className="fullRibbon"><span>FULL</span></span>
+              : <small>MỚI</small>}
           </div>
 
           <div className="storyDetailMain">
@@ -167,13 +175,17 @@ export default async function StoryPage({ params, searchParams }: StoryPageProps
                 />
               </div>
               <div className="storyActionRow">
-                {isOneshot ? (
-                  <a className="storyAction storyActionStart" href="#oneshot-body"><BookOpen /> Đọc truyện</a>
-                ) : (
-                  <>
-                    {firstChapter && <Link className="storyAction storyActionStart" to={`/truyen/${story.slug}/chuong-${firstChapter.number}` as string}><BookOpen /> Đọc từ đầu</Link>}
-                    {latestChapter && <Link className="storyAction storyActionLatest" to={`/truyen/${story.slug}/chuong-${latestChapter.number}` as string}><Star /> Đọc tập mới</Link>}
-                  </>
+                {firstChapter && <Link className="storyAction storyActionStart" to={`/truyen/${story.slug}/chuong-${firstChapter.number}` as string}><BookOpen /> Đọc từ đầu</Link>}
+                {latestChapter && <Link className="storyAction storyActionLatest" to={`/truyen/${story.slug}/chuong-${latestChapter.number}` as string}><Star /> Đọc tập mới</Link>}
+                {/* The read-aloud player exists for every story's text, but only
+                    a story published as audio advertises it - that is what the
+                    type is for. Without this link the player at /audio was
+                    reachable only from the audio shelf, so a reader who came in
+                    from search or a category never found it. */}
+                {story.storyType === "AUDIO" && (
+                  <Link className="storyAction storyActionListen" to={`/audio/${story.slug}` as string}>
+                    <Headphones /> Nghe truyện
+                  </Link>
                 )}
                 <StoryShareButton storySlug={story.slug} storyTitle={story.title} />
                 <StoryReportButton targetId={story.id} />
@@ -196,39 +208,30 @@ export default async function StoryPage({ params, searchParams }: StoryPageProps
 
         <div className="storyDetailContentGrid">
           <div className="storyDetailPrimary">
-            {isOneshot ? (
-              <section className="oneshotReader" aria-labelledby="oneshot-title">
-                <div className="storyPanelTabs">
-                  <a aria-current="page" href="#oneshot-body"><BookOpen /> Nội dung truyện</a>
-                  <a href="#story-comments"><MessageSquare /> Bình luận</a>
-                </div>
-                <header>
-                  <h2 id="oneshot-title">{story.title}</h2>
-                  {readingMinutes ? <span>~{readingMinutes} phút đọc</span> : null}
-                </header>
-                {oneshotHtml ? (
-                  <div
-                    className="oneshotBody"
-                    dangerouslySetInnerHTML={{ __html: oneshotHtml }}
-                    id="oneshot-body"
-                  />
-                ) : (
-                  <p className="emptyCatalog" id="oneshot-body">Truyện chưa có nội dung công khai.</p>
-                )}
-              </section>
-            ) : (
             <section className="storyChapterPanel" aria-labelledby="chapters-title">
               <div className="storyPanelTabs">
                 <a aria-current="page" href="#chapter-list"><List /> Danh sách chương</a>
                 <a href="#story-comments"><MessageSquare /> Bình luận</a>
               </div>
+              <ScrollToChapterList page={currentPage} />
               <div id="chapter-list">
                 <header>
                   <h2 id="chapters-title">Danh sách chương</h2>
-                  <span>{totalChapters} chương · {chaptersPerPage} chương/trang</span>
+                  {/* Page size dropped: it described the pager's mechanics, not
+                      the story, and the pager below already shows it. */}
+                  <span>{totalChapters} chương</span>
                 </header>
                 {pagedChapters.length > 0 ? (
                   <>
+                    {/* Same combo as the button in the story header - one purchase,
+                        two places to start it, kept in sync by the component. */}
+                    <StoryComboPurchase
+                      chaptersCount={totalChapters}
+                      completionStatus={story.completionStatus}
+                      storyId={story.id}
+                      storyTitle={story.title}
+                      variant="row"
+                    />
                     <ol>
                       {pagedChapters.map((chapter) => (
                         <ChapterListItem chapter={chapter} key={chapter.id} storySlug={story.slug} />
@@ -259,7 +262,6 @@ export default async function StoryPage({ params, searchParams }: StoryPageProps
                 ) : <p className="emptyCatalog">Truyện chưa có chương công khai.</p>}
               </div>
             </section>
-            )}
 
             <div id="story-comments"><Comments targetId={story.id} targetType="STORY" /></div>
           </div>

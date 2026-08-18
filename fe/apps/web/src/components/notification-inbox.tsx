@@ -11,29 +11,26 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import styles from "./notification-inbox.module.css";
 import { API_BASE_URL, authedFetch } from "@/lib/api-base";
-
-function time(value: string) {
-  return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
+import { timeAgoFormatted } from "./notification-bell";
 
 function message(error: unknown) {
   if (error instanceof StoryApiError) {
     if (error.problem.status === 401) {
-      return "Đăng nhập để xem thông báo của bạn.";
+      return "Vui lòng đăng nhập để xem danh sách thông báo của bạn.";
     }
-    return error.problem.detail ?? "Không thể tải hộp thư thông báo.";
+    return error.problem.detail ?? "Không thể tải danh sách thông báo.";
   }
-  return "Không thể kết nối máy chủ. Hãy thử lại.";
+  return "Không thể kết nối máy chủ. Vui lòng thử lại sau.";
 }
 
 /** How often an open inbox refetches its first page. */
 const REFRESH_INTERVAL_MS = 30_000;
 
 export function NotificationInbox() {
-  const api = useMemo(() => createBrowserNotificationClient({ baseUrl: API_BASE_URL, fetchImplementation: authedFetch }), []);
+  const api = useMemo(
+    () => createBrowserNotificationClient({ baseUrl: API_BASE_URL, fetchImplementation: authedFetch }),
+    [],
+  );
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [unread, setUnread] = useState(0);
@@ -60,10 +57,6 @@ export function NotificationInbox() {
     return () => window.clearTimeout(task);
   }, [load]);
 
-  // Messages arrive while the inbox sits open - a top-up being approved, for
-  // instance - so the first page is refetched periodically. A hidden tab is
-  // skipped, and paged-in older items are left alone until the reader is back
-  // at the top.
   useEffect(() => {
     const tick = () => {
       if (document.visibilityState !== "visible") return;
@@ -132,67 +125,90 @@ export function NotificationInbox() {
   return (
     <main className={styles.inbox}>
       <header className={styles.header}>
-        <Link aria-label="Về trang chủ" to="/">
-          <BrandMark />
-        </Link>
-        <div>
-          <span className={styles.eyebrow}>Dấu trang · Hộp thư</span>
-          <h1>Những điều<br /><em>vừa xảy ra.</em></h1>
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          <Link aria-label="Về trang chủ" to="/">
+            <BrandMark />
+          </Link>
+          <h1 style={{ margin: 0, fontSize: "1.35rem", fontWeight: 850, color: "#0f172a" }}>
+            Thông báo hệ thống
+          </h1>
         </div>
-        <Link className={styles.back} to="/">Tiếp tục đọc</Link>
+        <Link className={styles.back} to="/">
+          ← Về trang chủ
+        </Link>
       </header>
 
       <section className={styles.ledger} aria-busy={loading}>
-        <div className={styles.summary}>
-          <p>
-            Mỗi thông báo là một dấu ghi bên lề hành trình đọc và xuất bản
-            của bạn.
-          </p>
-          <strong aria-live="polite">{unread.toString().padStart(2, "0")}</strong>
-          <span>chưa đọc</span>
-          <button
-            disabled={!unread || working}
-            onClick={() => void markAllRead()}
-            type="button"
-          >
-            Đánh dấu tất cả đã đọc
-          </button>
-          <a className={styles.settingsLink} href="/notifications/settings">
-            Chọn cách nhận thông báo
-          </a>
-        </div>
-
         <div className={styles.stream}>
+          <div className={styles.toolbar}>
+            <span className={styles.unreadBadge}>
+              {unread > 0 ? `${unread} thông báo chưa đọc` : "Đã đọc tất cả thông báo"}
+            </span>
+
+            <button
+              className={styles.markAllBtn}
+              disabled={!unread || working}
+              onClick={() => void markAllRead()}
+              type="button"
+            >
+              {working ? "Đang xử lý…" : "Đánh dấu tất cả đã đọc"}
+            </button>
+          </div>
+
           {error && <div className={styles.error} role="alert">{error}</div>}
-          {loading && <p className={styles.empty}>Đang mở hộp thư…</p>}
+
+          {loading && <p className={styles.empty}>Đang tải hộp thư thông báo…</p>}
+
           {!loading && !error && items.length === 0 && (
             <div className={styles.empty}>
-              <strong>Chưa có dấu ghi mới.</strong>
-              <span>Khi truyện bạn theo dõi cập nhật, thông báo sẽ xuất hiện ở đây.</span>
+              <strong>Chưa có thông báo nào.</strong>
+              <p style={{ margin: "0.5rem 0 0", color: "#64748b" }}>
+                Khi có hoạt động nạp xu, mở khóa hay cập nhật truyện, thông báo sẽ hiển thị tại đây.
+              </p>
             </div>
           )}
-          <ol className={styles.list}>
-            {items.map((item) => (
-              <li className={item.readAt ? styles.read : styles.unread} key={item.id}>
-                <button
-                  aria-label={item.readAt ? item.title : `Đánh dấu đã đọc: ${item.title}`}
-                  disabled={Boolean(item.readAt) || working}
-                  onClick={() => void markRead(item)}
-                  type="button"
-                >
-                  <span className={styles.marker} aria-hidden="true" />
-                  <span className={styles.copy}>
-                    <small>{item.type.replaceAll("_", " ")} · {time(item.createdAt)}</small>
-                    <strong>{item.title}</strong>
-                    <span>{item.body}</span>
-                  </span>
-                  <span className={styles.state}>
-                    {item.readAt ? "Đã đọc" : "Mới"}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ol>
+
+          <ul className={styles.list}>
+            {items.map((item) => {
+              const { relative, exact } = timeAgoFormatted(item.createdAt);
+              const isUnread = !item.readAt;
+
+              return (
+                <li className={isUnread ? styles.unread : styles.read} key={item.id}>
+                  <button
+                    aria-label={item.readAt ? item.title : `Đánh dấu đã đọc: ${item.title}`}
+                    disabled={Boolean(item.readAt) || working}
+                    onClick={() => void markRead(item)}
+                    type="button"
+                  >
+                    <span className={styles.copy}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
+                        <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#1d4ed8", background: "#eff6ff", padding: "0.15rem 0.55rem", borderRadius: "6px" }}>
+                          🕒 {exact}
+                        </span>
+                        <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "#64748b" }}>
+                          ({relative})
+                        </span>
+                      </div>
+
+                      <strong style={{ color: "#0f172a", fontSize: "1.05rem", fontWeight: 800 }}>
+                        {item.title}
+                      </strong>
+
+                      <span style={{ color: "#334155", fontSize: "0.92rem", fontWeight: 500, lineHeight: 1.5 }}>
+                        {item.body}
+                      </span>
+                    </span>
+
+                    <span className={styles.state}>
+                      {isUnread ? "Mới" : "Đã đọc"}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+
           {cursor && (
             <button
               className={styles.more}
@@ -200,7 +216,7 @@ export function NotificationInbox() {
               onClick={() => void loadMore()}
               type="button"
             >
-              {working ? "Đang tải…" : "Mở trang cũ hơn"}
+              {working ? "Đang tải…" : "Xem thêm thông báo cũ hơn"}
             </button>
           )}
         </div>

@@ -19,6 +19,9 @@ import { ReaderAdBanner } from "./reader-ad-banner";
 import { StoryReportButton } from "./story-report-button";
 import { API_BASE_URL, authedFetch } from "@/lib/api-base";
 
+/** How long a reader must stay before the chapter counts as read. */
+const VIEW_DWELL_MS = 3_000;
+
 function safeUUID(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
@@ -115,17 +118,27 @@ export function ChapterReader({
       anonymousId = safeUUID();
       localStorage.setItem("reader-anonymous-id", anonymousId);
     }
-    sessions.start({
-      anonymousId,
-      chapterId: chapter.id,
-      storyId: chapter.storyId,
-    }).then((value) => {
-      if (!cancelled) {
-        grant.current = value;
-        setTracking("active");
-      }
-    }).catch(() => setTracking("local"));
-    return () => { cancelled = true; };
+    // Held back three seconds on purpose: opening the session is what records
+    // the view, and someone who lands on the wrong chapter and leaves straight
+    // away has not read it. Clicking through five chapters looking for the
+    // right one used to add five views.
+    const openSession = window.setTimeout(() => {
+      sessions.start({
+        anonymousId,
+        chapterId: chapter.id,
+        storyId: chapter.storyId,
+      }).then((value) => {
+        if (!cancelled) {
+          grant.current = value;
+          setTracking("active");
+        }
+      }).catch(() => setTracking("local"));
+    }, VIEW_DWELL_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(openSession);
+    };
   }, [chapter.id, chapter.storyId, sessions]);
 
   useEffect(() => {

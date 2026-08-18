@@ -34,23 +34,41 @@ public class AdminCategoryController {
         this.jdbc = jdbc;
     }
 
+    /**
+     * Every genre, with how many stories carry it.
+     *
+     * <p>Counted with a correlated subquery rather than a join and GROUP BY, so
+     * a genre no story uses still comes back - with a zero, which is exactly
+     * the row an admin is looking for when deciding what to retire. The
+     * published count is separate because a genre can look busy while every
+     * story on it is still a draft.
+     */
     @GetMapping
     @Transactional(readOnly = true)
     public List<AdminCategoryRow> list() {
         return jdbc.sql("""
-                        SELECT id, slug, name, description, is_active, created_at, updated_at
-                        FROM genres ORDER BY name
+                        SELECT g.id, g.slug, g.name, g.description, g.is_active,
+                               g.created_at, g.updated_at,
+                               (SELECT COUNT(*) FROM story_genres sg
+                                 WHERE sg.genre_id = g.id) AS story_count,
+                               (SELECT COUNT(*) FROM story_genres sg
+                                  JOIN stories s ON s.id = sg.story_id
+                                 WHERE sg.genre_id = g.id
+                                   AND s.status = 'PUBLISHED') AS published_story_count
+                        FROM genres g
+                        ORDER BY g.name
                         """)
                 .query((rs, rowNum) -> new AdminCategoryRow(
                         rs.getString("id"),
                         rs.getString("slug"),
                         rs.getString("name"),
                         nullToEmpty(rs.getString("description")),
-                        0,
                         rs.getBoolean("is_active"),
                         1,
                         timestamp(rs, "created_at"),
-                        timestamp(rs, "updated_at")
+                        timestamp(rs, "updated_at"),
+                        rs.getLong("story_count"),
+                        rs.getLong("published_story_count")
                 ))
                 .list();
     }
@@ -150,6 +168,17 @@ public class AdminCategoryController {
                 HttpStatus.NOT_FOUND, "category.not_found", "Category not found", "Category not found"));
     }
 
+    private long countStories(String genreId, boolean publishedOnly) {
+        String sql = publishedOnly
+                ? """
+                  SELECT COUNT(*) FROM story_genres sg
+                    JOIN stories s ON s.id = sg.story_id
+                   WHERE sg.genre_id = ? AND s.status = 'PUBLISHED'
+                  """
+                : "SELECT COUNT(*) FROM story_genres WHERE genre_id = ?";
+        return jdbc.sql(sql).param(genreId).query(Long.class).optional().orElse(0L);
+    }
+
     private void requireUniqueSlug(String slug, UUID excludedId) {
         long taken = excludedId == null
                 ? jdbc.sql("SELECT COUNT(*) FROM genres WHERE slug = ?")
@@ -162,17 +191,25 @@ public class AdminCategoryController {
         }
     }
 
-    private static AdminCategoryRow toRow(Genre genre) {
+    /**
+     * The row returned after a write. The story counts are read fresh rather
+     * than assumed: creating or renaming a genre never moves a story onto or
+     * off it, so a newly created genre is genuinely on zero and an edited one
+     * keeps whatever it already had.
+     */
+    private AdminCategoryRow toRow(Genre genre) {
+        String id = genre.getId().toString();
         return new AdminCategoryRow(
-                genre.getId().toString(),
+                id,
                 genre.getSlug(),
                 genre.getName(),
                 nullToEmpty(genre.getDescription()),
-                0,
                 Boolean.TRUE.equals(genre.getIsActive()),
                 1,
                 genre.getCreatedAt() == null ? null : genre.getCreatedAt().toString(),
-                genre.getUpdatedAt() == null ? null : genre.getUpdatedAt().toString()
+                genre.getUpdatedAt() == null ? null : genre.getUpdatedAt().toString(),
+                countStories(id, false),
+                countStories(id, true)
         );
     }
 

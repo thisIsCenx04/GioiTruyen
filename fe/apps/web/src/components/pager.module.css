@@ -9,10 +9,10 @@
 
 .pager button {
   align-items: center;
-  background: #fff;
-  border: 1px solid #d7e3f4;
+  background: var(--surface-card);
+  border: 1px solid var(--border-strong);
   border-radius: .45rem;
-  color: #1d3557;
+  color: var(--text-primary);
   cursor: pointer;
   display: inline-flex;
   font: inherit;
@@ -24,23 +24,23 @@
 
 .pager button:hover:not(:disabled):not(.current) {
   background: #eef4fc;
-  border-color: #7aa7db;
+  border-color: var(--accent);
 }
 
 .pager button:disabled {
-  color: #b6c2d2;
+  color: var(--text-muted);
   cursor: not-allowed;
 }
 
 .current {
-  background: #1d3557 !important;
-  border-color: #1d3557 !important;
-  color: #fff !important;
+  background: var(--text-primary) !important;
+  border-color: var(--text-primary) !important;
+  color: var(--text-on-accent, #fff) !important;
   font-weight: 700;
 }
 
 .gap {
-  color: #94a3b8;
+  color: var(--text-muted);
   padding: 0 .15rem;
   user-select: none;
 }

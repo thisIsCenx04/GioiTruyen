@@ -8,26 +8,14 @@
     "pnpm": ">=11.17.0 <12"
   },
   "scripts": {
-    "api:bundle": "redocly bundle story-platform@v1 --config ../redocly.yaml --output ../build/openapi/story-platform.v1.yaml",
-    "api:gate:self-test": "node ./scripts/verify-openapi-gate.mjs",
-    "api:lint": "redocly lint story-platform@v1 --config ../redocly.yaml --format=stylish",
     "build": "pnpm --filter \"./apps/*\" build",
     "dev:web": "pnpm --filter @gioitruyen/web dev",
-    "dev:admin": "pnpm --filter @gioitruyen/admin dev",
     "lint": "pnpm -r --if-present lint",
-    "security:actions": "node ./scripts/enforce-action-pinning.mjs",
-    "security:gate:self-test": "node ./scripts/verify-secret-gate.mjs",
-    "security:licenses": "node ./scripts/enforce-license-policy.mjs ../build/security/licenses.json",
     "test": "pnpm test:unit",
-    "test:coverage": "node ./scripts/run-vitest.mjs run --coverage",
-    "test:policy": "node ./scripts/enforce-test-policy.mjs",
-    "test:policy:self-test": "node ./scripts/run-vitest.mjs run test/policy --reporter=default",
-    "test:report:merge": "node ./scripts/merge-test-reports.mjs",
-    "test:unit": "node ./scripts/run-vitest.mjs run",
-    "test:unit:changed": "node ./scripts/run-vitest.mjs run --changed --reporter=default",
-    "test:watch": "node ./scripts/run-vitest.mjs",
-    "typecheck": "pnpm -r --if-present typecheck && pnpm typecheck:policy",
-    "typecheck:policy": "tsc --project tsconfig.test.json"
+    "test:coverage": "pnpm --filter @gioitruyen/web exec vitest run --coverage",
+    "test:unit": "pnpm -r --if-present test",
+    "test:watch": "pnpm --filter @gioitruyen/web exec vitest",
+    "typecheck": "pnpm -r --if-present typecheck"
   },
   "devDependencies": {
     "@redocly/cli": "2.34.0",

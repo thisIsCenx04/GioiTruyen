@@ -17,6 +17,39 @@ export function coverUrl(coverAssetId: string | null | undefined): string {
   return value.startsWith("/") ? value : `/uploads/stories/${value}`;
 }
 
+/**
+ * The card-sized copy of a cover, by the same rule the server names it:
+ * `/uploads/stories/x.png` is served as `/uploads/stories/thumb/x.jpg`.
+ *
+ * <p>Originals are print-resolution, several megabytes each, and every shelf
+ * draws them under 200px wide - which is why a grid of cards used to fill in
+ * one picture at a time. Files the server cannot resize (WEBP, GIF) and covers
+ * hosted elsewhere have no thumbnail, so callers must keep the original as a
+ * fallback; see `useCoverFallback`.
+ */
+export function coverThumbUrl(coverAssetId: string | null | undefined): string {
+  const original = coverUrl(coverAssetId);
+  const match = /^(\/uploads\/stories\/)([^/]+)\.(png|jpe?g)$/iu.exec(original);
+  return match ? `${match[1]}thumb/${match[2]}.jpg` : original;
+}
+
+/**
+ * Swaps a missing thumbnail for the original it was derived from.
+ *
+ * <p>A cover uploaded in a format the server cannot resize has no thumbnail,
+ * and the backfill may not have reached an older one yet. Either way the
+ * reader must see the picture, slow rather than broken. The guard stops a
+ * failing original from retrying forever.
+ */
+export function onCoverError(original: string) {
+  return (event: { currentTarget: HTMLImageElement }) => {
+    const image = event.currentTarget;
+    if (image.dataset.fellBack === "1") return;
+    image.dataset.fellBack = "1";
+    image.src = original;
+  };
+}
+
 /** The single book image shown for every story that has no cover yet. */
 export function StoryCoverPlaceholder() {
   return (

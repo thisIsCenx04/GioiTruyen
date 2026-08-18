@@ -41,14 +41,12 @@ export function StoryReportButton({
     setMessage("");
     try {
       const report = await api.create({
-        ...(detail.trim() ? { detail: detail.trim() } : {}),
-        reasonCode: reason,
+        ...(detail.trim() ? { description: detail.trim() } : {}),
+        reportType: reason,
         targetId,
         targetType,
       });
-      setMessage(report.duplicate
-        ? "Báo cáo này đã được hệ thống tiếp nhận trước đó."
-        : "Báo cáo đã được chuyển đến đội kiểm duyệt.");
+      setMessage(report.message || "Báo cáo đã được chuyển đến đội kiểm duyệt.");
     } catch (error) {
       if (error instanceof StoryApiError && error.problem.status === 401) {
         setRequiresLogin(true);

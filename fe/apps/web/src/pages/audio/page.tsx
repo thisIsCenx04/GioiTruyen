@@ -1,4 +1,3 @@
-import { Headphones, Sparkles, Volume2 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { CatalogStoryCard } from "@/components/catalog-story-card";
@@ -7,8 +6,14 @@ import { loadHome } from "@/lib/catalog";
 
 export const revalidate = 60;
 
-/* metadata removed */
-
+/**
+ * Audio stories.
+ *
+ * Deliberately the same shape as the stories and rankings pages: a plain
+ * heading with a count, then the grid. The previous version opened with a
+ * 400px tinted hero and three glass stat cards with coloured icon circles,
+ * which looked like a different site from the one it sits inside.
+ */
 export default async function AudioStoriesPage() {
   const home = await loadHome();
   const everything = [
@@ -26,59 +31,16 @@ export default async function AudioStoriesPage() {
 
   return (
     <PublicShell>
-      <div className="audioPageRedesignShell">
-        {/* ── TOP HERO BANNER (FULL WIDTH, HEIGHT 400PX) ── */}
-        <section className="audioHeroBanner">
-          <div className="audioHeroBg" />
-          <div className="audioHeroContainer">
-            <div className="audioHeroContent">
-              <h1>Truyện audio</h1>
-              <p>
-                Những truyện đã có bản đọc thành tiếng, nghe được khi bạn không
-                tiện nhìn màn hình.
-              </p>
+      <main className="plainPageShell">
+        <div className="plainPageContainer">
+          <header className="plainPageHeading">
+            <h1>TRUYỆN AUDIO</h1>
+            <span>{stories.length} truyện</span>
+          </header>
 
-              {/* Counted from what the catalog returns; the old row showed
-                  invented figures (1M+ giờ nghe / 3K+ tập / 100%). */}
-              <div className="audioStatCardsRow">
-                <div className="audioStatGlassCard">
-                  <div className="statIconCircle">
-                    <Headphones size={20} />
-                  </div>
-                  <div className="statText">
-                    <strong>{stories.length}</strong>
-                    <span>truyện audio</span>
-                  </div>
-                </div>
-
-                <div className="audioStatGlassCard">
-                  <div className="statIconCircle">
-                    <Volume2 size={20} />
-                  </div>
-                  <div className="statText">
-                    <strong>{everything.length}</strong>
-                    <span>truyện trên nền tảng</span>
-                  </div>
-                </div>
-
-                <div className="audioStatGlassCard">
-                  <div className="statIconCircle">
-                    <Sparkles size={20} />
-                  </div>
-                  <div className="statText">
-                    <strong>{new Set(stories.map((story) => story.teamId)).size}</strong>
-                    <span>nhóm thực hiện</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <div className="audioMainBodyContainer">
           {stories.length > 0 ? (
-            <div className="catalogGrid catalogGridLarge catalogGridVertical">
-              {stories.slice(0, 16).map((story, index) => (
+            <div className="catalogGrid catalogGridVertical plainStoryGrid">
+              {stories.map((story, index) => (
                 <CatalogStoryCard
                   hrefBase="/audio"
                   index={index}
@@ -89,12 +51,12 @@ export default async function AudioStoriesPage() {
               ))}
             </div>
           ) : (
-            <p className="emptyCatalog">
+            <p className="plainEmpty">
               Chưa có truyện audio nào. <Link to="/stories">Xem truyện chữ</Link> trong lúc chờ nhé.
             </p>
           )}
         </div>
-      </div>
+      </main>
     </PublicShell>
   );
 }

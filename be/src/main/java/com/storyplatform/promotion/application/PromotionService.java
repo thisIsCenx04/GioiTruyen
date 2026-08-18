@@ -13,7 +13,9 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -135,6 +137,313 @@ public class PromotionService {
         return spec.query((rs, rowNum) -> toBooking(rs)).list();
     }
 
+    /* ----------------------------------------------------------- admin board */
+
+    /** Slots on the home page's bố cáo strip. Matches PROMOTED_SLOT_COUNT. */
+    public static final int BOARD_SLOTS = 12;
+
+    /**
+     * One slot on the board: the position, and what is sitting in it.
+     * {@code promotionId} is null for an empty slot.
+     */
+    public record BoardSlot(
+            int position, String promotionId, String storyId, String storyTitle,
+            String storySlug, String coverUrl, String teamName,
+            String startsAt, String endsAt, int durationDays) {
+    }
+
+    public record PromotionBoard(List<BoardSlot> slots, List<PromotionBooking> pending) {
+    }
+
+    /**
+     * The board as the admin screen draws it: twelve slots, always twelve, plus
+     * the queue waiting for a decision.
+     *
+     * <p>Empty slots are returned as rows rather than left out, so the screen
+     * renders a fixed grid that mirrors the home page instead of a list that
+     * changes shape.
+     */
+    public PromotionBoard board() {
+        Map<Integer, BoardSlot> occupied = new java.util.HashMap<>();
+        jdbc.sql("""
+                        SELECT p.id, p.slot_position, p.duration_days, p.starts_at, p.ends_at,
+                               s.id AS story_id, s.title, s.slug, s.cover_url, t.name AS team_name
+                        FROM story_promotions p
+                        JOIN stories s ON s.id = p.story_id
+                        JOIN teams t ON t.id = s.team_id
+                        WHERE p.status = 'ACTIVE' AND p.ends_at > NOW(3)
+                        ORDER BY p.slot_position IS NULL, p.slot_position, p.created_at
+                        """)
+                .query((rs, rowNum) -> {
+                    int slot = rs.getObject("slot_position") == null
+                            ? rowNum + 1 : rs.getInt("slot_position");
+                    return new BoardSlot(
+                            slot,
+                            rs.getString("id"),
+                            rs.getString("story_id"),
+                            rs.getString("title"),
+                            rs.getString("slug"),
+                            rs.getString("cover_url"),
+                            rs.getString("team_name"),
+                            instantOrNull(rs.getTimestamp("starts_at")),
+                            instantOrNull(rs.getTimestamp("ends_at")),
+                            rs.getInt("duration_days"));
+                })
+                .list()
+                .forEach(row -> occupied.putIfAbsent(row.position(), row));
+
+        List<BoardSlot> slots = new java.util.ArrayList<>(BOARD_SLOTS);
+        for (int position = 1; position <= BOARD_SLOTS; position++) {
+            slots.add(occupied.getOrDefault(position,
+                    new BoardSlot(position, null, null, null, null, null, null, null, null, 0)));
+        }
+        return new PromotionBoard(slots, reviewQueue("PENDING"));
+    }
+
+    private static String instantOrNull(Timestamp value) {
+        return value == null ? null : value.toInstant().toString();
+    }
+
+    /** The lowest slot number nothing live is occupying, or null when full. */
+    private Integer firstFreeSlot() {
+        Set<Integer> taken = new java.util.HashSet<>(jdbc.sql("""
+                        SELECT slot_position FROM story_promotions
+                        WHERE status = 'ACTIVE' AND ends_at > NOW(3) AND slot_position IS NOT NULL
+                        """)
+                .query(Integer.class)
+                .list());
+        long live = jdbc.sql("""
+                        SELECT COUNT(*) FROM story_promotions
+                        WHERE status = 'ACTIVE' AND ends_at > NOW(3)
+                        """)
+                .query(Long.class).optional().orElse(0L);
+        if (live >= BOARD_SLOTS) {
+            return null;
+        }
+        for (int position = 1; position <= BOARD_SLOTS; position++) {
+            if (!taken.contains(position)) {
+                return position;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Writes the order the admin dragged the cards into.
+     *
+     * <p>Takes the whole arrangement rather than one move: positions have to
+     * stay unique, and applying a single swap on its own would leave two cards
+     * claiming a slot for as long as the second update took.
+     */
+    @Transactional
+    public PromotionBoard reorder(Map<Integer, String> slotToPromotion) {
+        // Cleared first so a card moving from 3 to 7 does not collide with
+        // whatever is still recorded at 7 halfway through.
+        jdbc.sql("""
+                        UPDATE story_promotions SET slot_position = NULL
+                        WHERE status = 'ACTIVE' AND ends_at > NOW(3)
+                        """).update();
+        slotToPromotion.forEach((position, promotionId) -> {
+            if (promotionId == null || promotionId.isBlank()
+                    || position == null || position < 1 || position > BOARD_SLOTS) {
+                return;
+            }
+            jdbc.sql("UPDATE story_promotions SET slot_position = ?, updated_at = NOW(3) WHERE id = ?")
+                    .params(position, promotionId)
+                    .update();
+        });
+        return board();
+    }
+
+    /**
+     * A bố cáo the admin places themselves, with no charge to the team.
+     *
+     * <p>For running the strip when nobody has booked - house picks, make-goods,
+     * a slot promised offline. It goes straight to ACTIVE because there is
+     * nobody to review it: the admin creating it is the review. `coin_paid` is
+     * zero, so it never looks like revenue the team was billed for.
+     */
+    @Transactional
+    public PromotionBooking adminCreate(UUID storyId, UUID packageId, String adminId) {
+        StoryRow story = requireStory(storyId);
+        PackageRow pkg = requirePackage(packageId);
+        Integer slot = firstFreeSlot();
+        if (slot == null) {
+            throw new ApiException(HttpStatus.CONFLICT, "promotion.board_full",
+                    "Kho bố cáo đã đầy",
+                    "Cả %d vị trí đang có truyện. Hãy gỡ bớt một vị trí trước."
+                            .formatted(BOARD_SLOTS));
+        }
+
+        Instant now = Instant.now();
+        Instant endsAt = now.plus(Duration.ofDays(pkg.durationDays()));
+        UUID id = UUID.randomUUID();
+        jdbc.sql("""
+                        INSERT INTO story_promotions
+                            (id, story_id, team_id, purchased_by, package_id, duration_days, coin_paid,
+                             discount_coin, starts_at, ends_at, status, slot_position,
+                             review_note, reviewed_by, reviewed_at, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, ?, 'ACTIVE', ?, ?, ?, ?, ?, ?)
+                        """)
+                .params(id.toString(), storyId.toString(), story.teamId(), adminId,
+                        pkg.id(), pkg.durationDays(),
+                        Timestamp.from(now), Timestamp.from(endsAt), slot,
+                        "Bố cáo do quản trị viên xếp, không tính phí.", adminId,
+                        Timestamp.from(now), Timestamp.from(now), Timestamp.from(now))
+                .update();
+        return findBooking(id);
+    }
+
+    /** Frees a slot without touching the coins the team already paid. */
+    @Transactional
+    public PromotionBoard clearSlot(UUID promotionId) {
+        jdbc.sql("""
+                        UPDATE story_promotions
+                        SET status = 'CANCELLED', slot_position = NULL,
+                            cancelled_at = NOW(3), updated_at = NOW(3)
+                        WHERE id = ?
+                        """)
+                .param(promotionId.toString())
+                .update();
+        return board();
+    }
+
+    /**
+     * Accepts a booking but puts it on a date instead of a slot.
+     *
+     * <p>What the admin reaches for when the board is full: the buyer is told
+     * their booking succeeded and when it will run, rather than being rejected
+     * for a queue problem that is not their fault. The coins stay paid and the
+     * request stays PENDING, so it is still in the queue to approve on the day.
+     */
+    @Transactional
+    public PromotionBooking scheduleLater(UUID promotionId, String reviewerId, String scheduledLabel) {
+        BookingRow booking = requireBooking(promotionId);
+        if (!"PENDING".equals(booking.status())) {
+            throw new ApiException(HttpStatus.CONFLICT, "promotion.not_pending",
+                    "Lượt bố cáo không còn chờ duyệt",
+                    "Yêu cầu này đã được xử lý (%s).".formatted(booking.status()));
+        }
+        String label = scheduledLabel == null ? "" : scheduledLabel.trim();
+        if (label.isEmpty()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "promotion.schedule_required",
+                    "Thiếu lịch bố cáo", "Hãy nhập thời điểm dự kiến theo dạng hh:dd/mm/yyyy.");
+        }
+
+        jdbc.sql("""
+                        UPDATE story_promotions
+                        SET review_note = ?, reviewed_by = ?, reviewed_at = NOW(3), updated_at = NOW(3)
+                        WHERE id = ?
+                        """)
+                .params("Đã xếp lịch: " + label, reviewerId, promotionId.toString())
+                .update();
+
+        notifyBuyer(booking, "Đăng ký bố cáo thành công",
+                "Bạn đã đăng ký bố cáo thành công. Truyện sẽ được bố cáo vào %s.".formatted(label));
+        return findBooking(promotionId);
+    }
+
+    /* --------------------------------------------------------- admin pricing */
+
+    public record AdminPackageRow(
+            String id, String code, String name, int durationDays,
+            long priceCoin, String description, boolean active) {
+    }
+
+    public record TeamDiscountRow(String teamId, String slug, String name, long discountCoin) {
+    }
+
+    /** Includes retired packages, which an admin may want to bring back. */
+    public List<AdminPackageRow> adminPackages() {
+        return jdbc.sql("""
+                        SELECT id, code, name, duration_days, price_coin, description, is_active
+                        FROM promotion_packages
+                        ORDER BY is_active DESC, sort_order, duration_days
+                        """)
+                .query((rs, rowNum) -> new AdminPackageRow(
+                        rs.getString("id"),
+                        rs.getString("code"),
+                        rs.getString("name"),
+                        rs.getInt("duration_days"),
+                        rs.getLong("price_coin"),
+                        rs.getString("description"),
+                        rs.getBoolean("is_active")))
+                .list();
+    }
+
+    @Transactional
+    public AdminPackageRow updatePackage(UUID packageId, Long priceCoin, Boolean active) {
+        if (priceCoin != null && priceCoin <= 0) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "promotion.price_invalid",
+                    "Giá gói không hợp lệ", "Giá gói bố cáo phải lớn hơn 0 xu.");
+        }
+        int changed = jdbc.sql("""
+                        UPDATE promotion_packages
+                        SET price_coin = COALESCE(?, price_coin),
+                            is_active = COALESCE(?, is_active),
+                            updated_at = NOW()
+                        WHERE id = ?
+                        """)
+                .params(priceCoin, active, packageId.toString())
+                .update();
+        if (changed == 0) {
+            throw notFound("promotion.package_not_found", "Không tìm thấy gói bố cáo");
+        }
+        return adminPackages().stream()
+                .filter(row -> row.id().equals(packageId.toString()))
+                .findFirst()
+                .orElseThrow(() -> notFound("promotion.package_not_found", "Không tìm thấy gói bố cáo"));
+    }
+
+    /** Every team with its standing discount, so an admin can see them side by side. */
+    public List<TeamDiscountRow> teamDiscounts() {
+        return jdbc.sql("""
+                        SELECT id, slug, name, promotion_discount_coin
+                        FROM teams
+                        ORDER BY promotion_discount_coin DESC, name
+                        """)
+                .query((rs, rowNum) -> new TeamDiscountRow(
+                        rs.getString("id"),
+                        rs.getString("slug"),
+                        rs.getString("name"),
+                        rs.getLong("promotion_discount_coin")))
+                .list();
+    }
+
+    @Transactional
+    public TeamDiscountRow updateTeamDiscount(UUID teamId, Long discountCoin) {
+        long value = discountCoin == null ? 0L : discountCoin;
+        if (value < 0) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "promotion.discount_invalid",
+                    "Mức giảm không hợp lệ", "Mức giảm không được âm.");
+        }
+        int changed = jdbc.sql("UPDATE teams SET promotion_discount_coin = ? WHERE id = ?")
+                .params(value, teamId.toString())
+                .update();
+        if (changed == 0) {
+            throw notFound("team.not_found", "Không tìm thấy nhóm");
+        }
+        return teamDiscounts().stream()
+                .filter(row -> row.teamId().equals(teamId.toString()))
+                .findFirst()
+                .orElseThrow(() -> notFound("team.not_found", "Không tìm thấy nhóm"));
+    }
+
+    /**
+     * The standing discount for a team, in xu. Zero unless an admin set one.
+     *
+     * <p>Deliberately has no reader- or publisher-facing endpoint. The team sees
+     * the price it pays and nothing about how that price was reached, because
+     * the arrangement is between the operator and that one partner.
+     */
+    private long teamDiscount(String teamId) {
+        return jdbc.sql("SELECT promotion_discount_coin FROM teams WHERE id = ?")
+                .param(teamId)
+                .query(Long.class)
+                .optional()
+                .orElse(0L);
+    }
+
     @Transactional
     public PromotionBooking create(UUID userId, CreatePromotionRequest request) {
         UUID storyId = request.storyId();
@@ -154,19 +463,30 @@ public class PromotionService {
         Instant endsAt = startsAt.plus(Duration.ofDays(pkg.durationDays()));
         requireWithinCap(now, endsAt);
 
+        // The team's standing discount, taken straight off the list price. It is
+        // never sent back to the team - only the figure they actually pay is.
+        long discount = teamDiscount(story.teamId());
+        long charged = Math.max(0, pkg.priceCoin() - discount);
+        // What was really taken off, which is less than the discount when the
+        // discount is larger than the package. Storing the applied amount keeps
+        // `coin_paid + discount_coin` equal to the list price on every row.
+        long applied = pkg.priceCoin() - charged;
+
         // Coins are taken now, so a request cannot be placed without the means
         // to pay for it. A rejection refunds them in full.
-        chargeWallet(userId, pkg.priceCoin(), storyId, story.title());
+        if (charged > 0) {
+            chargeWallet(userId, charged, storyId, story.title());
+        }
 
         UUID id = UUID.randomUUID();
         jdbc.sql("""
                         INSERT INTO story_promotions
                             (id, story_id, team_id, purchased_by, package_id, duration_days, coin_paid,
-                             starts_at, ends_at, status, created_at, updated_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?)
+                             discount_coin, starts_at, ends_at, status, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?)
                         """)
                 .params(id.toString(), storyId.toString(), story.teamId(), userId.toString(),
-                        pkg.id(), pkg.durationDays(), pkg.priceCoin(),
+                        pkg.id(), pkg.durationDays(), charged, applied,
                         Timestamp.from(startsAt), Timestamp.from(endsAt),
                         Timestamp.from(now), Timestamp.from(now))
                 .update();
@@ -200,15 +520,30 @@ public class PromotionService {
         Instant startsAt = activeEndsAt(UUID.fromString(booking.storyId()))
                 .filter(end -> end.isAfter(now))
                 .orElse(now);
+        // Duration.ofDays is exact hours, so a 3-day booking runs a full 72
+        // hours from the moment it is approved - not until the end of the third
+        // calendar day.
         Instant endsAt = startsAt.plus(Duration.ofDays(durationDays));
+
+        // The board holds twelve. Approving a thirteenth would put a booking on
+        // the home page that no slot can show, so it is refused here with a code
+        // the admin screen turns into the "board is full" form rather than a
+        // generic failure.
+        Integer slot = firstFreeSlot();
+        if (slot == null) {
+            throw new ApiException(HttpStatus.CONFLICT, "promotion.board_full",
+                    "Kho bố cáo đã đầy",
+                    ("Cả %d vị trí bố cáo đang có truyện. Hãy gỡ bớt một vị trí, "
+                            + "hoặc hẹn lịch cho yêu cầu này.").formatted(BOARD_SLOTS));
+        }
 
         jdbc.sql("""
                         UPDATE story_promotions
-                        SET status = 'ACTIVE', starts_at = ?, ends_at = ?,
+                        SET status = 'ACTIVE', starts_at = ?, ends_at = ?, slot_position = ?,
                             review_note = ?, reviewed_by = ?, reviewed_at = ?, updated_at = ?
                         WHERE id = ?
                         """)
-                .params(Timestamp.from(startsAt), Timestamp.from(endsAt), note, reviewerId,
+                .params(Timestamp.from(startsAt), Timestamp.from(endsAt), slot, note, reviewerId,
                         Timestamp.from(now), Timestamp.from(now), promotionId.toString())
                 .update();
 
@@ -331,19 +666,37 @@ public class PromotionService {
         Instant endsAt = startsAt.plus(Duration.ofDays(pkg.durationDays()));
         requireWithinCap(now, endsAt);
 
-        chargeWallet(userId, pkg.priceCoin(), UUID.fromString(booking.storyId()), story.title());
+        // Extending is another purchase, so the team's discount applies again -
+        // otherwise a partner would be charged list price for renewing.
+        long discount = teamDiscount(story.teamId());
+        long charged = Math.max(0, pkg.priceCoin() - discount);
+        long applied = pkg.priceCoin() - charged;
 
+        if (charged > 0) {
+            chargeWallet(userId, charged, UUID.fromString(booking.storyId()), story.title());
+        }
+
+        // A renewal is a new request, not an edit to the live one.
+        //
+        // Adding the days straight onto the running booking put paid-for time on
+        // the home page without anyone approving it - a story could be rejected
+        // on its first request and then extend its way back on. The new stretch
+        // queues as PENDING and starts where the current one ends, so nothing is
+        // lost while it waits.
+        UUID renewalId = UUID.randomUUID();
         jdbc.sql("""
-                        UPDATE story_promotions
-                        SET ends_at = ?, duration_days = duration_days + ?, coin_paid = coin_paid + ?,
-                            updated_at = ?
-                        WHERE id = ?
+                        INSERT INTO story_promotions
+                            (id, story_id, team_id, purchased_by, package_id, duration_days, coin_paid,
+                             discount_coin, starts_at, ends_at, status, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?)
                         """)
-                .params(Timestamp.from(endsAt), pkg.durationDays(), pkg.priceCoin(),
-                        Timestamp.from(now), promotionId.toString())
+                .params(renewalId.toString(), booking.storyId(), story.teamId(), userId.toString(),
+                        pkg.id(), pkg.durationDays(), charged, applied,
+                        Timestamp.from(startsAt), Timestamp.from(endsAt),
+                        Timestamp.from(now), Timestamp.from(now))
                 .update();
 
-        return findBooking(promotionId);
+        return findBooking(renewalId);
     }
 
     /** Flips finished bookings to EXPIRED so the home page stops showing them. */

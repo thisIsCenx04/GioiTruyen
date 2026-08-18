@@ -1,9 +1,9 @@
 .trigger {
   align-items: center;
-  background: #fff;
-  border: 1px solid #d7e3f4;
+  background: var(--surface-card);
+  border: 1px solid var(--border-strong);
   border-radius: .6rem;
-  color: #1d3557;
+  color: var(--text-primary);
   cursor: pointer;
   display: inline-flex;
   font: inherit;
@@ -13,9 +13,9 @@
   text-decoration: none;
 }
 
-.trigger:hover { border-color: #7aa7db; }
+.trigger:hover { border-color: var(--accent); }
 .trigger svg { height: 1.05rem; width: 1.05rem; }
-.trigger small { color: #64748b; font-weight: 500; }
+.trigger small { color: var(--text-muted); font-weight: 500; }
 
 /*
   Fixed to the viewport, not the page: the reader opens this from wherever they
@@ -34,7 +34,7 @@
 }
 
 .dialog {
-  background: #fff;
+  background: var(--surface-card);
   border-radius: .9rem;
   box-shadow: 0 1.5rem 3rem rgb(10 20 45 / 25%);
   /* Tall on a short screen scrolls inside itself, never off the viewport. */
@@ -45,7 +45,7 @@
 }
 
 .dialog h2 { font-size: 1.3rem; margin: 0 0 .35rem; }
-.lede { color: #475569; font-size: .92rem; margin: 0 0 1.1rem; }
+.lede { color: var(--text-secondary); font-size: .92rem; margin: 0 0 1.1rem; }
 
 .amounts {
   display: grid;
@@ -55,10 +55,10 @@
 }
 
 .amounts button {
-  background: #1d3557;
+  background: var(--text-primary);
   border: 0;
   border-radius: .55rem;
-  color: #fff;
+  color: var(--text-on-accent, #fff);
   cursor: pointer;
   font: inherit;
   font-weight: 600;
@@ -66,23 +66,23 @@
 }
 
 .amounts button:disabled { cursor: not-allowed; opacity: .55; }
-.amounts button:hover:not(:disabled) { background: #16324f; }
+.amounts button:hover:not(:disabled) { background: var(--accent-hover); }
 
 .facts { display: grid; gap: .4rem; margin: 0 0 1.1rem; }
 .facts > div { display: flex; justify-content: space-between; }
-.facts dt { color: #64748b; font-size: .9rem; margin: 0; }
+.facts dt { color: var(--text-muted); font-size: .9rem; margin: 0; }
 .facts dd { font-weight: 600; margin: 0; }
 
-.notice { color: #15803d; font-size: .9rem; margin: 0 0 .75rem; }
-.error { color: #b91c1c; font-size: .9rem; margin: 0 0 .75rem; }
+.notice { color: var(--success); font-size: .9rem; margin: 0 0 .75rem; }
+.error { color: var(--danger); font-size: .9rem; margin: 0 0 .75rem; }
 
 .actions { display: flex; gap: .6rem; justify-content: flex-end; }
 
 .secondary {
-  background: #f1f5f9;
+  background: var(--surface-sunken);
   border: 0;
   border-radius: .55rem;
-  color: #1d3557;
+  color: var(--text-primary);
   cursor: pointer;
   font: inherit;
   font-weight: 600;

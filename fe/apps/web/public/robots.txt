@@ -1,0 +1,21 @@
+# Giới Truyện — https://gioitruyen.com
+#
+# Everything public is crawlable. The paths below are blocked because they are
+# either private (a reader's own wallet and library), an admin surface, or a
+# duplicate of a page that already ranks — none of them belong in an index.
+
+User-agent: *
+Allow: /
+
+Disallow: /dashboard
+Disallow: /dashboard/
+Disallow: /account
+Disallow: /wallet
+Disallow: /library
+Disallow: /notifications
+Disallow: /auth/
+Disallow: /login
+Disallow: /register
+Disallow: /api/
+
+Sitemap: https://gioitruyen.com/sitemap.xml

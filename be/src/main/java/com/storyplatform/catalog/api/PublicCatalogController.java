@@ -2,7 +2,6 @@ package com.storyplatform.catalog.api;
 
 import com.storyplatform.catalog.application.PublicCatalogService;
 import com.storyplatform.catalog.application.dto.CatalogDtos;
-import com.storyplatform.engagement.application.StoryViewRecorder;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -16,14 +15,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class PublicCatalogController {
 
     private final PublicCatalogService catalogService;
-    private final StoryViewRecorder viewRecorder;
 
     public PublicCatalogController(
-            PublicCatalogService catalogService,
-            StoryViewRecorder viewRecorder
+            PublicCatalogService catalogService
     ) {
         this.catalogService = catalogService;
-        this.viewRecorder = viewRecorder;
     }
 
     @GetMapping("/home")
@@ -47,8 +43,10 @@ public class PublicCatalogController {
     }
 
     @GetMapping("/rankings/boards")
-    public List<CatalogDtos.RankingBoard> rankingBoards() {
-        return catalogService.rankingBoards();
+    public List<CatalogDtos.RankingBoard> rankingBoards(
+            @RequestParam(name = "period", required = false) String period
+    ) {
+        return catalogService.rankingBoards(period);
     }
 
     @GetMapping("/zhihu/sections")
@@ -85,7 +83,7 @@ public class PublicCatalogController {
             @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal Jwt jwt
     ) {
-        return catalogService.chapters(identifier, page, size, readerId(jwt));
+        return catalogService.chapters(identifier, page, size, readerId(jwt), isAdmin(jwt));
     }
 
     /**
@@ -104,11 +102,11 @@ public class PublicCatalogController {
             HttpServletRequest request
     ) {
         CatalogDtos.PublishedChapterDetail detail =
-                catalogService.chapterByNumber(identifier, number, readerId(jwt));
-        if (detail.unlocked()) {
-            viewRecorder.recordChapterView(
-                    detail.storyId(), detail.id(), readerId(jwt), clientIp(request));
-        }
+                catalogService.chapterByNumber(identifier, number, readerId(jwt), isAdmin(jwt));
+        // Fetching a chapter no longer counts as reading it. The reader page
+        // opens a reading session once the reader has stayed three seconds, and
+        // that is what records the view - counting here as well meant one open
+        // was counted twice, and a prefetch or a bounce counted at all.
         return detail;
     }
 
@@ -118,19 +116,42 @@ public class PublicCatalogController {
             @AuthenticationPrincipal Jwt jwt,
             HttpServletRequest request
     ) {
-        CatalogDtos.PublishedChapterDetail detail = catalogService.chapter(chapterId, readerId(jwt));
+        CatalogDtos.PublishedChapterDetail detail = catalogService.chapter(chapterId, readerId(jwt), isAdmin(jwt));
         // Only a chapter the reader can actually read counts. A locked one comes
         // back without its text, so counting it would inflate the figure with
         // paywall bounces rather than reading.
-        if (detail.unlocked()) {
-            viewRecorder.recordChapterView(
-                    detail.storyId(), detail.id(), readerId(jwt), clientIp(request));
-        }
+        // Fetching a chapter no longer counts as reading it. The reader page
+        // opens a reading session once the reader has stayed three seconds, and
+        // that is what records the view - counting here as well meant one open
+        // was counted twice, and a prefetch or a bounce counted at all.
         return detail;
     }
 
     private static String readerId(Jwt jwt) {
         return jwt == null ? null : jwt.getSubject();
+    }
+
+    private static boolean isAdmin(Jwt jwt) {
+        if (jwt == null) {
+            return false;
+        }
+        Object role = jwt.getClaim("role");
+        if (role != null && "ADMIN".equalsIgnoreCase(role.toString())) {
+            return true;
+        }
+        Object scope = jwt.getClaim("scope");
+        if (scope != null && "ADMIN".equalsIgnoreCase(scope.toString())) {
+            return true;
+        }
+        Object roles = jwt.getClaim("roles");
+        if (roles instanceof java.util.List<?> list) {
+            for (Object item : list) {
+                if (item != null && "ADMIN".equalsIgnoreCase(item.toString())) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**

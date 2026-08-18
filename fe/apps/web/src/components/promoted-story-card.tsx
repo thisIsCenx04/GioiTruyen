@@ -1,6 +1,8 @@
 import type { PromotedHomeStory } from "@gioitruyen/api-client";
-import { BadgeCheck, Bookmark, Eye, Megaphone, UsersRound } from "lucide-react";
+import { Bookmark, Eye, Megaphone, UsersRound } from "lucide-react";
 import { Link } from "react-router-dom";
+
+import { coverThumbUrl, coverUrl, onCoverError, StoryCoverPlaceholder } from "./story-cover";
 
 const tones = ["indigo", "vermilion", "teal", "amber"] as const;
 const numberFormatter = new Intl.NumberFormat("vi-VN", {
@@ -13,6 +15,9 @@ export function PromotedStoryCard({
   index,
 }: Readonly<{ booking: PromotedHomeStory; index: number }>) {
   const story = booking.story;
+  const cover = coverUrl(story.coverAssetId);
+  const thumb = coverThumbUrl(story.coverAssetId);
+  const isFull = story.progressStatus === "COMPLETED";
 
   return (
     <article className="promotedCard">
@@ -22,10 +27,29 @@ export function PromotedStoryCard({
         data-tone={tones[index % tones.length]}
         to={`/truyen/${story.slug}` as string}
       >
-        <span className="featuredTag">
-          <BadgeCheck aria-hidden="true" />
-          {booking.tagLabel}
-        </span>
+        {cover ? (
+          <img
+            alt={`Bìa ${story.title}`}
+            className="promotedCoverImage"
+            decoding="async"
+            /* This shelf sits at the top of the home page, so its covers are
+               fetched straight away rather than on scroll. */
+            fetchPriority={index < 6 ? "high" : "auto"}
+            loading={index < 6 ? "eager" : "lazy"}
+            onError={onCoverError(cover)}
+            src={thumb}
+          />
+        ) : (
+          <StoryCoverPlaceholder />
+        )}
+        <div className="promotedCoverOverlay" />
+        {/* The "Nổi bật" tag said only that the card was on the promoted shelf,
+            which the shelf's own heading already says. The two marks that carry
+            information about the story travel with it instead. */}
+        {story.storyType === "EXCLUSIVE" ? (
+          <span className="promotedExclusiveTag">ĐỘC QUYỀN</span>
+        ) : null}
+        {isFull ? <span className="fullRibbon"><span>FULL</span></span> : null}
         <span className="slotBadge">#{booking.slotPosition}</span>
         <span className="promotedCoverTitle">{story.title}</span>
         <span className="promotedMetric">
@@ -58,16 +82,16 @@ export function PromotedEmptySlot({
       <Link
         aria-label={`Đăng ký Bố cáo slot ${slot}`}
         className="promotedEmptyCover"
-        to={"/teams#ads-booking" as string}
+        to={"/bo-cao" as string}
       >
         <span className="slotBadge">#{slot}</span>
         <Megaphone aria-hidden="true" />
         <strong>Chờ bạn lên top</strong>
-        <small>Đăng ký Bố cáo để truyện xuất hiện tại vị trí nổi bật.</small>
+        <small>Đăng ký Bố cáo để đưa tác phẩm vào danh sách đề cử nổi bật nhất.</small>
       </Link>
       <div className="promotedBody">
         <h3>
-          <Link to={"/teams#ads-booking" as string}>Đăng ký Bố cáo</Link>
+          <Link to={"/bo-cao" as string}>Đăng ký Bố cáo</Link>
         </h3>
         <p className="promotedAuthor">
           <UsersRound aria-hidden="true" />

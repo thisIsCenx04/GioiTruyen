@@ -276,20 +276,6 @@ export const missionsContent: LegalPageContent = {
       ],
       title: "Dịch giả, tác giả, độc giả tự đăng",
     },
-    {
-      blocks: [
-        {
-          items: [
-            "Đăng nhập hàng ngày: 30 xu.",
-            "Bình luận: 3 xu, tối đa 10 lần và ít nhất 50 ký tự.",
-            "Nạp tiền qua ngân hàng, paypal: 1.000 xu.",
-            "Đề cử: 200 xu.",
-          ],
-          type: "list",
-        },
-      ],
-      title: "Nhiệm vụ hàng ngày",
-    },
   ],
 };
 

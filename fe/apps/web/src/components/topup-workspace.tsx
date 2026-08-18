@@ -196,7 +196,7 @@ export function TopupWorkspace() {
             </header>
 
             {instruction.qrImageUrl ? (
-              <img alt={`Mã QR nạp ${instruction.transactionCode}`} className="topupQr" src={instruction.qrImageUrl} />
+              <img alt={`Mã QR nạp ${instruction.transactionCode}`} className="topupQr" src={instruction.qrImageUrl}  decoding="async" loading="lazy" />
             ) : null}
 
             <dl className="topupDetails">

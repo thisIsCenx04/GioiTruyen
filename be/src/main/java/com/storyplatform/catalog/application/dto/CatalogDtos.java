@@ -22,7 +22,14 @@ public final class CatalogDtos {
             String storyFormat,
             /** TEXT, AUDIO, EXCLUSIVE or ORIGINAL - drives the shelf badges. */
             String storyType,
-            String originalAuthor
+            String originalAuthor,
+            /** Newest published chapter number, so a card can say how far the
+             *  story has got. 0 while nothing is published yet. */
+            int latestChapterNumber,
+            /** ONGOING, COMPLETED or HIATUS - drives the FULL ribbon on a card.
+             *  Cards used to learn this only from the shelf they sat on, so a
+             *  finished story looked unfinished everywhere else. */
+            String progressStatus
     ) {
     }
 
@@ -50,7 +57,13 @@ public final class CatalogDtos {
     ) {
     }
 
-    public record CategoryItem(String id, String slug, String name) {
+    /**
+     * @param storyCount published stories carrying this genre, every format
+     *                   included. Counted server-side rather than derived from
+     *                   the length of a story list, which is capped by a LIMIT
+     *                   and so under-reports any genre past that cap.
+     */
+    public record CategoryItem(String id, String slug, String name, long storyCount) {
     }
 
     public record CategoryGroup(String group, String label, List<CategoryItem> categories) {

@@ -18,19 +18,21 @@ const numberFormatter = new Intl.NumberFormat("vi-VN");
 async function loadCategory(slug: string) {
   const taxonomy = await catalog.categories().catch(() => ({ groups: [] }));
   const categories = taxonomy?.groups ? taxonomy.groups.flatMap((group) => group.categories) : [];
-  const category = categories.find((item) => item.slug === slug);
+  let category = categories.find((item) => item.slug === slug);
   if (!category) {
-    return null;
+    const formattedName = slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+    category = { id: `cat-${slug}`, name: formattedName, slug } as any;
   }
 
+  const cat = category!;
   const [results, boards] = await Promise.all([
-    catalog.categoryStories(category.slug).catch(() => []),
+    catalog.categoryStories(cat.slug).catch(() => []),
     loadRankingBoards(),
   ]);
-  const stories = results;
+  const stories = results ?? [];
   const rankingStories = boards.flatMap((board) => board.stories.map((row) => row.story));
 
-  return { category, stories, taxonomy, rankingStories };
+  return { category: cat, stories, taxonomy, rankingStories };
 }
 
 /* generateMetadata removed */
@@ -47,51 +49,50 @@ export default async function CategoryDetailPage({ params }: CategoryDetailProps
     .filter((item) => item.slug !== result.category.slug)
     .slice(0, 10);
 
+  const allCategories = result.taxonomy.groups.flatMap((group) => group.categories);
+
   return (
     <PublicShell>
       <section className="catalogDetailPage">
-        <nav className="breadcrumbs" aria-label="Đường dẫn">
-          <Link to={"/" as string}>Trang chủ</Link>
-          <span>›</span>
-          <Link to={"/categories" as string}>Thể loại</Link>
-          <span>›</span>
-          <strong>{result.category.name}</strong>
-        </nav>
-
-        <header className="monkeyDetailHero categoryDetailHero">
-          <div className="detailHeroCover" data-tone="teal">
-            <Grid3X3 aria-hidden="true" />
-          </div>
-          <div>
-            <p className="detailEyebrow">Thể loại</p>
-            <h1>{result.category.name}</h1>
-            <p>
-              Những tác phẩm mang màu sắc {result.category.name.toLocaleLowerCase("vi-VN")}, được sắp xếp theo lần cập nhật gần nhất.
-            </p>
-            <div className="detailHeroStats" aria-label="Thông số thể loại">
-              <span title="Số truyện">
-                <LibraryBig aria-hidden="true" />
-                {numberFormatter.format(result.stories.length)}
-              </span>
-              <span title="Có thể đọc">
-                <BookOpen aria-hidden="true" />
-                Online
-              </span>
-              <span title="Có bản audio">
-                <Headphones aria-hidden="true" />
-                Audio
-              </span>
+        {/* Category Header Row matching MonkeyD reference */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.2rem", paddingBottom: "0.8rem", borderBottom: "1px solid #eef2f6" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <h1 style={{ fontSize: "1.6rem", fontWeight: 850, margin: 0, textTransform: "uppercase", letterSpacing: "-0.01em" }}>
+              TRUYỆN {result.category.name}
+            </h1>
+            
+            {/* Category Switcher Dropdown */}
+            <div className="mainNavDropdownWrapper">
+              <Link
+                to="/categories"
+                className="categoryPillButton"
+                style={{
+                  background: "#0084ff",
+                  color: "#ffffff",
+                  padding: "0.4rem 0.9rem",
+                  borderRadius: "6px",
+                  fontSize: "0.85rem",
+                  fontWeight: 700,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.4rem",
+                  textDecoration: "none",
+                  boxShadow: "0 2px 8px rgba(0,132,255,0.25)"
+                }}
+              >
+                <span>Thể Loại ▼</span>
+              </Link>
             </div>
           </div>
-        </header>
+          <span style={{ fontSize: "0.85rem", color: "#64748b", fontWeight: 600 }}>
+            {result.stories.length} bộ truyện
+          </span>
+        </div>
 
-        <div className="storyRankingLayout detailContentLayout">
+        {/* Main 2-Column Content Layout (Story Grid + Ranking Side Panel) */}
+        <div className="storyRankingLayout detailContentLayout" style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: "1.5rem" }}>
           <div className="homeSectionStack">
-            <section className="storySection storySectionLarge storyListBoard">
-              <header>
-                <h2>Truyện thuộc {result.category.name}</h2>
-                <Link to="/categories">Đổi thể loại</Link>
-              </header>
+            <section className="storySection storyListBoard" style={{ padding: 0 }}>
               {result.stories.length === 0 ? (
                 <p className="emptyCatalog">Thể loại này đang chờ những tác phẩm đầu tiên.</p>
               ) : (
@@ -102,25 +103,11 @@ export default async function CategoryDetailPage({ params }: CategoryDetailProps
                 </div>
               )}
             </section>
-
-            <section className="categoryDetailMore" aria-labelledby="related-categories">
-              <header>
-                <h2 id="related-categories">Thể loại liên quan</h2>
-              </header>
-              <div>
-                {relatedCategories.map((category, index) => (
-                  <Link
-                    data-tone={index % 8}
-                    to={`/categories/${category.slug}` as string}
-                    key={category.id}
-                  >
-                    {category.name}
-                  </Link>
-                ))}
-              </div>
-            </section>
           </div>
-          <RankingPanel stories={[...result.stories, ...result.rankingStories]} />
+
+          <aside className="sideRailArea">
+            <RankingPanel stories={[...result.stories, ...result.rankingStories]} title="BẢNG XẾP HẠNG" />
+          </aside>
         </div>
       </section>
     </PublicShell>

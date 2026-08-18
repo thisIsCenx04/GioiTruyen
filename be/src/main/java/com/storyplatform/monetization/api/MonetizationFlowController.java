@@ -45,4 +45,31 @@ public class MonetizationFlowController {
     ) {
         return monetizationFlowService.donate(UUID.fromString(jwt.getSubject()), teamId, request);
     }
+
+    @PostMapping("/stories/{storyId}/combo-purchase")
+    public com.storyplatform.monetization.application.dto.ComboPurchaseResponse purchaseStoryCombo(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID storyId
+    ) {
+        return monetizationFlowService.purchaseStoryCombo(UUID.fromString(jwt.getSubject()), storyId);
+    }
+
+    @GetMapping("/stories/{storyId}/combo-status")
+    public java.util.Map<String, Object> getComboStatus(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID storyId
+    ) {
+        boolean purchased = jwt != null && monetizationFlowService.hasPurchasedStoryCombo(UUID.fromString(jwt.getSubject()), storyId);
+        var pricing = monetizationFlowService.comboPricing(storyId);
+        // Pricing is public: a guest sees the combo price on the story page before
+        // signing in, so only `purchased` depends on the caller.
+        return java.util.Map.of(
+                "storyId", storyId.toString(),
+                "purchased", purchased,
+                "chapterTotalXu", pricing.chapterTotalXu(),
+                "comboPriceXu", pricing.comboPriceXu(),
+                "configured", pricing.configured(),
+                "discountPercent", pricing.discountPercent()
+        );
+    }
 }

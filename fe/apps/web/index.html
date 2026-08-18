@@ -4,7 +4,65 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/logo-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Giới Truyện - Nền tảng đọc truyện online</title>
+    <!--
+      Search metadata.
+
+      The title leads with the phrase people actually type ("đọc truyện online")
+      rather than the brand, because nobody searches for a site they have not
+      heard of yet; the brand comes after the separator where Google still
+      shows it. The description names the genres readers add to that phrase -
+      ngôn tình, tiên hiệp, kiếm hiệp, xuyên không, đô thị - since those are
+      the long-tail queries a new site can realistically win.
+
+      NOTE: this is a client-rendered SPA, so these tags describe the site as a
+      whole and are all a crawler sees before JavaScript runs. Per-story titles
+      and descriptions are not in the served HTML, so individual stories will
+      not rank on their own until the story routes are prerendered or served
+      with server-side rendering. That is the real limit here, not the wording.
+    -->
+    <title>Đọc truyện online miễn phí, truyện chữ full hay mới nhất | Giới Truyện</title>
+    <meta
+      name="description"
+      content="Đọc truyện online miễn phí tại Giới Truyện: kho truyện chữ full, cập nhật chương mới mỗi ngày. Đủ thể loại ngôn tình, tiên hiệp, kiếm hiệp, xuyên không, đô thị, trọng sinh, truyện Zhihu và truyện audio tự đọc."
+    />
+    <link rel="canonical" href="https://gioitruyen.com/" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+
+    <!-- Link previews on Facebook, Zalo and Telegram, where readers share chapters. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Giới Truyện" />
+    <meta property="og:locale" content="vi_VN" />
+    <meta property="og:url" content="https://gioitruyen.com/" />
+    <meta property="og:title" content="Đọc truyện online miễn phí, truyện chữ full hay mới nhất" />
+    <meta
+      property="og:description"
+      content="Kho truyện chữ full, cập nhật mỗi ngày: ngôn tình, tiên hiệp, kiếm hiệp, xuyên không, đô thị, truyện Zhihu và truyện audio."
+    />
+    <meta property="og:image" content="https://gioitruyen.com/logo-full.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!--
+      Tells Google the site has its own search, which is what earns the search
+      box under a result. The URL must match the real route: /search?q=...
+    -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Giới Truyện",
+        "alternateName": "Đọc truyện online Giới Truyện",
+        "url": "https://gioitruyen.com/",
+        "inLanguage": "vi-VN",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": {
+            "@type": "EntryPoint",
+            "urlTemplate": "https://gioitruyen.com/search?q={search_term_string}"
+          },
+          "query-input": "required name=search_term_string"
+        }
+      }
+    </script>
     <!-- AdSense: also the site-ownership verification snippet for pub-4260233431693229. -->
     <script
       async

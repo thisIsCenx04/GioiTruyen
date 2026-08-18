@@ -8,12 +8,12 @@ import { Facebook, Send } from "lucide-react";
  */
 export const SOCIAL_LINKS = [
   {
-    href: "https://www.facebook.com/profile.php?id=61557663512358",
+    href: "https://www.facebook.com/profile.php?id=61593287553709",
     icon: Facebook,
     label: "Facebook",
   },
   {
-    href: "https://t.me/nhuocyen1",
+    href: "https://t.me/khanguyet567",
     icon: Send,
     label: "Telegram",
   },

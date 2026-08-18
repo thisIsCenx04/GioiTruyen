@@ -1,9 +1,15 @@
 -- ============================================================================
--- Gioitruyen - Development Seed Data
--- Target: MySQL 8 / schema: entity_mysql_final.sql
--- Purpose: local development/testing only
--- Run AFTER Flyway/schema creation.
--- Uses deterministic UUIDs so foreign-key relationships are stable.
+-- Gioitruyen - OBSOLETE SEED. DO NOT RUN.
+--
+-- This file targets db/entity_mysql_final.sql, which is a design reference and
+-- NOT the deployed schema. It writes ids as BINARY(16) via UUID_TO_BIN(), while
+-- the live Flyway schema uses VARCHAR(36); every INSERT here fails against the
+-- real database. Running it is what makes local data look "out of sync".
+--
+-- The local seed of record is:
+--     be/src/main/resources/db/seed/R__local_seed_data.sql
+-- It is generated - rebuild it with `npm run seed:refresh`, and Flyway applies
+-- it automatically on the "local" profile. Kept only for historical reference.
 -- ============================================================================
 
 SET NAMES utf8mb4;

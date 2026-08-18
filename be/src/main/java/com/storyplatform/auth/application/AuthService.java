@@ -35,6 +35,8 @@ public class AuthService {
 
     private static final Duration ACCESS_TOKEN_TTL = Duration.ofMinutes(30);
     private static final Duration REFRESH_TOKEN_TTL = Duration.ofDays(30);
+    /** Long enough to reach an inbox and act on it, short enough to expire. */
+    private static final Duration PASSWORD_RESET_TTL = Duration.ofHours(1);
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -204,6 +206,134 @@ public class AuthService {
         return issueAuthResponse(user);
     }
 
+    /**
+     * Ends a session by revoking refresh tokens, so a stolen one cannot be
+     * swapped for a fresh pair after the reader has signed out. The access
+     * token is self-contained and expires on its own within 30 minutes.
+     *
+     * <p>A caller that still holds its refresh token revokes just that session;
+     * one that does not - the sign-out button sends no body - revokes every
+     * session the account has, which is the safer reading of "log me out".
+     */
+    @Transactional
+    public void logout(UUID userId, String refreshToken) {
+        Instant now = Instant.now();
+        if (refreshToken != null && !refreshToken.isBlank()) {
+            jdbc.update(
+                    """
+                            UPDATE refresh_tokens SET revoked_at = :now
+                            WHERE token_hash = :tokenHash AND revoked_at IS NULL
+                            """,
+                    Map.of("now", now, "tokenHash", sha256(refreshToken))
+            );
+            return;
+        }
+        if (userId == null) {
+            return;
+        }
+        revokeAllRefreshTokens(userId, now);
+    }
+
+    /**
+     * Opens a password reset and returns the token to hand to the reader.
+     *
+     * <p>Only the hash is stored, so a dump of the table cannot be replayed, and
+     * an unknown address yields {@code null} rather than an error: answering
+     * differently would turn this endpoint into a test for which emails have
+     * accounts. Any earlier unused token is revoked, so at most one is live.
+     */
+    @Transactional
+    public String openPasswordReset(String email) {
+        if (email == null || email.isBlank()) {
+            return null;
+        }
+        User user = userRepository.findByEmail(email.trim()).orElse(null);
+        if (user == null || user.getStatus() != UserStatus.ACTIVE) {
+            return null;
+        }
+
+        Instant now = Instant.now();
+        jdbc.update(
+                """
+                        UPDATE password_reset_tokens SET used_at = :now
+                        WHERE user_id = :userId AND used_at IS NULL
+                        """,
+                Map.of("now", now, "userId", user.getId().toString())
+        );
+
+        String token = randomToken();
+        jdbc.update(
+                """
+                        INSERT INTO password_reset_tokens (id, user_id, token_hash, expires_at, created_at)
+                        VALUES (:id, :userId, :tokenHash, :expiresAt, :createdAt)
+                        """,
+                Map.of(
+                        "id", UUID.randomUUID().toString(),
+                        "userId", user.getId().toString(),
+                        "tokenHash", sha256(token),
+                        "expiresAt", now.plus(PASSWORD_RESET_TTL),
+                        "createdAt", now
+                )
+        );
+        return token;
+    }
+
+    /**
+     * Spends a reset token and sets the new password. Every refresh token the
+     * account holds is revoked in the same transaction: a reset is what someone
+     * does after losing control of the account, so sessions opened before it
+     * must not survive.
+     */
+    @Transactional
+    public void resetPassword(String token, String newPassword) {
+        if (token == null || token.isBlank()) {
+            throw invalidResetToken();
+        }
+
+        Instant now = Instant.now();
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                """
+                        SELECT id, user_id
+                        FROM password_reset_tokens
+                        WHERE token_hash = :tokenHash
+                          AND used_at IS NULL
+                          AND expires_at > :now
+                        """,
+                Map.of("tokenHash", sha256(token), "now", now)
+        );
+        if (rows.isEmpty()) {
+            throw invalidResetToken();
+        }
+
+        UUID userId = UUID.fromString(String.valueOf(rows.get(0).get("user_id")));
+        jdbc.update(
+                "UPDATE password_reset_tokens SET used_at = :now WHERE id = :id",
+                Map.of("now", now, "id", String.valueOf(rows.get(0).get("id")))
+        );
+        jdbc.update(
+                """
+                        UPDATE users SET password_hash = :passwordHash, updated_at = :now
+                        WHERE id = :userId
+                        """,
+                Map.of(
+                        "passwordHash", passwordEncoder.encode(newPassword),
+                        "now", now,
+                        "userId", userId.toString()
+                )
+        );
+        revokeAllRefreshTokens(userId, now);
+    }
+
+    private void revokeAllRefreshTokens(UUID userId, Instant now) {
+        jdbc.update(
+                """
+                        UPDATE refresh_tokens SET revoked_at = :now
+                        WHERE user_id = :userId AND revoked_at IS NULL
+                        """,
+                Map.of("now", now, "userId", userId.toString())
+        );
+    }
+
     /** Package-private so the Google sign-in flow can mint the same token pair. */
     AuthResponse issueAuthResponse(User user) {
         Instant now = Instant.now();
@@ -323,6 +453,15 @@ public class AuthService {
 
     private ApiException conflict(String message) {
         return new ApiException(HttpStatus.CONFLICT, "auth.conflict", message, message);
+    }
+
+    private ApiException invalidResetToken() {
+        return new ApiException(
+                HttpStatus.BAD_REQUEST,
+                "auth.invalid_reset_token",
+                "Invalid reset token",
+                "Liên kết đặt lại mật khẩu đã hết hạn hoặc đã được dùng. Hãy yêu cầu liên kết mới."
+        );
     }
 
     private ApiException invalidRefreshToken() {

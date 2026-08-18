@@ -1,11 +1,13 @@
+import { useParams } from "react-router-dom";
 
-import { TeamWorkspace } from "../../../components/team-workspace";
+import { PublicShell } from "@/components/site-chrome";
+import { TeamProfile } from "@/components/team-profile";
 
-/* metadata removed */
-
-export default async function TeamWorkspacePage({
-  params,
-}: Readonly<{ params: Promise<{ teamId: string }> }>) {
-  const { teamId } = await params;
-  return <TeamWorkspace teamId={teamId} />;
+export default function TeamProfilePage() {
+  const { teamId } = useParams<{ teamId: string }>();
+  return (
+    <PublicShell>
+      <TeamProfile teamId={teamId ?? ""} />
+    </PublicShell>
+  );
 }

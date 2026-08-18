@@ -58,11 +58,14 @@ export type AdminCategoryRow = {
   slug: string;
   name: string;
   description: string;
-  sortOrder: number;
   active: boolean;
   version: number;
   createdAt: string | null;
   updatedAt: string | null;
+  /** Stories carrying this genre, whatever their workflow state. */
+  storyCount: number;
+  /** The published subset - what a reader can actually reach. */
+  publishedStoryCount: number;
 };
 
 export type AdminTeamRow = {

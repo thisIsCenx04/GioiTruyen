@@ -88,6 +88,11 @@ public class CommentController {
     ) {
         String type = normaliseTarget(targetType);
         int size = Math.clamp(limit, 1, MAX_PAGE_SIZE);
+        // The cursor is the previous page's last createdAt, so it comes back in
+        // the ISO form this controller emits. It is turned into a timestamp
+        // here rather than handed to MySQL as a string, which would compare a
+        // DATETIME against "2026-08-17T22:25:16Z" and match nothing.
+        java.sql.Timestamp before = parseCursor(cursor);
 
         // One extra row answers "is there more" without a second count query.
         String column = "CHAPTER".equals(type) ? "c.chapter_id" : "c.story_id";
@@ -98,7 +103,7 @@ public class CommentController {
                         ORDER BY c.created_at DESC
                         LIMIT ?
                         """.formatted(column))
-                .params(targetId, cursor, cursor, size + 1)
+                .params(targetId, before, before, size + 1)
                 .query((rs, rowNum) -> toComment(rs))
                 .list();
 
@@ -248,9 +253,36 @@ public class CommentController {
                 "DELETED".equals(rs.getString("status")) ? "" : rs.getString("content"),
                 rs.getString("status"),
                 1,
-                String.valueOf(rs.getTimestamp("created_at")),
-                String.valueOf(rs.getTimestamp("updated_at"))
+                instant(rs.getTimestamp("created_at")),
+                instant(rs.getTimestamp("updated_at"))
         );
+    }
+
+    /**
+     * Timestamps leave as ISO instants.
+     *
+     * <p>{@code String.valueOf(Timestamp)} renders "2026-08-17 22:25:16.0",
+     * which no zone and which {@code new Date(...)} refuses to parse in several
+     * browsers - so a comment's date read "Invalid Date" for those readers.
+     */
+    private static String instant(java.sql.Timestamp timestamp) {
+        return timestamp == null ? null : timestamp.toInstant().toString();
+    }
+
+    /**
+     * Reads a page cursor back into a timestamp. A cursor that cannot be parsed
+     * is treated as absent - it yields the first page rather than a 500, which
+     * is what a stale bookmark or a hand-edited query string deserves.
+     */
+    private static java.sql.Timestamp parseCursor(String cursor) {
+        if (cursor == null || cursor.isBlank()) {
+            return null;
+        }
+        try {
+            return java.sql.Timestamp.from(java.time.Instant.parse(cursor.trim()));
+        } catch (java.time.format.DateTimeParseException exception) {
+            return null;
+        }
     }
 
     private static String normaliseTarget(String value) {

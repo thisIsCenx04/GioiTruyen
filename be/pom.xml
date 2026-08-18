@@ -45,6 +45,10 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
         <dependency>
@@ -147,6 +151,27 @@
                         <testExclude>com/storyplatform/unit/sharedapi/**</testExclude>
                         <testExclude>com/storyplatform/StoryPlatformApplicationTests.java</testExclude>
                     </testExcludes>
+                </configuration>
+            </plugin>
+            <!--
+                Keeps the local seed out of the deployable artifact.
+
+                db/seed holds ~1.3 MB of generated sample stories used only for
+                local development. The "local" profile is what puts it on Flyway's
+                locations list, and the seed itself refuses to run without that
+                profile's ${seedProfile} placeholder - but it was still being
+                packaged into BOOT-INF/classes and shipped to the server. Excluding
+                it here removes the file from the JAR while leaving it in
+                target/classes, so `spring-boot:run` on the local profile still
+                seeds a developer database.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>db/seed/**</exclude>
+                    </excludes>
                 </configuration>
             </plugin>
             <plugin>

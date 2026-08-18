@@ -5,11 +5,10 @@
  *
  * Signatures were recovered from the call sites in apps/web, which pin argument
  * order exactly; paths and request bodies follow the backend controllers where
- * one exists. Several areas - publishing, moderation, admin monetization,
- * reactions, reports, reading history, reading sessions, story relations - have
- * no controller in this backend at all. Their methods still call their intended
- * path and fail like any other missing endpoint: resolving to empty data would
- * dress up a gap as a working screen.
+ * one exists. Publishing, moderation and admin monetization still have no
+ * controller in this backend. Their methods call their intended path and fail
+ * like any other missing endpoint: resolving to empty data would dress up a gap
+ * as a working screen.
  */
 import { createTransport, type ClientOptions, type Transport } from "./http";
 import type {
@@ -19,6 +18,7 @@ import type {
   CommentPage,
   CommentTargetType,
   CommunityComment,
+  DonationInput,
   DonationReceipt,
   HomeResponse,
   HomeSection,
@@ -82,10 +82,13 @@ export function createPublicCatalogClient(options: ClientOptions = {}) {
       ),
     chapter: (chapterId: string) =>
       request<PublishedChapterDetail>(`/chapters/${encode(chapterId)}`),
+    // The keyword travels as `q`, which is the parameter PublicCatalogController
+    // binds. Sending `query` left the backend reading its empty default, so the
+    // search page and the suggestion box answered as if nothing had been typed.
     search: (query: string, limit?: number) =>
-      request<SearchResponse>("/search", { query: { query, limit } }),
+      request<SearchResponse>("/search", { query: { q: query, limit } }),
     suggestions: (query: string, limit?: number) =>
-      request<SuggestionResponse>("/search/suggestions", { query: { query, limit } }),
+      request<SuggestionResponse>("/search/suggestions", { query: { q: query, limit } }),
   };
 }
 
@@ -137,14 +140,28 @@ export function createBrowserWalletClient(options: ClientOptions = {}) {
     balance: () => request<WalletBalance>("/wallets/me"),
     topupHistory: () => request<TopupRequest[]>("/topups"),
     getTopup: (topupId: string) => request<TopupRequest>(`/topups/${encode(topupId)}`),
-    createTopup: (amountVnd: number, idempotencyKey?: string) =>
+    /**
+     * Opens a payment against a published package. TopupController takes the
+     * package and the method the reader picked, not a free-form amount: the
+     * price list is the backend's, so a caller cannot name its own figure.
+     */
+    createTopup: (packageId: string, methodId: string, idempotencyKey?: string) =>
       request<TopupRequest>("/topups", {
         method: "POST",
-        body: { amountVnd },
+        body: { packageId, methodId },
         idempotencyKey,
       }),
-    donate: (body: Record<string, any>, idempotencyKey?: string) =>
-      request<DonationReceipt>("/donations", { method: "POST", body, idempotencyKey }),
+    /**
+     * The receiving team is part of the path, which is where
+     * MonetizationFlowController reads it; only the amount, the optional story
+     * and the note travel in the body, and it rejects any other property.
+     */
+    donate: (teamId: string, body: DonationInput, idempotencyKey?: string) =>
+      request<DonationReceipt>(`/teams/${encode(teamId)}/donations`, {
+        method: "POST",
+        body,
+        idempotencyKey,
+      }),
     withdrawals: (teamId: string, cursor?: string) =>
       request<WithdrawalPage>(`/teams/${encode(teamId)}/withdrawals`, { query: { cursor } }),
     createWithdrawal: (teamId: string, body: Record<string, any>, idempotencyKey?: string) =>
@@ -255,7 +272,7 @@ export function createBrowserNotificationClient(options: ClientOptions = {}) {
   };
 }
 
-/* ----------------------------------------- areas with no backend controller */
+/* ------------------------------------------- reactions, reports and reading */
 
 export function createBrowserReactionClient(options: ClientOptions = {}) {
   const request: Transport = createTransport(options);

@@ -4,6 +4,13 @@ spring:
     # Sample data is a local-development convenience and must stay on this
     # profile; the production profile never sees db/seed.
     locations: classpath:db/migration,classpath:db/seed
+    placeholders:
+      # Second line of defence behind the locations split. The generated seed
+      # reads ${seedProfile}, and Flyway aborts a migration whose placeholder
+      # has no value - so if db/seed is ever loaded without this profile (a
+      # stray locations override, a hand-run script), the seed refuses to
+      # execute instead of writing sample data into a real database.
+      seedProfile: local
 
 management:
   endpoint:

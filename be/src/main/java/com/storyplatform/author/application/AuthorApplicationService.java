@@ -198,11 +198,19 @@ public class AuthorApplicationService {
 
         // The applicant is the team's first member and its owner; others can be
         // added later without changing anything here.
+        //
+        // Column is `member_role`, not `role`, and `added_by` is NOT NULL with no
+        // default - getting either wrong makes the whole approval fail with a 500
+        // and leaves an orphaned team row behind.
         jdbc.sql("""
-                        INSERT INTO team_members (id, team_id, user_id, role, status, joined_at)
-                        VALUES (?, ?, ?, 'OWNER', 'ACTIVE', NOW())
+                        INSERT INTO team_members
+                            (id, team_id, user_id, member_role, status, added_by, joined_at)
+                        VALUES (?, ?, ?, 'OWNER', 'ACTIVE', ?, NOW())
                         """)
-                .params(UUID.randomUUID().toString(), teamId, application.userId())
+                .params(UUID.randomUUID().toString(), teamId, application.userId(),
+                        // The reviewing admin is who granted membership; fall back to
+                        // the applicant so the NOT NULL column is always satisfied.
+                        reviewerId == null ? application.userId() : reviewerId)
                 .update();
 
         jdbc.sql("""

@@ -181,7 +181,10 @@
   height: 18rem;
   list-style: none;
   margin: 3rem 0 0;
-  overflow: hidden;
+  /* Was hidden, which clipped nothing - the bars are capped at 100% and the
+     date labels sit inside the padding - but would have cut the hover card
+     off at the top of the tallest column. */
+  overflow: visible;
   padding: 0 0 1.9rem;
 }
 
@@ -215,6 +218,51 @@
 
 .invalidBar {
   background: #d85a4e;
+}
+
+/* The figures for one day, on hover. They existed only in the screen-reader
+   line before, so a sighted reader could see the shape of the week but never
+   a single number. */
+.tooltip {
+  background: #0b1b33;
+  border-radius: 0.45rem;
+  box-shadow: 0 0.5rem 1.5rem rgb(8 18 40 / 32%);
+  display: grid;
+  gap: 0.1rem;
+  /* The column underneath owns the hover; the card must not steal it. */
+  pointer-events: none;
+  padding: 0.45rem 0.65rem;
+  position: absolute;
+  white-space: nowrap;
+  z-index: 6;
+}
+
+.tooltip[data-anchor="center"] {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.tooltip[data-anchor="start"] { left: 0; }
+.tooltip[data-anchor="end"] { right: 0; }
+
+.tooltip span {
+  color: #9fb6d4;
+  font: 700 0.6rem/1.2 var(--utility);
+  letter-spacing: 0.04em;
+}
+
+.tooltip strong {
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.tooltip strong[data-tone="valid"] { color: #9db0ff; }
+.tooltip strong[data-tone="invalid"] { color: #ff9d92; }
+
+/* A wider hit area than the 43%-wide bars: the whole column responds, so a
+   thin day on a 90-day range is still reachable. */
+.chart li:hover .bar span {
+  filter: brightness(1.12);
 }
 
 .chart time {

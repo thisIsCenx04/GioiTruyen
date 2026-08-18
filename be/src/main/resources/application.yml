@@ -8,6 +8,23 @@ spring:
   jackson:
     deserialization:
       fail-on-unknown-properties: true
+  # SMTP for the password-reset email. Spring Boot builds a JavaMailSender only
+  # when `host` is non-empty, so leaving MAIL_HOST unset is a supported state:
+  # the reset link is written to the log instead and the app still starts.
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS:true}
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
   lifecycle:
     timeout-per-shutdown-phase: 20s
   datasource:
@@ -81,6 +98,16 @@ management:
     web:
       exposure:
         include: health,info
+  health:
+    # Off by default. `spring.mail.host` is always *defined* here (as an empty
+    # string when MAIL_HOST is unset), which is enough for Spring Boot to build
+    # a JavaMailSender and register this indicator - and it then failed to
+    # connect, taking the whole /actuator/health response to DOWN and reporting
+    # the API as unhealthy while it was serving traffic perfectly well.
+    # Password reset is not on the request path of any page, so SMTP being
+    # unreachable is not a reason to declare the service down.
+    mail:
+      enabled: ${MAIL_HEALTH_ENABLED:false}
   endpoint:
     health:
       show-details: never
@@ -283,6 +310,13 @@ app:
     verification:
       token-ttl: ${EMAIL_VERIFICATION_TOKEN_TTL:24h}
       hmac-key: ${EMAIL_VERIFICATION_HMAC_KEY}
+    password-reset:
+      # Where /auth/reset-password lives, so the emailed link opens the form.
+      # Falls back to the host Google sign-in already returns readers to: this
+      # value ends up in an email, and a localhost default would ship a link
+      # nobody can open the day the setting is forgotten on a new deployment.
+      link-base: ${PASSWORD_RESET_LINK_BASE:${GOOGLE_OAUTH_FRONTEND_RETURN_BASE:http://localhost:3000}}
+      from-address: ${PASSWORD_RESET_FROM_ADDRESS:no-reply@gioitruyen.com}
     access-token:
       issuer: ${JWT_ISSUER}
       audience: ${JWT_AUDIENCE}

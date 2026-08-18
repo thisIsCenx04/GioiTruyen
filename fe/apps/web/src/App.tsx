@@ -55,6 +55,8 @@ import PageL3N0b3JpZXM from './pages/stories/page';
 import PageL3N0b3JpZXMvOmlkT3JTbHVn from './pages/stories/[idOrSlug]/page';
 import PageL3RlYW1z from './pages/teams/page';
 import PageL3RlYW1zLzp0ZWFtSWQvYW5hbHl0aWNz from './pages/teams/[teamId]/analytics/page';
+import PublisherDashboardPage from './pages/teams/[teamId]/dashboard/page';
+import TeamManagePage from './pages/teams/[teamId]/manage/page';
 import PageL3RlYW1zLzp0ZWFtSWQ from './pages/teams/[teamId]/page';
 import PageL3RlYW1zLzp0ZWFtSWQvc3Rvcmllcw from './pages/teams/[teamId]/stories/page';
 import PageL3Rlcm1z from './pages/terms/page';
@@ -331,6 +333,8 @@ function App() {
           <Route path="/stories" element={<WrappedPageL3N0b3JpZXM />} />
           <Route path="/stories/:idOrSlug" element={<WrappedPageL3N0b3JpZXMvOmlkT3JTbHVn />} />
           <Route path="/teams" element={<PageL3RlYW1z />} />
+          <Route path="/teams/:teamId/dashboard" element={<PublisherDashboardPage />} />
+          <Route path="/teams/:teamId/manage" element={<TeamManagePage />} />
           <Route path="/teams/:teamId/analytics" element={<WrappedPageL3RlYW1zLzp0ZWFtSWQvYW5hbHl0aWNz />} />
           <Route path="/teams/:teamId" element={<WrappedPageL3RlYW1zLzp0ZWFtSWQ />} />
           <Route path="/teams/:teamId/stories" element={<WrappedPageL3RlYW1zLzp0ZWFtSWQvc3Rvcmllcw />} />

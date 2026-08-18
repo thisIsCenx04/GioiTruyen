@@ -1,13 +1,13 @@
 package com.storyplatform.moderation.api;
 
-import com.storyplatform.moderation.domain.Report;
-import com.storyplatform.moderation.domain.ReportStatus;
 import com.storyplatform.moderation.domain.ReportTargetType;
-import com.storyplatform.moderation.infrastructure.ReportRepository;
 import com.storyplatform.shared.api.ApiException;
 import java.time.Instant;
+import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,10 +22,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/reports")
 public class ReportController {
 
-    private final ReportRepository reportRepository;
+    /** Matches the `report_type` column, which is VARCHAR(100). */
+    private static final int REPORT_TYPE_LIMIT = 100;
 
-    public ReportController(ReportRepository reportRepository) {
-        this.reportRepository = reportRepository;
+    private final NamedParameterJdbcTemplate jdbc;
+
+    public ReportController(NamedParameterJdbcTemplate jdbc) {
+        this.jdbc = jdbc;
     }
 
     public record CreateReportRequest(
@@ -42,40 +45,64 @@ public class ReportController {
             @RequestBody CreateReportRequest request,
             @AuthenticationPrincipal Jwt jwt
     ) {
-        UUID reporterId = null;
-        if (jwt != null && jwt.getSubject() != null) {
-            try {
-                reporterId = UUID.fromString(jwt.getSubject());
-            } catch (Exception ignored) {}
+        // reports.reporter_id is NOT NULL with a foreign key onto users, so a
+        // report has to belong to a real account. Substituting a random UUID for
+        // an anonymous caller failed that key and lost the report.
+        if (jwt == null || jwt.getSubject() == null) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "auth.required",
+                    "Login required", "Bạn cần đăng nhập để gửi báo cáo.");
         }
+        UUID reporterId = UUID.fromString(jwt.getSubject());
 
-        UUID targetUUID;
+        UUID targetId;
         try {
-            targetUUID = UUID.fromString(request.targetId());
-        } catch (Exception ex) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "invalid.target_id", "Mã đối tượng báo cáo không hợp lệ", "Mã đối tượng không hợp lệ");
+            targetId = UUID.fromString(request.targetId());
+        } catch (Exception exception) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "invalid.target_id",
+                    "Mã đối tượng báo cáo không hợp lệ", "Mã đối tượng không hợp lệ");
         }
 
-        Report report = new Report();
-        report.setId(UUID.randomUUID());
-        report.setReporterId(reporterId != null ? reporterId : UUID.randomUUID());
-        
+        ReportTargetType targetType;
         try {
-            report.setTargetType(ReportTargetType.valueOf(request.targetType().toUpperCase()));
-        } catch (Exception ex) {
-            report.setTargetType(ReportTargetType.STORY);
+            targetType = ReportTargetType.valueOf(
+                    request.targetType().trim().toUpperCase(Locale.ROOT));
+        } catch (Exception exception) {
+            targetType = ReportTargetType.STORY;
         }
 
-        report.setTargetId(targetUUID);
-        report.setReportType(request.reportType() != null ? request.reportType() : "VIOLATION");
-        report.setDescription(request.description() != null ? request.description() : "");
-        report.setStatus(ReportStatus.OPEN);
-        report.setCreatedAt(Instant.now());
+        String reportType = request.reportType() == null || request.reportType().isBlank()
+                ? "VIOLATION"
+                : request.reportType().trim();
+        if (reportType.length() > REPORT_TYPE_LIMIT) {
+            reportType = reportType.substring(0, REPORT_TYPE_LIMIT);
+        }
 
-        reportRepository.save(report);
+        UUID reportId = UUID.randomUUID();
+        Instant now = Instant.now();
+
+        // The id is assigned here, so Spring Data JDBC would read the entity as
+        // an existing row and save() would emit an UPDATE that matches nothing -
+        // which turned every report into a 500. An explicit INSERT is required.
+        jdbc.update(
+                """
+                        INSERT INTO reports (id, reporter_id, target_type, target_id,
+                                             report_type, description, status, created_at)
+                        VALUES (:id, :reporterId, :targetType, :targetId,
+                                :reportType, :description, 'OPEN', :createdAt)
+                        """,
+                Map.of(
+                        "id", reportId.toString(),
+                        "reporterId", reporterId.toString(),
+                        "targetType", targetType.name(),
+                        "targetId", targetId.toString(),
+                        "reportType", reportType,
+                        "description", request.description() == null ? "" : request.description(),
+                        "createdAt", java.sql.Timestamp.from(now)
+                )
+        );
 
         return new ReportReceipt(
-                report.getId().toString(),
+                reportId.toString(),
                 "RECEIVED",
                 "Cảm ơn bạn đã gửi báo cáo. Ban quản trị sẽ kiểm tra trong thời gian sớm nhất."
         );

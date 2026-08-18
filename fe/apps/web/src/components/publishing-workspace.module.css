@@ -200,7 +200,7 @@
 
 .deskHeader {
   align-items: end;
-  border-bottom: 0.09rem solid #aeb9d5;
+  border-bottom: 0.09rem solid var(--text-muted);
   display: flex;
   gap: 2rem;
   justify-content: space-between;
@@ -280,7 +280,7 @@
 }
 
 .proofline li {
-  border-top: 0.18rem solid #c4cce2;
+  border-top: 0.18rem solid var(--border-subtle);
   color: #78819a;
   counter-increment: proof;
   font-size: 0.62rem;
@@ -291,7 +291,7 @@
 
 .proofline li::before {
   background: var(--paper);
-  border: 0.16rem solid #c4cce2;
+  border: 0.16rem solid var(--border-subtle);
   border-radius: 50%;
   content: "";
   height: 0.55rem;
@@ -373,7 +373,7 @@
 
 .storySheet :disabled,
 .chapterSheet :disabled {
-  color: #69728b;
+  color: var(--text-muted);
   opacity: 0.8;
 }
 
@@ -509,7 +509,7 @@
 
 .workflowActions {
   align-items: center;
-  border-top: 0.09rem solid #aeb9d5;
+  border-top: 0.09rem solid var(--text-muted);
   display: flex;
   gap: 1rem;
   justify-content: flex-end;
@@ -625,17 +625,17 @@
 
 /* Match the clean, data-dense authoring UI used across Giới Truyện. */
 .workspace,
-.loading { --ink:#0b1228; --blue:#0f5fff; --coral:#ff4d4f; --paper:#f8faff; --vellum:#eef3fb; background:#f8faff; }
-.ledger { background:#fff; border-right:1px solid #e2e8f3; color:#11182b; }
+.loading { --ink:var(--text-primary); --blue:var(--accent); --coral:#ff4d4f; --paper:#f8faff; --vellum:var(--surface-sunken); background:#f8faff; }
+.ledger { background:var(--surface-card); border-right:1px solid var(--border-subtle); color:var(--text-primary); }
 .ledger nav button { border-radius:.5rem; }
-.ledger nav button[aria-pressed="true"] { background:#eef4ff; color:#0f5fff; }
-.deskHeader { border-color:#e2e8f3; }
+.ledger nav button[aria-pressed="true"] { background:var(--accent-soft); color:var(--accent); }
+.deskHeader { border-color:var(--border-subtle); }
 .newStory, .storySheet, .chapterDesk {
-  border:1px solid #e2e8f3; border-radius:.8rem; box-shadow:0 .7rem 2rem rgb(35 67 125 / 6%);
+  border:1px solid var(--border-subtle); border-radius:.8rem; box-shadow:0 .7rem 2rem rgb(35 67 125 / 6%);
 }
-.chapterSpines { background:#f7f9fd; border-color:#e2e8f3; }
-.chapterSpines > button { background:#fff; border-left-color:#c9d7f4; border-radius:.45rem; }
-.chapterSpines > button[aria-pressed="true"] { background:#eef4ff; border-left-color:#0f5fff; color:#0f5fff; transform:none; }
-.chapterSpines button[aria-pressed="true"] small { color:#697590; }
-.proofline .reached { border-color:#0f5fff; }
-.proofline .reached::before { background:#0f5fff; border-color:#0f5fff; }
+.chapterSpines { background:#f7f9fd; border-color:var(--border-subtle); }
+.chapterSpines > button { background:var(--surface-card); border-left-color:#c9d7f4; border-radius:.45rem; }
+.chapterSpines > button[aria-pressed="true"] { background:var(--accent-soft); border-left-color:var(--accent); color:var(--accent); transform:none; }
+.chapterSpines button[aria-pressed="true"] small { color:var(--text-muted); }
+.proofline .reached { border-color:var(--accent); }
+.proofline .reached::before { background:var(--accent); border-color:var(--accent); }

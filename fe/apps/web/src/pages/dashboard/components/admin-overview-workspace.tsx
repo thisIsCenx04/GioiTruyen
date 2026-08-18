@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { AdminOverview, ChartPoint } from "../admin-data";
-import { BarChart, PointLineChart, SmoothLineChart } from "./admin-charts";
+import { BarChart, PointLineChart } from "./admin-charts";
 
 type Range = "7d" | "30d" | "90d";
 
@@ -120,13 +120,12 @@ function RangeSelector({ value, onChange }: { value: Range; onChange: (r: Range)
 }
 
 export function OverviewWorkspace({ overview }: Readonly<{ overview: AdminOverview }>) {
-  const { stats, revenueSeries, trafficSeries, readerSeries } = overview;
+  const { stats, revenueSeries, trafficSeries } = overview;
   const [range, setRange] = useState<Range>("30d");
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
 
   const filteredRevenue = filterByRange(revenueSeries, range);
   const filteredTraffic = filterByRange(trafficSeries, range);
-  const filteredReaders = filterByRange(readerSeries, range);
 
   return (
     <div className="adminDashboard" style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
@@ -232,45 +231,42 @@ export function OverviewWorkspace({ overview }: Readonly<{ overview: AdminOvervi
         <RangeSelector value={range} onChange={setRange} />
       </div>
 
-      {/* Revenue Bar Chart */}
-      <div style={{ background: "#fff", border: "1px solid #dfeaf6", borderRadius: "12px", padding: "1rem 1.25rem", boxShadow: "0 2px 10px rgba(24,47,100,0.05)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.65rem" }}>
-          <div>
-            <h3
-              title="Biểu đồ cột thể hiện lượng Xu phát sinh từ nạp tiền & giao dịch chương mỗi ngày"
-              style={{ fontSize: "0.95rem", fontWeight: 700, margin: 0, color: "#0f172a", cursor: "help", display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
-            >
-              Doanh Thu Xu ℹ️
-            </h3>
-            <p style={{ fontSize: "0.75rem", color: "#64748b", margin: "0.1rem 0 0" }}>Theo từng ngày, tính từ gần nhất đến hiện tại</p>
-          </div>
-          <span style={{ fontSize: "0.72rem", background: "#fef3c7", color: "#d97706", padding: "0.25rem 0.65rem", borderRadius: "20px", fontWeight: 700 }}>
-            {RANGE_LABELS[range]}
-          </span>
-        </div>
-        <BarChart series={filteredRevenue} />
-      </div>
-
-      {/* Line Charts Row */}
-      <div style={{ display: "grid", gap: "0.75rem", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))" }}>
+      {/* Charts Row: traffic + revenue, side by side */}
+      <div style={{ display: "grid", gap: "0.75rem", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
         <div style={{ background: "#fff", border: "1px solid #dfeaf6", borderRadius: "12px", padding: "1rem 1.25rem", boxShadow: "0 2px 10px rgba(24,47,100,0.05)" }}>
-          <h3
-            title="Thống kê số phiên mở đọc truyện & tải trang chương của người dùng theo ngày"
-            style={{ fontSize: "0.95rem", fontWeight: 700, margin: "0 0 0.6rem", color: "#0f172a", cursor: "help", display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
-          >
-            Lượt Truy Cập Theo Ngày ℹ️
-          </h3>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.65rem" }}>
+            <div>
+              <h3
+                title="Thống kê số phiên mở đọc truyện & tải trang chương của người dùng theo ngày"
+                style={{ fontSize: "0.95rem", fontWeight: 700, margin: 0, color: "#0f172a", cursor: "help", display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
+              >
+                Lượt Truy Cập Theo Ngày ℹ️
+              </h3>
+              <p style={{ fontSize: "0.75rem", color: "#64748b", margin: "0.1rem 0 0" }}>Theo từng ngày, tính từ gần nhất đến hiện tại</p>
+            </div>
+            <span style={{ fontSize: "0.72rem", background: "#e0efff", color: "#0f6bff", padding: "0.25rem 0.65rem", borderRadius: "20px", fontWeight: 700 }}>
+              {RANGE_LABELS[range]}
+            </span>
+          </div>
           <PointLineChart series={filteredTraffic} />
         </div>
 
         <div style={{ background: "#fff", border: "1px solid #dfeaf6", borderRadius: "12px", padding: "1rem 1.25rem", boxShadow: "0 2px 10px rgba(24,47,100,0.05)" }}>
-          <h3
-            title="Số độc giả duy nhất có tương tác đọc, nạp hoặc lưu truyện trong ngày"
-            style={{ fontSize: "0.95rem", fontWeight: 700, margin: "0 0 0.6rem", color: "#0f172a", cursor: "help", display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
-          >
-            Độc Giả Hoạt Động Theo Ngày ℹ️
-          </h3>
-          <SmoothLineChart series={filteredReaders} />
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.65rem" }}>
+            <div>
+              <h3
+                title="Biểu đồ cột thể hiện lượng Xu phát sinh từ nạp tiền & giao dịch chương mỗi ngày"
+                style={{ fontSize: "0.95rem", fontWeight: 700, margin: 0, color: "#0f172a", cursor: "help", display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
+              >
+                Doanh Thu Xu ℹ️
+              </h3>
+              <p style={{ fontSize: "0.75rem", color: "#64748b", margin: "0.1rem 0 0" }}>Theo từng ngày, tính từ gần nhất đến hiện tại</p>
+            </div>
+            <span style={{ fontSize: "0.72rem", background: "#fef3c7", color: "#d97706", padding: "0.25rem 0.65rem", borderRadius: "20px", fontWeight: 700 }}>
+              {RANGE_LABELS[range]}
+            </span>
+          </div>
+          <BarChart series={filteredRevenue} />
         </div>
       </div>
     </div>

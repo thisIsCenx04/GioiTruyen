@@ -155,19 +155,32 @@ export default function PromotionPage() {
           <h2>Bảng giá</h2>
           <p className={styles.cardHint}>Gói càng dài, đơn giá mỗi ngày càng rẻ.</p>
           <div className={styles.priceGrid}>
-            {packages.map((pkg) => (
-              <article className={styles.priceCard} key={pkg.id}>
-                <h3>{pkg.name}</h3>
-                <p className={styles.price}>
-                  <Coins aria-hidden="true" size={18} />
-                  {coinFormatter.format(pkg.priceCoin)} xu
-                </p>
-                <p className={styles.perDay}>
-                  {coinFormatter.format(pkg.pricePerDayCoin)} xu / ngày
-                </p>
-                {pkg.description ? <p className={styles.priceNote}>{pkg.description}</p> : null}
-              </article>
-            ))}
+            {packages.map((pkg) => {
+              // Measured against the priciest day rate on offer, which is the
+              // shortest package - that is the deal a buyer is choosing not to
+              // take. Shown only where there is a real saving, so the shortest
+              // package carries no tag rather than a "0%" one.
+              const dearestPerDay = Math.max(...packages.map((row) => row.pricePerDayCoin));
+              const saved = dearestPerDay > 0
+                ? Math.round((1 - pkg.pricePerDayCoin / dearestPerDay) * 100)
+                : 0;
+              return (
+                <article className={styles.priceCard} key={pkg.id}>
+                  <h3>{pkg.name}</h3>
+                  {saved > 0 ? (
+                    <span className={styles.saveTag}>Tiết kiệm {saved}%</span>
+                  ) : null}
+                  <p className={styles.price}>
+                    <Coins aria-hidden="true" size={18} />
+                    {coinFormatter.format(pkg.priceCoin)} xu
+                  </p>
+                  <p className={styles.perDay}>
+                    {coinFormatter.format(pkg.pricePerDayCoin)} xu / ngày
+                  </p>
+                  {pkg.description ? <p className={styles.priceNote}>{pkg.description}</p> : null}
+                </article>
+              );
+            })}
           </div>
           {packages.length === 0 && !loading ? (
             <p className={styles.empty}>Hiện chưa có gói bố cáo nào đang mở bán.</p>

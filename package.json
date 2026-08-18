@@ -8,6 +8,9 @@
     "dev:be": "powershell -NoProfile -ExecutionPolicy Bypass -File ./be/run-local-backend.ps1 -Mode local",
     "dev:be:prod": "powershell -NoProfile -ExecutionPolicy Bypass -File ./be/run-local-backend.ps1 -Mode production",
     "dev:db": "powershell -NoProfile -ExecutionPolicy Bypass -File ./db/start-local-mysql.ps1",
+    "seed:scrape": "node scripts/scrape-monkeydd.mjs --stories 100 --chapters 3",
+    "seed:generate": "node be/src/main/resources/db/seed/generate_seed_sql.js",
+    "seed:refresh": "npm run seed:scrape && npm run seed:generate",
     "build:fe": "npm --prefix fe/apps/web run build",
     "typecheck:fe": "npm --prefix fe/apps/web run typecheck",
     "test:be": "mvn -f be/pom.xml test"

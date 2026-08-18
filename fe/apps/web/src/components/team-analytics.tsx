@@ -40,6 +40,8 @@ function reasonName(code: string) {
 export function TeamAnalytics({ teamId }: Readonly<{ teamId: string }>) {
   const client = useMemo(() => createBrowserTeamClient({ baseUrl: API_BASE_URL, fetchImplementation: authedFetch }), []);
   const [period, setPeriod] = useState<Period>("30D");
+  /** Which day's column the pointer is over; null when it is off the chart. */
+  const [hovered, setHovered] = useState<number | null>(null);
   const [report, setReport] = useState<TeamAnalyticsReport | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "forbidden" | "error">(
     "loading",
@@ -196,11 +198,20 @@ export function TeamAnalytics({ teamId }: Readonly<{ teamId: string }>) {
                 aria-label="Biểu đồ lượt đọc hợp lệ và bị loại theo ngày"
                 className={styles.chart}
               >
-                {report.series.map((bucket) => {
+                {report.series.map((bucket, index) => {
                   const validHeight = (bucket.validViews / maximum) * 100;
                   const invalidHeight = (bucket.invalidViews / maximum) * 100;
+                  const last = report.series.length - 1;
+                  // Near either end the card would hang off the chart, so it is
+                  // anchored by the edge that has room instead of by its middle.
+                  const anchor = index <= 1 ? "start" : index >= last - 1 ? "end" : "center";
                   return (
-                    <li key={bucket.start}>
+                    <li
+                      key={bucket.start}
+                      onMouseEnter={() => setHovered(index)}
+                      onMouseLeave={() => setHovered(null)}
+                      onTouchStart={() => setHovered(index)}
+                    >
                       <div className={styles.bar}>
                         <span
                           className={styles.invalidBar}
@@ -211,6 +222,23 @@ export function TeamAnalytics({ teamId }: Readonly<{ teamId: string }>) {
                           style={{ height: `${validHeight}%` }}
                         />
                       </div>
+                      {hovered === index ? (
+                        <div
+                          className={styles.tooltip}
+                          data-anchor={anchor}
+                          style={{
+                            bottom: `calc(${Math.max(validHeight, invalidHeight)}% + 0.5rem)`,
+                          }}
+                        >
+                          <span>{day.format(new Date(bucket.start))}</span>
+                          <strong data-tone="valid">
+                            {number.format(bucket.validViews)} hợp lệ
+                          </strong>
+                          <strong data-tone="invalid">
+                            {number.format(bucket.invalidViews)} bị loại
+                          </strong>
+                        </div>
+                      ) : null}
                       <time dateTime={bucket.start}>
                         {day.format(new Date(bucket.start))}
                       </time>

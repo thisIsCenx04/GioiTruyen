@@ -94,7 +94,7 @@ a:focus-visible, button:focus-visible, input:focus-visible {
 main { min-height: 100vh; }
 
 .siteHeader {
-  align-items: center; background: rgb(255 255 255 / 96%); border-bottom: 1px solid var(--line);
+  align-items: center; background: var(--surface-card); border-bottom: 1px solid var(--line);
   display: grid; gap: clamp(.8rem, 2vw, 1.8rem);
   grid-template-columns: auto minmax(27rem, 1fr) minmax(15rem, 22rem) auto auto auto;
   min-height: 4.65rem; padding: .7rem max(1.25rem, calc((100vw - 92rem) / 2));
@@ -163,42 +163,273 @@ main { min-height: 100vh; }
 .heroDots i:first-child { background: var(--blue); }
 .heroArrow { background: white; border-radius: 50%; color: var(--ink); height: 2.2rem; padding: .55rem; position: absolute; right: 1.2rem; top: 45%; width: 2.2rem; z-index: 3; }
 
-.storySection { border-bottom: 1px solid var(--line); padding: 1.25rem 0 1.2rem; }
+.storySection { border-bottom: 1px solid var(--line); padding: 0.75rem 0 0.8rem; }
 .storySection > header, .categorySection > header {
-  align-items: center; display: flex; justify-content: space-between; margin-bottom: .8rem;
+  align-items: center; display: flex; justify-content: space-between; margin-bottom: .5rem;
 }
 .storySection h2, .categorySection h2 {
   align-items: center; display: flex; font-size: 1rem; gap: .45rem; margin: 0;
 }
 .storySection h2 svg { color: var(--blue); height: 1rem; width: 1rem; }
 .storySection header > a, .sideCard header > a { color: var(--blue); font-size: .67rem; font-weight: 750; text-decoration: none; }
-.catalogGrid { display: grid; gap: clamp(.8rem, 1.8vw, 1.25rem); grid-template-columns: repeat(6, minmax(0, 1fr)); }
-.catalogCard { min-width: 0; }
+.catalogGrid, .catalogGridVertical, .catalogGridLarge {
+  display: grid !important;
+  gap: 0.75rem 0.5rem !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  justify-content: stretch !important;
+}
+
+@media (max-width: 900px) {
+  .catalogGrid, .catalogGridVertical, .catalogGridLarge {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .catalogGrid, .catalogGridVertical, .catalogGridLarge {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 0.5rem 0.35rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .catalogGrid, .catalogGridVertical, .catalogGridLarge {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+.catalogCard {
+  width: 100% !important;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex !important;
+  flex-direction: column !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  text-align: left !important;
+}
+
+[data-theme="dark"] .catalogCard {
+  background: #1e293b;
+  border-color: #334155;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.catalogCard:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+}
+
 .catalogCover {
-  align-items: flex-end; aspect-ratio: 1.46 / 1; background: #162a68; border-radius: .55rem; display: flex;
-  overflow: hidden; padding: .75rem; position: relative; text-decoration: none;
-  transition: transform 180ms ease, box-shadow 180ms ease;
+  position: relative;
+  width: 100% !important;
+  /* Keep in step with the .catalogCover rule further down this file, which wins
+     the cascade; two different ratios here is how covers drifted apart. */
+  aspect-ratio: 3 / 4 !important;
+  background: #0f172a;
+  overflow: hidden;
+  display: block;
 }
-.catalogCover::before {
-  background: linear-gradient(transparent 25%, rgb(2 7 22 / 86%)), url("/assets/audio-comic-reference/cover-dark.png") center / cover;
-  content: ""; inset: 0; position: absolute;
+
+.coverMetricOverlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(30, 41, 59, 0.78);
+  backdrop-filter: blur(2px);
+  padding: 0.35rem 0.55rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  z-index: 5;
 }
-.catalogCover[data-tone="teal"]::before { background: linear-gradient(transparent 25%,rgb(2 7 22 / 86%)),url("/assets/audio-comic-reference/cover-light.png") center / cover; }
-.catalogCover[data-tone="amber"]::before { filter: sepia(.7) hue-rotate(350deg); }
-.catalogCover[data-tone="vermilion"]::before { filter: hue-rotate(15deg) saturate(.9); }
-.catalogCover:hover { box-shadow: 0 1rem 2rem rgb(24 47 100 / 18%); transform: translateY(-.2rem); }
-.coverLabel {
-  color: white; font-size: clamp(.62rem, 1vw, .8rem); font-weight: 800; line-height: 1.2; position: relative;
-  text-align: center; text-transform: uppercase; width: 100%; z-index: 2;
+
+.coverMetricOverlay span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
 }
-.catalogCardBody { padding: .55rem .15rem 0; }
-.catalogCardBody h3 { font-size: .72rem; line-height: 1.35; margin: 0; }
-.catalogCardBody h3 a { text-decoration: none; }
-.catalogCardBody p { color: var(--muted); font-size: .62rem; margin: .3rem 0; }
+
+.catalogCardBody {
+  padding: 0.75rem 0.7rem 0.65rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  flex: 1 0 auto !important;
+  background: transparent !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  text-align: left !important;
+}
+
+.catalogCardBody h3 {
+  font-size: 0.88rem !important;
+  font-weight: 700 !important;
+  line-height: 1.35 !important;
+  margin: 0 0 0.4rem 0 !important;
+  text-align: left !important;
+}
+
+.catalogCardBody h3 a {
+  color: #0f172a !important;
+  text-decoration: none !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  /* Always reserve both lines. A one-line title used to shrink its card body,
+     which pulled the meta row up and left the row of cards uneven. */
+  min-height: 2.7em !important;
+  max-height: 2.7em !important;
+  line-height: 1.35 !important;
+  word-break: break-word !important;
+  text-align: left !important;
+}
+
+[data-theme="dark"] .catalogCardBody h3 a { color: #f8fafc; }
+
+.catalogCardMetaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  /* "Chương 15" + "1 tháng trước" has to fit a ~150px card without the chapter
+     label collapsing to "Chươ…", so this row runs a step smaller than the title. */
+  font-size: 0.68rem;
+  gap: 0.35rem;
+  color: #475569;
+  margin-top: 0.45rem;
+}
+
+[data-theme="dark"] .catalogCardMetaRow { color: #94a3b8; }
+
+.metaChapter {
+  font-weight: 600;
+  color: #334155;
+  white-space: nowrap;
+  /* Give the chapter label the space it needs; the timestamp yields instead. */
+  flex: 0 0 auto;
+}
+
+[data-theme="dark"] .metaChapter { color: #cbd5e1; }
+
+.metaTime {
+  font-weight: 500;
+  color: #64748b;
+  white-space: nowrap;
+  /* Truncate the timestamp rather than the chapter number if space runs out. */
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.catalogCardBody p { color: var(--muted); font-size: .6rem; margin: .25rem 0; text-align: center; }
 .cardMeta { align-items: center; display: flex; font-size: .62rem; font-weight: 700; gap: .25rem; }
 .cardMeta svg { color: #ffaf00; fill: #ffaf00; height: .7rem; width: .7rem; }
 .cardMeta small { color: var(--muted); font-weight: 500; margin-left: auto; }
 .emptyCatalog { border: 1px dashed var(--line); color: var(--muted); padding: 2rem; }
+
+/* ── Category Header Navigation Dropdown Menu (Matching MonkeyD Reference) ── */
+.mainNavDropdownWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.categoryNavDropdownMenu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 540px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  row-gap: 8px !important;
+  column-gap: 10px !important;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  padding: 0.6rem 0.75rem;
+  margin-top: 0.25rem;
+}
+
+[data-theme="dark"] .categoryNavDropdownMenu {
+  background: #0f172a;
+  border-color: #334155;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+}
+
+.siteHeader .mainNav .categoryNavDropdownMenu a.categoryDropdownItem {
+  min-height: 0 !important;
+  height: auto !important;
+  border-bottom: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 0.35rem !important;
+  padding: 0.3rem 0.5rem !important;
+  color: #1e293b !important;
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  line-height: 1.3 !important;
+  border-radius: 5px !important;
+  text-decoration: none !important;
+  transition: all 0.15s ease !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+[data-theme="dark"] .siteHeader .mainNav .categoryNavDropdownMenu a.categoryDropdownItem {
+  color: #cbd5e1 !important;
+}
+
+.dropdownChevron {
+  color: #94a3b8;
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.siteHeader .mainNav .categoryNavDropdownMenu a.categoryDropdownItem:hover {
+  background: #0084ff !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+.siteHeader .mainNav .categoryNavDropdownMenu a.categoryDropdownItem:hover .dropdownChevron {
+  color: #ffffff !important;
+  transform: translateX(2px);
+}
+
+/* The nav becomes a fixed drawer at 76rem (see the .siteHeader nav.mainNav
+   rule at that breakpoint), no wider than 20rem. A 540px dropdown floating
+   absolutely inside it would hang off that edge, so it drops in-flow at the
+   same breakpoint the drawer appears - the two must stay in step. */
+@media (max-width: 48rem) {
+  .categoryNavDropdownMenu {
+    position: static;
+    width: 100%;
+    grid-template-columns: repeat(2, 1fr);
+    box-shadow: none;
+    margin: .25rem 0 .5rem;
+  }
+}
+
+@media (max-width: 26rem) {
+  .categoryNavDropdownMenu {
+    grid-template-columns: 1fr;
+  }
+}
 
 .categorySection { padding-top: 1.25rem; }
 .categoryDock { display: grid; gap: .75rem; grid-template-columns: repeat(6, 1fr); }
@@ -412,21 +643,21 @@ main { min-height: 100vh; }
 }
 
 .storySectionLarge {
-  padding: 2rem 0 1.8rem;
+  padding: 0.85rem 0 0.8rem;
 }
 
 .storySectionLarge h2,
 .categorySectionLarge h2 {
-  font-size: clamp(1.25rem, 2vw, 1.65rem);
+  font-size: clamp(1.1rem, 1.6vw, 1.35rem);
 }
 
 .catalogGridLarge {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(95px, 1fr));
 }
 
 .catalogGridLarge .catalogCover {
-  aspect-ratio: 1.65 / 1;
-  min-height: 10.5rem;
+  aspect-ratio: 0.73 / 1;
+  min-height: auto;
 }
 
 .catalogGridLarge .coverLabel {
@@ -479,14 +710,36 @@ main { min-height: 100vh; }
   width: 4.8rem;
 }
 
-.categoryDockColor a[data-tone="0"] { background: #e9f2ff; }
-.categoryDockColor a[data-tone="1"] { background: #eaf8f2; }
-.categoryDockColor a[data-tone="2"] { background: #fff3db; }
-.categoryDockColor a[data-tone="3"] { background: #ffecef; }
-.categoryDockColor a[data-tone="4"] { background: #f0ecff; }
-.categoryDockColor a[data-tone="5"] { background: #e8fbff; }
-.categoryDockColor a[data-tone="6"] { background: #f8f2e8; }
-.categoryDockColor a[data-tone="7"] { background: #eef8de; }
+.categoryDockColor a[data-tone="0"],
+.categoryDockColor a[data-tone="1"],
+.categoryDockColor a[data-tone="2"],
+.categoryDockColor a[data-tone="3"],
+.categoryDockColor a[data-tone="4"],
+.categoryDockColor a[data-tone="5"],
+.categoryDockColor a[data-tone="6"],
+.categoryDockColor a[data-tone="7"] {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #1e293b;
+}
+
+.categoryPillButton {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #1e293b !important;
+  box-shadow: none !important;
+}
+
+.categoryPillButton:hover,
+.categoryDockColor a:hover {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #2563eb !important;
+}
+
+.pillDot {
+  display: none !important;
+}
 
 .categoryDockColor svg {
   background: white;
@@ -728,16 +981,21 @@ main { min-height: 100vh; }
   gap: .35rem;
 }
 
-.metadataCategories a:nth-child(2n) {
-  background: #e8f9f2;
-  border-color: #83d8b6;
-  color: #087d57;
+/* Genres are neutral. Rotating three colours through them made every story
+   page look like a paint chart and, worse, implied a meaning the colours never
+   had - the shade depended on a tag's position in the list, not on anything
+   about the tag. Colour is reserved for "Loại" (.metadataBadge), which is the
+   one badge here that does carry a distinction worth spotting. */
+.metadataCategories a {
+  background: var(--surface-sunken, #f4f7fb);
+  border-color: var(--border-subtle, #dbe4ef);
+  color: var(--text-secondary, #475569);
+  font-weight: 700;
 }
 
-.metadataCategories a:nth-child(3n) {
-  background: #fff4dc;
-  border-color: #f3cd79;
-  color: #916200;
+.metadataCategories a:hover {
+  border-color: #71c7fa;
+  color: #0875c9;
 }
 
 .teamBadge {
@@ -805,6 +1063,13 @@ main { min-height: 100vh; }
   font-size: 0.86rem;
   line-height: 1.75;
   margin: 0;
+  /* The blank lines an editor typed into the synopsis are part of it. Default
+     white-space collapsed them, so a paragraphed introduction arrived on the
+     story page as one unbroken block. Runs of spaces still collapse. */
+  white-space: pre-line;
+  /* A pasted URL has no space to break at and would otherwise push the whole
+     story card wider than the phone it is being read on. */
+  overflow-wrap: anywhere;
 }
 
 .storyDescription.isClamped {
@@ -970,7 +1235,7 @@ main { min-height: 100vh; }
   background: linear-gradient(135deg, #0875f5, #10b7a5);
   border: 0;
   border-radius: .55rem;
-  color: var(--white);
+  color: var(--text-on-accent);
   cursor: pointer;
   display: inline-flex;
   font-size: .78rem;
@@ -980,7 +1245,7 @@ main { min-height: 100vh; }
   white-space: nowrap;
 }
 
-.questCardSide button:disabled { background: #dbe5f0; color: #8fa2b8; cursor: not-allowed; }
+.questCardSide button:disabled { background: #dbe5f0; color: var(--text-muted); cursor: not-allowed; }
 
 .questClaimed {
   align-items: center;
@@ -1070,7 +1335,7 @@ main { min-height: 100vh; }
   text-align: left;
 }
 
-.topupPackage.isActive { background: #eef5ff; border-color: #0875f5; box-shadow: 0 0 0 .12rem rgb(8 117 245 / 16%); }
+.topupPackage.isActive { background: var(--accent-soft); border-color: #0875f5; box-shadow: 0 0 0 .12rem rgb(8 117 245 / 16%); }
 .topupPackage strong { font-size: 1.05rem; }
 .topupPackage span { color: var(--muted, var(--text-muted)); font-size: .74rem; }
 .topupPackage em { color: #b4690e; font-size: .72rem; font-style: normal; font-weight: 700; }
@@ -1087,7 +1352,7 @@ main { min-height: 100vh; }
   padding: .45rem .9rem;
 }
 
-.topupMethod.isActive { background: #eef5ff; border-color: #0875f5; color: var(--accent-hover); }
+.topupMethod.isActive { background: var(--accent-soft); border-color: #0875f5; color: var(--accent-hover); }
 
 .topupHint { color: var(--muted, var(--text-muted)); font-size: .78rem; line-height: 1.6; margin: .8rem 0 0; }
 .topupHint a { color: var(--accent-hover); font-weight: 700; }
@@ -1096,7 +1361,7 @@ main { min-height: 100vh; }
   background: linear-gradient(135deg, #0875f5, #10b7a5);
   border: 0;
   border-radius: .55rem;
-  color: var(--white);
+  color: var(--text-on-accent);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -1109,7 +1374,7 @@ main { min-height: 100vh; }
   justify-content: center;
 }
 
-.topupSubmit:disabled { background: #dbe5f0; color: #8fa2b8; cursor: not-allowed; }
+.topupSubmit:disabled { background: #dbe5f0; color: var(--text-muted); cursor: not-allowed; }
 
 .topupReceipt header h2 { font-size: 1.6rem; margin: .2rem 0 .3rem; }
 .topupReceipt header p { color: var(--muted, var(--text-muted)); font-size: .82rem; margin: 0; }
@@ -1133,7 +1398,7 @@ main { min-height: 100vh; }
 .topupDetails div { display: grid; gap: .1rem; }
 .topupDetails dt { color: var(--muted, var(--text-muted)); font-size: .7rem; }
 .topupDetails dd { align-items: center; display: flex; font-size: .88rem; gap: .4rem; margin: 0; }
-.topupDetails dd button { background: transparent; border: 0; color: #8fa2b8; cursor: pointer; padding: .1rem; }
+.topupDetails dd button { background: transparent; border: 0; color: var(--text-muted); cursor: pointer; padding: .1rem; }
 .topupDetails dd button:hover { color: var(--accent-hover); }
 
 .topupWarn {
@@ -1148,7 +1413,7 @@ main { min-height: 100vh; }
 }
 
 .topupEmpty { color: var(--muted, var(--text-muted)); }
-.topupEmpty h2 { color: #1b2740; font-size: 1.15rem; margin: .2rem 0 .5rem; }
+.topupEmpty h2 { color: var(--text-primary); font-size: 1.15rem; margin: .2rem 0 .5rem; }
 .topupEmpty p { font-size: .85rem; line-height: 1.7; margin: 0; }
 
 .topupHistory ul { display: grid; gap: .3rem; list-style: none; margin: 0; padding: 0; }
@@ -1175,7 +1440,7 @@ main { min-height: 100vh; }
 
 /* Guest preview banner and the sign-in prompt shown when they try to claim. */
 .questGuestBanner {
-  background: #eef5ff;
+  background: var(--accent-soft);
   border: 1px solid #cfe0f7;
   border-radius: .6rem;
   color: #1b3a63;
@@ -1228,9 +1493,9 @@ main { min-height: 100vh; }
   text-decoration: none;
 }
 
-.questLoginPrimary { background: linear-gradient(135deg, #0875f5, #10b7a5); color: var(--white); }
-.questLoginSecondary { background: #eef5ff; color: var(--accent-hover); }
-.questLoginActions button { background: transparent; border: 0; color: #8fa2b8; }
+.questLoginPrimary { background: linear-gradient(135deg, #0875f5, #10b7a5); color: var(--text-on-accent); }
+.questLoginSecondary { background: var(--accent-soft); color: var(--accent-hover); }
+.questLoginActions button { background: transparent; border: 0; color: var(--text-muted); }
 
 /* ── Share sheet on the story page ── */
 .storyShare { position: relative; }
@@ -1254,7 +1519,7 @@ main { min-height: 100vh; }
   background: transparent;
   border: 0;
   border-radius: .4rem;
-  color: #1b2740;
+  color: var(--text-primary);
   cursor: pointer;
   display: flex;
   font-size: .8rem;
@@ -1302,7 +1567,7 @@ main { min-height: 100vh; }
   border-radius: 50%;
   bottom: max(1.1rem, env(safe-area-inset-bottom));
   box-shadow: 0 .6rem 1.6rem rgb(15 95 255 / 34%);
-  color: var(--white);
+  color: var(--text-on-accent);
   cursor: pointer;
   display: flex;
   height: 2.9rem;
@@ -1315,7 +1580,7 @@ main { min-height: 100vh; }
 
 .backToTop:hover { filter: brightness(1.08); }
 
-@media (max-width: 76rem) {
+@media (max-width: 48rem) {
   .navToggle { display: inline-flex; }
 
   /* Overrides the earlier display:none for this breakpoint. */
@@ -1349,7 +1614,7 @@ main { min-height: 100vh; }
   }
 
   .siteHeader nav.mainNav a[aria-current="page"] {
-    background: #eef5ff;
+    background: var(--accent-soft);
     color: var(--blue, #0f5fff);
   }
 }
@@ -1451,7 +1716,7 @@ main { min-height: 100vh; }
 }
 
 .oneshotBody {
-  color: #1b2740;
+  color: var(--text-primary);
   font-size: 1.05rem;
   line-height: 1.95;
   padding: 1.35rem;
@@ -1676,11 +1941,13 @@ main { min-height: 100vh; }
 #story-comments > * { margin: 0; max-width: none; width: 100%; }
 
 .storyReportOverlay {
-  align-items: center;
   background: rgb(10 18 32 / 55%);
   display: flex;
   inset: 0;
-  justify-content: center;
+  /* Centred by the dialog's own auto margins rather than align-items, so the
+     overlay can scroll instead of clipping the form's submit button off a
+     short screen. */
+  overflow-y: auto;
   padding: 1rem;
   position: fixed;
   z-index: 180;
@@ -1690,6 +1957,7 @@ main { min-height: 100vh; }
   background: white;
   border-radius: .65rem;
   box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 25%);
+  margin: auto;
   max-width: 31rem;
   padding: 1.2rem;
   width: 100%;
@@ -1857,7 +2125,7 @@ main { min-height: 100vh; }
 .informationPage > footer a {
   background: #0875f5;
   border-radius: .5rem;
-  color: var(--white);
+  color: var(--text-on-accent);
   font-size: .78rem;
   font-weight: 800;
   padding: .8rem 1rem;
@@ -1972,7 +2240,7 @@ main { min-height: 100vh; }
   text-decoration: none;
 }
 .unlockActions button,
-.unlockActions a:first-child { background: #0875f5; color: var(--white); }
+.unlockActions a:first-child { background: #0875f5; color: var(--text-on-accent); }
 .unlockActions button:disabled { background: #b5c3d3; }
 .unlockError { color: #aa3440; font-size: .75rem; }
 
@@ -1985,7 +2253,7 @@ main { min-height: 100vh; }
 }
 
 .pageIntro {
-  background:linear-gradient(135deg,#eef8ff,#f7fffd);
+  background:linear-gradient(135deg,var(--accent-soft),#f7fffd);
   border:1px solid var(--line);
   border-radius:1rem;
   margin-bottom:1.6rem;
@@ -2001,7 +2269,7 @@ main { min-height: 100vh; }
 }
 
 .pageIntro h1 {
-  color:#102344;
+  color: var(--text-primary);
   font-size:clamp(2rem,4.6vw,3.8rem);
   line-height:1.02;
 }
@@ -2017,7 +2285,7 @@ main { min-height: 100vh; }
 }
 
 .searchPrompt strong {
-  color:#102344;
+  color: var(--text-primary);
 }
 
 .searchPage .catalogGrid {
@@ -2060,7 +2328,7 @@ main { min-height: 100vh; }
 }
 
 .storyTags span {
-  background:#eef8ff;
+  background:var(--accent-soft);
   color:#0f6bff;
 }
 
@@ -2073,7 +2341,7 @@ main { min-height: 100vh; }
 }
 
 .chapterList li > a:hover {
-  background:#f7fbff;
+  background:var(--surface-page);
 }
 
 .notFound {
@@ -2112,17 +2380,23 @@ main { min-height: 100vh; }
 }
 
 /* Final client surface: bright white, blue/cyan, centered 1280px. */
+/*
+ * A later refinement of the palette. It must go through the semantic tokens:
+ * re-declaring the legacy names with raw hex here overrode the aliases set at
+ * the top of the file, and since the dark block no longer names them, the page
+ * background and muted text stayed daylight-coloured after switching to dark.
+ */
 :root {
-  --blue: #0f6bff;
+  --accent: #0f6bff;
   --cyan: #00b8a9;
-  --paper: #f7fbff;
-  --paper-deep: #edf7ff;
-  --line: #d9e8f7;
-  --muted: #66758d;
+  --surface-page: #f7fbff;
+  --surface-sunken: #edf7ff;
+  --border-subtle: #d9e8f7;
+  --text-muted: #66758d;
 }
 
 .siteHeader {
-  background: rgb(255 255 255 / 98%);
+  background: var(--surface-card);
   box-shadow: 0 .6rem 1.8rem rgb(28 83 150 / 6%);
   grid-template-columns: auto minmax(26rem, 1fr) minmax(17rem, 27rem) auto auto auto;
   max-width: none;
@@ -2177,13 +2451,13 @@ main { min-height: 100vh; }
 }
 
 .aboutBand {
-  align-items:start; background:linear-gradient(135deg,#eef8ff,#f7fffd);
+  align-items:start; background:linear-gradient(135deg,var(--accent-soft),#f7fffd);
   border:1px solid #d9edf8; border-radius:1.2rem; display:grid; gap:1.2rem;
   grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr); margin-top:2rem;
   padding:clamp(1.35rem,3vw,2.2rem);
 }
 .aboutBand h2 {
-  color:#102344; font-size:clamp(1.6rem,3vw,2.45rem); letter-spacing:-.035em;
+  color: var(--text-primary); font-size:clamp(1.6rem,3vw,2.45rem); letter-spacing:-.035em;
   line-height:1.05; margin:.5rem 0 0; max-width:38rem;
 }
 .aboutBand > p {
@@ -2283,7 +2557,7 @@ main { min-height: 100vh; }
 }
 
 .communityGrid svg {
-  background: #eef8ff;
+  background: var(--accent-soft);
   border-radius: .6rem;
   color: var(--blue);
   height: 2.6rem;
@@ -2334,57 +2608,83 @@ main { min-height: 100vh; }
 }
 
 .bookingBoard {
-  border-bottom: 1px solid var(--line);
-  padding: .8rem 0 2rem;
+  background: linear-gradient(135deg, #f0f6ff 0%, #f8fafc 100%);
+  border: 1px solid #dbeafe;
+  border-radius: 0.85rem;
+  padding: 1.1rem 1.35rem 1.4rem;
+  margin-top: 1rem;
+  margin-bottom: 1.8rem;
+  box-shadow: 0 4px 20px rgba(37, 99, 235, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme="dark"] .bookingBoard {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border: 1px solid #334155;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 .bookingBoard > header {
-  align-items: end;
+  align-items: flex-end;
   display: flex;
   gap: 1rem;
   justify-content: space-between;
-  margin-bottom: 1.2rem;
+  margin-bottom: 1.1rem;
 }
 
 .bookingBoard > header p {
-  color: var(--blue);
-  font: 850 .72rem/1 var(--utility);
-  letter-spacing: .12em;
-  margin: 0 0 .55rem;
+  color: #2563eb;
+  font: 800 .72rem/1 var(--utility);
+  letter-spacing: .08em;
+  margin: 0 0 .4rem;
   text-transform: uppercase;
 }
 
+[data-theme="dark"] .bookingBoard > header p {
+  color: #60a5fa;
+}
+
 .bookingBoard > header span {
-  color: #496176;
+  color: #64748b;
   display: block;
-  font-size: .9rem;
-  line-height: 1.55;
-  margin-top: .65rem;
-  max-width: 38rem;
+  font-size: .82rem;
+  line-height: 1.4;
+  margin-top: .4rem;
+}
+
+[data-theme="dark"] .bookingBoard > header span {
+  color: #94a3b8;
 }
 
 .bookingBoard h1 {
-  color: #0b172f;
-  font-size: clamp(1.55rem, 2.45vw, 2.35rem);
-  letter-spacing: 0;
-  line-height: 1.06;
+  color: var(--text-primary);
+  font-size: clamp(1.3rem, 2vw, 1.75rem);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
   margin: 0;
-  max-width: 44rem;
 }
 
 .bookingBoard > header a {
   align-items: center;
-  background: linear-gradient(135deg, var(--blue), var(--cyan));
-  border-radius: .55rem;
+  background: #2563eb;
+  border-radius: .45rem;
   color: white;
   display: inline-flex;
-  font-size: .78rem;
-  font-weight: 850;
-  gap: .45rem;
-  min-height: 2.85rem;
-  padding: 0 1rem;
+  font-size: .75rem;
+  font-weight: 700;
+  gap: .4rem;
+  min-height: 2.3rem;
+  padding: 0 .9rem;
   text-decoration: none;
   white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
+  transition: background 0.2s ease;
+}
+
+.bookingBoard > header a:hover {
+  background: #1d4ed8;
 }
 
 .bookingBoard > header a svg {
@@ -2400,11 +2700,22 @@ main { min-height: 100vh; }
 
 .promotedCard {
   background: white;
-  border: 1px solid #dce9f7;
-  border-radius: .42rem;
-  box-shadow: 0 .6rem 1.25rem rgb(33 80 150 / 9%);
+  border: 1px solid #e2e8f0;
+  border-radius: 0.45rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   min-width: 0;
   overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.promotedCard:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.12);
+}
+
+[data-theme="dark"] .promotedCard {
+  background: #1e293b;
+  border-color: #334155;
 }
 
 .promotedCover {
@@ -2415,6 +2726,22 @@ main { min-height: 100vh; }
   overflow: hidden;
   position: relative;
   text-decoration: none;
+}
+
+.promotedCoverImage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+}
+
+.promotedCoverOverlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(5, 16, 34, 0.05) 0%, rgba(5, 16, 34, 0.25) 45%, rgba(5, 16, 34, 0.88) 100%);
+  z-index: 2;
 }
 
 .promotedCover::before {
@@ -2442,26 +2769,24 @@ main { min-height: 100vh; }
   filter: sepia(.36) hue-rotate(350deg) saturate(1.08);
 }
 
-.featuredTag {
-  align-items: center;
-  background: #ff1744;
-  border-radius: .28rem;
-  display: inline-flex;
-  font-size: .64rem;
-  font-weight: 900;
-  gap: .25rem;
+/* Sits under the slot number rather than beside it: the slot badge is the
+   wider of the two and a shared row wrapped on narrow cards. */
+.promotedExclusiveTag {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border: 1px solid rgb(180 83 9 / 60%);
+  border-radius: .25rem;
+  box-shadow: 0 .15rem .4rem rgb(180 83 9 / 40%);
+  color: #fff;
+  font-size: .58rem;
+  font-weight: 850;
+  left: .55rem;
+  letter-spacing: .04em;
   line-height: 1;
-  padding: .42rem .5rem;
+  padding: .22rem .36rem;
   position: absolute;
-  right: .5rem;
-  text-transform: uppercase;
-  top: .5rem;
-  z-index: 3;
-}
-
-.featuredTag svg {
-  height: .82rem;
-  width: .82rem;
+  top: 2.3rem;
+  white-space: nowrap;
+  z-index: 4;
 }
 
 .slotBadge {
@@ -2532,7 +2857,7 @@ main { min-height: 100vh; }
   background:
     linear-gradient(135deg, rgb(15 95 255 / 10%), rgb(18 183 214 / 16%)),
     #f8fbff;
-  color: #0b172f;
+  color: var(--text-primary);
   display: grid;
   gap: .5rem;
   justify-items: center;
@@ -2597,7 +2922,7 @@ main { min-height: 100vh; }
 
 .homeSectionStack {
   display: grid;
-  gap: 2rem;
+  gap: 0.8rem;
   min-width: 0;
 }
 
@@ -2632,13 +2957,8 @@ main { min-height: 100vh; }
   width: .86rem;
 }
 
-.storyListBoard {
-  border-bottom: 0;
-  padding-top: 0;
-}
-
-.catalogGridVertical {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+.storyLis.catalogGridVertical {
+  grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
 }
 
 .catalogGridVertical .catalogCard {
@@ -2650,9 +2970,9 @@ main { min-height: 100vh; }
 }
 
 .catalogGridVertical .catalogCover {
-  aspect-ratio: .78 / 1;
+  aspect-ratio: .73 / 1;
   border-radius: 0;
-  min-height: 17rem;
+  min-height: auto;
   padding: 0;
 }
 
@@ -2685,13 +3005,12 @@ main { min-height: 100vh; }
   bottom: 0;
   color: white;
   display: flex;
-  font-size: .72rem;
-  gap: .7rem;
-  justify-content: space-between;
+  font-size: .65rem;
+  gap: .4rem;
+  justify-content: center;
   left: 0;
   line-height: 1;
-  min-height: 2.2rem;
-  padding: .5rem .75rem;
+  padding: .4rem .3rem;
   position: absolute;
   right: 0;
   z-index: 3;
@@ -2705,8 +3024,8 @@ main { min-height: 100vh; }
 }
 
 .coverMetric svg {
-  height: .82rem;
-  width: .82rem;
+  height: .75rem;
+  width: .75rem;
 }
 
 .catalogGridVertical .coverLabel {
@@ -2715,17 +3034,17 @@ main { min-height: 100vh; }
 }
 
 .catalogGridVertical .catalogCardBody {
-  min-height: 7.4rem;
-  padding: 1rem 1.05rem 1.1rem;
+  min-height: auto;
+  padding: .45rem .15rem 0.6rem;
 }
 
 .catalogGridVertical .catalogCardBody h3 {
   color: #050b18;
-  font-size: clamp(.98rem, 1.18vw, 1.22rem);
-  font-weight: 850;
-  line-height: 1.25;
-  min-height: 3.1rem;
-  text-transform: none;
+  font-size: .82rem;
+  font-weight: 600;
+  line-height: 1.35;
+  min-height: auto;
+  text-align: left !important;
 }
 
 .catalogGridVertical .catalogCardBody p {
@@ -2736,44 +3055,60 @@ main { min-height: 100vh; }
   margin: 1.1rem 0 0;
 }
 
+/* ── Ranking panel ────────────────────────────────────────────────
+   Deliberately plain: a heading, a row of text tabs, then a list. It shares the
+   widget surface used by the other side cards so it reads as part of the page
+   rather than as a feature box.
+   ──────────────────────────────────────────────────────────────── */
 .rankingPanel {
   align-self: start;
   background: white;
-  border-left: 1px solid var(--line);
-  padding: .6rem 0 1rem 1.45rem;
-  position: sticky;
-  top: 5.8rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.1rem;
 }
 
 .rankingPanel h2 {
-  color: #18263d;
-  font-size: clamp(1.35rem, 2vw, 1.7rem);
-  font-weight: 900;
-  letter-spacing: 0;
-  margin: 0 0 1rem;
-  text-align: center;
+  color: #0f172a;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: .01em;
+  margin: 0 0 .85rem;
+  text-align: left;
   text-transform: uppercase;
 }
 
 .rankingPanel .rankingTabs {
   background: transparent;
+  border-bottom: 1px solid #eef2f6;
   display: flex;
-  gap: .35rem;
-  justify-content: center;
-  margin: 0 0 1.15rem;
+  gap: .25rem;
+  justify-content: flex-start;
+  margin: 0 0 .35rem;
+  text-align: left;
 }
 
-.rankingPanel .rankingTabs > * {
-  border-radius: .38rem;
-  color: var(--blue);
-  font-size: .85rem;
-  padding: .62rem .8rem;
-}
-
-.rankingPanel .rankingTabs b {
-  background: var(--blue);
+/* Underline rather than a filled pill - one accent per widget is enough. */
+.rankingPanel .rankingTabs > button {
+  background: transparent;
   border: 0;
-  color: white;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  color: #64748b;
+  cursor: pointer;
+  font-size: .85rem;
+  font-weight: 700;
+  margin-bottom: -1px;
+  padding: .45rem .6rem;
+}
+
+.rankingPanel .rankingTabs > button:hover {
+  color: #0f172a;
+}
+
+.rankingPanel .rankingTabs > button.isActive {
+  border-bottom-color: var(--blue);
+  color: var(--blue);
 }
 
 .rankingPanel ol {
@@ -2784,48 +3119,65 @@ main { min-height: 100vh; }
 
 .rankingPanel li {
   align-items: center;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid #f1f5f9;
   display: grid;
-  gap: .8rem;
-  grid-template-columns: 1.8rem 4.2rem minmax(0, 1fr) auto;
-  min-height: 6.6rem;
-  padding: .72rem 0;
+  gap: .65rem;
+  grid-template-columns: 1.5rem 3rem minmax(0, 1fr);
+  padding: .6rem 0;
+}
+
+.rankingPanel li:last-child {
+  border-bottom: 0;
 }
 
 .rankingPanel li > b {
-  color: #07111f;
-  font-size: 1.25rem;
+  color: #94a3b8;
+  font-size: 1.05rem;
+  font-weight: 700;
   text-align: center;
 }
 
+/* Top three get a quiet emphasis instead of medals or gradients. */
+.rankingPanel li:nth-child(-n+3) > b {
+  color: var(--blue);
+}
+
 .rankingThumb {
-  align-items: end;
-  background: url("/assets/audio-comic-reference/cover-dark.png") center / cover;
-  border-radius: .18rem;
-  color: white;
-  display: grid;
-  height: 5.35rem;
+  aspect-ratio: 3 / 4;
+  background: #f1f5f9;
+  border-radius: 4px;
+  display: block;
   overflow: hidden;
-  padding: .35rem;
+  position: relative;
   text-decoration: none;
+  width: 100%;
 }
 
-.rankingThumb[data-tone="1"] {
-  background-image: url("/assets/audio-comic-reference/cover-light.png");
+.rankingThumb img {
+  height: 100%;
+  left: 0;
+  object-fit: cover;
+  position: absolute;
+  top: 0;
+  width: 100%;
 }
 
-.rankingThumb[data-tone="2"] {
-  background-image: url("/assets/audio-comic-reference/hero-library.png");
+.rankingThumb .coverPlaceholder {
+  align-items: center;
+  color: #94a3b8;
+  display: flex;
+  height: 100%;
+  justify-content: center;
 }
 
-.rankingThumb span {
-  background: rgb(0 0 0 / 46%);
-  border-radius: .2rem;
-  display: grid;
-  font-weight: 900;
-  height: 1.35rem;
-  place-items: center;
-  width: 1.35rem;
+.rankingThumb .coverPlaceholder svg {
+  height: 1.1rem;
+  width: 1.1rem;
+}
+
+/* The placeholder's caption has no room at thumbnail size. */
+.rankingThumb .coverPlaceholder span {
+  display: none;
 }
 
 .rankingPanel li div {
@@ -2833,37 +3185,41 @@ main { min-height: 100vh; }
 }
 
 .rankingPanel li div a {
-  color: #030712;
+  color: #0f172a;
   display: -webkit-box;
-  font-size: .95rem;
-  font-weight: 850;
-  line-height: 1.25;
+  font-size: .92rem;
+  font-weight: 700;
+  line-height: 1.35;
   overflow: hidden;
   text-decoration: none;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
 
-.rankingPanel li small {
-  color: var(--text-primary);
-  display: block;
-  font-size: .76rem;
-  margin-top: .45rem;
+.rankingPanel li div a:hover {
+  color: var(--blue);
 }
 
 .rankingPanel li em {
   align-items: center;
-  color: var(--text-primary);
+  color: #64748b;
   display: inline-flex;
-  font-size: .74rem;
+  font-size: .8rem;
   font-style: normal;
   gap: .25rem;
+  margin-top: .2rem;
   white-space: nowrap;
 }
 
 .rankingPanel li em svg {
   height: .85rem;
   width: .85rem;
+}
+
+.rankingEmpty {
+  color: #94a3b8;
+  font-size: .88rem;
+  margin: .6rem 0 0;
 }
 
 .rankingBoardGrid {
@@ -2899,7 +3255,7 @@ main { min-height: 100vh; }
 }
 
 .rankingBoard h2 {
-  color: #0b172f;
+  color: var(--text-primary);
   font-size: 1.15rem;
   font-weight: 900;
   line-height: 1.2;
@@ -2930,7 +3286,7 @@ main { min-height: 100vh; }
 }
 
 .rankingBoard li > b {
-  color: #0b172f;
+  color: var(--text-primary);
   font-size: 1.05rem;
   text-align: center;
 }
@@ -2965,9 +3321,6 @@ main { min-height: 100vh; }
   }
 
   .rankingPanel {
-    border-left: 0;
-    border-top: 1px solid var(--line);
-    padding-left: 0;
     position: static;
   }
 
@@ -2999,11 +3352,7 @@ main { min-height: 100vh; }
   }
 
   .rankingPanel li {
-    grid-template-columns: 1.4rem 3.6rem minmax(0, 1fr);
-  }
-
-  .rankingPanel li em {
-    grid-column: 3;
+    grid-template-columns: 1.35rem 2.6rem minmax(0, 1fr);
   }
 }
 
@@ -3163,7 +3512,7 @@ main { min-height: 100vh; }
 }
 
 .profileMenu > div a:hover {
-  background: #edf7ff;
+  background: var(--surface-sunken);
   color: var(--blue);
 }
 
@@ -3221,7 +3570,7 @@ main { min-height: 100vh; }
 }
 
 .rankingPageHeader h1 {
-  color: #102344;
+  color: var(--text-primary);
   font-size: clamp(1.75rem, 2.7vw, 2.35rem);
   margin: 0;
 }
@@ -3323,7 +3672,7 @@ main { min-height: 100vh; }
   width: 1.08rem;
 }
 
-@media (max-width: 76rem) {
+@media (max-width: 48rem) {
   .siteHeaderTop {
     grid-template-columns: auto minmax(0, 1fr) auto;
   }
@@ -3408,7 +3757,7 @@ main { min-height: 100vh; }
     linear-gradient(180deg, rgb(5 16 34 / 0%), rgb(5 16 34 / 70%)),
     url("/assets/audio-comic-reference/cover-light.png") center / cover;
   border-radius: .45rem;
-  color: var(--white);
+  color: var(--text-on-accent);
   display: grid;
   justify-items: center;
   min-height: 15rem;
@@ -3441,7 +3790,7 @@ main { min-height: 100vh; }
 }
 
 .monkeyDetailHero h1 {
-  color: #07111f;
+  color: var(--text-primary);
   font-size: clamp(1.8rem, 3.8vw, 3.4rem);
   font-weight: 950;
   line-height: 1.05;
@@ -3465,7 +3814,7 @@ main { min-height: 100vh; }
 
 .detailHeroStats span {
   align-items: center;
-  background: #eef8ff;
+  background: var(--accent-soft);
   border: 1px solid #d2e8f7;
   border-radius: 999rem;
   color: var(--ink);
@@ -3519,7 +3868,7 @@ main { min-height: 100vh; }
 }
 
 .categoryDetailMore a {
-  background: #eef8ff;
+  background: var(--accent-soft);
   border: 1px solid #d7eaf9;
   border-radius: 999rem;
   color: var(--ink);
@@ -3532,7 +3881,7 @@ main { min-height: 100vh; }
 .categoryDetailMore a:hover {
   background: var(--blue);
   border-color: var(--blue);
-  color: var(--white);
+  color: var(--text-on-accent);
 }
 
 .audioPlayerPanel {
@@ -3552,14 +3901,14 @@ main { min-height: 100vh; }
 .audioPlayerPanel header > svg {
   background: linear-gradient(135deg, var(--blue), var(--cyan));
   border-radius: .65rem;
-  color: var(--white);
+  color: var(--text-on-accent);
   height: 2.7rem;
   padding: .65rem;
   width: 2.7rem;
 }
 
 .audioPlayerPanel h2 {
-  color: #07111f;
+  color: var(--text-primary);
   font-size: 1.1rem;
   margin: .2rem 0 0;
 }
@@ -3596,7 +3945,7 @@ main { min-height: 100vh; }
 .audioPlayButton {
   background: linear-gradient(135deg, var(--blue), var(--cyan));
   border-color: transparent;
-  color: var(--white);
+  color: var(--text-on-accent);
   height: 3.2rem;
   width: 3.2rem;
 }
@@ -3927,7 +4276,7 @@ main { min-height: 100vh; }
 
 .catViewAllBtn:hover {
   background: #0f5fff;
-  color: var(--white);
+  color: var(--text-on-accent);
 }
 
 /* 2026 Teams Page Visual System - Simple, Clean & Modern */
@@ -4074,7 +4423,7 @@ main { min-height: 100vh; }
 
 .teamSubmitBtn {
   background: linear-gradient(135deg, #0f5fff 0%, #0284c7 100%);
-  color: var(--white);
+  color: var(--text-on-accent);
   font-size: 0.9rem;
   font-weight: 850;
   padding: 0.85rem 1.5rem;
@@ -4118,7 +4467,7 @@ main { min-height: 100vh; }
 }
 
 .teamCountTag {
-  background: #eff6ff;
+  background: var(--accent-soft);
   color: #0f5fff;
   font-size: 0.8rem;
   font-weight: 800;
@@ -4161,7 +4510,7 @@ main { min-height: 100vh; }
   height: 3.2rem;
   border-radius: 0.75rem;
   background: linear-gradient(135deg, #0f5fff 0%, #10d2ae 100%);
-  color: var(--white);
+  color: var(--text-on-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4228,7 +4577,7 @@ main { min-height: 100vh; }
 
 .teamItemBtn:hover {
   background: #0f5fff;
-  color: var(--white);
+  color: var(--text-on-accent);
 }
 
 .teamEmptyState {
@@ -4267,13 +4616,13 @@ main { min-height: 100vh; }
 
 .headerLoginBtn:hover {
   background: #0f5fff;
-  color: var(--white);
+  color: var(--text-on-accent);
   border-color: #0f5fff;
 }
 
 .headerRegisterBtn {
   background: linear-gradient(135deg, #0f5fff 0%, #0284c7 100%);
-  color: var(--white);
+  color: var(--text-on-accent);
   border: none;
   border-radius: 0.6rem;
   padding: 0.45rem 1rem;
@@ -4309,7 +4658,7 @@ main { min-height: 100vh; }
 
 .headerLogoutBtn:hover {
   background: #e11d48;
-  color: var(--white);
+  color: var(--text-on-accent);
 }
 
 /* UNIFORM STORY CARDS ACROSS ALL PAGES (HOME, CATEGORIES, STORIES, SEARCH, RANKINGS, LIBRARY, AUDIO) */
@@ -4325,12 +4674,15 @@ main { min-height: 100vh; }
   flex-direction: column !important;
   width: 100% !important;
   min-width: 0 !important;
+  /* Fill the grid row so every card in a row ends at the same baseline. */
+  height: 100% !important;
 }
 
 .catalogCover {
+  /* aspect-ratio alone decides the height. A min/max-height alongside it fights
+     the ratio: once the column is narrower than the minimum, the box stops
+     scaling with its width and covers in the same row end up different sizes. */
   aspect-ratio: 3 / 4 !important;
-  min-height: 15rem !important;
-  max-height: 19rem !important;
   border-radius: 0.75rem !important;
   overflow: hidden !important;
 }
@@ -4351,12 +4703,12 @@ main { min-height: 100vh; }
   position: relative;
   overflow: hidden;
   width: 100% !important;
-  height: 400px !important;
-  min-height: 400px !important;
+  height: 220px !important;
+  min-height: 220px !important;
   display: flex !important;
-  align-items: flex-start !important;
-  padding: 3rem clamp(1rem, 4vw, 3rem) 0 !important;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.2);
+  align-items: center !important;
+  padding: 0 clamp(1rem, 4vw, 3rem) !important;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.1);
 }
 
 /* Background: animated dark radial gradient + trophy wallpaper */
@@ -4393,7 +4745,7 @@ main { min-height: 100vh; }
 }
 
 .rankingHeroContent {
-  color: var(--white);
+  color: var(--text-on-accent);
 }
 
 .rankingHeroContent h1 {
@@ -4402,7 +4754,7 @@ main { min-height: 100vh; }
   letter-spacing: -0.03em;
   line-height: 1.1;
   margin: 0 0 0.75rem;
-  color: var(--white);
+  color: var(--text-on-accent);
   text-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
@@ -4439,14 +4791,14 @@ main { min-height: 100vh; }
 
 .rankingFilterTabs button:hover {
   background: rgba(255, 255, 255, 0.16);
-  color: var(--white);
+  color: var(--text-on-accent);
   border-color: rgba(255, 255, 255, 0.28);
 }
 
 .rankingFilterTabs button.active {
   background: #0f5fff;
   border-color: #0f5fff;
-  color: var(--white);
+  color: var(--text-on-accent);
   box-shadow: 0 4px 16px rgba(15, 95, 255, 0.4);
 }
 
@@ -4523,19 +4875,19 @@ main { min-height: 100vh; }
 
 .colIconBlue {
   background: #0f5fff;
-  color: var(--white);
+  color: var(--text-on-accent);
   box-shadow: 0 4px 12px rgba(15, 95, 255, 0.28);
 }
 
 .colIconOrange {
   background: #f97316;
-  color: var(--white);
+  color: var(--text-on-accent);
   box-shadow: 0 4px 12px rgba(249, 115, 22, 0.28);
 }
 
 .colIconGreen {
   background: #10b981;
-  color: var(--white);
+  color: var(--text-on-accent);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.28);
 }
 
@@ -4590,20 +4942,20 @@ main { min-height: 100vh; }
 
 .rankTop1 {
   background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
-  color: var(--white);
+  color: var(--text-on-accent);
   clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
   box-shadow: 0 2px 8px rgba(217, 119, 6, 0.3);
 }
 
 .rankTop2 {
   background: linear-gradient(135deg, var(--border-strong) 0%, var(--text-muted) 100%);
-  color: var(--white);
+  color: var(--text-on-accent);
   clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
 }
 
 .rankTop3 {
   background: linear-gradient(135deg, #f97316 0%, #b45309 100%);
-  color: var(--white);
+  color: var(--text-on-accent);
   clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
 }
 
@@ -4727,7 +5079,7 @@ main { min-height: 100vh; }
   height: 2.75rem;
   border-radius: 50%;
   background: #0f5fff;
-  color: var(--white);
+  color: var(--text-on-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4754,7 +5106,7 @@ main { min-height: 100vh; }
   align-items: center;
   gap: 0.35rem;
   background: #0f5fff;
-  color: var(--white);
+  color: var(--text-on-accent);
   border-radius: 0.65rem;
   padding: 0.7rem 1.25rem;
   font-size: 0.84rem;
@@ -4785,7 +5137,7 @@ main { min-height: 100vh; }
 }
 
 .homeSpotlightSection h2 {
-  color: #102344;
+  color: var(--text-primary);
   font-size: clamp(1.45rem, 2.5vw, 2.1rem);
   letter-spacing: 0;
   line-height: 1.15;
@@ -4819,7 +5171,7 @@ main { min-height: 100vh; }
 .homeMiniRanking h3,
 .homeDiscussionPanel h3 {
   align-items: center;
-  color: #0b172f;
+  color: var(--text-primary);
   display: flex;
   font-size: 1rem;
   gap: .5rem;
@@ -4899,7 +5251,7 @@ main { min-height: 100vh; }
 
 .homeDiscussionAction {
   align-items: center;
-  background: #eef8ff;
+  background: var(--accent-soft);
   border: 1px solid #d7eaf9;
   border-radius: .55rem;
   color: var(--blue);
@@ -4957,8 +5309,8 @@ main { min-height: 100vh; }
 }
 
 .legalTableWrap th {
-  background: #eef8ff;
-  color: #102344;
+  background: var(--accent-soft);
+  color: var(--text-primary);
   font-size: .78rem;
 }
 
@@ -5035,7 +5387,7 @@ main { min-height: 100vh; }
   border: 1px solid rgb(255 255 255 / 24%);
   border-radius: .85rem .85rem .25rem .25rem;
   box-shadow: 0 1rem 2.8rem rgb(69 10 10 / 42%);
-  color: var(--white);
+  color: var(--text-on-accent);
   display: grid;
   gap: .2rem;
   grid-column: 1 / -1;
@@ -5089,7 +5441,7 @@ main { min-height: 100vh; }
 .cartoonBadge {
   display: inline-block;
   background: #fbbf24;
-  color: #071739;
+  color: var(--text-primary);
   border: 2px solid #071739;
   border-radius: 4px;
   font-size: 0.72rem;
@@ -5103,7 +5455,7 @@ main { min-height: 100vh; }
 .formHeader h1 {
   font-size: 1.6rem;
   font-weight: 900;
-  color: #071739;
+  color: var(--text-primary);
   margin: 0 0 1.25rem;
   letter-spacing: -0.02em;
 }
@@ -5123,7 +5475,7 @@ main { min-height: 100vh; }
 .teamsFieldGroup label {
   font-size: 0.82rem;
   font-weight: 850;
-  color: #071739;
+  color: var(--text-primary);
 }
 
 .cartoonInput {
@@ -5133,7 +5485,7 @@ main { min-height: 100vh; }
   padding: 0.75rem 0.9rem;
   font-size: 0.88rem;
   font-weight: 600;
-  color: #071739;
+  color: var(--text-primary);
   outline: none;
   transition: all 0.15s ease;
   width: 100%;
@@ -5147,7 +5499,7 @@ main { min-height: 100vh; }
 
 .cartoonSubmitBtn {
   background: #0f5fff;
-  color: var(--white);
+  color: var(--text-on-accent);
   border: 2.5px solid #071739;
   border-radius: 4px;
   padding: 0.9rem 1.4rem;
@@ -5193,7 +5545,7 @@ main { min-height: 100vh; }
 .heroCartoonTag {
   display: inline-block;
   background: #0f5fff;
-  color: var(--white);
+  color: var(--text-on-accent);
   border: 2px solid var(--white);
   border-radius: 4px;
   font-size: 0.74rem;
@@ -5208,7 +5560,7 @@ main { min-height: 100vh; }
   font-size: clamp(2rem, 3.5vw, 2.75rem);
   font-weight: 900;
   line-height: 1.25;
-  color: var(--white);
+  color: var(--text-on-accent);
   text-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
   margin: 0 0 0.85rem;
 }
@@ -5231,7 +5583,7 @@ main { min-height: 100vh; }
   background: rgba(7, 23, 57, 0.9);
   border: 2px solid #38bdf8;
   border-radius: 4px;
-  color: var(--white);
+  color: var(--text-on-accent);
   font-size: 0.84rem;
   font-weight: 850;
   padding: 0.55rem 0.9rem;
@@ -5243,13 +5595,13 @@ main { min-height: 100vh; }
 }
 
 .cartoonAlertBox {
-  background: #eff6ff;
+  background: var(--accent-soft);
   border: 2px solid #071739;
   border-radius: 4px;
   padding: 0.75rem 0.9rem;
   font-size: 0.78rem;
   font-weight: 750;
-  color: #071739;
+  color: var(--text-primary);
   line-height: 1.45;
   box-shadow: 2px 2px 0px rgba(7, 23, 57, 0.2);
 }
@@ -5260,7 +5612,7 @@ main { min-height: 100vh; }
 
 .teamsSubmitBtn {
   background: #0f5fff;
-  color: var(--white);
+  color: var(--text-on-accent);
   border: none;
   border-radius: 0.65rem;
   padding: 0.85rem 1.2rem;
@@ -5296,12 +5648,14 @@ main { min-height: 100vh; }
   padding: 2.5rem 2.2rem;
 }
 
+/* A decorative card inside the teams page, not its banner. It keeps the
+   shipped artwork: the "teams" banner slot is the page hero only, and an
+   admin changing that should not repaint this card as well. */
 .graphicBackground {
   position: absolute;
   inset: 0;
-  background-image: 
-    linear-gradient(180deg, rgba(7, 13, 36, 0.35) 0%, rgba(7, 13, 36, 0.85) 100%),
-    url("/hero_teams_wallpaper.jpg");
+  background-image:
+    linear-gradient(155deg, #16305c 0%, #0b1938 55%, #070d24 100%);
   background-size: cover;
   background-position: center;
   z-index: 1;
@@ -5310,7 +5664,7 @@ main { min-height: 100vh; }
 .graphicContent {
   position: relative;
   z-index: 2;
-  color: var(--white);
+  color: var(--text-on-accent);
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -5349,7 +5703,7 @@ main { min-height: 100vh; }
   height: 1.4rem;
   border-radius: 50%;
   background: #0f5fff;
-  color: var(--white);
+  color: var(--text-on-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5379,7 +5733,7 @@ main { min-height: 100vh; }
 .statItem strong {
   font-size: 1.45rem;
   font-weight: 900;
-  color: var(--white);
+  color: var(--text-on-accent);
 }
 
 .statItem span {
@@ -5453,7 +5807,7 @@ main { min-height: 100vh; }
   margin-bottom: 1rem;
 }
 
-.termBlue { background: #eff6ff; color: #0f5fff; }
+.termBlue { background: var(--accent-soft); color: #0f5fff; }
 .termGreen { background: #ecfdf5; color: #10b981; }
 .termPurple { background: #f3e8ff; color: #a855f7; }
 .termOrange { background: #fff7ed; color: #f97316; }
@@ -5550,7 +5904,7 @@ main { min-height: 100vh; }
 
 .rankingTabsFilter button.active {
   background: #0f5fff;
-  color: var(--white);
+  color: var(--text-on-accent);
 }
 
 .topTeamsGrid {
@@ -5586,19 +5940,19 @@ main { min-height: 100vh; }
 
 .rankHex1 {
   background: #f59e0b;
-  color: var(--white);
+  color: var(--text-on-accent);
   clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
 }
 
 .rankHex2 {
   background: #94a3b8;
-  color: var(--white);
+  color: var(--text-on-accent);
   clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
 }
 
 .rankHex3 {
   background: #d97706;
-  color: var(--white);
+  color: var(--text-on-accent);
   clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
 }
 
@@ -5617,7 +5971,7 @@ main { min-height: 100vh; }
   justify-content: center;
   font-size: 1.25rem;
   font-weight: 900;
-  color: var(--white);
+  color: var(--text-on-accent);
   margin-top: 0.5rem;
   margin-bottom: 0.75rem;
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
@@ -5721,7 +6075,7 @@ main { min-height: 100vh; }
 .bigG {
   font-size: 4.5rem;
   font-weight: 900;
-  color: var(--white);
+  color: var(--text-on-accent);
   text-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
@@ -5798,6 +6152,19 @@ main { min-height: 100vh; }
   }
 }
 
+/* ── Unified Page Main Body Container Alignment (100% Left Aligned with Logo & Header Navbar) ── */
+.storiesMainBodyContainer,
+.categoriesMainBodyContainer,
+.catalogDetailPage,
+.zhihuPageShell {
+  margin: 0 auto !important;
+  max-width: 80rem !important;
+  padding-left: max(1rem, 2vw) !important;
+  padding-right: max(1rem, 2vw) !important;
+  padding-top: 1.25rem !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+}
 /* ═══════════════════════════════════════════════════════════════
    STORIES PAGE HERO BANNER — Matching Reference Screenshot
    ═══════════════════════════════════════════════════════════════ */
@@ -5809,176 +6176,57 @@ main { min-height: 100vh; }
 }
 
 /* ── Hero Banner (Full width 100%, Height ~400px) ── */
-.storiesHeroBanner {
+/* ═══════════════════════════════════════════════════════════════
+   UNIVERSAL HERO BANNERS (Strict Standard Ratio 1920x640px)
+   ═══════════════════════════════════════════════════════════════ */
+
+.storiesHeroBanner,
+.categoriesHeroBanner,
+.rankingHeroBanner,
+.audioHeroBanner,
+.zhihuHeroBanner {
   position: relative;
   overflow: hidden;
   width: 100% !important;
-  height: 400px !important;
-  min-height: 400px !important;
+  aspect-ratio: 1920 / 640 !important;
+  min-height: 280px !important;
+  max-height: 380px !important;
   display: flex !important;
   align-items: center !important;
-  padding: 0 clamp(1rem, 4vw, 3rem) !important;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.15);
+  padding: 0 clamp(1.5rem, 5vw, 4rem) !important;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18);
 }
 
-.storiesHeroBg {
+.storiesHeroBg,
+.categoriesHeroBg,
+.rankingHeroBg,
+.audioHeroBg,
+.zhihuHeroBg {
   position: absolute;
   inset: 0;
   background-image: 
-    linear-gradient(90deg, rgba(10, 14, 38, 0.95) 0%, rgba(10, 14, 38, 0.75) 45%, rgba(10, 14, 38, 0.25) 100%),
-    url("/stories_hero_banner.jpg");
+    linear-gradient(90deg, rgba(15, 23, 42, 0.94) 0%, rgba(15, 23, 42, 0.78) 50%, rgba(15, 23, 42, 0.35) 100%),
+    var(--banner-stories, url("/stories_hero_banner.jpg"));
   background-size: cover;
   background-position: center right;
   z-index: 1;
-}
-
-.storiesHeroContainer {
-  max-width: 82rem;
-  margin: 0 auto;
-  width: 100%;
-  position: relative;
-  z-index: 2;
-}
-
-.storiesHeroContent {
-  max-width: 44rem;
-  color: var(--white);
-}
-
-.storiesHeroContent h1 {
-  font-size: clamp(2rem, 3.5vw, 2.8rem);
-  font-weight: 850;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
-  margin: 0 0 1rem;
-  color: var(--white);
-  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-}
-
-.storiesHeroContent p {
-  font-size: clamp(0.9rem, 1.4vw, 1.05rem);
-  color: var(--border-strong);
-  line-height: 1.55;
-  margin: 0 0 2.2rem;
-  max-width: 38rem;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-}
-
-/* ── 3 Stat Glassmorphism Cards Row ── */
-.storiesStatCardsRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1.1rem;
-}
-
-.storiesStatGlassCard {
-  background: rgba(15, 23, 42, 0.68);
-  backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 0.9rem;
-  padding: 0.9rem 1.35rem;
-  display: flex;
-  align-items: center;
-  gap: 0.9rem;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-  transition: transform 0.2s ease, border-color 0.2s ease;
-}
-
-.storiesStatGlassCard:hover {
-  transform: translateY(-2px);
-  border-color: rgba(255, 255, 255, 0.32);
-}
-
-.statIconCircle {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 0.65rem;
-  background: rgba(15, 95, 255, 0.35);
-  border: 1px solid rgba(15, 95, 255, 0.5);
-  color: #60a5fa;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.statText {
-  display: flex;
-  flex-direction: column;
-}
-
-.statText strong {
-  font-size: 1.25rem;
-  font-weight: 900;
-  color: var(--white);
-  line-height: 1.1;
-}
-
-.statText span {
-  font-size: 0.72rem;
-  color: var(--border-strong);
-  margin-top: 0.15rem;
-  font-weight: 600;
-}
-
-/* ── Main Catalog Grid Container ── */
-.storiesMainBodyContainer {
-  max-width: 82rem;
-  margin: 0 auto;
-  padding: 2.5rem max(1rem, 2vw) 0;
-}
-
-@media (max-width: 768px) {
-  .storiesHeroContent h1 {
-    font-size: 1.8rem;
-  }
-
-  .storiesHeroBg {
-    background-image: 
-      linear-gradient(180deg, rgba(10, 14, 38, 0.9) 0%, rgba(10, 14, 38, 0.95) 100%),
-      url("/stories_hero_banner.jpg");
-  }
-
-  .storiesStatCardsRow {
-    flex-direction: column;
-  }
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   CATEGORIES PAGE HERO BANNER — Matching Stories Banner Style
-   ═══════════════════════════════════════════════════════════════ */
-
-.categoriesPageRedesignShell {
-  background: var(--surface-sunken);
-  min-height: 100vh;
-  padding-bottom: 4rem;
-}
-
-/* ── Hero Banner (Full width 100%, Height ~400px) ── */
-.categoriesHeroBanner {
-  position: relative;
-  overflow: hidden;
-  width: 100% !important;
-  height: 400px !important;
-  min-height: 400px !important;
-  display: flex !important;
-  align-items: center !important;
-  padding: 0 clamp(1rem, 4vw, 3rem) !important;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.15);
 }
 
 .categoriesHeroBg {
-  position: absolute;
-  inset: 0;
   background-image: 
-    linear-gradient(90deg, rgba(8, 20, 44, 0.95) 0%, rgba(8, 20, 44, 0.78) 45%, rgba(8, 20, 44, 0.3) 100%),
-    url("/categories_hero_banner.jpg");
-  background-size: cover;
-  background-position: center right;
-  z-index: 1;
+    linear-gradient(90deg, rgba(15, 23, 42, 0.94) 0%, rgba(15, 23, 42, 0.78) 50%, rgba(15, 23, 42, 0.35) 100%),
+    var(--banner-categories, url("/categories_hero_banner.jpg"));
 }
 
-.categoriesHeroContainer {
+.zhihuHeroBg {
+  background-image: 
+    linear-gradient(90deg, rgba(15, 23, 42, 0.94) 0%, rgba(15, 23, 42, 0.78) 50%, rgba(15, 23, 42, 0.35) 100%),
+    var(--banner-zhihu, url("/stories_hero_banner.jpg"));
+}
+
+.storiesHeroContainer,
+.categoriesHeroContainer,
+.zhihuHeroContainer {
   max-width: 82rem;
   margin: 0 auto;
   width: 100%;
@@ -5986,53 +6234,86 @@ main { min-height: 100vh; }
   z-index: 2;
 }
 
-.categoriesHeroContent {
-  max-width: 44rem;
-  color: var(--white);
+.storiesHeroContent,
+.categoriesHeroContent,
+.zhihuHeroContent {
+  max-width: 46rem;
+  color: #ffffff;
 }
 
-.categoriesHeroContent h1 {
-  font-size: clamp(2rem, 3.5vw, 2.8rem);
+.storiesHeroContent h1,
+.categoriesHeroContent h1,
+.zhihuHeroContent h1 {
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
   font-weight: 850;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
-  margin: 0 0 1rem;
-  color: var(--white);
-  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  line-height: 1.18;
+  letter-spacing: -0.015em;
+  margin: 0 0 0.6rem;
+  color: #ffffff;
+  text-shadow: 0 3px 12px rgba(0, 0, 0, 0.5);
 }
 
-.categoriesHeroContent p {
-  font-size: clamp(0.9rem, 1.4vw, 1.05rem);
-  color: var(--border-strong);
-  line-height: 1.55;
-  margin: 0 0 2.2rem;
-  max-width: 38rem;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+.storiesHeroContent p,
+.categoriesHeroContent p,
+.zhihuHeroContent p,
+.rankingHeroContent p,
+.audioHeroContent p,
+.teamsHeroContent p {
+  display: none !important;
 }
 
-/* ── 3 Stat Glassmorphism Cards Row ── */
-.categoriesStatCardsRow {
+/* ── Sleek Stat Pill Badges Row (NO ICONS) ── */
+.storiesStatCardsRow,
+.categoriesStatCardsRow,
+.zhihuStatCardsRow {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.1rem;
+  gap: 0.75rem;
 }
 
-.categoriesStatGlassCard {
-  background: rgba(8, 20, 44, 0.72);
-  backdrop-filter: blur(14px);
-  border: 1px solid rgba(14, 165, 233, 0.25);
-  border-radius: 0.9rem;
-  padding: 0.9rem 1.35rem;
+.storiesStatGlassCard,
+.categoriesStatGlassCard,
+.zhihuStatGlassCard {
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  padding: 0.4rem 1rem;
   display: flex;
   align-items: center;
-  gap: 0.9rem;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-  transition: transform 0.2s ease, border-color 0.2s ease;
+  gap: 0.45rem;
+  color: #f8fafc;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+.storiesStatGlassCard strong,
+.categoriesStatGlassCard strong,
+.zhihuStatGlassCard strong {
+  font-weight: 800;
+  color: #38bdf8;
+  font-size: 0.9rem;
+}
+
+.storiesStatGlassCard:hover,
+.categoriesStatGlassCard:hover,
+.zhihuStatGlassCard:hover {
+  background: rgba(15, 23, 42, 0.8);
+  border-color: rgba(56, 189, 248, 0.5);
+}
+
+.categoriesStatGlassCard strong {
+  font-weight: 700;
+  color: #38bdf8;
 }
 
 .categoriesStatGlassCard:hover {
-  transform: translateY(-2px);
-  border-color: rgba(14, 165, 233, 0.45);
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(56, 189, 248, 0.5);
+  transform: translateY(-1px);
 }
 
 .catIconCyan {
@@ -6056,7 +6337,7 @@ main { min-height: 100vh; }
   .categoriesHeroBg {
     background-image: 
       linear-gradient(180deg, rgba(8, 20, 44, 0.92) 0%, rgba(8, 20, 44, 0.96) 100%),
-      url("/categories_hero_banner.jpg");
+      var(--banner-categories, url("/categories_hero_banner.jpg"));
   }
 
   .categoriesStatCardsRow {
@@ -6086,7 +6367,7 @@ main { min-height: 100vh; }
   inset: 0;
   background-image: 
     linear-gradient(90deg, rgba(7, 13, 36, 0.95) 0%, rgba(7, 13, 36, 0.75) 45%, rgba(7, 13, 36, 0.25) 100%),
-    url("/hero_teams_wallpaper.jpg");
+    var(--banner-teams, url("/hero_teams_wallpaper.jpg"));
   background-size: cover;
   background-position: center right;
   z-index: 1;
@@ -6105,7 +6386,7 @@ main { min-height: 100vh; }
 }
 
 .teamsHeroContent {
-  color: var(--white);
+  color: var(--text-on-accent);
   justify-self: end;
   max-width: 39rem;
   text-align: right;
@@ -6116,7 +6397,7 @@ main { min-height: 100vh; }
   font-weight: 850;
   line-height: 1.2;
   margin: 0 0 0.75rem;
-  color: var(--white);
+  color: var(--text-on-accent);
 }
 
 .teamsHeroContent p {
@@ -6185,7 +6466,7 @@ main { min-height: 100vh; }
 .zhihuHeroBackdrop {
   background:
     linear-gradient(90deg, rgb(6 12 30 / 94%) 0%, rgb(7 18 45 / 84%) 45%, rgb(7 18 45 / 18%) 100%),
-    url("/stories_hero_banner.jpg") center right / cover;
+    var(--banner-zhihu, url("/stories_hero_banner.jpg")) center right / cover;
   inset: 0;
   position: absolute;
 }
@@ -6265,7 +6546,7 @@ main { min-height: 100vh; }
 
 .zhihuHeroActions a:first-child {
   background: white;
-  color: #07111f;
+  color: var(--text-primary);
 }
 
 .zhihuHeroActions a:last-child {
@@ -6274,7 +6555,7 @@ main { min-height: 100vh; }
 }
 
 .zhihuFeatureCard {
-  background: rgb(255 255 255 / 94%);
+  background: var(--surface-card);
   border: 1px solid rgb(255 255 255 / 68%);
   border-radius: 1rem;
   box-shadow: 0 1rem 3rem rgb(3 10 30 / 30%);
@@ -6351,17 +6632,51 @@ main { min-height: 100vh; }
   font-weight: 650;
 }
 
+/* Single column, and no width or padding of its own: .zhihuPageShell already
+   supplies the 80rem / max(1rem, 2vw) gutter shared with .siteHeaderTop. Setting
+   them again here applied the gutter twice, which is why this page started
+   further right than the logo and the navbar above it. */
 .zhihuContentLayout {
   display: grid;
-  gap: 1.5rem;
-  grid-template-columns: minmax(0, 1fr) minmax(18rem, 24rem);
-  margin: 0 auto;
-  max-width: 82rem;
-  padding: 0 max(1rem, 2vw);
+  gap: 1.75rem;
+  grid-template-columns: minmax(0, 1fr);
 }
 
-.zhihuMainList,
-.zhihuSideRail > section {
+/* Headings and grids sit flush against the container edge, matching the stories
+   and category pages; only the side widgets keep a card surface. */
+.zhihuPageHeading,
+.zhihuShelf > header {
+  align-items: center;
+  border-bottom: 1px solid #eef2f6;
+  display: flex;
+  gap: .75rem;
+  justify-content: space-between;
+  margin: 0 0 1.2rem;
+  padding-bottom: .8rem;
+}
+
+.zhihuPageHeading h1,
+.zhihuShelf > header h2 {
+  font-size: 1.5rem;
+  font-weight: 850;
+  letter-spacing: -.01em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.zhihuShelf > header h2 {
+  font-size: 1.25rem;
+}
+
+.zhihuPageHeading > span,
+.zhihuShelf > header > span {
+  color: #64748b;
+  flex-shrink: 0;
+  font-size: .85rem;
+  font-weight: 600;
+}
+
+.zhihuBottomRail > section {
   background: white;
   border: 1px solid var(--line);
   border-radius: 1rem;
@@ -6369,65 +6684,87 @@ main { min-height: 100vh; }
   padding: clamp(1.1rem, 3vw, 1.7rem);
 }
 
-.zhihuMainList > header {
-  margin-bottom: 1rem;
+/* Fill whatever width is available rather than a fixed five columns, so a shelf
+   holding two stories does not leave three empty tracks. */
+.zhihuStoryGrid.catalogGrid {
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)) !important;
+  gap: 1rem .75rem !important;
 }
 
-.zhihuMainList > header span {
-  color: var(--blue);
-  font-size: .82rem;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.zhihuMainList h2,
-.zhihuSideRail h2 {
-  color: var(--ink);
-  font-size: clamp(1.35rem, 2.4vw, 2rem);
-  margin: .25rem 0 0;
-}
-
-.zhihuSideRail {
+.zhihuBottomRail {
   display: grid;
-  gap: 1rem;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
   min-width: 0;
 }
 
-.zhihuSideRail ol {
+.zhihuBottomRail > section {
+  min-width: 0;
+}
+
+.zhihuLatestPanel > header {
+  align-items: center;
+  display: flex;
+  gap: .75rem;
+  justify-content: space-between;
+}
+
+.zhihuLatestPanel > header h2 {
+  align-items: center;
+  color: var(--ink);
+  display: inline-flex;
+  font-size: clamp(1.05rem, 1.8vw, 1.35rem);
+  gap: .4rem;
+  margin: 0;
+}
+
+.zhihuLatestPanel > header a {
+  align-items: center;
+  color: var(--blue);
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: .8rem;
+  font-weight: 750;
+  gap: .25rem;
+  text-decoration: none;
+}
+
+.zhihuLatestPanel ol {
   display: grid;
   gap: .15rem;
   list-style: none;
-  margin: 1rem 0 0;
+  margin: .85rem 0 0;
   padding: 0;
 }
 
-.zhihuSideRail li {
+.zhihuLatestPanel li {
   align-items: center;
   border-top: 1px solid #edf2f8;
   display: grid;
-  gap: .65rem;
+  gap: .1rem .65rem;
   grid-template-columns: 1.6rem minmax(0, 1fr);
-  padding: .75rem 0;
+  padding: .6rem 0;
 }
 
-.zhihuSideRail li b {
+.zhihuLatestPanel li b {
   color: var(--blue);
+  grid-row: span 2;
   text-align: center;
 }
 
-.zhihuSideRail li a {
+.zhihuLatestPanel li a {
   color: var(--text-primary);
-  font-size: .95rem;
-  font-weight: 850;
+  font-size: .92rem;
+  font-weight: 800;
   overflow: hidden;
   text-decoration: none;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.zhihuSideRail li span {
+.zhihuLatestPanel li span {
   color: var(--text-muted);
-  font-size: .8rem;
+  font-size: .78rem;
   grid-column: 2;
 }
 
@@ -6476,12 +6813,12 @@ main { min-height: 100vh; }
   position: relative;
   overflow: hidden;
   width: 100% !important;
-  height: 400px !important;
-  min-height: 400px !important;
+  height: 220px !important;
+  min-height: 220px !important;
   display: flex !important;
   align-items: center !important;
   padding: 0 clamp(1rem, 4vw, 3rem) !important;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.15);
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.1);
 }
 
 .audioHeroBg {
@@ -6489,7 +6826,7 @@ main { min-height: 100vh; }
   inset: 0;
   background-image: 
     linear-gradient(90deg, rgba(12, 10, 38, 0.95) 0%, rgba(12, 10, 38, 0.75) 45%, rgba(12, 10, 38, 0.25) 100%),
-    url("/audio_hero_banner.jpg");
+    var(--banner-audio, url("/audio_hero_banner.jpg"));
   background-size: cover;
   background-position: center right;
   z-index: 1;
@@ -6505,7 +6842,7 @@ main { min-height: 100vh; }
 
 .audioHeroContent {
   max-width: 44rem;
-  color: var(--white);
+  color: var(--text-on-accent);
 }
 
 .audioHeroContent h1 {
@@ -6513,7 +6850,7 @@ main { min-height: 100vh; }
   font-weight: 850;
   line-height: 1.2;
   margin: 0 0 1rem;
-  color: var(--white);
+  color: var(--text-on-accent);
 }
 
 .audioHeroContent p {
@@ -6547,15 +6884,16 @@ main { min-height: 100vh; }
   padding: 2.5rem max(1rem, 2vw) 0;
 }
 
-/* Community Chat Widget Styles */
+/* Quick chat widget - light cartoon: thick outline, solid offset shadow,
+   rounded speech bubbles. It stays a chat box, not a forum. */
 .communityChatWidget {
   background: var(--white);
-  border: 1px solid var(--line);
-  border-radius: 0.95rem;
+  border: 2px solid var(--line);
+  border-radius: 1.2rem;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 0.5rem 1.5rem rgba(15, 95, 255, 0.06);
+  box-shadow: 0 .35rem 0 0 var(--line);
   margin-top: 1.25rem;
 }
 
@@ -6572,7 +6910,8 @@ main { min-height: 100vh; }
 .chatHeader {
   align-items: center;
   background: linear-gradient(90deg, #0f5fff, #1e40af);
-  color: var(--white);
+  /* Sits on a fixed blue gradient in both themes, so the text stays white. */
+  color: #fff;
   display: flex;
   justify-content: space-between;
   padding: 0.9rem 1.2rem;
@@ -6588,11 +6927,6 @@ main { min-height: 100vh; }
   font-size: 0.95rem;
   font-weight: 800;
   margin: 0;
-}
-
-.chatIcon {
-  height: 1.15rem;
-  width: 1.15rem;
 }
 
 .liveBadge {
@@ -6639,8 +6973,10 @@ main { min-height: 100vh; }
 
 .chatAvatar {
   align-items: center;
-  border-radius: 0.5rem;
-  color: var(--white);
+  border: 2px solid var(--white);
+  border-radius: 50%;
+  box-shadow: 0 .15rem 0 0 rgb(15 23 42 / 18%);
+  color: #fff;
   display: flex;
   font-size: 0.8rem;
   font-weight: 800;
@@ -6657,10 +6993,30 @@ main { min-height: 100vh; }
 
 .chatMessageBody {
   background: var(--white);
-  border: 1px solid #e2e8f0;
-  border-radius: 0.6rem;
+  border: 2px solid var(--line);
+  border-radius: 0.95rem;
   flex: 1;
   padding: 0.65rem 0.85rem;
+  position: relative;
+}
+
+/* Speech-bubble tail pointing back at the avatar. */
+.chatMessageBody::before {
+  border: .42rem solid transparent;
+  border-right-color: var(--line);
+  content: "";
+  left: -.85rem;
+  position: absolute;
+  top: .85rem;
+}
+
+.chatMessageBody::after {
+  border: .38rem solid transparent;
+  border-right-color: var(--text-on-accent);
+  content: "";
+  left: -.72rem;
+  position: absolute;
+  top: .89rem;
 }
 
 .chatAuthorRow {
@@ -6678,7 +7034,7 @@ main { min-height: 100vh; }
 }
 
 .roleBadge {
-  border-radius: 0.25rem;
+  border-radius: 999px;
   font-size: 0.6rem;
   font-weight: 800;
   padding: 0.15rem 0.4rem;
@@ -6714,8 +7070,8 @@ main { min-height: 100vh; }
 
 .chatInput {
   background: var(--surface-sunken);
-  border: 1px solid var(--border-strong);
-  border-radius: 0.55rem;
+  border: 2px solid var(--border-strong);
+  border-radius: 999px;
   flex: 1;
   font-size: 0.8rem;
   outline: none;
@@ -6731,12 +7087,13 @@ main { min-height: 100vh; }
   align-items: center;
   background: #0f5fff;
   border: 0;
-  border-radius: 0.55rem;
-  color: var(--white);
+  border-radius: 999px;
+  box-shadow: 0 .18rem 0 0 rgb(11 61 160 / 55%);
+  color: #fff;
   cursor: pointer;
   display: flex;
   justify-content: center;
-  padding: 0 0.9rem;
+  padding: 0 1.05rem;
 }
 
 .chatSendBtn:hover {
@@ -6759,8 +7116,9 @@ main { min-height: 100vh; }
 
 .chatLoginBtn {
   background: #0f5fff;
-  border-radius: 0.45rem;
-  color: var(--white);
+  border-radius: 999px;
+  box-shadow: 0 .18rem 0 0 rgb(11 61 160 / 55%);
+  color: #fff;
   font-size: 0.7rem;
   font-weight: 700;
   padding: 0.4rem 0.8rem;
@@ -7006,7 +7364,7 @@ button {
 .authorApplyPending { color: #b45309 !important; font-weight: 800; }
 .authorApplyOk { color: #12864a !important; font-weight: 800; }
 .authorApplyRejected { color: #b42318 !important; }
-.authorApplyNote { background: #f4f8fd; border-radius: .5rem; padding: .65rem .8rem; }
+.authorApplyNote { background: var(--surface-sunken); border-radius: .5rem; padding: .65rem .8rem; }
 .authorApplyError { color: #b42318 !important; font-weight: 700; }
 
 .authorApplyFacts { display: grid; gap: .35rem; margin: 0 0 .9rem; }
@@ -7032,7 +7390,7 @@ button {
   background: var(--blue, #0f6bff);
   border: 0;
   border-radius: .5rem;
-  color: var(--white);
+  color: var(--text-on-accent);
   cursor: pointer;
   font-size: .84rem;
   font-weight: 800;
@@ -7062,7 +7420,7 @@ button {
   background: #12864a;
   border: 0;
   border-radius: .5rem;
-  color: var(--white);
+  color: var(--text-on-accent);
   cursor: pointer;
   font-size: .8rem;
   font-weight: 800;
@@ -7123,14 +7481,21 @@ button {
 .chapterLockBadge svg { height: .72rem; width: .72rem; }
 
 .chapterUnlockOverlay {
-  align-items: center;
   background: rgb(10 18 32 / 55%);
   display: flex;
   inset: 0;
-  justify-content: center;
+  /* No align-items: the dialog centres itself with `margin: auto` instead.
+     Auto margins collapse to zero once the dialog is taller than the screen,
+     so on a short viewport the overlay scrolls rather than clipping the
+     unlock button off the bottom. */
+  overflow-y: auto;
   padding: 1rem;
   position: fixed;
   z-index: 200;
+}
+
+.chapterUnlockOverlay > * {
+  margin: auto;
 }
 
 .chapterUnlockDialog {
@@ -7178,7 +7543,7 @@ button {
   background: var(--blue);
   border: 0;
   border-radius: .5rem;
-  color: var(--white);
+  color: var(--text-on-accent);
   cursor: pointer;
   flex: 1 1 auto;
   font-size: .76rem;
@@ -7212,12 +7577,13 @@ button {
 
 .catalogCover .coverImage,
 .detailCover .coverImage {
-  height: 100%;
+  height: 100% !important;
   inset: 0;
-  object-fit: cover;
+  object-fit: cover !important;
   position: absolute;
-  width: 100%;
+  width: 100% !important;
   z-index: 1;
+  border-radius: 0 !important;
 }
 
 /* The decorative artwork is only a backdrop for the no-cover case. */
@@ -7345,7 +7711,7 @@ button {
 }
 
 .adGateSlot {
-  background: #f4f8fd;
+  background: var(--surface-sunken);
   border-radius: 0.5rem;
   margin-bottom: 0.75rem;
   min-height: 180px;
@@ -7357,7 +7723,7 @@ button {
   background: #0f5fff;
   border: 0;
   border-radius: 0.5rem;
-  color: var(--white);
+  color: var(--text-on-accent);
   cursor: pointer;
   display: flex;
   gap: 0.5rem;
@@ -7395,7 +7761,7 @@ button {
 }
 
 .adGateContinue svg {
-  color: var(--white);
+  color: var(--text-on-accent);
   flex: none;
 }
 
@@ -7510,33 +7876,38 @@ button {
   border-radius: 1rem;
   box-shadow: 0 1.5rem 3rem rgb(8 18 40 / 28%);
   max-height: 92vh;
-  max-width: 26rem;
+  max-width: 23rem;
   overflow-y: auto;
-  padding: 1.5rem 1.35rem;
+  padding: 1rem .95rem;
   text-align: center;
   width: 100%;
 }
 
-.adGateLogo { height: 3.2rem; margin: 0 auto .9rem; object-fit: contain; }
+.adGateLogo { height: 2rem; margin: 0 auto .55rem; object-fit: contain; }
 
 .adGateDialog h2 {
-  font-size: 1.05rem;
-  line-height: 1.4;
-  margin: 0 0 .6rem;
+  font-size: .92rem;
+  line-height: 1.35;
+  margin: 0 0 .35rem;
 }
 
 .adGateLead {
   color: var(--muted, #6b7891);
-  font-size: .82rem;
-  line-height: 1.55;
-  margin: 0 0 1rem;
+  font-size: .74rem;
+  line-height: 1.45;
+  margin: 0 0 .6rem;
 }
 
+/* 250px is the tallest AdSense will fill a "rectangle" with, and reserving
+   all of it made the interstitial taller than a phone screen. 180px still
+   accepts the common 300x250/320x100/320x50 creatives - the slot grows to
+   whatever actually loads - without holding empty space open when nothing
+   fills, which is the state a reader with a blocker always sees. */
 .adGateSlot {
-  background: #f4f8fd;
+  background: var(--surface-sunken);
   border-radius: .6rem;
-  margin-bottom: 1rem;
-  min-height: 250px;
+  margin-bottom: .65rem;
+  min-height: 180px;
   overflow: hidden;
 }
 
@@ -7547,16 +7918,16 @@ button {
   border-radius: .6rem;
   cursor: pointer;
   display: flex;
-  gap: .75rem;
+  gap: .6rem;
   justify-content: space-between;
-  padding: .85rem 1rem;
+  padding: .6rem .8rem;
   text-align: left;
   width: 100%;
 }
 
 .adGateContinue:disabled { cursor: not-allowed; opacity: .65; }
-.adGateContinue strong { display: block; font-size: .84rem; }
-.adGateContinue small { color: var(--muted, #6b7891); display: block; font-size: .7rem; margin-top: .15rem; }
+.adGateContinue strong { display: block; font-size: .8rem; }
+.adGateContinue small { color: var(--muted, #6b7891); display: block; font-size: .68rem; margin-top: .1rem; }
 .adGateContinue svg { color: #1688f8; flex: none; }
 
 .adGateSkip {
@@ -7564,11 +7935,29 @@ button {
   border: 0;
   color: var(--muted, #6b7891);
   cursor: pointer;
-  font-size: .74rem;
+  font-size: .72rem;
   font-weight: 700;
-  margin-top: .8rem;
-  padding: .4rem;
+  margin-top: .45rem;
+  padding: .3rem;
   text-decoration: underline;
+}
+
+/* On a phone the interstitial competes with the chapter for a small screen,
+   so the slot shrinks again rather than pushing the continue button below
+   the fold - which is what made the gate feel like a wall. */
+@media (max-width: 30rem) {
+  .adGateDialog { padding: .85rem .8rem; }
+  .adGateLogo { height: 1.7rem; margin-bottom: .45rem; }
+  .adGateDialog h2 { font-size: .86rem; }
+  .adGateLead { font-size: .72rem; margin-bottom: .5rem; }
+  .adGateSlot { min-height: 120px; }
+}
+
+/* A short landscape screen has no room for a picture at all; the countdown
+   and the button are what the reader actually needs to get past. */
+@media (max-height: 34rem) {
+  .adGateSlot { min-height: 90px; }
+  .adGateLogo { display: none; }
 }
 
 /* ── Reader banners ────────────────────────────────────────────────────
@@ -7579,26 +7968,40 @@ button {
   border: 1px solid var(--line, var(--border-subtle));
   border-radius: .7rem;
   display: block;
-  margin: 2rem auto;
+  margin: 1.35rem auto;
   max-width: 46rem;
   overflow: hidden;
   position: relative;
 }
 
-.readerAd.isBetween { margin-bottom: 1rem; }
+.readerAd.isBetween { margin-bottom: .75rem; }
 
+/* Wider than it is tall, and capped in absolute terms too: at 46rem the old
+   16/5 ratio drew a 230px band through the middle of the chapter, which is
+   most of a phone screen. The ratio still reserves the space before the
+   image loads, so the text underneath never jumps. */
 .readerAd img {
-  aspect-ratio: 16 / 5;
+  aspect-ratio: 16 / 3.4;
   display: block;
   height: auto;
+  max-height: 9rem;
   object-fit: cover;
   width: 100%;
+}
+
+@media (max-width: 30rem) {
+  .readerAd { margin: 1rem auto; }
+
+  .readerAd img {
+    aspect-ratio: 16 / 4;
+    max-height: 6.5rem;
+  }
 }
 
 .readerAdLabel {
   background: rgb(10 18 32 / 55%);
   border-radius: .3rem;
-  color: var(--white);
+  color: var(--text-on-accent);
   font-size: .58rem;
   font-weight: 800;
   left: .5rem;
@@ -7652,7 +8055,7 @@ button {
 .siteFooterInner nav { display: grid; gap: .6rem; align-content: start; }
 
 .siteFooterInner nav h3 {
-  color: var(--white);
+  color: var(--text-on-accent);
   font-size: .82rem;
   font-weight: 800;
   letter-spacing: .06em;
@@ -7668,7 +8071,7 @@ button {
   width: fit-content;
 }
 
-.siteFooterInner nav a:hover { color: var(--white); text-decoration: underline; }
+.siteFooterInner nav a:hover { color: var(--text-on-accent); text-decoration: underline; }
 
 .siteFooterBase {
   align-items: center;
@@ -7692,7 +8095,7 @@ button {
   text-decoration: none;
 }
 
-.siteFooterBaseLinks a:hover { color: var(--white); }
+.siteFooterBaseLinks a:hover { color: var(--text-on-accent); }
 
 /* Brand colours, and large enough to recognise at a glance. */
 .siteFooter .socialLinks { display: flex; gap: .6rem; }
@@ -7701,7 +8104,7 @@ button {
   align-items: center;
   background: rgb(255 255 255 / 8%);
   border-radius: .6rem;
-  color: var(--white);
+  color: var(--text-on-accent);
   display: inline-flex;
   font-size: .82rem;
   font-weight: 700;
@@ -7711,11 +8114,11 @@ button {
   transition: background 140ms ease, color 140ms ease;
 }
 
-.siteFooter .socialLinks a[aria-label="Facebook"]:hover { background: #1877f2; color: var(--white); }
-.siteFooter .socialLinks a[aria-label="Telegram"]:hover { background: #229ed9; color: var(--white); }
+.siteFooter .socialLinks a[aria-label="Facebook"]:hover { background: #1877f2; color: var(--text-on-accent); }
+.siteFooter .socialLinks a[aria-label="Telegram"]:hover { background: #229ed9; color: var(--text-on-accent); }
 .siteFooter .socialLinks a[aria-label="Facebook"] svg { color: #4a9bff; }
 .siteFooter .socialLinks a[aria-label="Telegram"] svg { color: #5cc6f0; }
-.siteFooter .socialLinks a:hover svg { color: var(--white); }
+.siteFooter .socialLinks a:hover svg { color: var(--text-on-accent); }
 
 @media (max-width: 62rem) {
   .siteFooterInner { grid-template-columns: 1fr 1fr; gap: 2rem; }
@@ -7774,7 +8177,7 @@ button {
 .isGem .profileBalanceLabel { color: #7dd3fc; }
 
 .profileBalance strong {
-  color: var(--white);
+  color: var(--text-on-accent);
   display: block;
   font-size: 1.4rem;
   font-weight: 900;
@@ -7812,7 +8215,7 @@ button {
 .notifyBadge {
   background: var(--vermilion, #ff4d4f);
   border-radius: 999px;
-  color: var(--white);
+  color: var(--text-on-accent);
   font-size: .6rem;
   font-weight: 900;
   line-height: 1;
@@ -7928,8 +8331,8 @@ button {
 .notifyToast {
   align-items: flex-start;
   animation: notifyToastIn 220ms ease-out;
-  background: var(--white, var(--white));
-  border: 1px solid var(--line, var(--line));
+  background: var(--surface-card, var(--white));
+  border: 1px solid var(--border-subtle, var(--line));
   border-left: .25rem solid var(--success, #16a46f);
   border-radius: .7rem;
   box-shadow: 0 1rem 2.5rem rgb(12 22 45 / 20%);
@@ -7955,7 +8358,7 @@ button {
 
 .notifyToastIcon {
   align-items: center;
-  background: #e7f7ef;
+  background: var(--success-soft, #e7f7ef);
   border-radius: 999px;
   color: var(--success, #16a46f);
   display: flex;
@@ -7980,7 +8383,7 @@ button {
 
 .notifyToastBody strong { font-size: .8rem; }
 .notifyToastBody span {
-  color: var(--muted, var(--muted));
+  color: var(--text-muted, var(--muted));
   font-size: .74rem;
   line-height: 1.4;
   overflow: hidden;
@@ -7992,7 +8395,7 @@ button {
 .notifyToastClose {
   background: none;
   border: 0;
-  color: var(--muted, var(--muted));
+  color: var(--text-muted, var(--muted));
   cursor: pointer;
   flex: none;
   padding: .1rem;
@@ -8122,6 +8525,201 @@ button {
   -webkit-touch-callout: none;
 }
 
+/* ── Home page: illustrated "sticker card" styling ───────────────────────
+   Emoji and decorative icons were doing the job of hierarchy on the home
+   page. The shapes below carry it instead: a chunky accent bar in front of
+   each section title, and promo cards outlined with a solid offset shadow.
+   Everything reads from the theme tokens so dark mode follows. */
+
+.homeEyebrow {
+  color: var(--blue);
+  font: 850 .72rem/1 var(--utility);
+  letter-spacing: .12em;
+  margin: 0 0 .45rem;
+  text-transform: uppercase;
+}
+
+/* The accent bar replaces the icon that used to sit before the title. */
+.homeLayout .storySection h2::before,
+.homeLayout .categorySection h2::before,
+.homeCommunitySection h2::before {
+  background: linear-gradient(180deg, var(--blue), var(--cyan));
+  border-radius: 999px;
+  content: "";
+  flex: none;
+  height: 1.1em;
+  width: .32rem;
+}
+
+.homePromoBoard { padding: 1.6rem 0 .4rem; }
+
+.homePromoGrid {
+  display: grid;
+  gap: 1.35rem;
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+}
+
+.homePromoCard {
+  --promo-bg: var(--accent-soft);
+  --promo-line: var(--blue);
+  --promo-ink: var(--text-primary);
+  --promo-accent: var(--blue);
+
+  background: var(--promo-bg);
+  border: 2px solid var(--promo-line);
+  border-radius: 1.4rem;
+  box-shadow: 0 .45rem 0 0 var(--promo-line);
+  color: var(--promo-ink);
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+  overflow: hidden;
+  padding: 1.6rem 1.65rem 1.75rem;
+  position: relative;
+  transition: transform 170ms ease, box-shadow 170ms ease;
+}
+
+/* Two soft blobs give the card its hand-drawn depth without any artwork. */
+.homePromoCard::before,
+.homePromoCard::after {
+  background: var(--promo-accent);
+  border-radius: 999px;
+  content: "";
+  opacity: .12;
+  position: absolute;
+}
+
+.homePromoCard::before { height: 11rem; right: -3rem; top: -4rem; width: 11rem; }
+.homePromoCard::after { bottom: -4.5rem; height: 7rem; right: 3.5rem; width: 7rem; }
+
+.homePromoCard:hover {
+  box-shadow: 0 .75rem 0 0 var(--promo-line);
+  transform: translateY(-.3rem);
+}
+
+.homePromoCard > * { position: relative; z-index: 1; }
+
+.homePromoCard[data-tone="contest"] {
+  --promo-bg: linear-gradient(150deg, #f1f2ff 0%, #e2e6ff 100%);
+  --promo-line: #4f46e5;
+  --promo-ink: #221c58;
+  --promo-accent: #4f46e5;
+}
+
+.homePromoCard[data-tone="topup"] {
+  --promo-bg: linear-gradient(150deg, #ecfdf4 0%, #d5f5e6 100%);
+  --promo-line: #0f9d6e;
+  --promo-ink: #0a4433;
+  --promo-accent: #0f9d6e;
+}
+
+.homePromoBadge {
+  align-self: flex-start;
+  background: var(--promo-accent);
+  border-radius: 999px;
+  color: #fff;
+  font: 850 .68rem/1 var(--utility);
+  letter-spacing: .1em;
+  padding: .42rem .8rem;
+  text-transform: uppercase;
+}
+
+.homePromoCard h3 {
+  font-size: clamp(1.15rem, 1.9vw, 1.45rem);
+  letter-spacing: -.015em;
+  line-height: 1.2;
+  margin: .35rem 0 0;
+}
+
+.homePromoCard p {
+  color: var(--promo-ink);
+  font-size: .88rem;
+  line-height: 1.6;
+  margin: 0;
+  max-width: 30rem;
+  opacity: .82;
+}
+
+.homePromoAction {
+  align-self: flex-start;
+  background: var(--promo-accent);
+  border-radius: 999px;
+  box-shadow: 0 .25rem 0 0 rgb(6 20 40 / 22%);
+  color: #fff;
+  font-size: .85rem;
+  font-weight: 850;
+  margin-top: .9rem;
+  padding: .68rem 1.4rem;
+  text-decoration: none;
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+
+.homePromoAction:hover { box-shadow: 0 .1rem 0 0 rgb(6 20 40 / 22%); transform: translateY(.15rem); }
+
+.homeCommunitySection { padding: 0.8rem 0 0.6rem; }
+
+.homeCommunitySection > header {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+
+.homeCommunitySection h2 {
+  align-items: center;
+  display: flex;
+  font-size: clamp(1.25rem, 2vw, 1.65rem);
+  gap: .45rem;
+  margin: 0;
+}
+
+.homeCommunitySection > header a {
+  border: 2px solid var(--blue);
+  border-radius: 999px;
+  color: var(--blue);
+  font-size: .78rem;
+  font-weight: 850;
+  padding: .5rem 1.1rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.homeCommunitySection > header a:hover { background: var(--blue); color: var(--text-on-accent); }
+
+.homeCommunityPanel {
+  background: var(--surface-card);
+  border: 2px solid var(--line);
+  border-radius: 1.4rem;
+  box-shadow: 0 .45rem 0 0 var(--line);
+  padding: 1.25rem;
+}
+
+:root[data-theme="dark"] .homePromoCard[data-tone="contest"] {
+  --promo-bg: linear-gradient(150deg, #1d2140 0%, #232a52 100%);
+  --promo-line: #6d68f0;
+  --promo-ink: #e7e9ff;
+}
+
+:root[data-theme="dark"] .homePromoCard[data-tone="topup"] {
+  --promo-bg: linear-gradient(150deg, #10291f 0%, #13372a 100%);
+  --promo-line: #24b382;
+  --promo-ink: #d8f7e9;
+}
+
+@media (max-width: 40rem) {
+  .homePromoGrid { grid-template-columns: 1fr; }
+  .homePromoCard { padding: 1.35rem 1.25rem 1.5rem; }
+
+  .homeCommunitySection > header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: .75rem;
+  }
+
+  .homeCommunityPanel { padding: .85rem; }
+}
+
 @media print {
   .chapterProse,
   .manuscript,
@@ -8141,3 +8739,1257 @@ button {
   }
 }
 
+
+/* ── Publisher dashboard ──────────────────────────────────────────
+   Same surfaces and type scale as the rest of the site: flat white cards on the
+   sunken background, container aligned with the logo and navbar.
+   ──────────────────────────────────────────────────────────────── */
+.publisherShell {
+  background: var(--surface-sunken);
+  min-height: 100vh;
+  padding-bottom: 4rem;
+}
+
+.publisherContainer {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin: 0 auto;
+  max-width: 80rem;
+  padding: 1.25rem max(1rem, 2vw) 0;
+  width: 100%;
+}
+
+.publisherHeading {
+  align-items: center;
+  border-bottom: 1px solid #eef2f6;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  justify-content: space-between;
+  padding-bottom: .8rem;
+}
+
+.publisherHeading h1 {
+  font-size: 1.5rem;
+  font-weight: 850;
+  letter-spacing: -.01em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.publisherHeading span {
+  color: #64748b;
+  font-size: .88rem;
+  font-weight: 600;
+}
+
+.publisherPrimaryBtn {
+  background: var(--blue);
+  border-radius: 8px;
+  color: #fff;
+  font-size: .88rem;
+  font-weight: 700;
+  padding: .55rem 1rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.publisherStatGrid {
+  display: grid;
+  gap: .75rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+}
+
+.publisherStatCard {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+  padding: .9rem 1rem;
+}
+
+.publisherStatLabel {
+  align-items: center;
+  color: #64748b;
+  display: inline-flex;
+  font-size: .82rem;
+  font-weight: 700;
+  gap: .35rem;
+}
+
+.publisherStatCard strong {
+  color: #0f172a;
+  font-size: 1.5rem;
+  font-weight: 850;
+}
+
+.publisherStatCard small {
+  color: #94a3b8;
+  font-size: .78rem;
+}
+
+.publisherCard {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  min-width: 0;
+  padding: 1.1rem;
+}
+
+.publisherCard h2 {
+  color: #0f172a;
+  font-size: 1.05rem;
+  font-weight: 800;
+  margin: 0 0 .8rem;
+  text-transform: uppercase;
+}
+
+.publisherCardHeader {
+  align-items: baseline;
+  border-bottom: 1px solid #eef2f6;
+  display: flex;
+  gap: .75rem;
+  justify-content: space-between;
+  margin-bottom: .5rem;
+  padding-bottom: .7rem;
+}
+
+.publisherCardHeader h2 {
+  margin: 0;
+}
+
+.publisherCardHeader span {
+  color: #64748b;
+  font-size: .85rem;
+  font-weight: 600;
+}
+
+.publisherChartRow {
+  display: grid;
+  gap: .75rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+}
+
+.publisherTaskList {
+  color: #334155;
+  display: grid;
+  font-size: .9rem;
+  gap: .35rem;
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.publisherStoryList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.publisherStoryList li {
+  align-items: center;
+  border-bottom: 1px solid #f1f5f9;
+  display: grid;
+  gap: .75rem;
+  grid-template-columns: 3rem minmax(0, 1fr) auto;
+  padding: .65rem 0;
+}
+
+.publisherStoryList li:last-child {
+  border-bottom: 0;
+}
+
+.publisherStoryThumb {
+  aspect-ratio: 3 / 4;
+  background: #f1f5f9;
+  border-radius: 4px;
+  display: block;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.publisherStoryThumb img {
+  height: 100%;
+  left: 0;
+  object-fit: cover;
+  position: absolute;
+  top: 0;
+  width: 100%;
+}
+
+.publisherStoryThumb .coverPlaceholder {
+  align-items: center;
+  color: #94a3b8;
+  display: flex;
+  height: 100%;
+  justify-content: center;
+}
+
+.publisherStoryThumb .coverPlaceholder svg {
+  height: 1.1rem;
+  width: 1.1rem;
+}
+
+.publisherStoryThumb .coverPlaceholder span {
+  display: none;
+}
+
+.publisherStoryInfo {
+  min-width: 0;
+}
+
+.publisherStoryInfo a {
+  color: #0f172a;
+  display: block;
+  font-size: .92rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.publisherStoryInfo a:hover {
+  color: var(--blue);
+}
+
+.publisherStoryInfo span {
+  color: #64748b;
+  display: block;
+  font-size: .8rem;
+  margin-top: .15rem;
+}
+
+.publisherStatusPill {
+  font-size: .8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.publisherEmpty {
+  color: #64748b;
+  font-size: .9rem;
+  margin: 0;
+}
+
+.publisherNotice {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  color: #64748b;
+  margin: 1.25rem auto;
+  max-width: 40rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+.publisherNotice h1 {
+  color: #0f172a;
+  font-size: 1.25rem;
+  margin: 0 0 .5rem;
+}
+
+.publisherNotice p {
+  font-size: .92rem;
+  margin: 0 0 1rem;
+}
+
+/* ── Publisher story workspace ────────────────────────────────────
+   Story picker on the left, one editor on the right. Only controls the API can
+   actually action are rendered.
+   ──────────────────────────────────────────────────────────────── */
+.pubWorkspace {
+  align-items: start;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 20rem) minmax(0, 1fr);
+}
+
+@media (max-width: 62rem) {
+  .pubWorkspace { grid-template-columns: minmax(0, 1fr); }
+}
+
+.pubStoryPicker ul { display: grid; gap: .3rem; list-style: none; margin: .8rem 0 0; padding: 0; }
+
+.pubNewBtn,
+.pubGhostBtn,
+.pubDangerBtn {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #dbe3ec;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: .85rem;
+  font-weight: 700;
+  gap: .35rem;
+  justify-content: center;
+  padding: .5rem .85rem;
+}
+
+.pubNewBtn { border-color: var(--blue); color: var(--blue); width: 100%; }
+.pubNewBtn:hover, .pubGhostBtn:hover { background: #f4f8ff; }
+.pubDangerBtn { border-color: #f3c9c9; color: #dc2626; }
+.pubDangerBtn:hover { background: #fef2f2; }
+
+.pubStoryBtn {
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  display: grid;
+  gap: .6rem;
+  grid-template-columns: 2.6rem minmax(0, 1fr);
+  padding: .45rem;
+  text-align: left;
+  width: 100%;
+}
+
+.pubStoryBtn:hover { background: #f6f9fe; }
+.pubStoryBtn.isActive { background: #eef5ff; border-color: #bfd8ff; }
+
+.pubStoryText { min-width: 0; }
+.pubStoryText strong {
+  color: #0f172a;
+  display: block;
+  font-size: .88rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pubStoryText small { color: #64748b; display: block; font-size: .76rem; margin-top: .1rem; }
+.pubEmptyHint { color: #94a3b8; font-size: .85rem; padding: .5rem .25rem; }
+
+.pubEditor { display: flex; flex-direction: column; gap: .85rem; }
+
+.pubField { display: flex; flex-direction: column; gap: .3rem; min-width: 0; }
+.pubField > span { color: #334155; font-size: .82rem; font-weight: 700; }
+
+.pubField input,
+.pubField select,
+.pubField textarea,
+.pubChapterRow input,
+.pubChapterRow select,
+.pubChapterRow textarea {
+  background: #fff;
+  border: 1px solid #dbe3ec;
+  border-radius: 8px;
+  color: #0f172a;
+  font: inherit;
+  font-size: .9rem;
+  padding: .5rem .6rem;
+  width: 100%;
+}
+
+.pubField textarea, .pubChapterRow textarea { resize: vertical; }
+.pubField input:focus, .pubField select:focus, .pubField textarea:focus { border-color: var(--blue); outline: none; }
+
+.pubFieldRow {
+  display: grid;
+  gap: .75rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+}
+
+.pubNoticeOk, .pubNoticeErr {
+  border-radius: 8px;
+  font-size: .86rem;
+  font-weight: 600;
+  margin: 0;
+  padding: .55rem .75rem;
+}
+.pubNoticeOk { background: #ecfdf5; border: 1px solid #a7f3d0; color: #047857; }
+.pubNoticeErr { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+
+.pubChapterExisting { border-top: 1px solid #eef2f6; padding-top: .8rem; }
+.pubChapterExisting h3,
+.pubChapterEditorHead h3 { color: #0f172a; font-size: .95rem; font-weight: 800; margin: 0; }
+.pubChapterExisting ol { display: grid; gap: .2rem; margin: .5rem 0; padding-left: 1.1rem; }
+.pubChapterExisting li { font-size: .85rem; }
+.pubChapterExisting li small { color: #64748b; margin-left: .4rem; }
+.pubWarn { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; color: #92400e; font-size: .82rem; margin: .5rem 0 0; padding: .5rem .7rem; }
+
+.pubChapterEditor { border-top: 1px solid #eef2f6; display: flex; flex-direction: column; gap: .6rem; padding-top: .8rem; }
+.pubChapterEditorHead { align-items: center; display: flex; justify-content: space-between; }
+
+.pubChapterRow {
+  background: var(--surface-sunken);
+  border: 1px solid #e6edf6;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: .45rem;
+  padding: .6rem;
+}
+
+.pubChapterRowHead {
+  display: grid;
+  gap: .4rem;
+  grid-template-columns: minmax(0, 1fr) 8rem auto;
+  align-items: center;
+}
+
+.pubChapterRowHead:has(input[type="number"]) {
+  grid-template-columns: minmax(0, 1fr) 8rem 5.5rem auto;
+}
+
+.pubActions { border-top: 1px solid #eef2f6; display: flex; flex-wrap: wrap; gap: .6rem; padding-top: .85rem; }
+.pubActions .publisherPrimaryBtn { align-items: center; border: 0; cursor: pointer; display: inline-flex; gap: .4rem; }
+
+/* ── "Buy the whole story" row above the chapter list ─────────────
+   The same purchase as the header button, surfaced where a reader is actually
+   looking at chapters and deciding whether to unlock them one by one.
+   ──────────────────────────────────────────────────────────────── */
+/* The buy-the-whole-story row. Same purple family as before, but given the
+   weight of an offer rather than a note: a filled gradient instead of a pale
+   tint, a lift off the page, and a left edge that marks it out from the
+   chapter list it sits above. */
+.comboRow {
+  align-items: center;
+  background: linear-gradient(135deg, #f3ecff 0%, #ece4ff 100%);
+  border: 1.5px solid #c4b0ff;
+  border-left: 5px solid #6d28d9;
+  border-radius: 12px;
+  box-shadow: 0 .35rem 1.1rem rgb(109 40 217 / 16%);
+  display: flex;
+  flex-wrap: wrap;
+  gap: .7rem 1.1rem;
+  justify-content: space-between;
+  margin: 0 0 1rem;
+  overflow: hidden;
+  padding: 1rem 1.15rem;
+  position: relative;
+}
+
+/* A soft glow behind the price, so the eye lands on the right end of the row. */
+.comboRow::after {
+  background: radial-gradient(circle, rgb(139 92 246 / 18%) 0%, transparent 70%);
+  border-radius: 50%;
+  content: "";
+  height: 12rem;
+  pointer-events: none;
+  position: absolute;
+  right: -3rem;
+  top: -4rem;
+  width: 12rem;
+}
+
+.comboRowText { min-width: 0; position: relative; z-index: 1; }
+
+.comboRowText strong {
+  color: #4c1d95;
+  display: block;
+  font-size: 1.15rem;
+  font-weight: 900;
+  letter-spacing: -.01em;
+}
+
+.comboRowText small {
+  color: #6b21a8;
+  display: block;
+  font-size: .88rem;
+  font-weight: 600;
+  margin-top: .25rem;
+}
+
+.comboRowBtn {
+  align-items: center;
+  background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+  border: 0;
+  border-radius: 10px;
+  box-shadow: 0 .3rem .8rem rgb(109 40 217 / 38%);
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 1rem;
+  font-weight: 850;
+  gap: .45rem;
+  padding: .7rem 1.4rem;
+  position: relative;
+  transition: transform .15s ease, box-shadow .15s ease;
+  z-index: 1;
+}
+
+.comboRowBtn:hover {
+  background: linear-gradient(135deg, #6d28d9 0%, #4c1d95 100%);
+  box-shadow: 0 .45rem 1.1rem rgb(109 40 217 / 48%);
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .comboRowBtn { transition: none; }
+  .comboRowBtn:hover { transform: none; }
+}
+
+/* On a phone the row stacks, so the button takes the full width and stays
+   the obvious next action rather than a chip in the corner. */
+@media (max-width: 34rem) {
+  .comboRow { padding: .9rem 1rem; }
+  .comboRowText strong { font-size: 1.05rem; }
+  .comboRowBtn { justify-content: center; width: 100%; }
+}
+
+.comboRowDone {
+  align-items: center;
+  color: #059669;
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: .88rem;
+  font-weight: 800;
+  gap: .35rem;
+}
+
+/* Publisher workspace tabs — same underline control as the ranking widgets. */
+.pubTabs {
+  border-bottom: 1px solid #eef2f6;
+  display: flex;
+  gap: .25rem;
+  margin: 0 0 .25rem;
+  overflow-x: auto;
+}
+
+.pubTab {
+  align-items: center;
+  border-bottom: 2px solid transparent;
+  color: #64748b;
+  display: inline-flex;
+  font-size: .9rem;
+  font-weight: 700;
+  gap: .4rem;
+  margin-bottom: -1px;
+  padding: .55rem .8rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.pubTab:hover { color: #0f172a; }
+.pubTab.isActive { border-bottom-color: var(--blue); color: var(--blue); }
+
+/* An action, not a place. Pushed to the far end and given a filled treatment so
+   it does not read as a third tab the publisher is currently standing on. */
+.pubTabPromote {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border-bottom: 0;
+  border-radius: .45rem;
+  color: var(--text-on-accent);
+  margin-bottom: 0;
+  margin-left: auto;
+  padding: .45rem .8rem;
+}
+
+.pubTabPromote:hover { color: var(--text-on-accent); filter: brightness(1.06); }
+
+@media (max-width: 34rem) {
+  .pubTabPromote { margin-left: 0; }
+}
+
+.pubHint { color: #64748b; font-size: .78rem; font-weight: 500; line-height: 1.45; }
+
+/* Chapter file attachment, mirroring the admin workspace's upload affordance. */
+.pubChapterActions { display: flex; flex-wrap: wrap; gap: .4rem; }
+
+.pubFileBtn { cursor: pointer; position: relative; }
+.pubFileBtn input[type="file"] {
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
+  position: absolute;
+  width: 0;
+}
+
+.pubFileBtnInline { align-self: flex-start; font-size: .8rem; padding: .35rem .6rem; }
+
+.pubAttached {
+  align-items: center;
+  background: #eef5ff;
+  border: 1px solid #cfe0fb;
+  border-radius: 8px;
+  color: #1d4ed8;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: .85rem;
+  font-weight: 600;
+  gap: .5rem;
+  margin: 0;
+  padding: .45rem .6rem;
+}
+
+.pubAttached > span {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Story import panel — first control in the editor. */
+.pubImportPanel {
+  align-items: center;
+  background: #f4f8ff;
+  border: 1px dashed #bfd4f5;
+  border-radius: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem 1rem;
+  justify-content: space-between;
+  padding: .85rem 1rem;
+}
+
+.pubImportPanel strong { color: #0f172a; display: block; font-size: .92rem; font-weight: 800; }
+.pubImportPanel small { color: #475569; display: block; font-size: .8rem; line-height: 1.5; margin-top: .2rem; }
+
+.pubImportBtn {
+  align-items: center;
+  background: var(--blue);
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: .88rem;
+  font-weight: 700;
+  gap: .4rem;
+  padding: .55rem 1rem;
+  position: relative;
+}
+
+.pubImportBtn input[type="file"] {
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
+  position: absolute;
+  width: 0;
+}
+
+/* ── Plain page shell ─────────────────────────────────────────────
+   Shared by the audio and team pages so they read as part of the site rather
+   than as separate landing pages. Container matches .siteHeaderTop, so content
+   lines up with the logo and navbar. No hero, no tinted stat boxes.
+   ──────────────────────────────────────────────────────────────── */
+.plainPageShell {
+  background: var(--surface-sunken);
+  min-height: 100vh;
+  padding-bottom: 4rem;
+}
+
+.plainPageContainer {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin: 0 auto;
+  max-width: 80rem;
+  padding: 1.25rem max(1rem, 2vw) 0;
+  width: 100%;
+}
+
+.plainPageHeading {
+  align-items: center;
+  border-bottom: 1px solid #eef2f6;
+  display: flex;
+  gap: .75rem;
+  justify-content: space-between;
+  padding-bottom: .8rem;
+}
+
+.plainPageHeading h1 {
+  font-size: 1.5rem;
+  font-weight: 850;
+  letter-spacing: -.01em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.plainPageHeading span { color: #64748b; flex-shrink: 0; font-size: .85rem; font-weight: 600; }
+
+.plainStoryGrid.catalogGrid {
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)) !important;
+  gap: 1rem .75rem !important;
+}
+
+.plainEmpty {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  color: #64748b;
+  font-size: .92rem;
+  margin: 0;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.plainEmpty a { color: var(--blue); font-weight: 700; }
+
+/* ── Team directory ── */
+.teamGrid {
+  display: grid;
+  gap: .75rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.teamCard {
+  align-items: start;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  display: grid;
+  gap: .8rem;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  height: 100%;
+  padding: 1rem;
+  text-decoration: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.teamCard:hover { border-color: #c7d9f5; box-shadow: 0 4px 14px rgb(24 47 100 / 7%); }
+
+/* A picture when the team has one; a single letter when it does not. */
+.teamAvatar {
+  align-items: center;
+  aspect-ratio: 1;
+  background: #f1f5f9;
+  border-radius: 50%;
+  color: #64748b;
+  display: flex;
+  font-size: 1.1rem;
+  font-weight: 800;
+  justify-content: center;
+  overflow: hidden;
+  width: 100%;
+}
+
+.teamAvatar img { height: 100%; object-fit: cover; width: 100%; }
+
+.teamCardBody { min-width: 0; }
+.teamCardBody strong {
+  color: #0f172a;
+  display: block;
+  font-size: .95rem;
+  font-weight: 750;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.teamCardBody small { color: var(--blue); display: block; font-size: .8rem; font-weight: 650; margin-top: .1rem; }
+.teamCardBody p {
+  color: #64748b;
+  display: -webkit-box;
+  font-size: .85rem;
+  line-height: 1.5;
+  margin: .35rem 0 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* ── Shared plain call to action ── */
+.plainCta {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  justify-content: space-between;
+  padding: 1.25rem;
+}
+
+.plainCta h2 { color: #0f172a; font-size: 1.05rem; font-weight: 800; margin: 0 0 .3rem; }
+.plainCta p { color: #64748b; font-size: .9rem; line-height: 1.6; margin: 0; max-width: 42rem; }
+
+.plainCtaActions { display: flex; flex-wrap: wrap; gap: .6rem; }
+
+.plainBtnPrimary,
+.plainBtnGhost {
+  border-radius: 8px;
+  font-size: .88rem;
+  font-weight: 700;
+  padding: .55rem 1rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.plainBtnPrimary { background: var(--blue); color: #fff; }
+.plainBtnGhost { border: 1px solid #dbe3ec; color: #334155; }
+
+/* ── Team profile head ── */
+.teamProfileHead {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  padding: 1.25rem;
+}
+
+.teamAvatarLarge { font-size: 1.6rem; }
+
+.teamProfileHead h1 {
+  color: #0f172a;
+  font-size: clamp(1.2rem, 2.2vw, 1.6rem);
+  font-weight: 850;
+  margin: 0;
+}
+
+.teamProfileMeta { color: var(--blue); font-size: .88rem; font-weight: 700; margin: .2rem 0 0; }
+.teamProfileDesc { color: #64748b; font-size: .9rem; line-height: 1.6; margin: .4rem 0 0; }
+
+.teamProfileHead + section .plainPageHeading h2 {
+  font-size: 1.15rem;
+  font-weight: 850;
+  letter-spacing: -.01em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+@media (max-width: 32rem) {
+  .teamProfileHead { grid-template-columns: 3.2rem minmax(0, 1fr); padding: 1rem; }
+}
+
+/* ── Publisher: per-story figures ─────────────────────────────────────
+   Wide content inside its own scroller, so the page body never scrolls
+   sideways on a phone while the numbers keep their columns. */
+.publisherStoryTableWrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.publisherStoryTable {
+  border-collapse: collapse;
+  min-width: 40rem;
+  width: 100%;
+}
+
+.publisherStoryTable th,
+.publisherStoryTable td {
+  border-bottom: 1px solid var(--border-subtle, #e5eaf2);
+  font-size: .84rem;
+  padding: .7rem .6rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.publisherStoryTable thead th {
+  color: var(--text-muted, #64748b);
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+
+/* The title column carries the cover and the link, so it stays left-aligned
+   and is the only one allowed to wrap. */
+.publisherStoryTable th:first-child {
+  align-items: center;
+  display: flex;
+  gap: .6rem;
+  text-align: left;
+  white-space: normal;
+}
+
+.publisherStoryTable tbody th a:last-child {
+  color: var(--text-primary, #0f172a);
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.publisherStoryTable tbody th a:last-child:hover { text-decoration: underline; }
+
+.publisherStoryTable .publisherStoryThumb {
+  flex: none;
+  height: 3rem;
+  width: 2.25rem;
+}
+
+.publisherStoryTable .publisherStoryThumb img {
+  border-radius: .25rem;
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.publisherRevenueCell {
+  color: #b45309;
+  font-weight: 800;
+}
+
+/* Only shown on a story published as audio; the read-aloud player is what
+   distinguishes that type from an ordinary text story. */
+.storyActionListen {
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+}
+
+/* ── Header at phone widths ───────────────────────────────────────────
+   Measured at 360px: .headerSearch rendered 371px wide and .headerActions
+   359px, both starting 16-28px in, so the row ran 27px past the viewport.
+   body{overflow-x:hidden} then clipped it, which is why the right edge of
+   the register button was sliced off rather than the page scrolling.
+
+   Cause: these are flex containers whose default min-width:auto refuses to
+   shrink below their content, so they overflowed instead of compressing.
+   Freeing them to shrink is the fix; the sizes below just stop the result
+   from being unreadably tight. */
+.headerSearch,
+.headerActions,
+.headerAuthBtns {
+  min-width: 0;
+}
+
+.headerSearch { flex: 1 1 0; }
+
+@media (max-width: 26rem) {
+  /* The search keeps the row's full width by dropping onto its own line;
+     squeezing it beside two buttons left an input barely wide enough for
+     three characters. */
+  .headerSearch input { font-size: .82rem; padding: .55rem 0; }
+
+  .headerAuthBtns { flex: none; gap: .35rem; }
+
+  .headerLoginBtn,
+  .headerRegisterBtn,
+  .loginAction,
+  .quietAction {
+    font-size: .72rem;
+    min-height: 2.2rem;
+    padding: 0 .6rem;
+  }
+}
+
+/* ── Story + ranking layout on narrow screens ─────────────────────────
+   Measured at 360px with a real browser: .storyRankingLayout computed to
+   two tracks of 184px and 310px inside a 328px container. The story grid
+   was therefore squeezed into 184px - one card per row, cover 182x273 -
+   while the 310px ranking panel ran past the container and painted over
+   it. That overlap is the one visible in the reported screenshot.
+
+   An earlier `.storyRankingLayout { grid-template-columns: 1fr }` exists
+   under max-width:76rem and was not taking effect, so the collapse is
+   restated here with both classes named: higher specificity, last in the
+   file, and applied to the compound element that actually renders. */
+@media (max-width: 60rem) {
+  .storyRankingLayout,
+  .storyRankingLayout.detailContentLayout,
+  .homeLayout {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  /* The panel stops being a sidebar, so it must not stay stuck to the
+     viewport as the reader scrolls the list it now sits under. */
+  .rankingPanel { position: static; }
+}
+
+/* ── Story cards per row on phones ────────────────────────────────────
+   Measured at 360px: the grid computed to a single 328px track, so one
+   card filled the width and its cover rendered 326x489 - the "zoomed in"
+   look reported. An earlier max-width:480px rule already asks for two
+   columns with !important and was still not winning, so the arrangement
+   is restated last, against the exact class combination these grids
+   carry (.catalogGrid.catalogGridLarge.catalogGridVertical).
+
+   Two columns minimum on the narrowest phones, three from 30rem up. The
+   cover keeps the 3/4 ratio it has on desktop, so the card shrinks
+   without changing shape. */
+@media (max-width: 30rem) {
+  .catalogGrid,
+  .catalogGrid.catalogGridLarge,
+  .catalogGrid.catalogGridVertical,
+  .catalogGrid.catalogGridLarge.catalogGridVertical {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (min-width: 30.0625rem) and (max-width: 48rem) {
+  .catalogGrid,
+  .catalogGrid.catalogGridLarge,
+  .catalogGrid.catalogGridVertical,
+  .catalogGrid.catalogGridLarge.catalogGridVertical {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 48rem) {
+  .catalogGrid .catalogCover,
+  .catalogGridLarge .catalogCover {
+    aspect-ratio: 3 / 4 !important;
+    min-height: 0;
+  }
+}
+
+/* ── Team management ─────────────────────────────────────────────────── */
+.teamInviteRow {
+  display: grid;
+  gap: .5rem;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  margin-bottom: 1rem;
+}
+
+.teamInviteRow input, .teamInviteRow select { padding: .5rem; }
+
+.teamInviteRow button {
+  background: var(--blue, #0f6bff); border: 0; border-radius: .4rem;
+  color: #fff; cursor: pointer; font-weight: 700; padding: .5rem 1rem;
+}
+
+.teamMemberList { display: grid; gap: .5rem; list-style: none; margin: 0; padding: 0; }
+
+.teamMemberList li {
+  align-items: center; background: var(--surface-sunken, #f8fafc);
+  border-radius: .45rem; display: flex; justify-content: space-between; padding: .6rem .8rem;
+}
+
+.teamMemberList strong { display: block; font-size: .86rem; }
+.teamMemberList small { color: var(--text-muted, #64748b); font-size: .72rem; }
+
+.teamMemberRemove {
+  background: #fee2e2; border: 0; border-radius: .35rem; color: #b91c1c;
+  cursor: pointer; font-size: .76rem; font-weight: 700; padding: .35rem .7rem;
+}
+
+@media (max-width: 34rem) {
+  .teamInviteRow { grid-template-columns: 1fr; }
+}
+
+/* Team avatar: a file picker with a live preview beside it. */
+.teamAvatarField { display: grid; gap: .35rem; margin-bottom: 1rem; }
+.teamAvatarField > span { font-size: .8rem; font-weight: 700; }
+.teamAvatarField > div { align-items: center; display: flex; gap: .8rem; }
+
+.teamAvatarPreview {
+  border-radius: 50%; flex: none; height: 4rem; object-fit: cover; width: 4rem;
+}
+
+.teamAvatarEmpty { background: var(--surface-sunken, #e2e8f0); display: block; }
+
+.teamAvatarPick {
+  background: var(--surface-sunken, #f1f5f9); border: 1px solid var(--border-subtle, #cbd5e1);
+  border-radius: .45rem; cursor: pointer; font-size: .8rem; font-weight: 700; padding: .45rem .9rem;
+}
+
+.teamAvatarPick input { display: none; }
+
+/* ── Genre picker (publisher form) ────────────────────────────────────
+   Replaces a <select multiple>. Ctrl-click is undiscoverable, impossible
+   on touch, and one plain click wipes the whole selection. */
+.pubGenreSearch {
+  margin-bottom: .5rem;
+  padding: .45rem .6rem;
+  width: 100%;
+}
+
+/* Exactly three columns. auto-fill produced a different count at every
+   width, so the list reflowed as the panel resized and a genre was never
+   in the same place twice. */
+.pubGenreGrid {
+  border: 1px solid var(--line, #dfeaf6);
+  border-radius: .5rem;
+  display: grid;
+  gap: .1rem .4rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-height: 14rem;
+  overflow-y: auto;
+  padding: .5rem;
+}
+
+/* The box keeps its natural size; the label takes whatever is left and
+   ellipsises rather than wrapping onto a second line, which is what made
+   rows of different heights and the column hard to scan. */
+.pubGenreItem {
+  align-items: center;
+  border-radius: .35rem;
+  cursor: pointer;
+  display: grid;
+  font-size: .8rem;
+  gap: .4rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  line-height: 1.3;
+  min-width: 0;
+  padding: .28rem .4rem;
+}
+
+.pubGenreItem > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pubGenreItem:hover { background: var(--surface-sunken, #f1f5f9); }
+
+.pubGenreItem.isOn {
+  background: var(--accent-soft, #e7f5ff);
+  color: var(--blue, #0875c9);
+  font-weight: 700;
+}
+
+.pubGenreItem input { accent-color: var(--blue, #0f6bff); flex: none; }
+
+@media (max-width: 34rem) {
+  .pubGenreGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ── Dark theme: text that never followed the token system ────────────
+   Measured in a real browser at data-theme="dark", these all rendered
+   below 1.6:1 against their own background - dark ink on a dark surface,
+   i.e. invisible. Each is a raw hex written outside the token blocks, so
+   the theme had nothing to switch.
+
+   Repointing them at the tokens rather than hardcoding a second colour:
+   the tokens already flip correctly, which is the whole reason they
+   exist. */
+[data-theme="dark"] {
+  /* Story page: title and the metadata list beside the cover. */
+  --story-heading: var(--text-primary);
+}
+
+[data-theme="dark"] .storyDetailMain h1 { color: var(--text-primary); }
+[data-theme="dark"] .storyMetadata dt { color: var(--text-secondary); }
+[data-theme="dark"] .storyMetadata dd { color: var(--text-primary); }
+
+/* Catalogue card titles - measured at 1.10:1. */
+[data-theme="dark"] .catalogCardBody h3,
+[data-theme="dark"] .catalogCardBody h3 a,
+[data-theme="dark"] .catalogCard h3 a { color: var(--text-primary); }
+
+/* Section headings across the shelves and the footer. */
+[data-theme="dark"] .storySection h2,
+[data-theme="dark"] .sideCard h2,
+[data-theme="dark"] .siteFooter h3,
+[data-theme="dark"] .footerColumn h3 { color: var(--text-primary); }
+
+/* Nav labels, including the "Thể loại" dropdown trigger. */
+[data-theme="dark"] .siteHeader .mainNav a,
+[data-theme="dark"] .siteHeader .mainNav a span { color: var(--text-secondary); }
+[data-theme="dark"] .siteHeader .mainNav a:hover,
+[data-theme="dark"] .siteHeader .mainNav a[aria-current="page"] { color: var(--accent); }
+
+/* Bố cáo page headings and copy. */
+[data-theme="dark"] .promoHero h1,
+[data-theme="dark"] .promoHero p,
+[data-theme="dark"] .bookingBoard h1,
+[data-theme="dark"] .bookingBoard p { color: var(--text-primary); }
+
+/* The register button: its label was #172032 on a blue gradient, which is
+   the one case here that was unreadable in light mode too. */
+/* --white is aliased to --surface-card, so it flips dark with the theme.
+   A label sitting on a blue gradient must not: --text-on-accent is the
+   token that stays white in both themes. */
+.headerRegisterBtn { color: var(--text-on-accent, #fff) !important; }
+
+/* ── Publisher: bulk chapter actions ─────────────────────────────────── */
+.pubBulkBar {
+  align-items: center;
+  background: var(--surface-sunken, #f1f5f9);
+  border-radius: .45rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin: .5rem 0;
+  padding: .5rem .7rem;
+}
+
+.pubBulkAll { align-items: center; display: flex; font-size: .8rem; font-weight: 700; gap: .4rem; }
+.pubBulkCount { color: var(--text-muted, #64748b); font-size: .78rem; font-weight: 700; }
+.pubBulkPrice { padding: .3rem .4rem; width: 6rem; }
+.pubChapterPick { flex: none; margin-right: .4rem; }
+
+.pubDangerBtn {
+  align-items: center; background: #dc2626; border: 0; border-radius: .35rem;
+  color: #fff; cursor: pointer; display: inline-flex; font-size: .78rem;
+  font-weight: 700; gap: .3rem; padding: .35rem .7rem;
+}
+.pubDangerBtn:disabled { background: #fca5a5; cursor: not-allowed; }
+
+.pubConfirmLayer {
+  background: rgb(15 23 42 / 65%); display: flex; inset: 0;
+  overflow-y: auto; padding: 1rem; position: fixed; z-index: 9999;
+}
+
+.pubConfirmCard {
+  background: var(--surface-card, #fff); border-radius: .75rem; margin: auto;
+  max-width: 26rem; padding: 1.4rem; width: 100%;
+}
+
+.pubConfirmCard h3 { font-size: 1rem; margin: 0 0 .6rem; }
+.pubConfirmList {
+  background: var(--surface-sunken, #f8fafc); border-radius: .4rem; font-size: .78rem;
+  list-style: none; margin: 0 0 .7rem; max-height: 8rem; overflow-y: auto; padding: .5rem .7rem;
+}
+.pubConfirmType { display: block; font-size: .78rem; margin: .6rem 0; }
+.pubConfirmType input { display: block; margin-top: .3rem; padding: .35rem; width: 100%; }
+.pubConfirmActions { display: flex; gap: .5rem; justify-content: flex-end; margin-top: 1rem; }
+
+/* ── Cover badges ─────────────────────────────────────────────────────
+   Two independent facts that often hold at once, so they never share a
+   slot: FULL is a corner ribbon on the right, ĐỘC QUYỀN a badge on the
+   left. Putting them in one row was the earlier attempt, and a long
+   Vietnamese label pushed the other badge across the artwork. */
+.coverTagRow {
+  left: .35rem;
+  position: absolute;
+  top: .35rem;
+  z-index: 4;
+}
+
+/* Exclusive: a selling point, so it is filled and warm. */
+.exclusiveBadge {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border: 1px solid rgb(180 83 9 / 60%);
+  border-radius: .25rem;
+  box-shadow: 0 .15rem .4rem rgb(180 83 9 / 40%);
+  color: #fff;
+  display: inline-block;
+  font-size: .58rem;
+  font-weight: 850;
+  letter-spacing: .04em;
+  line-height: 1;
+  padding: .2rem .34rem;
+  white-space: nowrap;
+}
+
+/* Finished: a diagonal band across the top-right corner. The wrapper is the
+   corner it may paint in; the band inside is rotated and deliberately wider
+   than that box, so its ends are clipped and read as folded under. */
+.fullRibbon {
+  height: 3.4rem;
+  overflow: hidden;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 3.4rem;
+  z-index: 4;
+}
+
+.fullRibbon span {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  box-shadow: 0 .1rem .35rem rgb(15 23 42 / 28%);
+  color: #1d4ed8;
+  display: block;
+  font-size: .53rem;
+  font-weight: 900;
+  left: -.85rem;
+  letter-spacing: .08em;
+  line-height: 1;
+  padding: .18rem 0;
+  position: absolute;
+  text-align: center;
+  top: .78rem;
+  transform: rotate(45deg);
+  width: 5rem;
+}
+
+[data-theme="dark"] .fullRibbon span {
+  background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%);
+  color: #dbeafe;
+}

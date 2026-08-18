@@ -67,18 +67,51 @@ const navItems: Array<{
   },
 ];
 
+import { catalog } from "@/lib/catalog";
+
+const DEFAULT_CATEGORIES = [
+  { id: "1", name: "Chữa Lành", slug: "chua-lanh" },
+  { id: "2", name: "Cổ Đại", slug: "co-dai" },
+  { id: "3", name: "Đô Thị", slug: "do-thi" },
+  { id: "4", name: "Hài Hước", slug: "hai-huoc" },
+  { id: "5", name: "Ngôn Tình", slug: "ngon-tinh" },
+  { id: "6", name: "Trọng Sinh", slug: "trong-sinh" },
+  { id: "7", name: "Vả Mặt", slug: "va-mat" },
+  { id: "8", name: "Zhihu", slug: "zhihu" },
+];
+
 export function MainNav() {
   const location = useLocation();
   const pathname = location.pathname;
   const [open, setOpen] = useState(false);
+  const [catDropdownOpen, setCatDropdownOpen] = useState(false);
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
 
-  // Closing on navigation matters because the links stay mounted: without this
-  // the panel would still cover the page the reader just opened.
+  useEffect(() => {
+    let isMounted = true;
+    catalog
+      .categories()
+      .then((res) => {
+        if (res?.groups && isMounted) {
+          const fetched = res.groups.flatMap((g) => g.categories);
+          if (fetched.length > 0) {
+            setCategories(fetched);
+          }
+        }
+      })
+      .catch(() => {
+        // Fallback to default
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   useEffect(() => {
     setOpen(false);
+    setCatDropdownOpen(false);
   }, [pathname]);
 
-  // A panel that covers the viewport must not scroll the page behind it.
   useEffect(() => {
     if (!open) return undefined;
     const previous = document.body.style.overflow;
@@ -110,6 +143,46 @@ export function MainNav() {
       >
         {navItems.map((item) => {
           const Icon = item.icon;
+          const isCategoryItem = item.href === "/categories";
+
+          if (isCategoryItem) {
+            return (
+              <div
+                className="mainNavDropdownWrapper"
+                key={item.href}
+                onMouseEnter={() => setCatDropdownOpen(true)}
+                onMouseLeave={() => setCatDropdownOpen(false)}
+                style={{ position: "relative" }}
+              >
+                <Link
+                  aria-current={item.match(pathname) ? "page" : undefined}
+                  to={item.href}
+                  onClick={() => setCatDropdownOpen(false)}
+                >
+                  <Icon aria-hidden="true" />
+                  <span>{item.label}</span>
+                  <span style={{ fontSize: "0.65rem", marginLeft: "2px" }}>▼</span>
+                </Link>
+
+                {catDropdownOpen ? (
+                  <div className="categoryNavDropdownMenu">
+                    {categories.map((cat) => (
+                      <Link
+                        key={cat.slug}
+                        to={`/categories/${cat.slug}`}
+                        onClick={() => setCatDropdownOpen(false)}
+                        className="categoryDropdownItem"
+                      >
+                        <span className="dropdownChevron">›</span>
+                        <span>{cat.name}</span>
+                      </Link>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            );
+          }
+
           return (
             <Link
               aria-current={item.match(pathname) ? "page" : undefined}

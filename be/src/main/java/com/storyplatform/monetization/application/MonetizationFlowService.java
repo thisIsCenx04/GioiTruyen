@@ -1,6 +1,7 @@
 package com.storyplatform.monetization.application;
 
 import com.storyplatform.monetization.application.dto.ChapterUnlockResponse;
+import com.storyplatform.monetization.application.dto.ComboPurchaseResponse;
 import com.storyplatform.monetization.application.dto.DonationRequest;
 import com.storyplatform.monetization.application.dto.DonationResponse;
 import com.storyplatform.monetization.application.dto.WalletResponse;
@@ -21,6 +22,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class MonetizationFlowService {
+
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(MonetizationFlowService.class);
 
     private static final BigDecimal DEFAULT_PURCHASE_FEE_RATE = new BigDecimal("0.20");
     private static final BigDecimal DEFAULT_DONATION_FEE_RATE = new BigDecimal("0.10");
@@ -109,7 +113,212 @@ public class MonetizationFlowService {
         insertWalletTransaction(transactionId, userId, "PURCHASE", -chapter.coinPrice(), newBalance, "PURCHASE_ORDER", orderId, "Unlock chapter", now);
         insertTeamLedger(ledgerId, chapter.teamId(), "STORY_PURCHASE", chapter.coinPrice(), platformFee, teamNet, "CHAPTER_UNLOCK", unlockId, now);
         incrementTeamRevenue(chapter.teamId(), teamNet);
+        notifyTeamOfPurchase(chapter.teamId(), chapter.storyId(), teamNet);
         return new ChapterUnlockResponse(chapter.id(), chapter.storyId(), chapter.coinPrice(), newBalance, false);
+    }
+
+    public boolean hasPurchasedStoryCombo(UUID userId, UUID storyId) {
+        if (userId == null || storyId == null) return false;
+        Integer count = jdbc.getJdbcTemplate().queryForObject(
+                "SELECT COUNT(*) FROM story_combo_purchases WHERE user_id = ? AND story_id = ?",
+                Integer.class,
+                userId.toString(),
+                storyId.toString()
+        );
+        return count != null && count > 0;
+    }
+
+    /**
+     * Tells the publishing team a chapter of theirs was bought.
+     *
+     * <p>Goes to every active member, since any of them may be the one watching
+     * the inbox. The buyer is deliberately not named: who reads what is the
+     * reader's business, and the team only needs to know a sale happened and
+     * what it earned.
+     *
+     * <p>Failures are swallowed. The coins have already moved by the time this
+     * runs, and losing a notification must not roll back a completed purchase
+     * or fail the reader's unlock.
+     */
+    private void notifyTeamOfPurchase(UUID teamId, UUID storyId, long teamNetCoin) {
+        try {
+            String title = jdbc.queryForObject(
+                    "SELECT title FROM stories WHERE id = :storyId",
+                    new MapSqlParameterSource("storyId", storyId.toString()),
+                    String.class
+            );
+            jdbc.update(
+                    """
+                            INSERT INTO notifications
+                                (id, user_id, type, title, message, target_type, target_id, target_url)
+                            SELECT UUID(), tm.user_id, 'PURCHASE', :title, :message,
+                                   'STORY', :storyId, :url
+                            FROM team_members tm
+                            WHERE tm.team_id = :teamId AND tm.status = 'ACTIVE'
+                            """,
+                    new MapSqlParameterSource()
+                            .addValue("title", "Có độc giả mua chương")
+                            .addValue("message", "Một chương của \"%s\" vừa được mua. Nhóm nhận %d xu."
+                                    .formatted(title == null ? "truyện của bạn" : title, teamNetCoin))
+                            .addValue("storyId", storyId.toString())
+                            .addValue("url", "/teams/" + teamId + "/dashboard")
+                            .addValue("teamId", teamId.toString())
+            );
+        } catch (Exception exception) {
+            log.warn("Could not notify team {} of a chapter purchase", teamId, exception);
+        }
+    }
+
+    private record StoryComboInfo(UUID storyId, UUID teamId, long comboPriceXu) {}
+
+    /**
+     * What a combo costs and whether that is actually a discount.
+     *
+     * <p>The client used to derive all of this itself - guessing that the first
+     * three chapters are free, hard-coding 10 Xu per chapter and applying a 30%
+     * default discount - so the price on screen had no connection to the chapter
+     * prices in the database or to what the purchase endpoint would charge.
+     * These are the real figures.
+     *
+     * @param chapterTotalXu what the chapters cost bought one by one
+     * @param comboPriceXu what the combo charges
+     * @param configured true when someone set a combo price on purpose; false
+     *        means the combo is simply the sum, and no discount should be shown
+     * @param discountPercent 0 unless a configured price undercuts the sum
+     */
+    public record ComboPricing(
+            long chapterTotalXu,
+            long comboPriceXu,
+            boolean configured,
+            int discountPercent
+    ) {}
+
+    @Transactional(readOnly = true)
+    public ComboPricing comboPricing(UUID storyId) {
+        Long configured = jdbc.getJdbcTemplate().queryForObject(
+                "SELECT COALESCE(combo_price_xu, 0) FROM stories WHERE id = ?",
+                Long.class,
+                storyId.toString()
+        );
+        long configuredPrice = configured == null ? 0L : configured;
+        long chapterTotal = chapterTotalCoin(storyId);
+        long price = configuredPrice > 0 ? configuredPrice : chapterTotal;
+
+        // A configured price above the sum is not a discount, so it reports 0
+        // rather than a negative saving.
+        int discount = 0;
+        if (configuredPrice > 0 && chapterTotal > 0 && configuredPrice < chapterTotal) {
+            discount = (int) Math.round((chapterTotal - configuredPrice) * 100.0 / chapterTotal);
+        }
+        return new ComboPricing(chapterTotal, price, configuredPrice > 0, discount);
+    }
+
+    /** Sum of what the chapters cost individually - the combo's list price. */
+    private long chapterTotalCoin(UUID storyId) {
+        Long total = jdbc.getJdbcTemplate().queryForObject(
+                "SELECT COALESCE(SUM(coin_price), 0) FROM chapters WHERE story_id = ?",
+                Long.class,
+                storyId.toString()
+        );
+        return total == null ? 0L : total;
+    }
+
+    /**
+     * The price a combo actually charges.
+     *
+     * <p>An unset {@code combo_price_xu} means "no bundle deal": the combo costs
+     * exactly what the chapters add up to. It used to quietly charge
+     * {@code max(10, round(sum * 0.7))}, which invented a 30% discount nobody
+     * configured, billed 10 Xu for a story whose chapters were all free, and fell
+     * back to 100 Xu when the sum was absent. A discount now only exists when
+     * someone sets a lower total on purpose.
+     */
+    private long comboPriceFor(UUID storyId, long configuredPrice) {
+        return configuredPrice > 0 ? configuredPrice : chapterTotalCoin(storyId);
+    }
+
+    @Transactional
+    public ComboPurchaseResponse purchaseStoryCombo(UUID userId, UUID storyId) {
+        if (hasPurchasedStoryCombo(userId, storyId)) {
+            return new ComboPurchaseResponse(storyId, 0, currentCoinBalance(userId), true);
+        }
+
+        StoryComboInfo storyInfo = jdbc.getJdbcTemplate().query(
+                "SELECT id, team_id, combo_price_xu FROM stories WHERE id = ?",
+                (rs, rowNum) -> new StoryComboInfo(
+                        UUID.fromString(rs.getString("id")),
+                        rs.getString("team_id") != null ? UUID.fromString(rs.getString("team_id")) : null,
+                        rs.getObject("combo_price_xu") != null ? rs.getLong("combo_price_xu") : 0L
+                ),
+                storyId.toString()
+        ).stream().findFirst().orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "story.not_found", "Story not found", "Story does not exist"));
+
+        long comboPrice = comboPriceFor(storyId, storyInfo.comboPriceXu());
+        // Nothing to sell: every chapter is already free and no combo total was
+        // configured. The UI hides the combo in this case, but the endpoint is
+        // reachable on its own, and recording a 0 Xu "purchase" would create a
+        // paid-unlock record for a story that was never behind a paywall.
+        if (comboPrice <= 0) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "story.combo_not_for_sale",
+                    "Story has no paid chapters",
+                    "Truyện này đang miễn phí toàn bộ, không cần mua combo.");
+        }
+
+        WalletBalance wallet = lockWallet(userId);
+        if (wallet.coinBalance() < comboPrice) {
+            throw new ApiException(HttpStatus.CONFLICT, "wallet.insufficient_coin", "Insufficient coin balance", "Not enough coin to buy story combo");
+        }
+
+        long newBalance = wallet.coinBalance() - comboPrice;
+        updateCoinBalance(userId, newBalance);
+
+        UUID orderId = UUID.randomUUID();
+        UUID comboPurchaseId = UUID.randomUUID();
+        UUID transactionId = UUID.randomUUID();
+        UUID ledgerId = UUID.randomUUID();
+        Instant now = Instant.now();
+
+        long platformFee = fee(comboPrice, DEFAULT_PURCHASE_FEE_RATE, "story_combo");
+        long teamNet = comboPrice - platformFee;
+
+        jdbc.update(
+                """
+                -- purchase_type is an enum of SINGLE_CHAPTER / CHAPTER_RANGE /
+                -- FULL_STORY. This wrote 'STORY_COMBO', which is not one of them,
+                -- so MySQL rejected the row ("Data truncated for column
+                -- 'purchase_type'") and the whole purchase failed. Buying every
+                -- chapter at once is exactly FULL_STORY.
+                INSERT INTO purchase_orders (id, user_id, story_id, purchase_type, total_coin, created_at)
+                VALUES (:id, :userId, :storyId, 'FULL_STORY', :totalCoin, :createdAt)
+                """,
+                new MapSqlParameterSource()
+                        .addValue("id", orderId.toString())
+                        .addValue("userId", userId.toString())
+                        .addValue("storyId", storyId.toString())
+                        .addValue("totalCoin", comboPrice)
+                        .addValue("createdAt", now)
+        );
+
+        jdbc.update(
+                """
+                INSERT INTO story_combo_purchases (id, user_id, story_id, price_xu, created_at)
+                VALUES (:id, :userId, :storyId, :priceXu, :createdAt)
+                """,
+                new MapSqlParameterSource()
+                        .addValue("id", comboPurchaseId.toString())
+                        .addValue("userId", userId.toString())
+                        .addValue("storyId", storyId.toString())
+                        .addValue("priceXu", comboPrice)
+                        .addValue("createdAt", now)
+        );
+
+        insertWalletTransaction(transactionId, userId, "PURCHASE", -comboPrice, newBalance, "PURCHASE_ORDER", orderId, "Buy story full combo", now);
+        if (storyInfo.teamId() != null) {
+            insertTeamLedger(ledgerId, storyInfo.teamId(), "STORY_PURCHASE", comboPrice, platformFee, teamNet, "STORY_COMBO", comboPurchaseId, now);
+            incrementTeamRevenue(storyInfo.teamId(), teamNet);
+        }
+
+        return new ComboPurchaseResponse(storyId, comboPrice, newBalance, true);
     }
 
     @Transactional

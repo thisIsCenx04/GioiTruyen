@@ -47,6 +47,10 @@ function ReactionButton({ commentId }: Readonly<{ commentId: string }>) {
       setReaction(reaction.active
         ? await api.remove("COMMENT", commentId)
         : await api.add("COMMENT", commentId));
+    } catch {
+      // Reading the count is public but pressing the heart is not, so a guest
+      // gets a 401 here. The count stays as it was rather than the tap
+      // throwing; the sign-in link beside the comment box is the way through.
     } finally {
       setBusy(false);
     }
@@ -176,14 +180,12 @@ export function Comments({ targetId, targetType }: Props) {
     setBusy(true);
     try {
       const report = await reports.create({
-        ...(reportDetail.trim() ? { detail: reportDetail } : {}),
-        reasonCode: reportReason,
+        ...(reportDetail.trim() ? { description: reportDetail.trim() } : {}),
+        reportType: reportReason,
         targetId: reportTarget.id,
         targetType: "comment",
       });
-      setNotice(report.duplicate
-        ? "Báo cáo này đã được tiếp nhận trước đó."
-        : "Đã gửi báo cáo đến đội kiểm duyệt.");
+      setNotice(report.message || "Đã gửi báo cáo đến đội kiểm duyệt.");
       setReportTarget(null);
       setReportDetail("");
     } catch (error) {

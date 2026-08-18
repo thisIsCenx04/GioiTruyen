@@ -14,6 +14,9 @@ import { API_BASE_URL, authedFetch } from "@/lib/api-base";
 
 const options = [100, 500, 1_000, 5_000] as const;
 
+/** Matches the ceiling the wallet enforces server-side. */
+const MAX_AMOUNT = 1_000_000_000;
+
 function xu(value: number) {
   return new Intl.NumberFormat("vi-VN").format(value);
 }
@@ -23,7 +26,9 @@ function messageFor(error: unknown) {
     if (error.problem.status === 401) {
       return "Đăng nhập để gửi XU cho đội ngũ sáng tác.";
     }
-    if (error.problem.status === 422) {
+    // The wallet answers 409 when the balance will not cover the gift; 422 is
+    // kept because the validation layer uses it for an out-of-range amount.
+    if (error.problem.status === 409 || error.problem.status === 422) {
       return "Số dư khả dụng chưa đủ cho món quà này.";
     }
     return error.problem.detail ?? "Chưa thể gửi XU lúc này.";
@@ -62,6 +67,8 @@ export function DonationJourney({
   const panelRef = useRef<HTMLElement>(null);
   const [confirming, setConfirming] = useState(false);
   const [amount, setAmount] = useState(500);
+  /** Held as text so the box can legitimately be empty while being typed in. */
+  const [customAmount, setCustomAmount] = useState("");
   const [note, setNote] = useState("");
   const [balance, setBalance] = useState<number | null>(null);
   const [receipt, setReceipt] = useState<DonationReceipt | null>(null);
@@ -72,7 +79,7 @@ export function DonationJourney({
   useEffect(() => {
     if (!open || balance !== null) return;
     void api.balance()
-      .then((wallet) => setBalance(wallet.availableXu))
+      .then((wallet) => setBalance(wallet.coinBalance))
       .catch((requestError) => setError(messageFor(requestError)));
   }, [api, balance, open]);
 
@@ -82,19 +89,47 @@ export function DonationJourney({
     retryKey.current = null;
   }
 
+  /**
+   * The custom box holds text, not a number.
+   *
+   * Binding a number straight to the input made it impossible to clear: an
+   * empty field parses as 0, React wrote the 0 back, and the reader could
+   * never delete the leading digit to type a different figure. The typed text
+   * is kept as-is and only interpreted when it is a real number.
+   */
+  function changeCustomAmount(raw: string) {
+    const digitsOnly = raw.replace(/[^\d]/gu, "");
+    setCustomAmount(digitsOnly);
+    setConfirming(false);
+    retryKey.current = null;
+    setAmount(digitsOnly === "" ? 0 : Number(digitsOnly));
+  }
+
+  // Why the reader cannot continue, in their own terms. A button that is
+  // merely disabled says nothing, and "donate is broken" is the reasonable
+  // conclusion to draw from one.
+  const blockedReason = amount < 1
+    ? "Hãy nhập số XU muốn gửi."
+    : amount > MAX_AMOUNT
+      ? `Mỗi lần gửi tối đa ${xu(MAX_AMOUNT)} XU.`
+      : balance !== null && amount > balance
+        ? `Số dư của bạn là ${xu(balance)} XU, chưa đủ để gửi ${xu(amount)} XU.`
+        : "";
+
   async function submit() {
-    if (working || amount < 1 || amount > 1_000_000_000) return;
+    if (working || blockedReason !== "") return;
     setWorking(true);
     retryKey.current ??= safeUUID();
     try {
       const nextReceipt = await api.donate(
-        { amountXu: amount, message: note.trim(), teamId },
+        teamId,
+        { coinAmount: amount, message: note.trim() },
         retryKey.current,
       );
       setReceipt(nextReceipt);
-      setBalance((current) => current === null
-        ? current
-        : Math.max(0, current - nextReceipt.amountXu));
+      // The reply already carries the balance the ledger settled on, so it is
+      // read back rather than recomputed from the amount that was asked for.
+      setBalance(nextReceipt.coinBalance);
       setError("");
       retryKey.current = null;
     } catch (requestError) {
@@ -154,7 +189,7 @@ export function DonationJourney({
         <div className={styles.success} role="status">
           <span className={styles.seal} aria-hidden="true">GT</span>
           <div>
-            <strong>{xu(receipt.amountXu)} XU đã được gửi.</strong>
+            <strong>{xu(receipt.grossCoin)} XU đã được gửi.</strong>
             <p>
               Món quà cho đội ngũ của “{storyTitle}” đã ghi vào sổ giao dịch.
             </p>
@@ -172,27 +207,37 @@ export function DonationJourney({
             <legend>Chọn số XU</legend>
             {options.map((option) => (
               <button
-                aria-pressed={amount === option}
+                aria-pressed={amount === option && customAmount === ""}
                 key={option}
-                onClick={() => changeAmount(option)}
+                onClick={() => {
+                  setCustomAmount("");
+                  changeAmount(option);
+                }}
                 type="button"
               >
                 {xu(option)}
               </button>
             ))}
-            <label>
-              <span>Tùy chọn</span>
+            <label className={styles.customAmount}>
+              <span>Hoặc nhập số XU bất kỳ</span>
               <input
                 aria-label="Số XU tùy chọn"
                 inputMode="numeric"
-                max={1_000_000_000}
-                min={1}
-                onChange={(event) => changeAmount(Number(event.target.value))}
-                type="number"
-                value={amount}
+                onChange={(event) => changeCustomAmount(event.target.value)}
+                placeholder="Ví dụ: 250"
+                type="text"
+                value={customAmount}
               />
+              <em>XU</em>
             </label>
           </fieldset>
+
+          {blockedReason && !error ? (
+            <p className={styles.blocked} role="status">
+              {blockedReason}
+              {balance !== null && amount > balance ? <Link to="/wallet">Nạp thêm XU</Link> : null}
+            </p>
+          ) : null}
 
           <label className={styles.note}>
             <span>Lời nhắn cho đội ngũ · không bắt buộc</span>
@@ -228,12 +273,7 @@ export function DonationJourney({
                   Xem lại
                 </button>
                 <button
-                  disabled={
-                    working ||
-                    amount < 1 ||
-                    amount > 1_000_000_000 ||
-                    (balance !== null && amount > balance)
-                  }
+                  disabled={working || blockedReason !== ""}
                   onClick={() => void submit()}
                   type="button"
                 >
@@ -244,11 +284,7 @@ export function DonationJourney({
           ) : (
             <button
               className={styles.continue}
-              disabled={
-                amount < 1 ||
-                amount > 1_000_000_000 ||
-                (balance !== null && amount > balance)
-              }
+              disabled={blockedReason !== ""}
               onClick={() => {
                 setError("");
                 setConfirming(true);

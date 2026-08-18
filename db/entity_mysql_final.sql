@@ -1,10 +1,19 @@
 -- ============================================================================
--- Gioitruyen / Web Truyen - Canonical MySQL Schema Reference
+-- Gioitruyen / Web Truyen - DESIGN REFERENCE ONLY. NOT THE LIVE SCHEMA.
 -- Target: MySQL 8.0.16+ / InnoDB / utf8mb4
 -- Intended stack: Spring Boot 3 + Java 21 + JPA/Hibernate + Flyway
--- IMPORTANT: For an existing database, do not replace applied Flyway migrations.
---            Use this file as the canonical model/reference and create forward-only
---            migrations for differences.
+--
+-- DO NOT RUN THIS FILE against any database, local or production.
+--
+-- It models ids as BINARY(16) (UUID_TO_BIN), but the schema actually deployed
+-- by Flyway uses VARCHAR(36) - see be/src/main/resources/db/migration/V1__init_schema.sql.
+-- The two are incompatible, so anything written against this file (notably the
+-- old db/seed_mysql_dev.sql) fails on every insert.
+--
+-- The live schema is defined ONLY by be/src/main/resources/db/migration/V*.sql.
+-- Local sample data comes ONLY from be/src/main/resources/db/seed/R__local_seed_data.sql.
+-- Treat this file as a design document; express any change as a forward-only
+-- Flyway migration instead.
 -- ============================================================================
 
 SET NAMES utf8mb4;

@@ -4,9 +4,8 @@
  * The catalog types mirror `CatalogDtos` on the backend field for field, since
  * those drive every reader-facing page. The rest are looser: several of them
  * belong to endpoints this backend does not implement yet (moderation,
- * publishing, reading history, reactions, reports, story relations), so there
- * is no server contract to mirror and the screens that use them cannot work
- * until those controllers exist.
+ * publishing, admin monetization), so there is no server contract to mirror and
+ * the screens that use them cannot work until those controllers exist.
  */
 
 /**
@@ -34,6 +33,10 @@ export type HomeStorySummary = {
   /** TEXT, AUDIO, EXCLUSIVE or ORIGINAL. */
   storyType: string;
   originalAuthor?: string | null;
+  /** Newest published chapter number; 0 when nothing is published. */
+  latestChapterNumber?: number;
+  /** ONGOING, COMPLETED or HIATUS - drives the FULL ribbon on a card. */
+  progressStatus?: string;
 };
 
 export type PublicStory = {
@@ -105,7 +108,13 @@ export type ChapterPage = {
   totalPages: number;
 };
 
-export type CategoryItem = { id: string; slug: string; name: string };
+export type CategoryItem = {
+  id: string;
+  slug: string;
+  name: string;
+  /** Published stories in this genre, counted server-side and uncapped. */
+  storyCount: number;
+};
 export type CategoryGroup = { group: string; label: string; categories: CategoryItem[] };
 export type CategoryTaxonomy = { version: string; groups: CategoryGroup[] };
 
@@ -167,8 +176,36 @@ export type SuggestionResponse = {
 
 /* ------------------------------------------------------------------- wallet */
 
-export type WalletBalance = Unspecified;
-export type DonationReceipt = Unspecified;
+/** The reader's two balances, as WalletResponse names them. */
+export type WalletBalance = {
+  coinBalance: number;
+  gemBalance: number;
+  updatedAt: string;
+} & Unspecified;
+
+/**
+ * What a donation may carry. DonationRequest declares exactly these fields and
+ * the backend refuses any other property outright, so the shape is closed
+ * rather than an open record.
+ */
+export type DonationInput = {
+  /** Xu given, before the platform's share. */
+  coinAmount: number;
+  /** Ties the gift to one story; the team is named by the path instead. */
+  storyId?: string | null;
+  message?: string | null;
+};
+
+/** DonationResponse: what left the wallet, what the team keeps, what remains. */
+export type DonationReceipt = {
+  donationId: string;
+  teamId: string;
+  storyId: string | null;
+  grossCoin: number;
+  platformFeeCoin: number;
+  teamNetCoin: number;
+  coinBalance: number;
+} & Unspecified;
 
 /** Used as a lookup key for the wallet's status copy, so it is a closed set. */
 export type TopupStatus = "AWAITING_PAYMENT" | "PENDING_REVIEW" | "CREDITED" | "REJECTED";
@@ -226,7 +263,7 @@ export type NotificationReadWatermark = { readBefore: string; unreadCount: numbe
 export type PushSubscriptionReceipt = { id: string };
 export type ReactionState = { active: boolean; count: number };
 
-/* ---------------------------------------------------- no backend controller */
+/* ------------------------------------------------- moderation and reporting */
 
 /** Lower-case on the wire, which is how the report forms submit them. */
 export type ReportReason =
@@ -240,11 +277,15 @@ export type ReportReason =
 export type ReportRequest = {
   targetType: string;
   targetId: string;
-  reasonCode: ReportReason | string;
-  detail?: string;
+  /** Named after the `report_type` column ReportController writes it to. */
+  reportType: ReportReason | string;
+  description?: string;
 };
-/** `duplicate` marks a report the queue had already accepted. */
-export type ReportReceipt = { id?: string; duplicate?: boolean } & Unspecified;
+export type ReportReceipt = {
+  reportId: string;
+  status: string;
+  message: string;
+} & Unspecified;
 
 export type AuthSession = Unspecified;
 export type ModerationCase = { id: string } & Unspecified;

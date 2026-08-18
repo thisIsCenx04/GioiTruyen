@@ -100,12 +100,33 @@ export async function loadHome() {
     withTimeout(catalog.storySections(), 10000, [], outcome),
     withTimeout(catalog.rankingBoards(), 10000, [], outcome),
   ]);
+
+  // One "all stories" shelf in front of the API's own sections, built from the
+  // sections themselves - deduplicated because a story can appear in several.
+  const allStories = [
+    ...new Map(
+      storySections.flatMap((section) => section.stories).map((story) => [story.id, story]),
+    ).values(),
+  ];
+
+  const mergedStorySections = allStories.length > 0
+    ? [
+        {
+          id: "sec-all-stories",
+          tag: "all",
+          title: "TRUYỆN MỚI CẬP NHẬT",
+          stories: allStories,
+        },
+        ...storySections,
+      ]
+    : storySections;
+
   return {
     ...home,
     degraded: outcome.degraded,
     promotions,
     rankingBoards,
-    storySections,
+    storySections: mergedStorySections,
     taxonomy,
   };
 }
@@ -155,8 +176,22 @@ async function fetchJson<T>(path: string): Promise<T> {
   return (await response.json()) as T;
 }
 
-export async function loadRankingBoards() {
-  return withTimeout(catalog.rankingBoards(), 10000, []);
+/** Ranking window the boards can be scoped to. */
+export type RankingPeriod = "WEEK" | "MONTH" | "ALL";
+
+/**
+ * The public ranking boards, optionally over a window.
+ *
+ * The generated client has no period parameter, so a scoped request goes
+ * through `fetchJson`; the unscoped call keeps using the client.
+ */
+export async function loadRankingBoards(period?: RankingPeriod) {
+  if (!period) return withTimeout(catalog.rankingBoards(), 10000, []);
+  return withTimeout(
+    fetchJson<Awaited<ReturnType<typeof catalog.rankingBoards>>>(`/rankings/boards?period=${period}`),
+    10000,
+    [],
+  );
 }
 
 /** Stories carrying a tag. Tags are editorial labels, separate from genres. */
@@ -213,15 +248,6 @@ export async function loadStoryDetail(identifier: string, page = 1) {
     .flatMap((group) => group.categories)
     .filter((category) => story.categoryIds.includes(category.id));
 
-  // A one-page story is read on this very page, so its single chapter's body is
-  // fetched here rather than making the reader click through to a chapter route.
-  const oneshotChapterId = (story as { storyFormat?: string }).storyFormat === "ONESHOT"
-    ? chapters.items[0]?.id
-    : undefined;
-  const oneshotChapter = oneshotChapterId
-    ? await withTimeout(catalog.chapter(oneshotChapterId), 10000, null)
-    : null;
-
   // "Đọc từ đầu" and "Đọc tập mới" point at the ends of the whole story, not of
   // the page being viewed, so they are fetched as single rows rather than by
   // pulling every chapter back just to look at the first and last.
@@ -243,7 +269,6 @@ export async function loadStoryDetail(identifier: string, page = 1) {
     chapters,
     firstChapter,
     latestChapter,
-    oneshotChapter,
     relatedStories,
     story,
     summary,

@@ -1,5 +1,5 @@
 import type { HomeStorySummary } from "@gioitruyen/api-client";
-import { ArrowRight, BookOpenText, Clock3, MessageSquareQuote } from "lucide-react";
+import { ArrowRight, Clock3 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { CatalogStoryCard } from "@/components/catalog-story-card";
@@ -61,114 +61,67 @@ export default async function ZhihuPage() {
   return (
     <PublicShell>
       <main className="zhihuPageShell">
-        <section className="zhihuHero">
-          <div className="zhihuHeroBackdrop" />
-          <div className="zhihuHeroInner">
-            <div className="zhihuHeroCopy">
-              <span className="zhihuEyebrow">
-                <MessageSquareQuote aria-hidden="true" />
-                Truyện ngắn một trang
-              </span>
-              <h1>Truyện Zhihu đọc nhanh, cuốn gọn, nhiều cảm xúc.</h1>
-              <p>
-                Mỗi truyện đọc trọn trong một trang, không chia chương, không phải
-                chờ tập mới. Hợp để mở ra khi bạn chỉ có vài phút rảnh.
-              </p>
-              <div className="zhihuHeroActions">
-                <Link to="#zhihu-list">
-                  Đọc danh sách
-                  <ArrowRight aria-hidden="true" />
-                </Link>
-                <Link to="/categories">Xem thể loại khác</Link>
-              </div>
-            </div>
+        <div className="zhihuContentLayout" id="zhihu-list">
+          <header className="zhihuPageHeading">
+            <h1>TRUYỆN NGẮN ZHIHU</h1>
+            <span>{allStories.length} bộ truyện</span>
+          </header>
 
-            <aside className="zhihuFeatureCard">
-              <span>Gợi ý đầu tiên</span>
-              {featuredStory ? (
-                <>
-                  <h2>{featuredStory.title}</h2>
-                  <p>{new Date(featuredStory.publishedAt).toLocaleDateString("vi-VN")}</p>
-                  <Link to={`/truyen/${featuredStory.slug}`}>Đọc ngay</Link>
-                </>
-              ) : (
-                <>
-                  <h2>Chưa có truyện ngắn</h2>
-                  <p>Khi admin đăng truyện dạng một trang, danh sách sẽ hiện ở đây.</p>
-                </>
-              )}
-            </aside>
-          </div>
-        </section>
+          {allStories.length === 0 ? (
+            <p className="emptyCatalog">Chưa có truyện ngắn nào được đăng.</p>
+          ) : (
+            sections
+              .filter((section) => section.stories.length > 0)
+              .map((section) => (
+                <section className="zhihuShelf" key={section.id}>
+                  <header>
+                    <h2>{section.title}</h2>
+                    <span>{section.stories.length} truyện</span>
+                  </header>
+                  <div className="catalogGrid catalogGridVertical zhihuStoryGrid">
+                    {section.stories.map((story, index) => (
+                      <CatalogStoryCard index={index} key={story.id} story={story} />
+                    ))}
+                  </div>
+                </section>
+              ))
+          )}
 
-        <section className="zhihuQuickStats" aria-label="Điểm nổi bật">
-          <article>
-            <BookOpenText aria-hidden="true" />
-            <strong>{allStories.length}</strong>
-            <span>truyện ngắn</span>
-          </article>
-          <article>
-            <Clock3 aria-hidden="true" />
-            <strong>một trang</strong>
-            <span>đọc hết trong một lần</span>
-          </article>
-          <article>
-            <MessageSquareQuote aria-hidden="true" />
-            <strong>đời thường</strong>
-            <span>hợp các mẩu chuyện cảm xúc</span>
-          </article>
-        </section>
-
-        <section className="zhihuContentLayout" id="zhihu-list">
-          <div className="zhihuMainList">
-            {allStories.length === 0 ? (
-              <>
+          {/* Browsing aids sit under the list: on this page the stories are the
+              point, and a right rail left the grid boxed into a third of the
+              viewport while the rail itself ran mostly empty. */}
+          {allStories.length > 0 ? (
+            <div className="zhihuBottomRail">
+              <section className="zhihuLatestPanel">
                 <header>
-                  <span>Danh sách truyện</span>
-                  <h2>Truyện ngắn Zhihu</h2>
+                  <h2>
+                    <Clock3 aria-hidden="true" size={16} />
+                    Mới cập nhật
+                  </h2>
+                  <Link to="/stories">
+                    Xem tất cả
+                    <ArrowRight aria-hidden="true" size={14} />
+                  </Link>
                 </header>
-                <p className="emptyCatalog">Chưa có truyện ngắn nào được đăng.</p>
-              </>
-            ) : (
-              sections
-                .filter((section) => section.stories.length > 0)
-                .map((section) => (
-                  <section className="zhihuShelf" key={section.id}>
-                    <header>
-                      <span>Danh sách truyện</span>
-                      <h2>{section.title}</h2>
-                    </header>
-                    <div className="catalogGrid catalogGridLarge catalogGridVertical">
-                      {section.stories.map((story, index) => (
-                        <CatalogStoryCard index={index} key={story.id} story={story} />
-                      ))}
-                    </div>
-                  </section>
-                ))
-            )}
+                <ol>
+                  {latestStories.map((story, index) => (
+                    <li key={story.id}>
+                      <b>{index + 1}</b>
+                      <Link to={`/truyen/${story.slug}`}>{story.title}</Link>
+                      <span>{new Date(story.publishedAt).toLocaleDateString("vi-VN")}</span>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+              <RankingPanel
+                stories={rankedStories.length > 0 ? rankedStories : allStories}
+                title="Bảng xếp hạng truyện ngắn"
+              />
+            </div>
+          ) : null}
 
-            <CommunityChat channel="zhihu" title="Cộng đồng truyện ngắn" />
-          </div>
-
-          <aside className="zhihuSideRail">
-            <section>
-              <h2>Mới cập nhật</h2>
-              <ol>
-                {latestStories.map((story, index) => (
-                  <li key={story.id}>
-                    <b>{index + 1}</b>
-                    <Link to={`/truyen/${story.slug}`}>{story.title}</Link>
-                    <span>{new Date(story.publishedAt).toLocaleDateString("vi-VN")}</span>
-                  </li>
-                ))}
-              </ol>
-            </section>
-            <RankingPanel
-              stories={rankedStories.length > 0 ? rankedStories : allStories}
-              title="Bảng xếp hạng truyện ngắn"
-            />
-          </aside>
-        </section>
+          <CommunityChat channel="zhihu" title="Cộng đồng truyện ngắn" />
+        </div>
       </main>
     </PublicShell>
   );

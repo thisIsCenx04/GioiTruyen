@@ -2,7 +2,7 @@
 
 .controls {
   align-items: center;
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid #dfeaf6;
   border-radius: .6rem;
   display: flex;
@@ -14,7 +14,7 @@
 
 .search {
   align-items: center;
-  background: #f8fafc;
+  background: var(--surface-sunken);
   border: 1px solid #dfeaf6;
   border-radius: .5rem;
   display: flex;
@@ -31,20 +31,20 @@
   outline: none;
 }
 
-.search svg { color: #94a3b8; height: 1rem; width: 1rem; }
+.search svg { color: var(--text-muted); height: 1rem; width: 1rem; }
 
 .filter { align-items: center; display: flex; gap: .4rem; }
-.filter span { color: #64748b; font-size: .82rem; white-space: nowrap; }
+.filter span { color: var(--text-muted); font-size: .82rem; white-space: nowrap; }
 
 .filter select {
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid #dfeaf6;
   border-radius: .45rem;
   font: inherit;
   padding: .35rem .5rem;
 }
 
-.resultCount { color: #64748b; font-size: .82rem; margin-left: auto; }
+.resultCount { color: var(--text-muted); font-size: .82rem; margin-left: auto; }
 
 /* Wide tables scroll inside their own box; the page never scrolls sideways. */
 .scroll {
@@ -54,7 +54,7 @@
 }
 
 .table {
-  background: #fff;
+  background: var(--surface-card);
   border-collapse: collapse;
   min-width: 100%;
   width: max-content;
@@ -70,8 +70,8 @@
 }
 
 .table thead th {
-  background: #f8fafc;
-  color: #475569;
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
   font-size: .78rem;
   font-weight: 700;
   letter-spacing: .02em;
@@ -85,7 +85,7 @@
   position: sticky;
   right: 0;
   z-index: 3;
-  background: #f8fafc;
+  background: var(--surface-sunken);
   box-shadow: -4px 0 8px rgba(0, 0, 0, 0.04);
 }
 
@@ -101,7 +101,7 @@
   padding: 0;
 }
 
-.table thead button:hover { color: #1d3557; }
+.table thead button:hover { color: var(--text-primary); }
 .table thead svg { height: .85rem; width: .85rem; }
 
 /* Present but quiet until the column is the one being sorted on. */
@@ -111,11 +111,11 @@
   transition: background-color 0.15s ease;
 }
 
-.table tbody tr:hover { background: #f1f5f9; }
+.table tbody tr:hover { background: var(--surface-sunken); }
 
 /* ROW COLORING HIGHLIGHTS */
 .rowPublished {
-  background-color: #f0fdf4 !important;
+  background-color: var(--success-soft) !important;
 }
 
 .rowPublished:hover {
@@ -131,11 +131,11 @@
 }
 
 .rowDraft {
-  background-color: #f8fafc !important;
+  background-color: var(--surface-sunken) !important;
 }
 
 .numeric { text-align: right !important; font-variant-numeric: tabular-nums; }
-.empty { color: #94a3b8; padding: 2rem !important; text-align: center !important; }
+.empty { color: var(--text-muted); padding: 2rem !important; text-align: center !important; }
 
 /* STICKY ACTIONS COLUMN */
 .actions {
@@ -161,17 +161,17 @@
   width: 2rem;
   height: 2rem;
   border-radius: 0.45rem;
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
-  color: #475569;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-card);
+  color: var(--text-secondary);
   cursor: pointer;
   text-decoration: none;
   transition: all 0.15s ease;
 }
 
 .iconBtn:hover {
-  background: #f1f5f9;
-  color: #0f5fff;
+  background: var(--surface-sunken);
+  color: var(--accent);
   border-color: #93c5fd;
   transform: translateY(-1px);
 }
@@ -181,7 +181,7 @@
 }
 
 .iconBtnDanger:hover {
-  background: #fef2f2;
+  background: var(--danger-soft);
   color: #dc2626;
   border-color: #fca5a5;
 }
@@ -194,7 +194,7 @@
 }
 
 .stats > div {
-  background: #ffffff;
+  background: var(--surface-card);
   border: 1px solid #e2e8f0;
   border-radius: .55rem;
   min-width: 8.5rem;
@@ -204,12 +204,12 @@
 }
 
 .stats > div:hover {
-  border-color: #cbd5e1;
+  border-color: var(--border-strong);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 
 .stats dt {
-  color: #64748b;
+  color: var(--text-muted);
   font-size: .72rem;
   font-weight: 750;
   margin: 0;
@@ -218,7 +218,7 @@
 }
 
 .stats dd {
-  color: #0f172a;
+  color: var(--text-primary);
   font-size: 1.35rem;
   font-weight: 850;
   margin: .2rem 0 0;

@@ -12,6 +12,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import java.util.ArrayList;
@@ -285,7 +286,7 @@ public final class ApiExceptionHandler extends ResponseEntityExceptionHandler {
                 statusCode,
                 "REQUEST_REJECTED",
                 "Yêu cầu bị từ chối",
-                SAFE_REQUEST_DETAIL,
+                explain(exception),
                 request
         );
         return super.handleExceptionInternal(
@@ -295,5 +296,29 @@ public final class ApiExceptionHandler extends ResponseEntityExceptionHandler {
                 statusCode,
                 webRequest
         );
+    }
+
+    /**
+     * The sentence to show the caller.
+     *
+     * <p>A {@link ResponseStatusException} raised by our own controllers carries
+     * a reason written in Vietnamese for exactly this purpose - "Vai trò của bạn
+     * trong nhóm không được quản lý truyện", say. Replacing every one of them
+     * with the generic line left publishers staring at "Yêu cầu không hợp lệ
+     * hoặc không được hỗ trợ" with nothing to act on, and hid the real cause
+     * from support as well.
+     *
+     * <p>Everything else keeps the generic line: a type-mismatch or unsupported
+     * media type message names internal parameters and classes, which is not the
+     * caller's business.
+     */
+    private static String explain(Exception exception) {
+        if (exception instanceof ResponseStatusException statusException) {
+            String reason = statusException.getReason();
+            if (reason != null && !reason.isBlank()) {
+                return reason;
+            }
+        }
+        return SAFE_REQUEST_DETAIL;
     }
 }

@@ -35,7 +35,9 @@ export function ChapterListItem({
   const href = `/truyen/${storySlug}/chuong-${chapter.number}`;
   const publishedLabel = new Date(chapter.publishedAt).toLocaleDateString("vi-VN");
 
-  if (chapter.unlocked) {
+  const isUnlocked = Boolean(chapter.unlocked) || chapter.accessType === "FREE" || (chapter.coinPrice ?? 0) === 0;
+
+  if (isUnlocked) {
     return (
       <li>
         <Link to={href as string}>

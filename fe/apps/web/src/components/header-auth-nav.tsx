@@ -1,6 +1,6 @@
 "use client";
 
-import { BookMarked, LogOut, ShieldCheck, Target, UserRound, WalletCards } from "lucide-react";
+import { BookMarked, LogOut, PenLine, ShieldCheck, Target, UserRound, WalletCards } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import {
@@ -18,11 +18,33 @@ const money = new Intl.NumberFormat("vi-VN");
 type HeaderWallet = { coinBalance: number; gemBalance: number };
 type UserProfile = { id?: string; email?: string; displayName?: string; username?: string; avatarUrl?: string };
 
+/**
+ * Where the "Đăng truyện" entry leads, decided server-side by GET /me/publishing:
+ * an approved publisher goes to their team workspace, anyone else to the
+ * application form. `entryPath` already carries the resolved target, so the menu
+ * does not have to reconstruct it from the team id.
+ */
+type PublishingAccess = {
+  canPublish: boolean;
+  teamId: string | null;
+  teamName: string | null;
+  applicationStatus: "PENDING" | "APPROVED" | "REJECTED" | null;
+  entryPath: string;
+};
+
+function publishingLabel(access: PublishingAccess): string {
+  if (access.canPublish) return "Đăng truyện";
+  if (access.applicationStatus === "PENDING") return "Đăng truyện (chờ duyệt)";
+  if (access.applicationStatus === "REJECTED") return "Đăng truyện (cần bổ sung)";
+  return "Đăng truyện";
+}
+
 export function HeaderAuthNav() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [wallet, setWallet] = useState<HeaderWallet | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [publishing, setPublishing] = useState<PublishingAccess | null>(null);
 
   useEffect(() => {
     const updateAuthState = () => {
@@ -46,6 +68,7 @@ export function HeaderAuthNav() {
     if (!isLoggedIn) {
       setWallet(null);
       setUserProfile(null);
+      setPublishing(null);
       return undefined;
     }
     let cancelled = false;
@@ -61,19 +84,22 @@ export function HeaderAuthNav() {
         let token = getAccessToken();
         let walletRes = await fetchWithAuth("/api/v1/wallets/me", token);
         let meRes = await fetchWithAuth("/api/v1/me", token);
+        let publishingRes = await fetchWithAuth("/api/v1/me/publishing", token);
 
-        if (walletRes.status === 401 || meRes.status === 401) {
+        if (walletRes.status === 401 || meRes.status === 401 || publishingRes.status === 401) {
           const renewed = await refreshAccessToken();
           if (renewed) {
             token = renewed;
             walletRes = await fetchWithAuth("/api/v1/wallets/me", token);
             meRes = await fetchWithAuth("/api/v1/me", token);
+            publishingRes = await fetchWithAuth("/api/v1/me/publishing", token);
           }
         }
 
         if (!cancelled) {
           if (walletRes.ok) setWallet((await walletRes.json()) as HeaderWallet);
           if (meRes.ok) setUserProfile((await meRes.json()) as UserProfile);
+          if (publishingRes.ok) setPublishing((await publishingRes.json()) as PublishingAccess);
         }
       } catch {
         // Fallback
@@ -122,7 +148,7 @@ export function HeaderAuthNav() {
       <summary>
         <span className="profileAvatar" style={{ overflow: "hidden", display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: "50%" }}>
           {avatarUrl ? (
-            <img src={avatarUrl} alt={displayName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <img src={avatarUrl} alt={displayName} style={{ width: "100%", height: "100%", objectFit: "cover" }}  decoding="async" loading="lazy" />
           ) : (
             <UserRound aria-hidden="true" />
           )}
@@ -139,6 +165,16 @@ export function HeaderAuthNav() {
             Bảng quản trị (Dashboard)
           </Link>
         )}
+        {/* Always present, whether or not the account publishes yet: it is how a
+            reader discovers they can. The destination is what changes - the team
+            registration form until an application is approved, the publisher
+            dashboard afterwards. Registration is also the fallback while
+            /me/publishing is still in flight or unreachable, so the entry never
+            disappears and never leads somewhere the account cannot open. */}
+        <Link to={publishing?.entryPath ?? "/dang-ky-dang-truyen"}>
+          <PenLine aria-hidden="true" />
+          {publishing ? publishingLabel(publishing) : "Đăng truyện"}
+        </Link>
         <Link to={"/quests" as string}>
           <Target aria-hidden="true" />
           Nhiệm vụ của tôi

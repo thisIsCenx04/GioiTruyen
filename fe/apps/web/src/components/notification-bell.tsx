@@ -30,15 +30,25 @@ const POLL_INTERVAL_MS = 30_000;
 /** How long a toast for a new message stays on screen. */
 const TOAST_DURATION_MS = 6_000;
 
-function timeAgo(value: string) {
-  const then = new Date(value).getTime();
-  if (Number.isNaN(then)) return "";
-  const seconds = Math.floor((Date.now() - then) / 1000);
-  if (seconds < 60) return "vừa xong";
-  if (seconds < 3600) return `${Math.floor(seconds / 60)} phút trước`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)} giờ trước`;
-  if (seconds < 604800) return `${Math.floor(seconds / 86400)} ngày trước`;
-  return new Date(value).toLocaleDateString("vi-VN");
+export function timeAgoFormatted(value: string) {
+  const date = new Date(value);
+  const then = date.getTime();
+  if (Number.isNaN(then)) return { relative: "vừa xong", exact: "" };
+
+  const hours = date.getHours().toString().padStart(2, "0");
+  const mins = date.getMinutes().toString().padStart(2, "0");
+  const day = date.getDate().toString().padStart(2, "0");
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const year = date.getFullYear();
+  const exact = `${hours}:${mins} - ${day}/${month}/${year}`;
+
+  const seconds = Math.max(0, Math.floor((Date.now() - then) / 1000));
+  if (seconds < 60) return { relative: "vừa xong", exact };
+  if (seconds < 3600) return { relative: `${Math.floor(seconds / 60)} phút trước`, exact };
+  if (seconds < 86400) return { relative: `${Math.floor(seconds / 3600)} giờ trước`, exact };
+
+  const days = Math.floor(seconds / 86400);
+  return { relative: `${days} ngày trước`, exact };
 }
 
 /**
@@ -203,21 +213,31 @@ export function NotificationBell() {
               {items.length === 0 ? (
                 <p className="notifyEmpty">Chưa có thông báo nào.</p>
               ) : (
-                items.map((item) => (
-                  <button
-                    className={item.readAt ? "notifyItem" : "notifyItem isUnread"}
-                    key={item.id}
-                    onClick={() => void openItem(item)}
-                    type="button"
-                  >
-                    <span className="notifyDot" aria-hidden="true" />
-                    <span className="notifyItemBody">
-                      <strong>{item.title}</strong>
-                      <span>{item.body}</span>
-                      <small>{timeAgo(item.createdAt)}</small>
-                    </span>
-                  </button>
-                ))
+                items.map((item) => {
+                  const { relative, exact } = timeAgoFormatted(item.createdAt);
+                  return (
+                    <button
+                      className={item.readAt ? "notifyItem" : "notifyItem isUnread"}
+                      key={item.id}
+                      onClick={() => void openItem(item)}
+                      type="button"
+                    >
+                      <span className="notifyDot" aria-hidden="true" />
+                      <span className="notifyItemBody" style={{ display: "flex", flexDirection: "column", gap: "0.2rem", width: "100%" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "0.5rem", marginBottom: "0.1rem" }}>
+                          <span style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 600 }}>
+                            {exact}
+                          </span>
+                          <span style={{ fontSize: "0.72rem", color: "#1d4ed8", background: "#eff6ff", padding: "0.1rem 0.45rem", borderRadius: "4px", fontWeight: 750, flexShrink: 0 }}>
+                            {relative}
+                          </span>
+                        </div>
+                        <strong style={{ fontSize: "0.92rem", fontWeight: 800, color: "#0f172a", textAlign: "left" }}>{item.title}</strong>
+                        <span style={{ color: "#475569", fontSize: "0.84rem", lineHeight: 1.4, textAlign: "left" }}>{item.body}</span>
+                      </span>
+                    </button>
+                  );
+                })
               )}
             </div>
 

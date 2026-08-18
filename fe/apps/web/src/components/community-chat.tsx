@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageSquare, Send, UserCheck, Sparkles, Shield } from "lucide-react";
+import { Send } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 
@@ -144,7 +144,6 @@ export function CommunityChat({
     <section className={`communityChatWidget ${compact ? "compactChat" : "fullChat"}`}>
       <header className="chatHeader">
         <div>
-          <MessageSquare aria-hidden="true" className="chatIcon" />
           <h3>{title ?? "Cộng đồng Giới Truyện"}</h3>
         </div>
         <span className="liveBadge">

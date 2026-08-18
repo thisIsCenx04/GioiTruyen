@@ -22,6 +22,7 @@ import {
   type ImportedStory,
   parseStoryDocument,
   parseStoryFile,
+  splitByWordCount,
   WORDS_PER_CHAPTER,
   WORDS_PER_CHAPTER_ZHIHU,
 } from "./story-import";
@@ -586,6 +587,10 @@ function ChapterImportWorkspace({
 
   // Bulk selection state
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set());
+  /** Xu to apply to the current selection; blank until the admin types one. */
+  const [selectionPrice, setSelectionPrice] = useState<number | "">("");
+  /** Typed confirmation, required before deleting more than a handful. */
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState("");
   const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false);
   const [singleDeleteId, setSingleDeleteId] = useState<string | null>(null);
 
@@ -741,6 +746,48 @@ function ChapterImportWorkspace({
                 }}
               >
                 <Trash2 aria-hidden="true" size={14} /> Xóa {selectedIds.size} chương đã chọn
+              </button>
+
+              {/* Prices the selected chapters and nothing else. The bulk tool
+                  below works on ranges ("first N free"), which cannot express
+                  "these particular chapters" - so a scattered set of paid
+                  chapters had to be edited one at a time. */}
+              <input
+                aria-label="Giá xu cho các chương đã chọn"
+                min={0}
+                onChange={(event) => setSelectionPrice(
+                  event.target.value === "" ? "" : Math.max(0, Number(event.target.value)))}
+                placeholder="Giá xu"
+                style={{ fontSize: "0.78rem", padding: "0.3rem", width: "5.5rem" }}
+                type="number"
+                value={selectionPrice}
+              />
+              <button
+                disabled={selectionPrice === ""}
+                onClick={() => {
+                  const price = Number(selectionPrice);
+                  onChange(chapters.map((chapter) => (
+                    selectedIds.has(chapter.id)
+                      ? {
+                        ...chapter,
+                        // 0 xu means free: a PAID chapter priced at zero
+                        // unlocks for nothing, which the server rejects.
+                        accessType: price > 0 ? "PAID" as const : "FREE" as const,
+                        coinPrice: price,
+                      }
+                      : chapter
+                  )));
+                  setSelectionPrice("");
+                }}
+                style={{
+                  background: selectionPrice === "" ? "#cbd5e1" : "#0f6bff",
+                  color: "#fff", border: "none", borderRadius: "5px",
+                  padding: "0.35rem 0.8rem", fontSize: "0.78rem", fontWeight: 700,
+                  cursor: selectionPrice === "" ? "not-allowed" : "pointer",
+                }}
+                type="button"
+              >
+                Đặt giá cho {selectedIds.size} chương
               </button>
             </div>
           )}
@@ -926,21 +973,62 @@ function ChapterImportWorkspace({
             <h3 style={{ margin: "0 0 0.5rem 0", fontSize: "1.05rem", color: "#0f172a", fontWeight: 800 }}>
               ⚠️ Xác nhận xóa {selectedIds.size} chương
             </h3>
-            <p style={{ margin: "0 0 1.25rem 0", fontSize: "0.85rem", color: "#475569", lineHeight: 1.45 }}>
-              Bạn có chắc chắn muốn xóa vĩnh viễn <strong>{selectedIds.size} chương</strong> đã chọn khỏi danh sách không?
+            <p style={{ margin: "0 0 .75rem 0", fontSize: "0.85rem", color: "#475569", lineHeight: 1.45 }}>
+              Xóa vĩnh viễn <strong>{selectedIds.size} chương</strong> khỏi truyện. Chỉ có
+              hiệu lực sau khi bấm Lưu; các chương còn lại được đánh số lại.
             </p>
+
+            {/* Names, not just a count. A wrong tick is invisible in "12 chương"
+                and obvious in a list. */}
+            <ul style={{
+              background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "6px",
+              fontSize: "0.78rem", listStyle: "none", margin: "0 0 .75rem",
+              maxHeight: "8rem", overflowY: "auto", padding: ".5rem .75rem",
+            }}>
+              {chapters.filter((chapter) => selectedIds.has(chapter.id)).map((chapter, index) => (
+                <li key={chapter.id} style={{ color: "#334155", padding: ".12rem 0" }}>
+                  {index + 1}. {chapter.title || "(chưa có tiêu đề)"}
+                </li>
+              ))}
+            </ul>
+
+            <p style={{ margin: "0 0 .75rem", fontSize: "0.76rem", color: "#b45309", lineHeight: 1.4 }}>
+              Chương đã có độc giả mua sẽ được máy chủ giữ lại, không xóa được.
+            </p>
+
+            {/* Past a handful, a click is too cheap for something irreversible. */}
+            {selectedIds.size > 3 ? (
+              <label style={{ display: "block", fontSize: "0.78rem", color: "#334155", marginBottom: "1rem" }}>
+                Gõ <strong>XOA</strong> để xác nhận:
+                <input
+                  autoFocus
+                  onChange={(event) => setBulkDeleteConfirm(event.target.value)}
+                  style={{ display: "block", marginTop: ".3rem", padding: ".35rem", width: "100%" }}
+                  value={bulkDeleteConfirm}
+                />
+              </label>
+            ) : null}
+
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}>
               <button
                 type="button"
-                onClick={() => setConfirmingBulkDelete(false)}
+                onClick={() => { setConfirmingBulkDelete(false); setBulkDeleteConfirm(""); }}
                 style={{ background: "#e2e8f0", color: "#334155", border: "none", borderRadius: "6px", padding: "0.45rem 0.9rem", fontWeight: 600, fontSize: "0.82rem", cursor: "pointer" }}
               >
                 Hủy
               </button>
               <button
                 type="button"
-                onClick={executeBulkDelete}
-                style={{ background: "#dc2626", color: "#fff", border: "none", borderRadius: "6px", padding: "0.45rem 0.9rem", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer" }}
+                disabled={selectedIds.size > 3 && bulkDeleteConfirm.trim().toUpperCase() !== "XOA"}
+                onClick={() => { executeBulkDelete(); setBulkDeleteConfirm(""); }}
+                style={{
+                  background: selectedIds.size > 3 && bulkDeleteConfirm.trim().toUpperCase() !== "XOA"
+                    ? "#fca5a5" : "#dc2626",
+                  color: "#fff", border: "none", borderRadius: "6px",
+                  padding: "0.45rem 0.9rem", fontWeight: 700, fontSize: "0.82rem",
+                  cursor: selectedIds.size > 3 && bulkDeleteConfirm.trim().toUpperCase() !== "XOA"
+                    ? "not-allowed" : "pointer",
+                }}
               >
                 Xác nhận xóa {selectedIds.size} chương
               </button>
@@ -1146,15 +1234,21 @@ function OneshotContentEditor({
   // 200 wpm is the usual Vietnamese reading estimate; round up so a very short
   // piece still reads "1 phút" rather than "0 phút".
   const minutes = Math.max(1, Math.ceil(words / 200));
+  const chapters = Math.max(1, Math.ceil(words / WORDS_PER_CHAPTER_ZHIHU));
 
   return (
     <section className="oneshotEditor">
       <header>
         <div>
           <strong>Nội dung truyện</strong>
-          <small>Dán toàn bộ truyện vào đây, hoặc upload file ở trên để tự điền.</small>
+          <small>
+            Dán toàn bộ truyện vào đây, hoặc upload file ở trên để tự điền.
+            Khi lưu, nội dung được tự tách thành chương mỗi {WORDS_PER_CHAPTER_ZHIHU} từ.
+          </small>
         </div>
-        {words > 0 ? <span>{words.toLocaleString("vi-VN")} từ · ~{minutes} phút đọc</span> : null}
+        {words > 0
+          ? <span>{words.toLocaleString("vi-VN")} từ · ~{minutes} phút đọc · ~{chapters} chương</span>
+          : null}
       </header>
       <textarea
         onChange={(event) => onChange(event.currentTarget.value)}
@@ -1482,18 +1576,17 @@ export function StoryCrudWorkspace({
         })
         .then((data: any[]) => {
           if (Array.isArray(data) && data.length > 0) {
-            if (selected.storyFormat === "ONESHOT") {
-              setOneshotContent(data[0]?.content || "");
-            } else {
-              setChapterDrafts(data.map((chap, idx) => ({
-                content: chap.content || "",
-                id: chap.id || `chap-${idx}`,
-                tags: [],
-                title: chap.title || `Chương ${idx + 1}`,
-                accessType: chap.accessType === "PAID" ? "PAID" : "FREE",
-                coinPrice: Number(chap.coinPrice || 0)
-              })));
-            }
+            // Every format keeps its chapters as rows, Zhihu included. Loading
+            // only the first one into a single text box is what hid chapter 2
+            // of a Zhihu story from this drawer - and made saving drop it.
+            setChapterDrafts(data.map((chap, idx) => ({
+              content: chap.content || "",
+              id: chap.id || `chap-${idx}`,
+              tags: [],
+              title: chap.title || `Chương ${idx + 1}`,
+              accessType: chap.accessType === "PAID" ? "PAID" : "FREE",
+              coinPrice: Number(chap.coinPrice || 0)
+            })));
           }
         })
         // Failing quietly here used to look identical to a story with no
@@ -1539,8 +1632,17 @@ export function StoryCrudWorkspace({
           // The first genre keeps older readers of this API working.
           categoryId: storyCategoryIds[0] ?? null,
           categoryIds: storyCategoryIds,
-          // A one-page story has nothing left to serialise, so it is always complete.
-          completionStatus: isOneshot ? "COMPLETED" : value(form, "completionStatus"),
+          // Read from the controlled state rather than the form, because the
+          // combo field is conditionally rendered and is not in the FormData
+          // when it is collapsed.
+          //
+          // This was missing entirely: the input carried name="comboPriceXu"
+          // but this payload is assembled by hand, so the value was never
+          // sent. combo_price_xu stayed NULL on every story, and the reader
+          // side correctly reported "chưa có combo" for a price the admin had
+          // just typed and saved.
+          comboPriceXu: comboPriceXu === "" ? null : String(comboPriceXu),
+          completionStatus: value(form, "completionStatus"),
           contentType: value(form, "contentType"),
           slug: value(form, "slug"),
           storyFormat,
@@ -1553,13 +1655,17 @@ export function StoryCrudWorkspace({
           workflowStatus: value(form, "workflowStatus"),
         };
 
-        // Zhihu text pasted straight into the box is stored as a single chapter
-        // row named after the story; an imported Zhihu file has already been cut
-        // into 1400-word chapters and keeps them.
+        // Zhihu text pasted straight into the box goes through the same
+        // 1400-word cut an uploaded Zhihu file gets. Keeping it whole is what
+        // produced a single unreadable chapter no matter how long the paste was.
         const loadedChapters: StoryChapterDraft[] = isOneshot && chapterDrafts.length === 0
-          ? (oneshotContent.trim()
-            ? [{ content: oneshotContent, id: "oneshot", tags: [], title: value(form, "title") }]
-            : [])
+          ? splitByWordCount(oneshotContent.split(/\r?\n/u), WORDS_PER_CHAPTER_ZHIHU)
+            .map((chapter, index) => ({
+              content: chapter.content,
+              id: `oneshot-${index}`,
+              tags: [],
+              title: chapter.title,
+            }))
           : chapterDrafts;
 
         // On the server a submitted list replaces every chapter the story has.
@@ -1639,7 +1745,7 @@ function formatShortDate(value: string | null | undefined) {
         return (
           <div style={{ width: "36px", height: "48px", borderRadius: "4px", overflow: "hidden", background: "#e2e8f0", flexShrink: 0 }}>
             {url ? (
-              <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }}  decoding="async" loading="lazy" />
             ) : (
               <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#0f172a", color: "#fff", fontWeight: 800, fontSize: "12px" }}>
                 {story.title.trim().slice(0, 1).toUpperCase() || "G"}
@@ -1663,6 +1769,32 @@ function formatShortDate(value: string | null | undefined) {
         </div>
       ),
       sortValue: (story) => story.title,
+    },
+    {
+      key: "storyFormat",
+      label: "Định dạng",
+      render: (story) => {
+        const isOne = story.storyFormat === "ONESHOT";
+        return (
+          <span
+            style={{
+              fontSize: "0.75rem",
+              fontWeight: 750,
+              padding: "0.2rem 0.55rem",
+              borderRadius: "6px",
+              background: isOne ? "#e0f2fe" : "#f3e8ff",
+              color: isOne ? "#0284c7" : "#7e22ce",
+              border: `1px solid ${isOne ? "#bae6fd" : "#e9d5ff"}`,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.25rem",
+            }}
+          >
+            {isOne ? "⚡ Zhihu / Ngắn" : "📚 Truyện dài"}
+          </span>
+        );
+      },
+      sortValue: (story) => story.storyFormat ?? "SERIAL",
     },
     {
       key: "storyType",
@@ -1728,6 +1860,15 @@ function formatShortDate(value: string | null | undefined) {
 
   const storyFilters = [
     {
+      id: "storyFormat",
+      label: "Định dạng",
+      matches: (story: AdminStoryRow, value: string) => (story.storyFormat ?? "SERIAL") === value,
+      options: [
+        { label: "Truyện dài (SERIAL)", value: "SERIAL" },
+        { label: "Truyện Zhihu - Ngắn (ONESHOT)", value: "ONESHOT" },
+      ],
+    },
+    {
       id: "category",
       label: "Thể loại",
       matches: (story: AdminStoryRow, value: string) =>
@@ -1753,6 +1894,8 @@ function formatShortDate(value: string | null | undefined) {
 
   const storyStats = [
     { label: "Tổng truyện", value: stories.length },
+    { label: "Truyện dài", value: stories.filter((s) => (s.storyFormat ?? "SERIAL") === "SERIAL").length },
+    { label: "Truyện Zhihu", value: stories.filter((s) => s.storyFormat === "ONESHOT").length },
     { label: "Hoàn thành", value: stories.filter((s) => s.completionStatus === "COMPLETED").length },
     { label: "Đang ra", value: stories.filter((s) => s.completionStatus === "ONGOING").length },
     { label: "Tạm ngưng", value: stories.filter((s) => s.completionStatus === "HIATUS").length },
@@ -1873,7 +2016,7 @@ function formatShortDate(value: string | null | undefined) {
                 <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                     <div className="storyCoverUpload">
                       <div className="storyCoverPreview">
-                        {coverPreview ? <img alt="" src={coverPreview} /> : <ImagePlus aria-hidden="true" size={34} />}
+                        {coverPreview ? <img alt="" src={coverPreview}  decoding="async" loading="lazy" /> : <ImagePlus aria-hidden="true" size={34} />}
                       </div>
                       <Field label="Ảnh avatar truyện">
                         <input
@@ -1963,35 +2106,48 @@ function formatShortDate(value: string | null | undefined) {
                       </Field>
                       <Field label="Loại nội dung"><select defaultValue="TEXT" name="contentType"><option value="TEXT">Truyện chữ</option><option value="AUDIO">Audio</option><option value="TEXT_AUDIO">Truyện chữ + audio</option></select></Field>
                       <Field label="Xuất bản"><select defaultValue={selected?.workflowStatus ?? "DRAFT"} name="workflowStatus"><option value="DRAFT">Bản nháp</option><option value="PUBLISHED">Đã xuất bản</option><option value="PENDING_REVIEW">Chờ duyệt</option></select></Field>
-                      {isOneshot ? null : (
-                        <Field
-                          hint="Chọn 'Đã hoàn thành' khi truyện đã ra trọn bộ để mở tính năng bán Combo Full."
-                          label="Tiến độ"
+                      <Field
+                        hint="Chọn 'Đã hoàn thành' khi truyện đã ra trọn bộ để mở tính năng bán Combo."
+                        label="Tiến độ"
+                      >
+                        <select
+                          name="completionStatus"
+                          onChange={(event) =>
+                            setCompletionStatus(event.currentTarget.value === "COMPLETED" ? "COMPLETED" : "ONGOING")}
+                          value={completionStatus}
                         >
-                          <select
-                            name="completionStatus"
-                            onChange={(event) =>
-                              setCompletionStatus(event.currentTarget.value === "COMPLETED" ? "COMPLETED" : "ONGOING")}
-                            value={completionStatus}
-                          >
-                            <option value="ONGOING">Đang ra chương</option>
-                            <option value="COMPLETED">Đã hoàn thành</option>
-                          </select>
-                        </Field>
-                      )}
+                          <option value="ONGOING">Đang ra chương</option>
+                          <option value="COMPLETED">Đã hoàn thành</option>
+                        </select>
+                      </Field>
 
-                      {completionStatus === "COMPLETED" && !isOneshot && (() => {
+                      {completionStatus === "COMPLETED" && (() => {
                         const rawPaidChapters = chapterDrafts.filter((ch) => ch.accessType === "PAID" || (ch.coinPrice || 0) > 0);
                         const rawTotalXu = chapterDrafts.reduce((sum, ch) => sum + (ch.coinPrice || 0), 0);
 
-                        const totalChaptersCount = chapterDrafts.length > 0 ? chapterDrafts.length : 20;
-                        const paidChaptersCount = rawPaidChapters.length > 0
-                          ? rawPaidChapters.length
-                          : Math.max(1, totalChaptersCount - 3);
+                        // Counted from the chapters that are actually there, and
+                        // nothing else.
+                        //
+                        // This used to invent them: with no chapters loaded it
+                        // assumed 20 of them, called 17 "locked", and priced the
+                        // lot at 10 Xu each - so a brand-new story with nothing
+                        // in it announced "Đang có 17 chương đang khóa, tổng xu
+                        // mua lẻ là 170 Xu", and capped the combo input at a
+                        // figure derived from that fiction.
+                        const paidChaptersCount = rawPaidChapters.length;
+                        const totalRetailPrice = rawTotalXu;
 
-                        const totalRetailPrice = rawTotalXu > 0
-                          ? rawTotalXu
-                          : (paidChaptersCount * 10);
+                        // Nothing priced yet means there is nothing to bundle,
+                        // so the panel stays out of the way instead of showing
+                        // zeroes or guesses.
+                        if (paidChaptersCount === 0 || totalRetailPrice === 0) {
+                          return (
+                            <p style={{ gridColumn: "1 / -1", margin: ".4rem 0 0", fontSize: ".78rem", color: "#64748b" }}>
+                              Combo Full sẽ mở khi truyện có chương trả phí. Hãy đặt giá xu
+                              cho các chương trước, rồi quay lại đặt giá combo.
+                            </p>
+                          );
+                        }
 
                         return (
                           <div
@@ -2009,7 +2165,7 @@ function formatShortDate(value: string | null | undefined) {
                               Đang có <span style={{ color: "#4f46e5", fontWeight: 850 }}>{paidChaptersCount} chương đang khóa</span>, tổng xu mua lẻ là <span style={{ color: "#4f46e5", fontWeight: 850 }}>{totalRetailPrice} Xu</span>.
                             </div>
 
-                            <Field label="Giá Combo Full (Xu)">
+                            <Field label="Giá Combo (Xu)">
                               <input
                                 type="number"
                                 min={0}
@@ -2018,9 +2174,33 @@ function formatShortDate(value: string | null | undefined) {
                                 placeholder="Nhập số Xu"
                                 style={{ borderColor: "#818cf8", fontWeight: 700 }}
                                 value={comboPriceXu}
-                                onChange={(e) => setComboPriceXu(e.target.value === "" ? "" : Number(e.target.value))}
+                                onChange={(e) => {
+                                  const next = e.target.value === "" ? "" : Number(e.target.value);
+                                  // Asked once, on the way in. Setting a combo
+                                  // freezes the chapter list, so it is not a
+                                  // price change like any other - the server
+                                  // will refuse new chapters afterwards.
+                                  const turningOn = next !== "" && next > 0
+                                    && !(comboPriceXu !== "" && comboPriceXu > 0);
+                                  if (turningOn && !window.confirm(
+                                    "Đặt giá Combo sẽ KHOÁ số chương của truyện: "
+                                    + "sau khi lưu, truyện không thể thêm chương mới nữa.\n\n"
+                                    + "Lý do: combo bán \"trọn bộ\" với một giá. Thêm chương sau đó "
+                                    + "là cho không người đã mua, trong khi người mua sau trả cùng "
+                                    + "giá cho nhiều chương hơn.\n\n"
+                                    + "Chỉ đặt combo khi truyện đã ra đủ chương. "
+                                    + "Bạn có chắc chắn không?",
+                                  )) {
+                                    return;
+                                  }
+                                  setComboPriceXu(next);
+                                }}
                               />
                             </Field>
+                            <p style={{ gridColumn: "1 / -1", margin: ".4rem 0 0", fontSize: ".76rem", color: "#4338ca", fontWeight: 600 }}>
+                              Để trống nếu chưa bán combo — khi đó nút mua combo cũng
+                              không hiện ở trang truyện.
+                            </p>
                           </div>
                         );
                       })()}
@@ -2098,7 +2278,9 @@ export function CategoryCrudWorkspace({ categories: initialCategories }: Readonl
     void refreshData();
   }, []);
 
-  const { sortedList, sortState, toggleSort } = useSortableList<AdminCategoryRow, keyof AdminCategoryRow>(categories, "sortOrder", "asc");
+  // AdminTable sorts itself from each column's sortValue, so there was nothing
+  // reading this list; it was keyed on "sortOrder", a field the genres table
+  // does not have. Rows arrive ordered by name from the API.
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -2120,7 +2302,6 @@ export function CategoryCrudWorkspace({ categories: initialCategories }: Readonl
             description: value(form, "description"),
             name: value(form, "name"),
             slug: value(form, "slug"),
-            sortOrder: Number(value(form, "sortOrder")),
           },
         );
       }
@@ -2156,11 +2337,26 @@ export function CategoryCrudWorkspace({ categories: initialCategories }: Readonl
       sortValue: (cat) => cat.slug,
     },
     {
-      key: "sortOrder",
-      label: "Thứ tự",
+      // Replaces the old "Thứ tự" column, which the API never populated - it
+      // sent 0 for every genre, so the column showed a column of zeroes.
+      key: "storyCount",
+      label: "Số truyện",
       numeric: true,
-      render: (cat) => cat.sortOrder,
-      sortValue: (cat) => cat.sortOrder,
+      render: (cat) => (
+        <div>
+          <strong style={{ fontSize: "0.9rem", color: cat.storyCount > 0 ? "#0f172a" : "#94a3b8" }}>
+            {numberFormatter.format(cat.storyCount)}
+          </strong>
+          {/* A genre can look busy while every story on it is still a draft,
+              so the published share is spelled out rather than implied. */}
+          <span style={{ display: "block", fontSize: "0.72rem", color: "#64748b" }}>
+            {cat.storyCount === 0
+              ? "chưa gán truyện"
+              : `${numberFormatter.format(cat.publishedStoryCount)} đã xuất bản`}
+          </span>
+        </div>
+      ),
+      sortValue: (cat) => cat.storyCount,
     },
     {
       key: "updatedAt",
@@ -2192,6 +2388,8 @@ export function CategoryCrudWorkspace({ categories: initialCategories }: Readonl
     { label: "Tổng thể loại", value: categories.length },
     { label: "Đang hiển thị", value: categories.filter((c) => c.active).length },
     { label: "Đã ẩn", value: categories.filter((c) => !c.active).length },
+    // The genres nothing points at - the ones worth merging or retiring.
+    { label: "Chưa gán truyện", value: categories.filter((c) => c.storyCount === 0).length },
   ];
 
   return (
@@ -2257,7 +2455,6 @@ export function CategoryCrudWorkspace({ categories: initialCategories }: Readonl
               <input defaultValue={selected?.slug} maxLength={80} name="slug" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="tien-hiep" required />
             </Field>
             <Field label="Mô tả thể loại"><textarea defaultValue={selected?.description} maxLength={500} name="description" required rows={5} /></Field>
-            <Field label="Thứ tự hiển thị"><input defaultValue={selected?.sortOrder ?? categories.length + 1} min={0} name="sortOrder" required type="number" /></Field>
             <label className="drawerCheck"><input defaultChecked={selected?.active ?? true} name="active" type="checkbox" /><span>Hiển thị thể loại cho độc giả</span></label>
           </>}
           <MutationNotice error={error} onDismiss={() => setError("")} /><FormActions busy={busy || (drawer.mode === "delete" && deleteConfirmation.trim() !== (selected?.name.trim() ?? ""))} close={() => setDrawer(null)} confirmMessage={drawer.mode === "delete" ? `Xóa vĩnh viễn thể loại "${selected?.name}"?` : drawer.mode === "archive" ? `Ẩn thể loại "${selected?.name}"?` : selected ? `Cập nhật thể loại "${selected.name}"?` : undefined} submitLabel={drawer.mode === "delete" ? "Xóa vĩnh viễn" : drawer.mode === "archive" ? "Xác nhận ẩn" : "Lưu thể loại"} />

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { getAccessToken, refreshAccessToken } from "@/lib/auth";
+import { PromotionBoard } from "./promotion-board";
 
 type PromotionBooking = {
   id: string;
@@ -144,6 +145,10 @@ export default function AdminPromotionsPage() {
 
       {notice ? <p className="questNotice">{notice}</p> : null}
       {error ? <p className="questError">{error}</p> : null}
+
+      {/* The board comes first: arranging the twelve live slots is the daily
+          job, and the list below is the full history behind it. */}
+      <PromotionBoard onChanged={() => void refresh()} />
 
       <section className="topupReviewList">
         {rows.length === 0

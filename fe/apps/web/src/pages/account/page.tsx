@@ -671,7 +671,7 @@ export default function UserProfilePage() {
                         objectFit: "cover",
                         width: "3.5rem",
                       }}
-                    />
+                     decoding="async" loading="lazy" />
                   ) : (
                     <div style={{
                       alignItems: "center",

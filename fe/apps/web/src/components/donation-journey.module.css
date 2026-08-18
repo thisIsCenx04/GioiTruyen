@@ -151,30 +151,69 @@
   color: white;
 }
 
-.amounts label {
-  align-items: center;
+/* The free-entry box. Its own row under the presets, labelled above the
+   field rather than beside it, so the input gets the full width instead of
+   the sliver that was left over next to the caption. */
+.customAmount {
   border: 0.08rem solid var(--line);
-  display: flex;
+  border-radius: 0.35rem;
+  display: grid;
   grid-column: 1 / -1;
-  justify-content: space-between;
-  margin-top: 0.25rem;
+  grid-template-columns: 1fr auto;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
 }
 
-.amounts label span {
+.customAmount span {
   color: var(--muted);
   font-size: 0.72rem;
   font-weight: 750;
-  padding-left: 0.8rem;
+  grid-column: 1 / -1;
+  margin-bottom: 0.15rem;
+}
+
+.customAmount em {
+  align-self: center;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 800;
+  padding-left: 0.4rem;
+}
+
+.customAmount:focus-within {
+  border-color: var(--blue);
 }
 
 .amounts input {
+  background: none;
   border: 0;
   color: var(--ink);
-  font-size: 0.9rem;
+  font-size: 1rem;
   font-weight: 800;
-  padding: 0.75rem;
-  text-align: right;
-  width: 65%;
+  min-width: 0;
+  padding: 0.25rem 0;
+  width: 100%;
+}
+
+.amounts input:focus { outline: none; }
+
+/* Says why "Tiếp tục" is inert. A disabled button on its own reads as a
+   broken feature rather than as an empty wallet. */
+.blocked {
+  align-items: baseline;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0 1.5rem;
+}
+
+.blocked a {
+  color: var(--blue);
+  font-weight: 800;
 }
 
 .note {

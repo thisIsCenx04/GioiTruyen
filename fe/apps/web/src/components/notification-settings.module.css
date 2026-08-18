@@ -8,7 +8,7 @@
 
 .settings > header {
   align-items: end;
-  border-bottom: 0.08rem solid #aeb9d5;
+  border-bottom: 0.08rem solid var(--text-muted);
   display: grid;
   gap: 2rem;
   grid-template-columns: minmax(10rem, 0.55fr) minmax(18rem, 1.45fr) auto;
@@ -32,7 +32,7 @@
 .settings > header span,
 .intro small,
 .controls legend {
-  color: #66708d;
+  color: var(--text-muted);
   font: 800 0.68rem/1 var(--utility);
   letter-spacing: 0.11em;
   text-transform: uppercase;
@@ -72,7 +72,7 @@
 
 .controls fieldset {
   border: 0;
-  border-top: 0.08rem solid #aeb9d5;
+  border-top: 0.08rem solid var(--text-muted);
   display: grid;
   margin: 0;
   padding: 0;
@@ -84,7 +84,7 @@
 
 .controls label {
   align-items: center;
-  border-bottom: 0.08rem solid #c9d1e8;
+  border-bottom: 0.08rem solid var(--border-subtle);
   cursor: pointer;
   display: grid;
   gap: 1.25rem;
@@ -108,12 +108,12 @@
 }
 
 .controls label small {
-  color: #66708d;
+  color: var(--text-muted);
   line-height: 1.45;
 }
 
 .controls > button {
-  background: #111a3a;
+  background: var(--text-primary);
   border: 0;
   color: white;
   cursor: pointer;
@@ -146,8 +146,8 @@
   max-width:80rem;
 }
 .settings > header {
-  background:#fff;
-  border:1px solid #d9e8f7;
+  background:var(--surface-card);
+  border:1px solid var(--border-subtle);
   border-radius:1rem;
   box-shadow:0 .8rem 2rem rgb(28 83 150 / 6%);
   padding:1.4rem;
@@ -159,7 +159,7 @@
 }
 .settings h1 em,
 .settings > header a {
-  color:#0f6bff;
+  color:var(--accent);
 }
 .settings form {
   gap:1.4rem;
@@ -168,19 +168,19 @@
 }
 .intro,
 .controls {
-  background:#fff;
-  border:1px solid #d9e8f7;
+  background:var(--surface-card);
+  border:1px solid var(--border-subtle);
   border-radius:1rem;
   box-shadow:0 .8rem 2rem rgb(28 83 150 / 5%);
   padding:1.25rem;
 }
 .controls > button {
-  background:linear-gradient(135deg,#0f6bff,#00b8a9);
+  background:linear-gradient(135deg,var(--accent),#00b8a9);
   border-radius:.55rem;
 }
 .controls fieldset,
 .controls label {
-  border-color:#d9e8f7;
+  border-color:var(--border-subtle);
 }
 
 @media (max-width: 48rem) {

@@ -34,6 +34,13 @@ export function StoryRecommend({ storyId }: Readonly<{ storyId: string }>) {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
+  /**
+   * The free-entry box, held as text rather than a number so it can be empty
+   * while being typed in - binding a number makes the field impossible to
+   * clear, because "" parses to 0 and React writes the 0 straight back.
+   */
+  const [customGems, setCustomGems] = useState("");
+  const customValue = customGems === "" ? 0 : Number(customGems);
 
   const dialogRef = useRef<HTMLElement>(null);
 
@@ -86,6 +93,7 @@ export function StoryRecommend({ storyId }: Readonly<{ storyId: string }>) {
       setMine((current) => (current ?? 0) + receipt.gemAmount);
       setNotice(`Đã đề cử thành công ${selectedAmount} ngọc. Cảm ơn bạn!`);
       setSelectedAmount(null);
+      setCustomGems("");
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
@@ -96,6 +104,7 @@ export function StoryRecommend({ storyId }: Readonly<{ storyId: string }>) {
   function handleCloseModal() {
     setOpen(false);
     setSelectedAmount(null);
+    setCustomGems("");
     setError("");
     setNotice("");
   }
@@ -184,6 +193,75 @@ export function StoryRecommend({ storyId }: Readonly<{ storyId: string }>) {
                   ))}
                 </div>
 
+                {/* Free entry, for a figure the four presets do not cover. */}
+                <div
+                  style={{
+                    border: "1.5px solid var(--border-subtle)",
+                    borderRadius: "0.75rem",
+                    display: "grid",
+                    gridTemplateColumns: "1fr auto",
+                    marginBottom: "1.2rem",
+                    padding: "0.6rem 0.85rem",
+                  }}
+                >
+                  <label
+                    htmlFor="recommend-custom-gems"
+                    style={{
+                      color: "var(--text-muted)",
+                      fontSize: "0.78rem",
+                      fontWeight: 700,
+                      gridColumn: "1 / -1",
+                      marginBottom: "0.2rem",
+                    }}
+                  >
+                    Hoặc nhập số ngọc bất kỳ
+                  </label>
+                  <input
+                    id="recommend-custom-gems"
+                    inputMode="numeric"
+                    onChange={(event) => {
+                      setError("");
+                      setNotice("");
+                      setCustomGems(event.currentTarget.value.replace(/[^\d]/gu, ""));
+                    }}
+                    placeholder="Ví dụ: 250"
+                    type="text"
+                    value={customGems}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "var(--text-primary)",
+                      fontSize: "1rem",
+                      fontWeight: 800,
+                      minWidth: 0,
+                      outline: "none",
+                      padding: "0.2rem 0",
+                      width: "100%",
+                    }}
+                  />
+                  <button
+                    disabled={customValue < 1}
+                    onClick={() => {
+                      setError("");
+                      setNotice("");
+                      setSelectedAmount(customValue);
+                    }}
+                    type="button"
+                    style={{
+                      background: customValue < 1 ? "var(--border-strong)" : "var(--accent)",
+                      border: "none",
+                      borderRadius: "0.5rem",
+                      color: "var(--text-on-accent, #fff)",
+                      cursor: customValue < 1 ? "not-allowed" : "pointer",
+                      fontSize: "0.8rem",
+                      fontWeight: 800,
+                      padding: "0.4rem 0.75rem",
+                    }}
+                  >
+                    Đề cử
+                  </button>
+                </div>
+
                 <div className={styles.facts} style={{ background: "var(--surface-sunken)", border: "1px solid var(--border-subtle)", borderRadius: "0.85rem", padding: "0.85rem 1rem", marginBottom: "1.25rem" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
                     <span style={{ color: "var(--text-muted)", fontSize: "0.85rem", fontWeight: 600 }}>Bạn đã đề cử truyện này</span>
@@ -244,7 +322,7 @@ export function StoryRecommend({ storyId }: Readonly<{ storyId: string }>) {
                       background: balance !== null && balance < selectedAmount
                         ? "var(--border-strong)"
                         : "linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%)",
-                      color: "var(--surface-card)",
+                      color: "var(--text-on-accent, #fff)",
                       border: "none",
                       borderRadius: "0.75rem",
                       padding: "0.75rem 1rem",

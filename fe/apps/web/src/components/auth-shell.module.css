@@ -189,7 +189,7 @@
 }
 .margin,
 .sheet {
-  border:1px solid #d9e8f7;
+  border:1px solid var(--border-subtle);
   border-radius:1rem;
   min-height:calc(100vh - 2rem);
 }
@@ -221,7 +221,7 @@
 }
 .eyebrow,
 .chapterNumber {
-  color:#0f6bff;
+  color:var(--accent);
 }
 .sheetTitle {
   color:#102344;
@@ -320,7 +320,7 @@
 .page {
   background-image:
     linear-gradient(90deg, rgb(5 9 28 / 82%) 0%, rgb(5 12 30 / 52%) 50%, rgb(248 251 255 / 86%) 100%),
-    url("/auth-healing-bg.png");
+    radial-gradient(circle at 20% 30%, #1b3a6b 0%, #0a1430 60%, #060c1f 100%);
   background-position: center, center;
   background-repeat: no-repeat, no-repeat;
   background-size: cover, cover;
@@ -380,7 +380,7 @@
   .page {
     background-image:
       linear-gradient(180deg, rgb(5 9 28 / 76%), rgb(248 251 255 / 92%)),
-      url("/auth-healing-bg.png");
+      radial-gradient(circle at 20% 30%, #1b3a6b 0%, #0a1430 60%, #060c1f 100%);
     background-position: center, center;
     background-repeat: no-repeat, no-repeat;
     background-size: cover, cover;

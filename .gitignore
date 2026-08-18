@@ -168,3 +168,7 @@ override.tf.json
 terraform.rc
 
 STORY_PLATFORM_BLUEPRINT/
+
+# Scraped sample data for the local seed. Local test fixture only: it is
+# regenerated with `npm run seed:scrape` and never belongs on a real database.
+/db/seed-data/

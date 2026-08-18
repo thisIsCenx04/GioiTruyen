@@ -1080,11 +1080,51 @@ button:disabled { cursor: wait; opacity: 0.55; }
   min-height: 15.5rem;
 }
 
-.svgChart > svg {
+.svgChart > svg,
+.chartPlot > svg {
   display: block;
   height: 13.5rem;
   overflow: visible;
   width: 100%;
+}
+
+/* Positioning context for the hover readout. The tooltip is HTML rather than
+   an SVG <title>: a native title waits about a second, only appears while the
+   pointer is exactly over a 4.5px circle, and cannot be styled. */
+.chartPlot {
+  position: relative;
+}
+
+.chartPlot > svg {
+  cursor: crosshair;
+}
+
+.chartTooltip {
+  background: #0b1b33;
+  border-radius: .45rem;
+  box-shadow: 0 .5rem 1.5rem rgb(8 18 40 / 32%);
+  color: #fff;
+  display: grid;
+  gap: .1rem;
+  /* The pointer is tracked on the svg underneath; the card must never
+     intercept it, or moving onto the card would dismiss the card. */
+  pointer-events: none;
+  padding: .4rem .6rem;
+  position: absolute;
+  white-space: nowrap;
+  z-index: 5;
+}
+
+.chartTooltip span {
+  color: #9fb6d4;
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+
+.chartTooltip strong {
+  font-size: .82rem;
+  font-weight: 850;
 }
 
 .svgChart > p {
@@ -2920,4 +2960,104 @@ button:disabled { cursor: wait; opacity: 0.55; }
     height: 13rem !important;
     margin-inline: 0 !important;
   }
+}
+
+/* ── Bố cáo board ─────────────────────────────────────────────────────
+   Twelve slots on the left mirroring the home strip, the queue on the
+   right. Two columns because the job is moving cards between them. */
+.promoBoard { margin-bottom: 1.5rem; }
+
+.promoBoardHead h2 { font-size: 1.05rem; margin: 0; }
+
+.promoBoardGrid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  margin-top: .8rem;
+}
+
+.promoSlots {
+  display: grid;
+  gap: .6rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.promoSlot {
+  align-items: center;
+  background: var(--surface-card, #fff);
+  border: 1.5px dashed #cbd5e1;
+  border-radius: .6rem;
+  display: flex;
+  gap: .5rem;
+  min-height: 4.6rem;
+  padding: .5rem;
+  position: relative;
+}
+
+.promoSlot.isFilled { border-style: solid; border-color: #f59e0b; cursor: grab; }
+.promoSlot.isOver { border-color: #0f6bff; background: #eff6ff; }
+
+.promoSlotNo {
+  background: #0b1b33;
+  border-radius: .3rem;
+  color: #fff;
+  font-size: .62rem;
+  font-weight: 800;
+  left: .35rem;
+  padding: .05rem .3rem;
+  position: absolute;
+  top: .35rem;
+}
+
+.promoSlotCover { border-radius: .3rem; flex: none; height: 3.4rem; object-fit: cover; width: 2.4rem; }
+.promoSlotCoverEmpty { background: #e2e8f0; display: block; }
+.promoSlotBody { display: grid; gap: .1rem; min-width: 0; padding-left: .9rem; }
+.promoSlotBody strong { font-size: .76rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.promoSlotBody small { color: #64748b; font-size: .66rem; }
+.promoSlotEmpty { color: #94a3b8; font-size: .74rem; margin: auto; }
+
+.promoSlotClear {
+  background: #fee2e2; border: 0; border-radius: 50%; color: #b91c1c;
+  cursor: pointer; font-weight: 800; height: 1.3rem; position: absolute;
+  right: .3rem; top: .3rem; width: 1.3rem;
+}
+
+.promoQueue { background: var(--surface-sunken, #f8fafc); border-radius: .6rem; padding: .8rem; }
+.promoQueue h3 { font-size: .85rem; margin: 0 0 .5rem; }
+.promoQueue ul { display: grid; gap: .5rem; list-style: none; margin: 0 0 .8rem; padding: 0; }
+.promoQueue li {
+  align-items: center; background: #fff; border: 1px solid #e2e8f0;
+  border-radius: .45rem; display: flex; gap: .5rem;
+  justify-content: space-between; padding: .5rem;
+}
+.promoQueue li strong { display: block; font-size: .76rem; }
+.promoQueue li small { color: #64748b; display: block; font-size: .66rem; }
+
+.promoApprove {
+  background: #16a34a; border: 0; border-radius: .35rem; color: #fff;
+  cursor: pointer; flex: none; font-size: .72rem; font-weight: 800; padding: .35rem .6rem;
+}
+
+.promoSchedule, .promoDirect {
+  background: #fff; border: 1px solid #e2e8f0; border-radius: .5rem;
+  display: grid; gap: .4rem; margin-top: .6rem; padding: .6rem;
+}
+.promoSchedule input, .promoDirect select { font-size: .76rem; padding: .35rem; width: 100%; }
+.promoSchedule > div { display: flex; gap: .4rem; }
+.promoSchedule button, .promoDirect button {
+  background: #0f6bff; border: 0; border-radius: .35rem; color: #fff;
+  cursor: pointer; font-size: .74rem; font-weight: 700; padding: .35rem .6rem;
+}
+.promoSchedule button:last-child { background: #e2e8f0; color: #334155; }
+
+.promoBoardError { background: #fef2f2; border-left: 3px solid #dc2626; color: #991b1b; font-size: .8rem; margin: .6rem 0; padding: .5rem .7rem; }
+.promoBoardNotice { background: #f0fdf4; border-left: 3px solid #16a34a; color: #15803d; font-size: .8rem; margin: .6rem 0; padding: .5rem .7rem; }
+
+@media (max-width: 1100px) {
+  .promoBoardGrid { grid-template-columns: 1fr; }
+  .promoSlots { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .promoSlots { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

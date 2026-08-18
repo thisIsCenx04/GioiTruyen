@@ -121,6 +121,14 @@ public class SecurityConfiguration {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .formLogin(form -> form.disable())
                 .httpBasic(basic -> basic.disable())
+                // Spring Security registers its own /logout handler by default,
+                // and it answers a browser-style 302 to /login?logout. That
+                // filter runs before the dispatcher, so AuthController's POST
+                // /logout - the one that actually revokes the refresh tokens -
+                // was never reached and the API returned a redirect to a JSON
+                // caller. There is no server session here to end; the tokens are
+                // the session.
+                .logout(logout -> logout.disable())
                 .csrf(csrf -> csrf.disable())
                 .oauth2ResourceServer(resourceServer -> resourceServer
                         .jwt(Customizer.withDefaults())
@@ -155,6 +163,11 @@ public class SecurityConfiguration {
                                 "/stories",
                                 "/stories/*",
                                 "/stories/*/chapters",
+                                // What a combo costs is part of the story page, so
+                                // a visitor sees the real price before signing in.
+                                // Only the "already purchased" flag needs an
+                                // account, and it reads false without one.
+                                "/stories/*/combo-status",
                                 // Resolving "chuong-12" to a chapter is as
                                 // public as the chapter list it replaced.
                                 "/stories/*/chapters/by-number/*",
@@ -173,7 +186,9 @@ public class SecurityConfiguration {
                         ).permitAll()
                         .requestMatchers(
                                 HttpMethod.GET,
-                                "/uploads/**"
+                                "/uploads/**",
+                                // Banner images every visitor sees at the top of a page.
+                                "/site/banners"
                         ).permitAll()
                         // The price table renders for signed-out visitors; buying a
                         // slot and listing your own bookings still require a login.
@@ -235,10 +250,32 @@ public class SecurityConfiguration {
                         .requestMatchers("/teams/*/donations").authenticated()
                         .requestMatchers("/teams/*/rewards").authenticated()
                         .requestMatchers("/referrals/**").authenticated()
+                        // The publisher workspace. Membership is what actually
+                        // authorises these, and TeamWorkspaceController checks it
+                        // per request - the chain only enforces "signed in",
+                        // because team roles are rows, not JWT scopes.
                         .requestMatchers(
                                 "/teams/applications",
                                 "/teams/applications/me",
-                                "/teams/*/dashboard"
+                                "/teams/*/dashboard",
+                                "/teams/*/stories",
+                                "/teams/*/stories/**",
+                                "/teams/*/earnings",
+                                // Team settings. The chain only checks "signed
+                                // in"; TeamWorkspaceController then requires the
+                                // caller to be the OWNER, since team roles are
+                                // rows in team_members rather than JWT scopes.
+                                //
+                                // Missing entries here do not 404 - they fall
+                                // through to anyRequest().denyAll() and answer
+                                // 403 "Bạn không có quyền thực hiện thao tác
+                                // này", which reads exactly like a failed role
+                                // check and sent the owner hunting for a
+                                // permission problem that did not exist.
+                                "/teams/*/profile",
+                                "/teams/*/avatar",
+                                "/teams/*/members",
+                                "/teams/*/members/*"
                         ).authenticated()
                         // Every admin surface exposes user emails, wallet balances
                         // and cash-flow history, so all of them - reads included -
@@ -264,7 +301,12 @@ public class SecurityConfiguration {
                                 "/stories/*/follow",
                                 // Spending gems on a story, and reading back
                                 // what you personally gave it.
-                                "/stories/*/recommend"
+                                "/stories/*/recommend",
+                                // Buying every chapter at once. This was missing,
+                                // and the chain ends in denyAll, so the combo
+                                // button answered 403 for everyone - the endpoint
+                                // was never reachable at all.
+                                "/stories/*/combo-purchase"
                         ).authenticated()
                         .requestMatchers(
                                 HttpMethod.POST,
@@ -278,6 +320,14 @@ public class SecurityConfiguration {
                                 HttpMethod.DELETE,
                                 "/comments/*"
                         ).authenticated()
+                        // Reading the heart count is public - it is part of the
+                        // comment a guest can already see. Only pressing it,
+                        // which needs an account to attribute the like to,
+                        // requires a login.
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/reactions/*/*"
+                        ).permitAll()
                         .requestMatchers(
                                 "/reactions/*/*"
                         ).authenticated()

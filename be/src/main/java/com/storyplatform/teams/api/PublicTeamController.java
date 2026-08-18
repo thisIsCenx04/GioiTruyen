@@ -19,12 +19,17 @@ public class PublicTeamController {
 
     @GetMapping("/teams")
     public java.util.List<TeamResponse> listTeams() {
+        // avatar_url and the published-story count let the directory show a real
+        // team picture and a real figure. Without them the listing had nothing to
+        // display but a name, which is why it grew decorative placeholder art.
         return jdbc.query(
                 """
-                        SELECT id, slug, name, description, status
-                        FROM teams
-                        WHERE status = 'ACTIVE'
-                        ORDER BY name ASC
+                        SELECT t.id, t.slug, t.name, t.description, t.status, t.avatar_url,
+                               (SELECT COUNT(*) FROM stories s
+                                 WHERE s.team_id = t.id AND s.status = 'PUBLISHED') AS story_count
+                        FROM teams t
+                        WHERE t.status = 'ACTIVE'
+                        ORDER BY story_count DESC, t.name ASC
                         """,
                 Map.of(),
                 (rs, rowNum) -> new TeamResponse(
@@ -33,7 +38,9 @@ public class PublicTeamController {
                         rs.getString("name"),
                         rs.getString("description"),
                         rs.getString("status"),
-                        1
+                        1,
+                        rs.getString("avatar_url"),
+                        rs.getInt("story_count")
                 )
         );
     }
@@ -42,9 +49,11 @@ public class PublicTeamController {
     public TeamResponse team(@PathVariable String teamId) {
         return jdbc.query(
                         """
-                                SELECT id, slug, name, description, status
-                                FROM teams
-                                WHERE id = :teamId AND status = 'ACTIVE'
+                                SELECT t.id, t.slug, t.name, t.description, t.status, t.avatar_url,
+                                       (SELECT COUNT(*) FROM stories s
+                                         WHERE s.team_id = t.id AND s.status = 'PUBLISHED') AS story_count
+                                FROM teams t
+                                WHERE (t.id = :teamId OR t.slug = :teamId) AND t.status = 'ACTIVE'
                                 LIMIT 1
                                 """,
                         Map.of("teamId", teamId),
@@ -54,7 +63,9 @@ public class PublicTeamController {
                                 rs.getString("name"),
                                 rs.getString("description"),
                                 rs.getString("status"),
-                                1
+                                1,
+                                rs.getString("avatar_url"),
+                                rs.getInt("story_count")
                         )
                 ).stream()
                 .findFirst()
@@ -72,7 +83,11 @@ public class PublicTeamController {
             String name,
             String description,
             String state,
-            int version
+            int version,
+            /** Team picture, or null when the team has not set one. */
+            String avatarUrl,
+            /** Published stories, so the directory can rank and label teams. */
+            int storyCount
     ) {
     }
 }

@@ -63,6 +63,8 @@ public final class AdminDtos {
             String workflowStatus,
             String completionStatus,
             int chapterCount,
+            /** Configured combo price, or null when the story has no bundle deal. */
+            Long comboPriceXu,
             String updatedAt,
             String createdAt
     ) {}
@@ -78,16 +80,24 @@ public final class AdminDtos {
             String status
     ) {}
 
+    /**
+     * `sortOrder` is deliberately absent: the genres table has no such column,
+     * so the API only ever reported a hardcoded 0 and the admin form's
+     * "Thứ tự hiển thị" input was discarded on save. Genres are ordered by name.
+     */
     public record AdminCategoryRow(
             String id,
             String slug,
             String name,
             String description,
-            int sortOrder,
             boolean active,
             int version,
             String createdAt,
-            String updatedAt
+            String updatedAt,
+            /** Stories carrying this genre, in any workflow state. */
+            long storyCount,
+            /** The published subset, which is what a reader can actually find. */
+            long publishedStoryCount
     ) {}
 
     public record AdminTeamRow(
@@ -153,7 +163,13 @@ public final class AdminDtos {
             String storyType,
             String workflowStatus,
             String completionStatus,
-            List<String> tags
+            List<String> tags,
+            /**
+             * Price for unlocking every chapter at once. Null or 0 means no bundle
+             * deal, and the combo then costs the sum of the chapter prices with no
+             * discount advertised.
+             */
+            Long comboPriceXu
     ) {}
 
     public record UpsertTeamRequest(

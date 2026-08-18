@@ -8,6 +8,7 @@ import { HeaderSearch } from "@/components/header-search";
 import { MainNav } from "@/components/main-nav";
 import { NotificationBell } from "@/components/notification-bell";
 import { QuestTimeTracker } from "@/components/quest-time-tracker";
+import { SiteBannerStyles } from "@/components/site-banner-styles";
 import { SocialLinks } from "@/components/social-links";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -87,6 +88,8 @@ export function PublicShell({ children }: Readonly<{ children: ReactNode }>) {
     <div className="publicShell">
       {/* Mounted once here so time on any page counts toward the online quest. */}
       <QuestTimeTracker questType="ONLINE_MINUTES" />
+      {/* Applies whatever banner images the admin uploaded, once per session. */}
+      <SiteBannerStyles />
       <SiteHeader />
       {children}
       <SiteFooter />

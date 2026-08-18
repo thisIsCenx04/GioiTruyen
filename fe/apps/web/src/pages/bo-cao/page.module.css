@@ -8,9 +8,9 @@
 }
 
 .hero {
-  background: linear-gradient(135deg, #0f5fff 0%, #6b3df5 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, #6b3df5 100%);
   border-radius: 18px;
-  color: #fff;
+  color: var(--text-on-accent, #fff);
   padding: 28px;
 }
 
@@ -38,7 +38,7 @@
 }
 
 .card {
-  background: var(--surface, #fff);
+  background: var(--surface, var(--surface-card));
   border: 1px solid var(--border, #e6e8ef);
   border-radius: 16px;
   padding: 22px;
@@ -101,8 +101,20 @@
 }
 
 .priceCard:hover {
-  border-color: #0f5fff;
+  border-color: var(--accent);
   transform: translateY(-2px);
+}
+
+/* How much cheaper this package's day rate is than the shortest one. */
+.saveTag {
+  background: #dcfce7;
+  border-radius: 999px;
+  color: #15803d;
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 800;
+  margin-bottom: 6px;
+  padding: 2px 8px;
 }
 
 .priceCard h3 {
@@ -112,7 +124,7 @@
 
 .price {
   align-items: center;
-  color: #0f5fff;
+  color: var(--accent);
   display: flex;
   font-size: 20px;
   font-weight: 700;
@@ -152,7 +164,7 @@
 }
 
 .field select {
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid var(--border, #d5d9e2);
   border-radius: 10px;
   font-size: 14px;
@@ -161,10 +173,10 @@
 
 .submit {
   align-self: end;
-  background: #0f5fff;
+  background: var(--accent);
   border: 0;
   border-radius: 10px;
-  color: #fff;
+  color: var(--text-on-accent, #fff);
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
