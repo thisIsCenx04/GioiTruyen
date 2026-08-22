@@ -79,6 +79,23 @@ public class MonetizationFlowController {
                 request == null ? null : request.note());
     }
 
+    /**
+     * Người rút tự huỷ yêu cầu của mình.
+     *
+     * <p>Chỉ khi quản trị viên chưa động tới. Không có lối này thì một số tài
+     * khoản gõ nhầm buộc người dùng phải nhắn riêng cho quản trị viên rồi ngồi
+     * chờ, trong lúc số xu của họ vẫn bị treo.
+     */
+    @PostMapping("/wallets/me/withdrawals/{id}/cancel")
+    public MonetizationFlowService.WithdrawalReceipt cancelWithdrawal(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID id,
+            @RequestBody(required = false) WithdrawalNote request
+    ) {
+        return monetizationFlowService.cancelOwnWithdrawal(UUID.fromString(jwt.getSubject()), id,
+                request == null ? null : request.note());
+    }
+
     public record WithdrawalNote(String note) {}
 
     @PostMapping("/chapters/{chapterId}/unlock")

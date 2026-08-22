@@ -206,6 +206,29 @@ export function WithdrawalWorkspace() {
     }
   }
 
+  function cancelRequest(item: WithdrawalReceipt) {
+    setAsk({
+      fields: [{
+        hint: "Không bắt buộc. Giúp quản trị viên biết vì sao, phòng khi bạn gửi lại yêu cầu mới.",
+        kind: "textarea",
+        label: "Lý do huỷ",
+        maxLength: 400,
+        name: "note",
+        placeholder: "Ví dụ: gõ nhầm số tài khoản.",
+      }],
+      intro: `Huỷ yêu cầu rút ${xu(item.grossAmountXu)} xu tới ${item.bankName} · ${item.destinationMasked}.`,
+      lines: [
+        `${xu(item.grossAmountXu)} xu sẽ hoàn lại vào ví ngay khi bấm.`,
+        "Chỉ huỷ được khi quản trị viên chưa duyệt. Muốn rút lại thì gửi yêu cầu mới.",
+      ],
+      onSubmit: (values) => respond(item, "cancel", { note: values.note },
+        `Đã huỷ yêu cầu và hoàn ${xu(item.grossAmountXu)} xu về ví.`),
+      submitLabel: "Huỷ và hoàn xu",
+      title: "Huỷ yêu cầu rút tiền",
+      tone: "danger",
+    });
+  }
+
   function confirmReceived(item: WithdrawalReceipt) {
     setAsk({
       intro: `Xác nhận bạn đã nhận đủ ${xu(item.netAmountXu)} xu vào tài khoản ${item.bankName} · ${item.destinationMasked}.`,
@@ -245,9 +268,12 @@ export function WithdrawalWorkspace() {
     });
   }
 
+  // Mọi trạng thái chưa khép lại đều tính là đang treo. PAID và DISPUTED từng
+  // bị bỏ sót, nên ngay khi quản trị viên bấm "đã chuyển" thì con số này tụt về
+  // 0 dù giao dịch chưa xong và người rút chưa xác nhận nhận được đồng nào.
   const reserved = items
     .filter((item) =>
-      ["PENDING_REVIEW", "APPROVED", "PROCESSING"].includes(item.state))
+      ["PENDING_REVIEW", "APPROVED", "PROCESSING", "PAID", "DISPUTED"].includes(item.state))
     .reduce((total, item) => total + item.grossAmountXu, 0);
   const ready = accountName.trim() && accountNumber.trim() && bankName.trim() && amount >= 100_000;
 
@@ -407,6 +433,19 @@ export function WithdrawalWorkspace() {
                     ) : null}
                     {item.confirmNote ? (
                       <small className={styles.note}>Bạn đã báo: {item.confirmNote}</small>
+                    ) : null}
+
+                    {item.state === "PENDING_REVIEW" ? (
+                      <div className={styles.rowActions}>
+                        <button
+                          className={styles.rowGhost}
+                          disabled={working}
+                          onClick={() => cancelRequest(item)}
+                          type="button"
+                        >
+                          Huỷ yêu cầu
+                        </button>
+                      </div>
                     ) : null}
 
                     {item.state === "PAID" ? (

@@ -15,10 +15,42 @@ import { useEffect, useState } from "react";
  * comparing the bundle it points at against the one running is enough to know a
  * deploy has happened. Nothing reloads on its own: a reader mid-chapter, or a
  * publisher with an unsaved form, decides when.
+ *
+ * <p>Nhưng bundle mới không có nghĩa là trang đã dùng được. Máy chủ web lên
+ * trước, backend khởi động sau và mất khoảng mười lăm hai mươi giây mới trả lời
+ * - trong quãng đó mọi lệnh gọi API đều 502. Mời người đọc tải lại đúng lúc ấy
+ * là đẩy họ vào một trang trắng. Vì vậy banner chỉ hiện khi cả hai điều cùng
+ * đúng: có bản mới, VÀ backend đã trả lời khoẻ.
  */
 
 /** How often to look. Long enough to be invisible, short enough to matter. */
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;
+
+/**
+ * Nhịp hỏi lại khi đã thấy bản mới nhưng backend chưa sẵn sàng.
+ *
+ * <p>Ngắn hơn nhịp thường vì lúc này đang chờ một việc kéo dài vài chục giây,
+ * không phải rình một việc xảy ra vài ngày một lần.
+ */
+const RETRY_INTERVAL_MS = 10 * 1000;
+
+/**
+ * Backend đã trả lời khoẻ chưa.
+ *
+ * <p>Hỏi thẳng actuator/health thay vì suy từ một lệnh gọi bất kỳ: một API
+ * nghiệp vụ có thể trả 200 từ đệm của proxy trong khi backend vẫn đang khởi
+ * động, còn health thì không.
+ */
+async function backendHealthy(): Promise<boolean> {
+  try {
+    const response = await fetch(`/api/v1/actuator/health?v=${Date.now()}`, { cache: "no-store" });
+    if (!response.ok) return false;
+    const body = await response.json() as { status?: string };
+    return body.status === "UP";
+  } catch {
+    return false;
+  }
+}
 
 /** The bundle this tab is running, read from its own script tag. */
 function runningBundle(): string | null {
@@ -52,9 +84,30 @@ export function UpdateAvailable() {
     if (!running) return undefined;
 
     let cancelled = false;
+    let retry: number | null = null;
+
+    const stopRetry = () => {
+      if (retry != null) {
+        window.clearInterval(retry);
+        retry = null;
+      }
+    };
+
     const check = async () => {
       const deployed = await deployedBundle();
-      if (!cancelled && deployed && deployed !== running) setStale(true);
+      if (cancelled || !deployed || deployed === running) return;
+
+      if (await backendHealthy()) {
+        if (cancelled) return;
+        stopRetry();
+        setStale(true);
+        return;
+      }
+      // Có bản mới nhưng backend chưa lên. Im lặng chờ và hỏi lại thường xuyên
+      // hơn, thay vì mời người đọc tải lại vào một trang chưa chạy được.
+      if (!cancelled && retry == null) {
+        retry = window.setInterval(() => void check(), RETRY_INTERVAL_MS);
+      }
     };
 
     const timer = window.setInterval(() => void check(), CHECK_INTERVAL_MS);
@@ -65,6 +118,7 @@ export function UpdateAvailable() {
     return () => {
       cancelled = true;
       window.clearInterval(timer);
+      stopRetry();
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, []);

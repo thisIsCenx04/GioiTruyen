@@ -328,6 +328,10 @@ public class SecurityConfiguration {
                                 "/me/reading-progress/*"
                         ).authenticated()
                         .requestMatchers("/me/library").authenticated()
+                        // Thêm thể loại từ luồng upload: người upload thường là
+                        // chủ nhóm chứ không phải quản trị viên, nên màn hình
+                        // quản trị thể loại nằm ngoài tầm với của họ.
+                        .requestMatchers(HttpMethod.POST, "/genres").authenticated()
                         .requestMatchers(
                                 "/stories/*/favorite",
                                 "/stories/*/follow",

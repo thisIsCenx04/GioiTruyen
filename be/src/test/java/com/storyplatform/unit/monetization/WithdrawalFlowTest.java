@@ -15,7 +15,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 
 /**
  * Vòng đời một yêu cầu rút tiền, chạy trên đúng lược đồ thật.
@@ -29,6 +30,7 @@ class WithdrawalFlowTest {
 
     private MonetizationFlowService service;
     private JdbcClient jdbc;
+    private HikariDataSource pool;
 
     private UUID owner;
     private UUID admin;
@@ -49,13 +51,25 @@ class WithdrawalFlowTest {
         String user = System.getenv().getOrDefault("MYSQL_USER", "gioitruyen");
         String password = System.getenv().getOrDefault("MYSQL_PASSWORD", "");
 
-        DriverManagerDataSource source = new DriverManagerDataSource(url, user, password);
-        source.setDriverClassName("com.mysql.cj.jdbc.Driver");
+        // Có pool, không phải mở kết nối mới cho từng câu lệnh. Với một cơ sở
+        // dữ liệu cục bộ thì kiểu nào cũng chạy, nhưng khi chạy qua đường hầm
+        // SSH tới máy chủ thì mỗi lần bắt tay TCP lại là một lần có thể đứt -
+        // và bài kiểm hỏng vì đường truyền chứ không vì mã sai.
+        HikariConfig settings = new HikariConfig();
+        settings.setJdbcUrl(url);
+        settings.setUsername(user);
+        settings.setPassword(password);
+        settings.setDriverClassName("com.mysql.cj.jdbc.Driver");
+        settings.setMaximumPoolSize(2);
+        settings.setConnectionTimeout(20_000);
+        settings.setInitializationFailTimeout(-1);
 
+        HikariDataSource source = new HikariDataSource(settings);
+        pool = source;
         try (var probe = source.getConnection()) {
-            Assumptions.assumeTrue(probe.isValid(2), "Không kết nối được MySQL cục bộ");
+            Assumptions.assumeTrue(probe.isValid(2), "Không kết nối được MySQL");
         } catch (Exception unavailable) {
-            Assumptions.abort("Bỏ qua: không có MySQL cục bộ (" + unavailable.getMessage() + ")");
+            Assumptions.abort("Bỏ qua: không có MySQL (" + unavailable.getMessage() + ")");
         }
 
         jdbc = JdbcClient.create((DataSource) source);
@@ -95,7 +109,16 @@ class WithdrawalFlowTest {
 
     @AfterEach
     void cleanUp() {
+        try {
+            cleanFixtures();
+        } finally {
+            if (pool != null) pool.close();
+        }
+    }
+
+    private void cleanFixtures() {
         if (jdbc == null || team == null) return;
+        jdbc.sql("DELETE FROM notifications WHERE user_id = ?").param(owner.toString()).update();
         jdbc.sql("DELETE FROM withdrawal_requests WHERE team_id = ? OR user_id = ?")
                 .params(team.toString(), owner.toString()).update();
         jdbc.sql("DELETE FROM teams WHERE id = ?").param(team.toString()).update();
@@ -283,6 +306,81 @@ class WithdrawalFlowTest {
         assertThat(state(receipt.id())).isEqualTo("PAID");
     }
 
+    /* ── Người rút tự huỷ ───────────────────────────────────────────── */
+
+    /* Gõ nhầm số tài khoản là chuyện thường. Không có lối tự huỷ thì người dùng
+       phải nhắn riêng cho quản trị viên rồi ngồi chờ, xu vẫn bị treo. */
+    @Test
+    @DisplayName("người rút tự huỷ được khi chưa ai duyệt, và được hoàn xu")
+    void allowsSelfCancelWhilePending() {
+        var receipt = request(200_000L);
+
+        var cancelled = service.cancelOwnWithdrawal(owner, receipt.id(), "gõ nhầm số tài khoản");
+
+        assertThat(cancelled.state()).isEqualTo("REJECTED");
+        assertThat(cancelled.adminNote()).contains("gõ nhầm số tài khoản");
+        assertThat(balance(owner)).isEqualTo(500_000L);
+    }
+
+    /* Sau khi tiền đã chuyển đi, việc huỷ là quyết định của bên bỏ tiền ra. */
+    @Test
+    @DisplayName("không tự huỷ được sau khi quản trị viên đã duyệt")
+    void refusesSelfCancelAfterApproval() {
+        var receipt = request(200_000L);
+        service.approveWithdrawal(admin, receipt.id(), null);
+
+        assertThatThrownBy(() -> service.cancelOwnWithdrawal(owner, receipt.id(), null))
+                .isInstanceOfSatisfying(ApiException.class,
+                        failure -> assertThat(failure.code()).isEqualTo("withdrawal.wrong_state"));
+        assertThat(balance(owner)).isEqualTo(300_000L);
+    }
+
+    @Test
+    @DisplayName("không huỷ hộ yêu cầu của người khác")
+    void refusesCancellingSomebodyElsesRequest() {
+        var receipt = request(200_000L);
+
+        assertThatThrownBy(() -> service.cancelOwnWithdrawal(admin, receipt.id(), null))
+                .isInstanceOfSatisfying(ApiException.class,
+                        failure -> assertThat(failure.code()).isEqualTo("withdrawal.not_found"));
+        assertThat(state(receipt.id())).isEqualTo("PENDING_REVIEW");
+    }
+
+    /* ── Thông báo ──────────────────────────────────────────────────── */
+
+    /* Một khoản tiền bị huỷ và hoàn lại là đúng loại tin không ai nên phải tự
+       đi tìm trong trang ví. */
+    @Test
+    @DisplayName("mỗi bước đều để lại một thông báo cho người rút")
+    void notifiesTheRequesterAtEveryStep() {
+        var receipt = request(200_000L);
+        assertThat(notifications(owner)).isZero();
+
+        service.approveWithdrawal(admin, receipt.id(), null);
+        assertThat(notifications(owner)).isEqualTo(1);
+
+        service.markWithdrawalPaid(admin, receipt.id(), "FT1", null);
+        assertThat(notifications(owner)).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("thông báo huỷ nói rõ lý do và số xu đã hoàn")
+    void spellsOutTheReasonWhenRejecting() {
+        var receipt = request(200_000L);
+        service.rejectWithdrawal(admin, receipt.id(), "Tên tài khoản không khớp");
+
+        String message = jdbc.sql("""
+                        SELECT message FROM notifications
+                        WHERE user_id = ? AND target_type = ?
+                        ORDER BY created_at DESC LIMIT 1
+                        """)
+                .params(owner.toString(), "WITHDRAWAL").query(String.class).single();
+
+        assertThat(message).contains("Tên tài khoản không khớp");
+        // Con số phải viết theo lối Việt Nam bất kể máy chủ đặt ở đâu.
+        assertThat(message).contains("200.000");
+    }
+
     /* ── Hàng đợi của quản trị viên ─────────────────────────────────── */
 
     @Test
@@ -317,6 +415,11 @@ class WithdrawalFlowTest {
     private String state(UUID id) {
         return jdbc.sql("SELECT state FROM withdrawal_requests WHERE id = ?")
                 .param(id.toString()).query(String.class).single();
+    }
+
+    private long notifications(UUID user) {
+        return jdbc.sql("SELECT COUNT(*) FROM notifications WHERE user_id = ? AND target_type = ?")
+                .params(user.toString(), "WITHDRAWAL").query(Long.class).single();
     }
 
     private long balance(UUID user) {

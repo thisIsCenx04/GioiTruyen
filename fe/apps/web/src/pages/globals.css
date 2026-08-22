@@ -4499,6 +4499,145 @@ main { min-height: 100vh; }
   background: color-mix(in srgb, var(--blue) 12%, transparent);
 }
 
+
+/* ── Tủ truyện cá nhân ────────────────────────────────────────────────
+   Trang này trước đây viết toàn bộ màu sắc thẳng vào thuộc tính style, nên nó
+   là trang duy nhất của cả site không đổi theo chế độ tối: nền trắng chói giữa
+   một giao diện đã chuyển sang nền đậm. Chuyển sang biến màu chung để nó theo
+   đúng chế độ người đọc đang dùng. */
+
+.libraryPage {
+  margin: 0 auto;
+  max-width: 75rem;
+  padding: clamp(1.25rem, 4vw, 2rem) clamp(0.9rem, 3vw, 1.5rem);
+}
+
+.libraryIntro {
+  background: linear-gradient(135deg,
+      color-mix(in srgb, var(--blue) 8%, var(--surface-card)) 0%,
+      var(--surface-card) 70%);
+  border: 1px solid var(--line);
+  border-radius: .9rem;
+  margin-bottom: 1.5rem;
+  padding: clamp(1.1rem, 3vw, 1.75rem);
+}
+
+.libraryEyebrow {
+  align-items: center;
+  color: var(--blue);
+  display: flex;
+  font-size: .72rem;
+  font-weight: 800;
+  gap: .4rem;
+  letter-spacing: .06em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.libraryIntro h1 {
+  font-size: clamp(1.35rem, 4.5vw, 2.2rem);
+  font-weight: 900;
+  line-height: 1.25;
+  margin: .45rem 0 .5rem;
+  text-wrap: balance;
+}
+
+.libraryLede {
+  color: var(--text-secondary);
+  font-size: .88rem;
+  line-height: 1.6;
+  margin: 0;
+  max-width: 46rem;
+}
+
+/* Hàng tab cuộn ngang trên điện thoại thay vì xuống dòng: bốn kệ xếp thành hai
+   hàng trông như hai nhóm khác nhau. */
+.libraryTabs {
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: .5rem;
+  margin-bottom: 1.5rem;
+  overflow-x: auto;
+  padding-bottom: .85rem;
+  scrollbar-width: thin;
+}
+
+.libraryTab {
+  align-items: center;
+  background: var(--surface-card);
+  border: 1px solid var(--line);
+  border-radius: .6rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  flex: none;
+  font: inherit;
+  font-size: .84rem;
+  font-weight: 700;
+  gap: .45rem;
+  padding: .55rem 1.1rem;
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+  white-space: nowrap;
+}
+
+.libraryTab:hover { border-color: var(--blue); color: var(--blue); }
+
+.libraryTab[aria-selected="true"] {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: var(--text-on-accent);
+}
+
+.libraryCount {
+  color: var(--text-secondary);
+  font-size: .8rem;
+  font-variant-numeric: tabular-nums;
+  margin: 0 0 .9rem;
+}
+
+.libraryEmpty {
+  align-items: center;
+  background: var(--surface-card);
+  border: 1px dashed var(--line);
+  border-radius: 1rem;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(2rem, 8vw, 3.5rem) 1.5rem;
+  text-align: center;
+}
+
+.libraryEmpty > svg { color: var(--muted); margin-bottom: .9rem; }
+
+.libraryEmpty h2 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  margin: 0 0 .45rem;
+}
+
+.libraryEmpty p {
+  color: var(--text-secondary);
+  font-size: .85rem;
+  line-height: 1.6;
+  margin: 0 0 1.35rem;
+  max-width: 30rem;
+}
+
+.libraryCta {
+  background: var(--blue);
+  border: 1px solid var(--blue);
+  border-radius: .6rem;
+  color: var(--text-on-accent);
+  cursor: pointer;
+  display: inline-block;
+  font: inherit;
+  font-size: .85rem;
+  font-weight: 800;
+  padding: .7rem 1.5rem;
+  text-decoration: none;
+}
+
+.libraryCta:hover { filter: brightness(1.06); }
+
 .plainPageLede {
   color: var(--text-secondary);
   font-size: .88rem;
@@ -10962,6 +11101,32 @@ button {
   justify-content: flex-end;
   margin-top: 1.1rem;
 }
+
+/* Nút hành động ngay trong hộp thoại kết quả: việc cần làm nằm cạnh lời nói
+   về nó, thay vì bắt người dùng đóng đi rồi đi tìm màn hình khác. */
+.opDialogAction {
+  background: transparent;
+  border: 1px solid var(--blue);
+  border-radius: .45rem;
+  color: var(--blue);
+  cursor: pointer;
+  font: inherit;
+  font-size: .85rem;
+  font-weight: 800;
+  margin-right: .5rem;
+  padding: .5rem 1.1rem;
+}
+
+.opDialogAction:disabled { cursor: not-allowed; opacity: .55; }
+
+.opDialogDone {
+  color: #15803d;
+  font-size: .82rem;
+  font-weight: 700;
+  margin: .8rem 0 0;
+}
+
+[data-theme="dark"] .opDialogDone { color: #4ade80; }
 
 .opDialogClose {
   background: var(--blue);

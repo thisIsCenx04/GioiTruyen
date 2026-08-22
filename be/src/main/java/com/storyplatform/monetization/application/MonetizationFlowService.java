@@ -967,6 +967,9 @@ public class MonetizationFlowService {
                         .addValue("note", blankToNull(note))
         );
         requireChanged(rows, "chờ duyệt");
+        notifyWithdrawal(id, "Yêu cầu rút tiền đã được duyệt",
+                "Yêu cầu rút %s đã được duyệt và đang chờ chuyển khoản."
+                        .formatted(amountLine(id)));
         return findWithdrawal(id);
     }
 
@@ -994,6 +997,10 @@ public class MonetizationFlowService {
                         .addValue("reference", blankToNull(reference))
         );
         requireChanged(rows, "đang chờ chuyển tiền");
+        notifyWithdrawal(id, "Đã chuyển tiền cho bạn",
+                "%s đã được chuyển. Kiểm tra tài khoản ngân hàng rồi bấm xác nhận giúp; "
+                        .formatted(amountLine(id))
+                        + "nếu chưa nhận được, hãy báo lại để quản trị viên tra soát.");
         return findWithdrawal(id);
     }
 
@@ -1025,6 +1032,9 @@ public class MonetizationFlowService {
         );
         requireChanged(rows, "chưa chốt");
         refundWithdrawal(id);
+        notifyWithdrawal(id, "Yêu cầu rút tiền bị huỷ",
+                "Yêu cầu rút %s đã bị huỷ và toàn bộ xu đã hoàn lại vào ví. Lý do: %s"
+                        .formatted(amountLine(id), reason));
         return findWithdrawal(id);
     }
 
@@ -1120,6 +1130,83 @@ public class MonetizationFlowService {
 
     private static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+
+    /**
+     * Báo cho người rút biết yêu cầu của họ vừa đổi trạng thái.
+     *
+     * <p>Thiếu bước này thì người rút chỉ biết chuyện đã xảy ra nếu tự mở trang
+     * ví ra xem - mà một khoản tiền bị huỷ và hoàn lại là đúng loại tin không ai
+     * nên phải tự đi tìm. Luồng nạp tiền đã làm đúng như vậy từ lâu; chỗ này chỉ
+     * là bù cho ngang bằng.
+     *
+     * <p>Không để một lỗi ghi thông báo làm hỏng cả giao dịch tiền: tiền đã
+     * chuyển đúng vẫn quan trọng hơn cái tin báo về nó.
+     */
+    private void notifyWithdrawal(UUID id, String title, String message) {
+        try {
+            jdbc.update(
+                    """
+                            INSERT INTO notifications
+                                (id, user_id, type, title, message, target_type, target_id, target_url, created_at)
+                            SELECT UUID(), w.user_id, 'PAYMENT', :title, :message,
+                                   'WITHDRAWAL', w.id, '/wallet#withdrawals', NOW(3)
+                            FROM withdrawal_requests w
+                            WHERE w.id = :id
+                            """,
+                    new MapSqlParameterSource()
+                            .addValue("id", id.toString())
+                            .addValue("message", message)
+                            .addValue("title", title)
+            );
+        } catch (Exception failure) {
+            log.warn("Không ghi được thông báo rút tiền {}: {}", id, failure.toString());
+        }
+    }
+
+    /** Câu mô tả khoản tiền, dùng chung cho mọi thông báo về một yêu cầu. */
+    private String amountLine(UUID id) {
+        try {
+            Map<String, Object> row = jdbc.queryForMap(
+                    "SELECT gross_amount_xu, net_amount_xu FROM withdrawal_requests WHERE id = :id",
+                    Map.of("id", id.toString()));
+            long gross = ((Number) row.get("gross_amount_xu")).longValue();
+            long net = ((Number) row.get("net_amount_xu")).longValue();
+            return "%s xu (thực nhận %s xu)".formatted(xu(gross), xu(net));
+        } catch (Exception unavailable) {
+            return "yêu cầu rút tiền";
+        }
+    }
+
+    /** Số xu viết theo lối Việt Nam, cố định không phụ thuộc máy chủ đặt ở đâu. */
+    private static String xu(long value) {
+        return java.text.NumberFormat.getInstance(java.util.Locale.of("vi", "VN")).format(value);
+    }
+
+    /** Ai đang giữ yêu cầu nào - dùng cho việc tự huỷ của chính người rút. */
+    @Transactional
+    public WithdrawalReceipt cancelOwnWithdrawal(UUID userId, UUID id, String note) {
+        // Chỉ huỷ được khi quản trị viên chưa động tới. Sau khi đã duyệt hoặc đã
+        // chuyển tiền thì việc huỷ là quyết định của bên đã bỏ tiền ra, không
+        // phải của bên nhận.
+        int rows = jdbc.update(
+                """
+                        UPDATE withdrawal_requests
+                           SET state = 'REJECTED', admin_note = :note, updated_at = NOW(3)
+                         WHERE id = :id AND user_id = :userId AND state = 'PENDING_REVIEW'
+                        """,
+                new MapSqlParameterSource()
+                        .addValue("id", id.toString())
+                        .addValue("note", blankToNull(note) == null
+                                ? "Người rút tự huỷ yêu cầu."
+                                : "Người rút tự huỷ: " + note.trim())
+                        .addValue("userId", userId.toString())
+        );
+        if (rows != 1) requireOwnWithdrawal(userId, id);
+        requireChanged(rows, "chờ duyệt");
+        refundWithdrawal(id);
+        return findWithdrawal(id);
     }
 
     private static String requireText(String value, String label) {

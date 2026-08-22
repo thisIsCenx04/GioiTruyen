@@ -241,8 +241,62 @@ function chapterTitle(line: string, index: number) {
   return suffix ? `Chương ${number}: ${suffix}` : `Chương ${number}`;
 }
 
-function splitChapterBlocks(lines: readonly DocumentLine[], fallbackTitle: string): ImportedChapter[] {
-  const trustStyles = !hasTextualHeadings(lines);
+/**
+ * Có nên tin vào kiểu tiêu đề mà tài liệu tự khai không.
+ *
+ * <p>Word có hai cách viết một tiêu đề chương. Tác giả gõ thẳng "Chương 711"
+ * thành chữ, hoặc bật đánh số tự động - lúc đó phần "Chương 711" do Word sinh
+ * ra khi hiển thị, còn trong tệp chỉ còn tựa đề trần mang kiểu Heading. Ngăn
+ * điều hướng của Word hiện y hệt nhau ở cả hai cách, nên người upload không có
+ * cách nào biết tệp của mình thuộc loại nào.
+ *
+ * <p>Luật cũ là được ăn cả ngã về không: hễ có MỘT dòng gọi tên chương bằng
+ * chữ thì mọi tiêu đề theo kiểu đều bị bỏ qua. Một tệp trộn hai cách - tác giả
+ * gõ tay mấy chương đầu rồi mới bật đánh số tự động - vì thế mất gần hết
+ * chương, và chữ của chúng dồn vào chương gõ tay gần nhất: một tệp bảy trăm
+ * chương về còn chín mươi, mỗi "chương" phình lên gấp mấy lần bình thường.
+ *
+ * <p>Nay quyết định dựa trên kết quả chứ không dựa trên sự có mặt. Cắt thử
+ * bằng chữ trước; nếu cách đó đã chia được tài liệu thành những chương có kích
+ * thước thật thì giữ nguyên - đúng điều luật cũ muốn bảo vệ. Chỉ khi nó cho ra
+ * những khối to bất thường mới xét tới kiểu tiêu đề, và cũng chỉ nhận khi kiểu
+ * tiêu đề vừa tìm được nhiều hơn, vừa chia ra hợp lý.
+ */
+function shouldTrustStyles(
+  lines: readonly DocumentLine[],
+  wordsPerChapter: number = WORDS_PER_CHAPTER,
+): boolean {
+  // Không dòng nào gọi tên chương bằng chữ: kiểu tiêu đề là tất cả những gì có.
+  if (!hasTextualHeadings(lines)) return true;
+
+  // Dấu hiệu của việc bỏ sót tiêu đề là những khối quá khổ: chữ của các chương
+  // không nhận ra dồn hết vào chương nhận ra được gần nhất.
+  //
+  // Đếm số khối quá khổ chứ không lấy trung vị. Trong tệp trộn hai cách, phần
+  // lớn chương gõ tay nằm ở đầu và chỉ một khối cuối ôm toàn bộ phần còn lại -
+  // trung vị vẫn đẹp như thường trong khi tệp đã hỏng.
+  const byText = buildChapterBlocks(lines, "", false);
+  const textOversize = oversizeChapters(byText, wordsPerChapter);
+  if (textOversize === 0) return false;
+
+  // Chỉ đổi sang kiểu tiêu đề khi nó vừa tìm được nhiều chương hơn, vừa thật sự
+  // gỡ được những khối quá khổ kia - chứ không phải chỉ cắt vụn tài liệu ra.
+  const byStyle = buildChapterBlocks(lines, "", true);
+  return byStyle.length > byText.length
+    && oversizeChapters(byStyle, wordsPerChapter) < textOversize;
+}
+
+/** Số chương to đến mức không thể là một chương. */
+function oversizeChapters(chapters: readonly ImportedChapter[], wordsPerChapter: number): number {
+  const ceiling = wordsPerChapter * OVERSIZE_FACTOR;
+  return chapters.filter((chapter) => wordCount(chapter.content) > ceiling).length;
+}
+
+function buildChapterBlocks(
+  lines: readonly DocumentLine[],
+  fallbackTitle: string,
+  trustStyles: boolean,
+): ImportedChapter[] {
   const blocks: Array<{ content: string[]; heading: string }> = [];
   const preamble: string[] = [];
   let current: { content: string[]; heading: string } | null = null;
@@ -263,6 +317,14 @@ function splitChapterBlocks(lines: readonly DocumentLine[], fallbackTitle: strin
     content: block.content.join("\n").replace(/\n{3,}/gu, "\n\n").trim(),
     title: block.heading === fallbackTitle ? fallbackTitle : chapterTitle(block.heading, index),
   }));
+}
+
+function splitChapterBlocks(
+  lines: readonly DocumentLine[],
+  fallbackTitle: string,
+  wordsPerChapter: number = WORDS_PER_CHAPTER,
+): ImportedChapter[] {
+  return buildChapterBlocks(lines, fallbackTitle, shouldTrustStyles(lines, wordsPerChapter));
 }
 
 /* ── Reading whatever the publisher actually uploads ──────────────────────
@@ -307,10 +369,30 @@ function docxLines(bytes: Uint8Array): DocumentLine[] {
   const documentXml = files["word/document.xml"];
   if (!documentXml) throw new Error("File Word không có document.xml hợp lệ.");
   const document = new DOMParser().parseFromString(strFromU8(documentXml), "application/xml");
+
+  // DOMParser không ném lỗi khi XML hỏng: nó trả về một tài liệu chứa thẻ
+  // <parsererror>. Không kiểm chỗ này thì mọi lỗi đọc file đều đi tiếp thành
+  // "không có đoạn nào", rồi hiện ra màn hình là "file trống" - một câu sai,
+  // và người upload không có cách nào biết phải sửa gì.
+  if (document.getElementsByTagName("parsererror").length > 0) {
+    throw new Error(
+      "Nội dung file Word bị lỗi định dạng nên không đọc được. "
+      + "Mở bằng Word rồi lưu lại (Save As) thành .docx mới, sau đó upload lại.",
+    );
+  }
+
+  const paragraphs = document.getElementsByTagNameNS("*", "p");
+  if (paragraphs.length === 0) {
+    throw new Error(
+      "File Word này không có đoạn văn nào ở dạng đọc được. "
+      + "Thường gặp khi file được xuất từ công cụ khác; mở bằng Word rồi lưu lại "
+      + "thành .docx mới sẽ đọc được.",
+    );
+  }
   // Blank paragraphs are kept: they separate the header block from the story
   // body, and dropping them made a .docx without chapter headings parse as
   // header-only, so it arrived with no chapters at all.
-  return Array.from(document.getElementsByTagNameNS("*", "p")).map((paragraph) => {
+  return Array.from(paragraphs).map((paragraph) => {
     const text = Array.from(
       paragraph.getElementsByTagNameNS("*", "t"),
       (node) => node.textContent ?? "",
@@ -932,7 +1014,7 @@ export async function parseStoryDocument(
   // rule has to be used here and in splitChapterBlocks: deciding the header
   // block by one rule and the chapter boundaries by another puts the two out of
   // step, and the text between them is what goes missing.
-  const trustStyles = !hasTextualHeadings(lines);
+  const trustStyles = shouldTrustStyles(lines);
   let firstChapterIndex = lines.length;
   for (let index = 0; index < lines.length; index++) {
     const line = lines[index];
@@ -993,7 +1075,20 @@ export async function parseStoryDocument(
       const inlineValue = (match[2] ?? "").trim();
       if (inlineValue) {
         if (!metadata[key]) metadata[key] = inlineValue;
-        openLabel = null;
+        // Phần giới thiệu vẫn chạy tiếp xuống những dòng dưới, kể cả khi dòng
+        // nhãn đã có sẵn chữ. Đóng nhãn ngay tại đây - như bản trước làm - thì
+        // một văn án viết kiểu
+        //
+        //     Giới thiệu: Đường Kiều là vai ác một bộ truyện tiên hiệp.
+        //     Nàng cẩn thận đi theo cốt truyện...
+        //
+        // chỉ giữ được đúng dòng đầu; những dòng sau rơi vào đống không nhãn và
+        // bị bỏ luôn, vì đống đó chỉ dùng khi giới thiệu còn trống. Đó là lý do
+        // truyện nào cũng chỉ còn vài dòng giới thiệu.
+        //
+        // Chỉ mở tiếp cho giới thiệu: tên truyện, tác giả và thể loại đều là
+        // giá trị một dòng, cho chúng nối tiếp sẽ nuốt luôn dòng kế bên.
+        openLabel = key === "synopsis" ? "synopsis" : null;
       } else {
         // Bare label: its value is on the following lines.
         openLabel = key;

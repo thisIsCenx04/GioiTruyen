@@ -703,20 +703,69 @@ public class PublicCatalogService {
      * with the same card the reader saved it from.
      */
     public List<CatalogDtos.HomeStorySummary> library(String userId) {
-        return jdbc.query(
-                """
-                        SELECT s.id, s.team_id, t.name AS team_name, s.slug, s.title, s.cover_url,
-                               s.story_format, s.story_type, s.published_at, s.view_count_cache,
-                               s.favorite_count_cache, s.original_author, s.progress_status
-                        FROM library_items l
-                        JOIN stories s ON s.id = l.story_id
-                        JOIN teams t ON t.id = s.team_id
-                        WHERE l.user_id = :userId AND s.status = 'PUBLISHED'
-                        ORDER BY l.created_at DESC
-                        """,
-                new MapSqlParameterSource("userId", userId),
-                (rs, rowNum) -> summary(rs)
-        );
+        return library(userId, "favorites");
+    }
+
+    /**
+     * Một kệ trong tủ truyện của người đọc.
+     *
+     * <p>Bốn kệ, bốn nguồn dữ liệu khác nhau. Trước đây chỉ có một truy vấn duy
+     * nhất và ba cái tab ở giao diện chỉ đổi màu nút - "Đang đọc" và "Lịch sử
+     * đọc" hiện đúng cùng một danh sách với "Yêu thích", nên hai tab đó không
+     * nói lên điều gì.
+     *
+     * @param shelf favorites | reading | history | combo
+     */
+    public List<CatalogDtos.HomeStorySummary> library(String userId, String shelf) {
+        String columns = """
+                SELECT s.id, s.team_id, t.name AS team_name, s.slug, s.title, s.cover_url,
+                       s.story_format, s.story_type, s.published_at, s.view_count_cache,
+                       s.favorite_count_cache, s.original_author, s.progress_status
+                """;
+        String sql = switch (shelf == null ? "" : shelf) {
+            // Đang đọc: có tiến độ đọc và truyện chưa hoàn thành, tức là còn
+            // chương để đọc tiếp. Xếp theo lần đọc gần nhất.
+            case "reading" -> columns + """
+                    FROM reading_progress r
+                    JOIN stories s ON s.id = r.story_id
+                    JOIN teams t ON t.id = s.team_id
+                    WHERE r.user_id = :userId AND s.status = 'PUBLISHED'
+                      AND s.progress_status <> 'COMPLETED'
+                    ORDER BY r.updated_at DESC
+                    LIMIT 200
+                    """;
+            // Lịch sử: mọi truyện từng đọc, kể cả đã đọc xong.
+            case "history" -> columns + """
+                    FROM reading_progress r
+                    JOIN stories s ON s.id = r.story_id
+                    JOIN teams t ON t.id = s.team_id
+                    WHERE r.user_id = :userId AND s.status = 'PUBLISHED'
+                    ORDER BY r.updated_at DESC
+                    LIMIT 200
+                    """;
+            // Đã mua trọn bộ. GROUP BY vì một truyện có thể mua nhiều lần nếu
+            // tác giả mở bán lại phần sau - kệ chỉ cần mỗi truyện một lần.
+            case "combo" -> columns + """
+                    FROM story_combo_purchases c
+                    JOIN stories s ON s.id = c.story_id
+                    JOIN teams t ON t.id = s.team_id
+                    WHERE c.user_id = :userId AND s.status = 'PUBLISHED'
+                    GROUP BY s.id, s.team_id, t.name, s.slug, s.title, s.cover_url,
+                             s.story_format, s.story_type, s.published_at, s.view_count_cache,
+                             s.favorite_count_cache, s.original_author, s.progress_status
+                    ORDER BY MAX(c.created_at) DESC
+                    LIMIT 200
+                    """;
+            default -> columns + """
+                    FROM library_items l
+                    JOIN stories s ON s.id = l.story_id
+                    JOIN teams t ON t.id = s.team_id
+                    WHERE l.user_id = :userId AND s.status = 'PUBLISHED'
+                    ORDER BY l.created_at DESC
+                    LIMIT 200
+                    """;
+        };
+        return jdbc.query(sql, new MapSqlParameterSource("userId", userId), (rs, rowNum) -> summary(rs));
     }
 
     private List<CatalogDtos.HomeStorySummary> summaries(String orderBy, int limit) {

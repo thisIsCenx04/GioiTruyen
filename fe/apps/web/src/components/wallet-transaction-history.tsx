@@ -19,15 +19,28 @@ type WalletTransactionRow = {
 const typeLabels: Readonly<Record<string, string>> = {
   ADMIN_ADJUSTMENT: "Điều chỉnh admin",
   DAILY_REWARD: "Thưởng ngày",
-  DEPOSIT: "Nạp xu",
+  DEPOSIT: "Nạp tiền vào ví",
   DONATION: "Donate",
   EARNING: "Doanh thu team",
   PURCHASE: "Mua truyện",
-  RECOMMENDATION: "Đề cử ngọc",
+  RECOMMENDATION: "Đề cử truyện",
   REFERRAL_REWARD: "Thưởng giới thiệu",
-  REFUND: "Hoàn xu",
+  REFUND: "Hoàn lại",
   WITHDRAWAL: "Rút tiền",
 };
+
+/**
+ * Đơn vị của một dòng giao dịch.
+ *
+ * <p>Ví có hai loại tiền và bảng wallet_transactions ghi rõ loại nào ở cột
+ * currency - nhưng sổ này ghi "xu" cho mọi dòng. Một lần đề cử trừ 1.250 ngọc
+ * hiện ra thành "-1.250 xu" kèm "Số dư: 104.700 xu", mà 104.700 lại chính là
+ * số dư ngọc. Người đọc soi sổ thấy số xu tụt xuống một cách vô lý và không
+ * cách nào đối chiếu được.
+ */
+function unitOf(currency: string): string {
+  return currency?.toUpperCase() === "GEM" ? "ngọc" : "xu";
+}
 
 const number = new Intl.NumberFormat("vi-VN");
 const date = new Intl.DateTimeFormat("vi-VN", {
@@ -114,9 +127,9 @@ export function WalletTransactionHistory() {
                 <strong>{typeLabels[item.type] ?? item.type}</strong>
                 <span className={positive ? "walletAmountIn" : "walletAmountOut"}>
                   {positive ? "+" : ""}
-                  {number.format(item.amount)} xu
+                  {number.format(item.amount)} {unitOf(item.currency)}
                 </span>
-                <span>Số dư: {number.format(item.balanceAfter)} xu</span>
+                <span>Số dư: {number.format(item.balanceAfter)} {unitOf(item.currency)}</span>
                 <span>{item.description ?? item.referenceType ?? ""}</span>
               </li>
             );

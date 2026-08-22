@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * The result of an upload or a save, stated in full.
@@ -21,6 +21,17 @@ export type OperationOutcome = {
   details: string[];
   /** What to do about it, when there is something to do. */
   hint?: string;
+  /**
+   * Một việc người dùng làm được ngay tại đây.
+   *
+   * <p>Có những kết quả mà lời khuyên đi kèm là một hành động cụ thể - "trang
+   * chưa có thể loại này, thêm không?". Bắt người dùng đóng hộp thoại rồi đi
+   * tìm màn hình khác để làm việc đó là cách chắc chắn nhất khiến họ bỏ qua.
+   */
+  action?: {
+    label: string;
+    run: () => Promise<void> | void;
+  };
 };
 
 const ICONS = {
@@ -40,6 +51,15 @@ export function OperationDialog({
   outcome,
 }: Readonly<{ onClose: () => void; outcome: OperationOutcome | null }>) {
   const closeButton = useRef<HTMLButtonElement>(null);
+  const [running, setRunning] = useState(false);
+  const [done, setDone] = useState("");
+
+  // Mỗi lần mở một kết quả khác là một tờ giấy trắng: nút hành động của lần
+  // trước không được để lại trạng thái "đã xong" cho lần này.
+  useEffect(() => {
+    setRunning(false);
+    setDone("");
+  }, [outcome]);
 
   useEffect(() => {
     if (!outcome) return undefined;
@@ -83,7 +103,28 @@ export function OperationDialog({
 
         {outcome.hint ? <p className="opDialogHint">{outcome.hint}</p> : null}
 
+        {done ? <p className="opDialogDone" role="status">{done}</p> : null}
+
         <div className="opDialogActions">
+          {outcome.action && !done ? (
+            <button
+              className="opDialogAction"
+              disabled={running}
+              onClick={async () => {
+                if (!outcome.action) return;
+                setRunning(true);
+                try {
+                  await outcome.action.run();
+                  setDone("Đã xong.");
+                } finally {
+                  setRunning(false);
+                }
+              }}
+              type="button"
+            >
+              {running ? "Đang xử lý…" : outcome.action.label}
+            </button>
+          ) : null}
           <button className="opDialogClose" onClick={onClose} ref={closeButton} type="button">
             Đã hiểu
           </button>

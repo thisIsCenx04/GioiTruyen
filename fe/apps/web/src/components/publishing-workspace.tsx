@@ -4,6 +4,8 @@ import { Eye, EyeOff, Loader2, Paperclip, Plus, Save, Trash2 } from "lucide-reac
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
+import { failureOutcome } from "@/components/api-problem";
+import { FormDialog, type DialogRequest } from "@/components/form-dialog";
 import { ChapterEditorPager, chapterPageCount, chapterPageSlice } from "@/components/chapter-editor-pager";
 import { MissingChaptersNotice } from "@/components/missing-chapters-notice";
 import { OperationDialog, type OperationOutcome } from "@/components/operation-dialog";
@@ -307,6 +309,67 @@ export function chapterRangeIndices(from: number, to: number, total: number): nu
  * chapters worth nothing - the server refuses a PAID chapter priced at zero,
  * since it would unlock for free anyway.
  */
+/**
+ * Số chương mà một dòng đang mang.
+ *
+ * <p>Lấy từ tiêu đề trước, vì đó là con số người đọc nhìn thấy; tiêu đề không
+ * ghi số thì mới lấy vị trí trong danh sách.
+ */
+export function draftChapterNumber(
+  rows: readonly { title: string }[],
+  index: number,
+): number {
+  return chapterNumberFromTitle(rows[index]?.title ?? "") ?? index + 1;
+}
+
+/**
+ * Chỗ mà một chương mang số này thuộc về trong danh sách hiện tại.
+ *
+ * <p>Chèn ngay trước chương đầu tiên có số lớn hơn. Với số bằng nhau thì chèn
+ * xuống sau, nên thêm "chương 86" vào một truyện đã có 86 sẽ nằm ngay sau bản
+ * cũ chứ không đẩy bản cũ xuống - và ngoại truyện đánh 86.5 rơi đúng giữa 86
+ * với 87.
+ */
+export function chapterInsertIndex(
+  rows: readonly { title: string }[],
+  number: number,
+): number {
+  for (let index = 0; index < rows.length; index += 1) {
+    if (draftChapterNumber(rows, index) > number) return index;
+  }
+  return rows.length;
+}
+
+/**
+ * Tiêu đề đầy đủ cho một chương thêm tay.
+ *
+ * <p>Người nhập gõ "Gặp lại" và chọn số 86; thứ được lưu phải là "Chương 86:
+ * Gặp lại", vì số chương nằm trong tiêu đề là thứ quyết định vị trí về sau. Gõ
+ * sẵn "Chương 86" thì để nguyên, không lồng thêm một lần nữa.
+ */
+export function composeChapterTitle(number: number, title: string): string {
+  const clean = title.trim();
+  if (chapterNumberFromTitle(clean) != null) return clean;
+  return clean ? `Chương ${number}: ${clean}` : `Chương ${number}`;
+}
+
+/**
+ * Buộc giá và loại chương khớp nhau.
+ *
+ * <p>Chỉ có đúng một luật: có giá thì trả phí, không giá thì miễn phí. Trước
+ * đây hai trường này đặt rời nhau ở năm chỗ khác nhau, nên chọn "Trả phí" mà
+ * chưa gõ giá là tạo ra một chương trả phí giá 0 - máy chủ từ chối, và cả lần
+ * lưu hỏng vì một ô chưa điền.
+ */
+export function normalizeChapterPricing<T extends { accessType: "FREE" | "PAID"; coinPrice: number }>(
+  chapter: T,
+): T {
+  const price = Number.isFinite(chapter.coinPrice) ? Math.max(0, Math.floor(chapter.coinPrice)) : 0;
+  return price > 0
+    ? { ...chapter, accessType: "PAID" as const, coinPrice: price }
+    : { ...chapter, accessType: "FREE" as const, coinPrice: 0 };
+}
+
 export function freeThenPaidPricing<T extends { accessType: "FREE" | "PAID"; coinPrice: number }>(
   chapters: readonly T[],
   freeCount: number,
@@ -353,6 +416,7 @@ export function PublishingWorkspace({ teamId }: Readonly<{ teamId: string }>) {
   const [picked, setPicked] = useState<ReadonlySet<number>>(new Set());
   /** Xu applied to the ticked chapters; blank until a figure is typed. */
   const [bulkPrice, setBulkPrice] = useState<number | ''>('');
+  const [ask, setAsk] = useState<DialogRequest | null>(null);
   /** Ends of the "tick chapters N to M" shortcut, by position in the list. */
   const [rangeFrom, setRangeFrom] = useState<number | ''>('');
   const [rangeTo, setRangeTo] = useState<number | ''>('');
@@ -417,6 +481,19 @@ export function PublishingWorkspace({ teamId }: Readonly<{ teamId: string }>) {
     Number(freeChapterCount) || 0,
     Number(paidChapterPrice) || 0,
   ));
+
+  /**
+   * Mức giá gợi ý khi chuyển một chương sang trả phí.
+   *
+   * <p>Lấy giá đang dùng ở các chương trả phí khác, vì một bộ truyện gần như
+   * luôn dùng chung một mức. Chưa có chương nào trả phí thì lấy ô "giá chương
+   * trả phí" ở khối đặt giá hàng loạt.
+   */
+  const suggestedPaidPrice = (() => {
+    const inUse = chapters.map((chapter) => chapter.coinPrice).filter((price) => price > 0);
+    if (inUse.length > 0) return inUse[inUse.length - 1]!;
+    return Math.max(0, Number(paidChapterPrice) || 0);
+  })();
 
   /** Prices only the ticked chapters. 0 means free: the server refuses a PAID
    *  chapter priced at zero, since it would unlock for nothing. */
@@ -538,11 +615,70 @@ export function PublishingWorkspace({ teamId }: Readonly<{ teamId: string }>) {
     setNotice(null);
   }
 
-  function addChapter() {
-    setChapters((rows) => [
-      ...rows,
-      { title: "", content: "", accessType: "FREE", coinPrice: 0 },
-    ]);
+  /**
+   * Thêm một chương ở đúng vị trí người quản lý chọn.
+   *
+   * <p>Bản trước chỉ nối một dòng trống vào cuối danh sách. Muốn chèn chương 86
+   * vào giữa một bộ bảy trăm chương thì phải kéo tay từ cuối lên - việc không
+   * ai làm nổi, nên trên thực tế chương chèn giữa luôn nằm sai chỗ.
+   */
+  function openAddChapter() {
+    const suggested = chapters.length > 0
+      ? Math.floor(draftChapterNumber(chapters, chapters.length - 1)) + 1
+      : 1;
+    setAsk({
+      fields: [
+        {
+          hint: "Chương sẽ tự nằm đúng chỗ theo số này. Ngoại truyện dùng số lẻ như 86.5.",
+          kind: "number",
+          label: "Số chương",
+          min: 0,
+          name: "number",
+          required: true,
+          requiredMessage: "Cần số chương thì mới biết đặt nó vào đâu.",
+          value: String(suggested),
+        },
+        {
+          hint: "Không cần gõ lại chữ “Chương N”, phần đó tự thêm.",
+          label: "Tên chương",
+          maxLength: 200,
+          name: "title",
+          placeholder: "Gặp lại cố nhân",
+        },
+        {
+          kind: "textarea",
+          label: "Nội dung",
+          name: "content",
+          placeholder: "Dán nội dung chương vào đây…",
+          required: true,
+          requiredMessage: "Máy chủ từ chối chương rỗng, nên nội dung là bắt buộc.",
+        },
+        {
+          hint: "Để 0 là chương miễn phí.",
+          kind: "number",
+          label: "Giá xu",
+          min: 0,
+          name: "coinPrice",
+          value: "0",
+        },
+      ],
+      intro: "Chương mới sẽ được chèn vào đúng vị trí theo số chương, không phải kéo tay.",
+      onSubmit: (values) => {
+        const number = Number(values.number);
+        const draft = normalizeChapterPricing({
+          accessType: "FREE" as const,
+          coinPrice: Number(values.coinPrice) || 0,
+          content: values.content,
+          title: composeChapterTitle(number, values.title),
+        });
+        setChapters((rows) => {
+          const at = chapterInsertIndex(rows, number);
+          return [...rows.slice(0, at), draft, ...rows.slice(at)];
+        });
+      },
+      submitLabel: "Thêm chương",
+      title: "Thêm chương thủ công",
+    });
   }
 
   /**
@@ -554,6 +690,37 @@ export function PublishingWorkspace({ teamId }: Readonly<{ teamId: string }>) {
    * author, synopsis) is filled from the filename or left for manual entry
    * rather than overwriting what is already typed.
    */
+  /**
+   * Thêm những thể loại file có ghi mà trang chưa có, rồi tick sẵn chúng.
+   *
+   * <p>Chỉ chạy khi người dùng bấm nút xác nhận trong hộp thoại báo đọc xong.
+   * Tự thêm ngay lúc đọc file thì một tên gõ sai trong file sẽ lặng lẽ thành
+   * một thể loại mới, và danh sách thể loại đầy rác trong vài tuần mà không ai
+   * biết rác từ đâu ra.
+   */
+  async function addMissingGenres(names: readonly string[]) {
+    const response = await authedFetch(`${API_BASE_URL}/genres`, {
+      body: JSON.stringify({ names }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+    });
+    if (!response.ok) {
+      setOutcome(await failureOutcome("Không thêm được thể loại", response));
+      return;
+    }
+    const added = (await response.json()) as Array<{ id: string; name: string; slug: string }>;
+    // Danh sách thể loại của form phải biết tới chúng, nếu không ô chọn hiện ra
+    // những id trống tên.
+    setCategories((current) => {
+      const known = new Set(current.map((category) => category.id));
+      return [...current, ...added.filter((category) => !known.has(category.id))];
+    });
+    setForm((current) => ({
+      ...current,
+      categoryIds: [...new Set([...current.categoryIds, ...added.map((category) => category.id)])],
+    }));
+  }
+
   async function importStoryFile(file: File | null) {
     if (!file) return;
     if (file.size > MAX_STORY_FILE_BYTES) {
@@ -703,7 +870,8 @@ export function PublishingWorkspace({ teamId }: Readonly<{ teamId: string }>) {
           ? `Thể loại đọc từ file, đã tick sẵn: ${genres.matched.join(", ")}.`
           : "Thể loại: file không ghi, hãy tự chọn.",
         genres.unmatched.length > 0
-          ? `Trang chưa có thể loại tương ứng: ${genres.unmatched.join(", ")}. Hãy chọn thủ công nếu cần.`
+          ? `Trang chưa có thể loại tương ứng: ${genres.unmatched.join(", ")}. `
+            + "Bấm nút bên dưới để thêm và tick sẵn, hoặc chọn thủ công nếu không cần."
           : "",
         imported.synopsis
           ? imported.synopsis.length > SYNOPSIS_MAX_LENGTH
@@ -718,6 +886,14 @@ export function PublishingWorkspace({ teamId }: Readonly<{ teamId: string }>) {
       ].filter(Boolean);
 
       setOutcome({
+        // Thể loại file có ghi mà trang chưa có: thêm ngay tại đây, không phải
+        // đi tìm màn hình quản trị thể loại - thứ mà chủ nhóm không mở được.
+        action: genres.unmatched.length > 0
+          ? {
+            label: `Thêm ${genres.unmatched.length} thể loại này`,
+            run: () => addMissingGenres(genres.unmatched),
+          }
+          : undefined,
         details,
         hint: selectedId && chapters.length > 0
           ? "Kiểm tra danh sách chương bên dưới rồi bấm Lưu để ghi thay đổi lên máy chủ."
@@ -919,9 +1095,35 @@ export function PublishingWorkspace({ teamId }: Readonly<{ teamId: string }>) {
       setOutcome({ details: ["Truyện phải thuộc ít nhất một thể loại thì người đọc mới tìm thấy."], kind: "error", title: "Chưa chọn thể loại" });
       return;
     }
-    const paidWithoutPrice = chapters.some((c) => c.accessType === "PAID" && c.coinPrice <= 0);
-    if (paidWithoutPrice) {
-      setOutcome({ details: ["Có chương đang để trả phí nhưng giá bằng 0 Xu, nên sẽ mở khoá miễn phí."], hint: "Đặt giá lớn hơn 0, hoặc chuyển chương đó về miễn phí.", kind: "error", title: "Chương trả phí chưa có giá" });
+    // Chương để trả phí mà chưa có giá. Trước đây chỗ này chặn cứng lần lưu và
+    // bảo người dùng tự đi sửa - với một bộ bảy trăm chương thì đó là đi tìm
+    // kim đáy bể. Nay nói rõ chương nào, và cho sửa hết bằng một cú bấm.
+    const unpriced = chapters
+      .map((chapter, index) => ({ chapter, index }))
+      .filter(({ chapter }) => chapter.accessType === "PAID" && chapter.coinPrice <= 0);
+    if (unpriced.length > 0) {
+      const names = unpriced
+        .slice(0, 5)
+        .map(({ chapter, index }) => chapter.title || `Chương ${index + 1}`);
+      setOutcome({
+        action: {
+          label: `Chuyển ${unpriced.length} chương đó về miễn phí`,
+          run: () => {
+            const indexes = new Set(unpriced.map(({ index }) => index));
+            setChapters((rows) => rows.map((row, index) => (
+              indexes.has(index) ? { ...row, accessType: "FREE" as const, coinPrice: 0 } : row
+            )));
+          },
+        },
+        details: [
+          `${unpriced.length} chương đang để trả phí nhưng giá bằng 0 Xu: ${names.join(", ")}`
+            + (unpriced.length > names.length ? `, và ${unpriced.length - names.length} chương nữa.` : "."),
+          "Chương trả phí giá 0 sẽ mở khoá miễn phí, nên máy chủ không nhận.",
+        ],
+        hint: "Đặt giá lớn hơn 0 cho từng chương, hoặc bấm nút bên dưới để chuyển hết về miễn phí.",
+        kind: "error",
+        title: "Chương trả phí chưa có giá",
+      });
       return;
     }
     // The server refuses a chapter with no content rather than dropping it
@@ -1026,8 +1228,12 @@ export function PublishingWorkspace({ teamId }: Readonly<{ teamId: string }>) {
           if (chapter.id) body.append(`chapters[${index}].id`, chapter.id);
           body.append(`chapters[${index}].title`, title);
           body.append(`chapters[${index}].slug`, slugifyChapter(title) || `chuong-${index + 1}`);
-          body.append(`chapters[${index}].accessType`, chapter.accessType);
-          body.append(`chapters[${index}].coinPrice`, String(chapter.coinPrice));
+          // Chốt chặn cuối: giá và loại chương phải khớp nhau. Năm chỗ trong
+          // form đặt hai trường này rời nhau, nên thay vì tin cả năm chỗ thì
+          // buộc lại đúng một lần ngay trước khi gửi đi.
+          const priced = normalizeChapterPricing(chapter);
+          body.append(`chapters[${index}].accessType`, priced.accessType);
+          body.append(`chapters[${index}].coinPrice`, String(priced.coinPrice));
         });
       }
 
@@ -1263,6 +1469,7 @@ export function PublishingWorkspace({ teamId }: Readonly<{ teamId: string }>) {
           </header>
 
           <OperationDialog onClose={() => setOutcome(null)} outcome={outcome} />
+          <FormDialog onClose={() => setAsk(null)} request={ask} />
 
           {/* Deleting a story takes its chapters with it, so the title has to be
               typed out. A single "are you sure" is too easy to click through
@@ -1654,7 +1861,7 @@ export function PublishingWorkspace({ teamId }: Readonly<{ teamId: string }>) {
                         />
                       </label>
                     ) : null}
-                    <button className="pubGhostBtn" onClick={addChapter} type="button">
+                    <button className="pubGhostBtn" onClick={openAddChapter} type="button">
                       <Plus aria-hidden="true" size={14} />
                       Thêm chương
                     </button>
@@ -1806,10 +2013,15 @@ export function PublishingWorkspace({ teamId }: Readonly<{ teamId: string }>) {
                       />
                       <select
                         onChange={(e) =>
-                          updateChapter(index, {
-                            accessType: e.target.value as ChapterDraft["accessType"],
-                            coinPrice: e.target.value === "FREE" ? 0 : chapter.coinPrice,
-                          })
+                          // Chọn "Trả phí" mà giá vẫn là 0 tạo ra một chương máy
+                          // chủ từ chối, và cả lần lưu hỏng vì một ô chưa điền.
+                          // Điền sẵn mức giá đang dùng cho các chương khác.
+                          updateChapter(index, e.target.value === "FREE"
+                            ? { accessType: "FREE", coinPrice: 0 }
+                            : {
+                              accessType: "PAID",
+                              coinPrice: chapter.coinPrice > 0 ? chapter.coinPrice : suggestedPaidPrice,
+                            })
                         }
                         value={chapter.accessType}
                       >

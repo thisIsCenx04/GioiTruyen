@@ -41,6 +41,9 @@ import org.springframework.web.multipart.MultipartHttpServletRequest;
 @RequestMapping("/admin/content/stories")
 public class AdminStoryController {
 
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(AdminStoryController.class);
+
     /**
      * A story can carry several genres; the admin table shows a single category,
      * so the first one is picked in a subquery. Joining genres directly would
@@ -372,8 +375,7 @@ public class AdminStoryController {
                 .params(request.comboPriceXu(), storyId.toString())
                 .update();
 
-        List<String> categoryIds = requestedCategoryIds(request);
-        replaceGenres(storyId, categoryIds);
+        List<String> categoryIds = replaceGenres(storyId, requestedCategoryIds(request));
         replaceTags(storyId, request.tags());
         return toRow(find(storyId), categoryIds, readTags(storyId));
     }
@@ -447,21 +449,31 @@ public class AdminStoryController {
      * story_genres is a link table, so the admin's single category selection
      * replaces any existing link.
      */
-    private void replaceGenres(UUID storyId, List<String> categoryIds) {
+    private List<String> replaceGenres(UUID storyId, List<String> categoryIds) {
         jdbc.sql("DELETE FROM story_genres WHERE story_id = ?").param(storyId.toString()).update();
+        List<String> linked = new java.util.ArrayList<>();
         for (String categoryId : categoryIds) {
             UUID genreId = parseUuid(categoryId, "categoryId");
             long exists = jdbc.sql("SELECT COUNT(*) FROM genres WHERE id = ?")
                     .param(genreId.toString()).query(Long.class).optional().orElse(0L);
+            // Thể loại đã bị xoá thì bỏ qua, không chặn cả lần lưu.
+            //
+            // Trước đây chỗ này ném lỗi, nên một thể loại bị quản trị viên xoá
+            // trong lúc người dùng đang soạn là đủ để cả bản nháp bảy trăm
+            // chương không lưu được - và thông báo lại bảo họ "chọn lại thể
+            // loại", việc mà form đang mở không cho làm. Mất một liên kết thể
+            // loại là chuyện sửa sau bằng một cú bấm; mất cả buổi nhập liệu
+            // thì không.
             if (exists == 0) {
-                throw new ApiException(HttpStatus.BAD_REQUEST, "story.invalid_category",
-                        "Unknown category",
-                        "Thể loại đã chọn không tồn tại hoặc đã bị xóa. Hãy chọn lại thể loại.");
+                log.warn("Bỏ qua thể loại không còn tồn tại {} khi lưu truyện {}", genreId, storyId);
+                continue;
             }
             jdbc.sql("INSERT INTO story_genres (story_id, genre_id) VALUES (?, ?)")
                     .params(storyId.toString(), genreId.toString())
                     .update();
+            linked.add(genreId.toString());
         }
+        return linked;
     }
 
     private UUID resolveAuthorUser(UUID teamId) {

@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -68,9 +69,18 @@ public class StoryEngagementController {
         return relations.remove(storyId, relation, currentUser(jwt));
     }
 
+    /**
+     * Một kệ trong tủ truyện.
+     *
+     * <p>Mặc định là kệ yêu thích, đúng như khi chưa có tham số này - trang cũ
+     * gọi không kèm shelf vẫn nhận đúng thứ nó vẫn nhận.
+     */
     @GetMapping("/me/library")
-    public List<CatalogDtos.HomeStorySummary> library(@AuthenticationPrincipal Jwt jwt) {
-        return catalogService.library(currentUser(jwt));
+    public List<CatalogDtos.HomeStorySummary> library(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam(defaultValue = "favorites") String shelf
+    ) {
+        return catalogService.library(currentUser(jwt), shelf);
     }
 
     /**
