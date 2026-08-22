@@ -173,11 +173,29 @@ public class SecurityConfiguration {
                                 "/stories/*/chapters/by-number/*",
                                 "/chapters/*",
                                 "/chapters/*/access",
+                                // Bản đọc tự động công khai đúng bằng chương nó
+                                // đọc: chương trả phí chưa mở khoá về đây với
+                                // phần chữ rỗng, nên không nghe lậu được.
+                                "/chapters/*/tts/manifest",
+                                "/chapters/*/tts/*.opus",
                                 // Reading the discussion is public; posting is not.
                                 "/comments",
                                 "/users/*",
                                 "/teams",
                                 "/teams/*",
+                                // The team profile's story list. "/teams/*" does
+                                // not cover a deeper segment, and an undeclared
+                                // path falls through to denyAll and answers 403 -
+                                // which reads as a permission problem rather than
+                                // the missing declaration it actually is.
+                                "/teams/*/published-stories",
+                                // The community chat panel: readable by a guest,
+                                // writable only with an account (declared below).
+                                "/community/messages",
+                                // The PR quest board. Someone deciding whether to
+                                // sign up should see what is on offer first;
+                                // claiming and submitting need an account.
+                                "/pr-quests",
                                 "/comments"
                         ).permitAll()
                         .requestMatchers(
@@ -257,10 +275,24 @@ public class SecurityConfiguration {
                         .requestMatchers(
                                 "/teams/applications",
                                 "/teams/applications/me",
+                                "/teams/*/access",
                                 "/teams/*/dashboard",
+                                "/teams/*/analytics",
                                 "/teams/*/stories",
                                 "/teams/*/stories/**",
                                 "/teams/*/earnings",
+                                "/teams/*/supporters",
+                                // PR quests. The chain only checks "signed in";
+                                // TeamPrQuestController then requires OWNER or
+                                // MANAGER, because these endpoints spend money.
+                                "/teams/*/pr-quests",
+                                "/teams/*/pr-quests/**",
+                                // Claiming, submitting and disputing a PR quest.
+                                // Reading the board is public, declared above.
+                                "/pr-quests/mine",
+                                "/pr-quests/proof",
+                                "/pr-quests/*/claim",
+                                "/pr-quests/claims/**",
                                 // Team settings. The chain only checks "signed
                                 // in"; TeamWorkspaceController then requires the
                                 // caller to be the OWNER, since team roles are
@@ -310,7 +342,8 @@ public class SecurityConfiguration {
                         ).authenticated()
                         .requestMatchers(
                                 HttpMethod.POST,
-                                "/comments"
+                                "/comments",
+                                "/community/messages"
                         ).authenticated()
                         .requestMatchers(
                                 HttpMethod.PATCH,

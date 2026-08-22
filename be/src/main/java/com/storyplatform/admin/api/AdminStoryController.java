@@ -15,9 +15,12 @@ import com.storyplatform.shared.api.ApiException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -80,6 +83,16 @@ public class AdminStoryController {
 
     /** Matches the stories.short_description column width. */
     private static final int SHORT_DESCRIPTION_LIMIT = 500;
+
+    /**
+     * How long a synopsis may be, in characters.
+     *
+     * <p>stories.description is MEDIUMTEXT (16 MB, about 5.5 million Vietnamese
+     * characters), so this is a product decision rather than a column limit -
+     * which is the point: the publisher is told the number rather than having
+     * MySQL refuse the row for a reason nothing on screen explains.
+     */
+    private static final int SYNOPSIS_LIMIT = 100_000;
 
     /** Matches stories.title / chapters.title column widths. */
     private static final int TITLE_LIMIT = 255;
@@ -188,7 +201,12 @@ public class AdminStoryController {
         // plain metadata edit leaves the existing chapters alone.
         if (id == null || "true".equalsIgnoreCase(request.getParameter("replaceChapters"))) {
             UUID storyId = UUID.fromString(row.id());
-            replaceChapters(storyId, readChapters(request));
+            // Set by the form only when the editor removed chapters on purpose
+            // and confirmed it. Without it a shorter list is treated as an
+            // accident and refused; see checkNoChapterLoss.
+            boolean allowDeletion =
+                    "true".equalsIgnoreCase(request.getParameter("allowChapterDeletion"));
+            replaceChapters(storyId, readChapters(request), allowDeletion);
             // `row` was built before the chapters existed, so its chapterCount was
             // whatever the story had beforehand - zero for a new story, however
             // many chapters were just uploaded. Rebuilt here so the caller gets the
@@ -260,7 +278,16 @@ public class AdminStoryController {
         UUID teamId = parseUuid(request.teamId(), "teamId");
         requireTeamExists(teamId);
 
-        String slug = AdminCategoryController.slugOrDerive(request.slug(), request.title());
+        // A story keeps the address it was published at. The slug used to be
+        // re-derived from the title on every save, and the publisher form sends
+        // no slug of its own - so correcting a typo in the title silently moved
+        // the story: every link, bookmark and search result pointing at the old
+        // address started answering 404. Only an explicit new slug moves it.
+        String slug = id == null
+                ? AdminCategoryController.slugOrDerive(request.slug(), request.title())
+                : blankToNull(request.slug()) == null
+                        ? find(id).getSlug()
+                        : AdminCategoryController.slugOrDerive(request.slug(), request.title());
         requireUniqueSlug(slug, id);
 
         Instant now = Instant.now();
@@ -277,6 +304,17 @@ public class AdminStoryController {
         String synopsis = firstNonBlank(request.synopsis(), request.summary());
         String shortDescription = clip(synopsis, SHORT_DESCRIPTION_LIMIT);
         String description = firstNonBlank(request.summary(), request.synopsis());
+        // Refused rather than trimmed. Silently clipping a synopsis is how the
+        // form used to destroy them - the publisher saw the save succeed and
+        // only found the missing text later, by which point the original was
+        // gone. The column holds far more than this; the limit is the product's.
+        if (description != null && description.length() > SYNOPSIS_LIMIT) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "story.synopsis_too_long",
+                    "Synopsis too long",
+                    ("Giới thiệu truyện dài %,d ký tự, vượt giới hạn %,d ký tự. "
+                            + "Hãy rút ngắn bớt rồi lưu lại.")
+                            .formatted(description.length(), SYNOPSIS_LIMIT));
+        }
         // Bounded columns: an imported file can exceed any of these, and MySQL
         // rejects the whole row rather than trimming.
         String title = clip(request.title().trim(), TITLE_LIMIT);
@@ -546,30 +584,84 @@ public class AdminStoryController {
                         + "hoặc giữ nguyên số chương.").formatted(existing, incoming));
     }
 
-    private void replaceChapters(UUID storyId, List<ChapterDraft> chapters) {
+    /**
+     * Writes the submitted chapter list onto the story, matching each draft to
+     * the chapter it is editing.
+     *
+     * <p>This used to delete every chapter and insert the list afresh, which was
+     * wrong in three ways at once. New rows meant new ids, so reading progress
+     * and anything else pointing at a chapter lost its target. Numbering
+     * restarted at 1, so a story whose chapters were titled "Chương 2" upwards
+     * came back with the title and the number disagreeing. And an already-bought
+     * chapter was exempt from the delete but not from the re-insert, so
+     * {@code ON DUPLICATE KEY} overwrote it with whatever draft now sat at its
+     * number - a reader's purchased chapter silently becoming another chapter's
+     * text.
+     *
+     * <p>Identity is the chapter id the form sends back. A draft carrying one
+     * updates that row in place and keeps its number; a draft without one is new.
+     * Chapters the publisher removed are deleted, except where someone has paid
+     * for them.
+     */
+    private void replaceChapters(UUID storyId, List<ChapterDraft> chapters, boolean allowDeletion) {
         UUID createdBy = jdbc.sql("SELECT created_by FROM stories WHERE id = ?")
                 .param(storyId.toString()).query(String.class).single().transform(UUID::fromString);
 
-        // Checked before the delete below, which is what would destroy them.
-        Integer existingCount = jdbc.sql("SELECT COUNT(*) FROM chapters WHERE story_id = ?")
-                .param(storyId.toString()).query(Integer.class).single();
-        int existing = existingCount == null ? 0 : existingCount;
-        checkNoChapterLoss(existing, chapters.size());
+        List<ExistingChapter> existingRows = jdbc.sql(
+                        "SELECT id, chapter_number FROM chapters WHERE story_id = ? ORDER BY chapter_number")
+                .param(storyId.toString())
+                .query((rs, rowNum) -> new ExistingChapter(
+                        rs.getString("id"), rs.getBigDecimal("chapter_number")))
+                .list();
+        Map<String, ExistingChapter> byId = new LinkedHashMap<>();
+        for (ExistingChapter row : existingRows) {
+            byId.put(row.id(), row);
+        }
+
+        int existing = existingRows.size();
+        checkNoChapterLoss(existing, chapters.size(), allowDeletion);
         requireComboAllowsChapterCount(storyId, existing, chapters.size());
 
-        jdbc.sql("""
-                DELETE FROM chapters
-                WHERE story_id = ?
-                  AND id NOT IN (SELECT chapter_id FROM chapter_unlocks)
-                """)
-                .param(storyId.toString())
-                .update();
+        // Anything the publisher dropped from the list. A chapter someone has
+        // already paid for is kept regardless: deleting it would take away what
+        // they bought, and the unlock row references it.
+        Set<String> submittedIds = chapters.stream()
+                .map(ChapterDraft::id)
+                .filter(id -> id != null && byId.containsKey(id))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        List<String> removed = existingRows.stream()
+                .map(ExistingChapter::id)
+                .filter(id -> !submittedIds.contains(id))
+                .toList();
+        for (String id : removed) {
+            jdbc.sql("""
+                    DELETE FROM chapters
+                    WHERE id = ? AND story_id = ?
+                      AND id NOT IN (SELECT chapter_id FROM chapter_unlocks)
+                    """)
+                    .params(id, storyId.toString())
+                    .update();
+        }
 
         if (chapters.isEmpty()) {
             return;
         }
 
         Instant now = Instant.now();
+        java.sql.Timestamp stamp = java.sql.Timestamp.from(now);
+
+        // Numbers are assigned by position, so the list the publisher sees is the
+        // order readers get. Renumbering in place would collide with
+        // UNIQUE(story_id, chapter_number) halfway through, so every row is first
+        // parked on a negative number no final value can reach.
+        jdbc.sql("UPDATE chapters SET chapter_number = -chapter_number - 1 WHERE story_id = ? AND chapter_number >= 0")
+                .param(storyId.toString())
+                .update();
+        // Slugs are unique per story too, and for the same reason.
+        jdbc.sql("UPDATE chapters SET slug = CONCAT('tmp-', id) WHERE story_id = ?")
+                .param(storyId.toString())
+                .update();
+
         int number = 1;
         Set<String> usedSlugs = new LinkedHashSet<>();
         for (ChapterDraft chapter : chapters) {
@@ -606,30 +698,54 @@ public class AdminStoryController {
                                 .formatted(title));
             }
 
-            jdbc.sql("""
-                    INSERT INTO chapters (id, story_id, chapter_number, title, slug, content,
-                                          access_type, coin_price, status, published_at,
-                                          created_by, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PUBLISHED', ?, ?, ?, ?)
-                    ON DUPLICATE KEY UPDATE
-                        title = VALUES(title),
-                        content = VALUES(content),
-                        access_type = VALUES(access_type),
-                        coin_price = VALUES(coin_price),
-                        updated_at = VALUES(updated_at)
-                    """)
-                    .params(UUID.randomUUID().toString(), storyId.toString(), number, title, slug,
-                            chapter.content(), accessTypeVal, coinPriceVal, java.sql.Timestamp.from(now),
-                            createdBy.toString(),
-                            java.sql.Timestamp.from(now), java.sql.Timestamp.from(now))
+            String existingId = chapter.id() != null && byId.containsKey(chapter.id()) ? chapter.id() : null;
+            if (existingId != null) {
+                jdbc.sql("""
+                        UPDATE chapters
+                           SET chapter_number = ?, title = ?, slug = ?, content = ?,
+                               access_type = ?, coin_price = ?, updated_at = ?
+                         WHERE id = ? AND story_id = ?
+                        """)
+                        .params(number, title, slug, chapter.content(), accessTypeVal, coinPriceVal,
+                                stamp, existingId, storyId.toString())
+                        .update();
+            } else {
+                jdbc.sql("""
+                        INSERT INTO chapters (id, story_id, chapter_number, title, slug, content,
+                                              access_type, coin_price, status, published_at,
+                                              created_by, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PUBLISHED', ?, ?, ?, ?)
+                        """)
+                        .params(UUID.randomUUID().toString(), storyId.toString(), number, title, slug,
+                                chapter.content(), accessTypeVal, coinPriceVal, stamp,
+                                createdBy.toString(), stamp, stamp)
+                        .update();
+            }
+            number++;
+        }
+
+        // Any chapter still parked on a negative number was kept only because it
+        // has been paid for. It keeps its text and its buyer, and is placed after
+        // the submitted list rather than left on an impossible number.
+        List<String> parked = jdbc.sql(
+                        "SELECT id FROM chapters WHERE story_id = ? AND chapter_number < 0 ORDER BY chapter_number DESC")
+                .param(storyId.toString())
+                .query(String.class)
+                .list();
+        for (String id : parked) {
+            jdbc.sql("UPDATE chapters SET chapter_number = ?, slug = ?, updated_at = ? WHERE id = ?")
+                    .params(number, clip("chuong-" + number + "-" + id, CHAPTER_SLUG_LIMIT), stamp, id)
                     .update();
             number++;
         }
 
         jdbc.sql("UPDATE stories SET last_chapter_at = ?, updated_at = ? WHERE id = ?")
-                .params(java.sql.Timestamp.from(now), java.sql.Timestamp.from(now), storyId.toString())
+                .params(stamp, stamp, storyId.toString())
                 .update();
     }
+
+    /** A chapter as it stands in the database before the submitted list is applied. */
+    private record ExistingChapter(String id, java.math.BigDecimal chapterNumber) {}
 
     /**
      * Reads chapter parts in {@code chapters[i].field} form. When a chapter has an
@@ -639,6 +755,7 @@ public class AdminStoryController {
         List<ChapterDraft> chapters = new ArrayList<>();
         for (int index = 0; index < MAX_CHAPTERS_PER_REQUEST; index++) {
             String prefix = "chapters[" + index + "].";
+            String chapterId = formValue(request, prefix + "id");
             String title = formValue(request, prefix + "title");
             String slug = formValue(request, prefix + "slug");
             String content = formValue(request, prefix + "content");
@@ -669,7 +786,9 @@ public class AdminStoryController {
                         "Chương %d (\"%s\") chưa có nội dung nên không thể lưu. Hãy nhập nội dung hoặc xóa chương này."
                                 .formatted(index + 1, title == null ? "" : title));
             }
-            chapters.add(new ChapterDraft(title, slug, content, accessType, coinPrice));
+            chapters.add(new ChapterDraft(
+                    chapterId == null || chapterId.isBlank() ? null : chapterId.trim(),
+                    title, slug, content, accessType, coinPrice));
         }
         return chapters;
     }
@@ -723,7 +842,13 @@ public class AdminStoryController {
         return request.getParameter(name);
     }
 
-    private record ChapterDraft(String title, String slug, String content, String accessType, Long coinPrice) {
+    /**
+     * @param id the chapter this draft is editing, or null when it is new. This
+     *           is what makes an edit land on the row the publisher was looking
+     *           at rather than on whatever now sits at the same position.
+     */
+    private record ChapterDraft(String id, String title, String slug, String content,
+                                String accessType, Long coinPrice) {
     }
 
     static UUID parseUuid(String value, String field) {
@@ -793,11 +918,19 @@ public class AdminStoryController {
      *
      * <p>Growing or replacing like for like is ordinary editing and passes.
      *
-     * @param existingCount chapters the story has now
-     * @param incomingCount chapters the upload would leave it with
+     * <p>Deliberate deletion passes too, but only when the caller says so. The
+     * guard used to refuse every short list, which made removing a chapter
+     * impossible: the form has a delete button per chapter, pressing it and
+     * saving submitted one chapter fewer, and the story came back refused - with
+     * a message advising the publisher to do the very thing that had just been
+     * blocked. The flag is what separates "I meant this" from a truncated file.
+     *
+     * @param existingCount   chapters the story has now
+     * @param incomingCount   chapters the upload would leave it with
+     * @param deletionAllowed the caller confirmed chapters are being removed
      */
-    public static void checkNoChapterLoss(int existingCount, int incomingCount) {
-        if (incomingCount >= existingCount) {
+    public static void checkNoChapterLoss(int existingCount, int incomingCount, boolean deletionAllowed) {
+        if (incomingCount >= existingCount || deletionAllowed) {
             return;
         }
         throw new ApiException(

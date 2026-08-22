@@ -45,10 +45,17 @@ interface WalletData {
   gemBalance?: number;
 }
 
+interface PublishingAccess {
+  canPublish: boolean;
+  entryPath: string;
+  teamName?: string | null;
+}
+
 export default function UserProfilePage() {
   const [user, setUser] = useState<UserAccount | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [wallet, setWallet] = useState<WalletData | null>(null);
+  const [publishing, setPublishing] = useState<PublishingAccess | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Edit Profile Modal
@@ -144,6 +151,11 @@ export default function UserProfilePage() {
       if (walletRes && walletRes.ok) {
         const wData = await walletRes.json();
         setWallet(wData);
+      }
+
+      const publishingRes = await fetch("/api/v1/me/publishing", { headers, credentials: "same-origin" }).catch(() => null);
+      if (publishingRes && publishingRes.ok) {
+        setPublishing((await publishingRes.json()) as PublishingAccess);
       }
     } catch {
       // Fallback
@@ -255,8 +267,8 @@ export default function UserProfilePage() {
     <div
       className="profilePage"
       style={{
-        background: "linear-gradient(180deg, #0b1528 0%, #070d18 100%)",
-        color: "#f8fafc",
+        background: "var(--surface-sunken)",
+        color: "var(--text-primary)",
         minHeight: "100vh",
         padding: "2rem 1rem",
       }}
@@ -278,7 +290,7 @@ export default function UserProfilePage() {
           <Link
             to={"/" as string}
             style={{
-              color: "#94a3b8",
+              color: "var(--text-muted)",
               fontSize: "0.9rem",
               textDecoration: "none",
               display: "inline-flex",
@@ -295,8 +307,8 @@ export default function UserProfilePage() {
         <main
           className="profileCard"
           style={{
-            background: "rgba(30, 41, 59, 0.75)",
-            border: "1px solid rgba(255, 255, 255, 0.12)",
+            background: "var(--surface-card)",
+            border: "1px solid var(--line)",
             borderRadius: "20px",
             boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
             backdropFilter: "blur(16px)",
@@ -308,7 +320,7 @@ export default function UserProfilePage() {
             className="profileBanner"
             style={{
               alignItems: "center",
-              borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+              borderBottom: "1px solid var(--line)",
               display: "flex",
               justifyContent: "space-between",
               flexWrap: "wrap",
@@ -333,11 +345,11 @@ export default function UserProfilePage() {
                   flexShrink: 0,
                 }}
               >
-                {!user?.avatarUrl && <UserIcon style={{ color: "#fff", height: "2.2rem", width: "2.2rem" }} />}
+                {!user?.avatarUrl && <UserIcon style={{ color: "var(--text-primary)", height: "2.2rem", width: "2.2rem" }} />}
               </div>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                  <h1 style={{ fontSize: "1.6rem", fontWeight: 800, margin: 0, color: "#f8fafc" }}>
+                  <h1 style={{ fontSize: "1.6rem", fontWeight: 800, margin: 0, color: "var(--text-primary)" }}>
                     {user?.displayName || user?.username || "Thành Viên Giới Truyện"}
                   </h1>
                   {isAdminUser() && (
@@ -357,11 +369,11 @@ export default function UserProfilePage() {
                     </span>
                   )}
                 </div>
-                <p style={{ color: "#94a3b8", fontSize: "0.9rem", margin: "0.25rem 0 0" }}>
+                <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", margin: "0.25rem 0 0" }}>
                   {user?.email || "Chưa xác thực email"}
                 </p>
                 {profile?.bio && (
-                  <p style={{ color: "#cbd5e1", fontSize: "0.875rem", marginTop: "0.5rem", fontStyle: "italic" }}>
+                  <p style={{ color: "var(--text-secondary)", fontSize: "0.875rem", marginTop: "0.5rem", fontStyle: "italic" }}>
                     "{profile.bio}"
                   </p>
                 )}
@@ -395,10 +407,13 @@ export default function UserProfilePage() {
                 type="button"
                 style={{
                   alignItems: "center",
-                  background: "rgba(255, 255, 255, 0.06)",
-                  border: "1px solid rgba(255, 255, 255, 0.15)",
+                  // Was a translucent white on a translucent white border with
+                  // near-white text - readable only against a dark page, and
+                  // all but invisible once the theme went light.
+                  background: "var(--surface-sunken)",
+                  border: "1px solid var(--line)",
                   borderRadius: "10px",
-                  color: "#e2e8f0",
+                  color: "var(--text-primary)",
                   cursor: "pointer",
                   display: "inline-flex",
                   fontSize: "0.875rem",
@@ -459,7 +474,7 @@ export default function UserProfilePage() {
                   background: "linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(59, 130, 246, 0.15))",
                   border: "1px solid rgba(16, 185, 129, 0.4)",
                   borderRadius: "14px",
-                  color: "#f8fafc",
+                  color: "var(--text-primary)",
                   display: "block",
                   padding: "1.25rem",
                   textDecoration: "none",
@@ -470,8 +485,31 @@ export default function UserProfilePage() {
                 <strong style={{ display: "block", marginTop: "0.75rem", color: "#10b981", fontSize: "1.05rem" }}>
                   Bảng Quản Trị (Dashboard)
                 </strong>
-                <small style={{ color: "#94a3b8", fontSize: "0.825rem" }}>
+                <small style={{ color: "var(--text-muted)", fontSize: "0.825rem" }}>
                   Quản lý truyện, thể loại, thành viên & doanh thu
+                </small>
+              </Link>
+            )}
+
+            {publishing?.canPublish && (
+              <Link
+                to={publishing.entryPath}
+                style={{
+                  background: "var(--surface-sunken)",
+                  border: "1px solid var(--surface-sunken)",
+                  borderRadius: "14px",
+                  color: "var(--text-primary)",
+                  display: "block",
+                  padding: "1.25rem",
+                  textDecoration: "none",
+                }}
+              >
+                <Edit3 style={{ color: "#0f6bff", height: "1.6rem", width: "1.6rem" }} />
+                <strong style={{ display: "block", marginTop: "0.75rem", fontSize: "1.05rem" }}>
+                  Quản lý truyện
+                </strong>
+                <small style={{ color: "var(--text-muted)", fontSize: "0.825rem" }}>
+                  {publishing.teamName ? `Sửa truyện trong ${publishing.teamName}` : "Sửa truyện trong nhóm của bạn"}
                 </small>
               </Link>
             )}
@@ -479,10 +517,10 @@ export default function UserProfilePage() {
             <Link
               to="/library"
               style={{
-                background: "rgba(15, 23, 42, 0.6)",
-                border: "1px solid rgba(255, 255, 255, 0.08)",
+                background: "var(--surface-sunken)",
+                border: "1px solid var(--surface-sunken)",
                 borderRadius: "14px",
-                color: "#f8fafc",
+                color: "var(--text-primary)",
                 display: "block",
                 padding: "1.25rem",
                 textDecoration: "none",
@@ -492,7 +530,7 @@ export default function UserProfilePage() {
               <strong style={{ display: "block", marginTop: "0.75rem", fontSize: "1.05rem" }}>
                 Tủ truyện cá nhân
               </strong>
-              <small style={{ color: "#94a3b8", fontSize: "0.825rem" }}>
+              <small style={{ color: "var(--text-muted)", fontSize: "0.825rem" }}>
                 Danh sách truyện đã lưu & theo dõi
               </small>
             </Link>
@@ -500,10 +538,10 @@ export default function UserProfilePage() {
             <Link
               to="/wallet"
               style={{
-                background: "rgba(15, 23, 42, 0.6)",
-                border: "1px solid rgba(255, 255, 255, 0.08)",
+                background: "var(--surface-sunken)",
+                border: "1px solid var(--surface-sunken)",
                 borderRadius: "14px",
-                color: "#f8fafc",
+                color: "var(--text-primary)",
                 display: "block",
                 padding: "1.25rem",
                 textDecoration: "none",
@@ -513,7 +551,7 @@ export default function UserProfilePage() {
               <strong style={{ display: "block", marginTop: "0.75rem", fontSize: "1.05rem" }}>
                 Ví & Giao dịch
               </strong>
-              <small style={{ color: "#94a3b8", fontSize: "0.825rem" }}>
+              <small style={{ color: "var(--text-muted)", fontSize: "0.825rem" }}>
                 Quản lý Xu, lịch sử nạp & mở khóa chương
               </small>
             </Link>
@@ -521,10 +559,10 @@ export default function UserProfilePage() {
             <Link
               to="/teams"
               style={{
-                background: "rgba(15, 23, 42, 0.6)",
-                border: "1px solid rgba(255, 255, 255, 0.08)",
+                background: "var(--surface-sunken)",
+                border: "1px solid var(--surface-sunken)",
                 borderRadius: "14px",
-                color: "#f8fafc",
+                color: "var(--text-primary)",
                 display: "block",
                 padding: "1.25rem",
                 textDecoration: "none",
@@ -534,7 +572,7 @@ export default function UserProfilePage() {
               <strong style={{ display: "block", marginTop: "0.75rem", fontSize: "1.05rem" }}>
                 Sáng tác & Nhóm dịch
               </strong>
-              <small style={{ color: "#94a3b8", fontSize: "0.825rem" }}>
+              <small style={{ color: "var(--text-muted)", fontSize: "0.825rem" }}>
                 Quản lý team dịch & Đăng tải truyện mới
               </small>
             </Link>
@@ -544,7 +582,7 @@ export default function UserProfilePage() {
           <div
             className="profileSecurityRow"
             style={{
-              borderTop: "1px solid rgba(255, 255, 255, 0.1)",
+              borderTop: "1px solid var(--line)",
               display: "flex",
               gap: "1rem",
               justifyContent: "space-between",
@@ -606,8 +644,8 @@ export default function UserProfilePage() {
         >
           <div
             style={{
-              background: "#1e293b",
-              border: "1px solid rgba(255,255,255,0.15)",
+              background: "var(--surface-card)",
+              border: "1px solid var(--line)",
               borderRadius: "16px",
               width: "100%",
               maxWidth: "520px",
@@ -617,13 +655,13 @@ export default function UserProfilePage() {
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-              <h2 style={{ fontSize: "1.25rem", fontWeight: 700, margin: 0, color: "#fff" }}>
+              <h2 style={{ fontSize: "1.25rem", fontWeight: 700, margin: 0, color: "var(--text-primary)" }}>
                 Chỉnh Sửa Hồ Sơ Cá Nhân
               </h2>
               <button
                 onClick={() => setShowEditModal(false)}
                 type="button"
-                style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", padding: "0.25rem" }}
+                style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: "0.25rem" }}
               >
                 <X size={20} />
               </button>
@@ -631,7 +669,7 @@ export default function UserProfilePage() {
 
             <form onSubmit={handleSaveProfile} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               <div>
-                <label style={{ display: "block", fontSize: "0.85rem", color: "#cbd5e1", marginBottom: "0.4rem" }}>
+                <label style={{ display: "block", fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "0.4rem" }}>
                   Tên hiển thị
                 </label>
                 <input
@@ -643,9 +681,9 @@ export default function UserProfilePage() {
                     width: "100%",
                     padding: "0.6rem 0.8rem",
                     borderRadius: "8px",
-                    background: "#0f172a",
+                    background: "var(--surface-sunken)",
                     border: "1px solid #334155",
-                    color: "#fff",
+                    color: "var(--text-primary)",
                     fontSize: "0.9rem"
                   }}
                 />
@@ -656,7 +694,7 @@ export default function UserProfilePage() {
                 their device and no way to host it somewhere first.
               */}
               <div>
-                <label style={{ display: "block", fontSize: "0.85rem", color: "#cbd5e1", marginBottom: "0.4rem" }}>
+                <label style={{ display: "block", fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "0.4rem" }}>
                   Ảnh đại diện
                 </label>
                 <div style={{ alignItems: "center", display: "flex", gap: "0.9rem" }}>
@@ -675,10 +713,10 @@ export default function UserProfilePage() {
                   ) : (
                     <div style={{
                       alignItems: "center",
-                      background: "#0f172a",
+                      background: "var(--surface-sunken)",
                       border: "1px dashed #334155",
                       borderRadius: "50%",
-                      color: "#64748b",
+                      color: "var(--text-muted)",
                       display: "flex",
                       height: "3.5rem",
                       justifyContent: "center",
@@ -692,10 +730,10 @@ export default function UserProfilePage() {
                       accept="image/png,image/jpeg,image/webp,image/gif"
                       disabled={uploadingAvatar}
                       onChange={(e) => void uploadAvatar(e.target.files?.[0] ?? null)}
-                      style={{ color: "#cbd5e1", fontSize: "0.82rem", width: "100%" }}
+                      style={{ color: "var(--text-secondary)", fontSize: "0.82rem", width: "100%" }}
                       type="file"
                     />
-                    <p style={{ color: "#64748b", fontSize: "0.72rem", margin: "0.35rem 0 0" }}>
+                    <p style={{ color: "var(--text-muted)", fontSize: "0.72rem", margin: "0.35rem 0 0" }}>
                       {uploadingAvatar ? "Đang tải ảnh lên…" : "PNG, JPEG, WEBP hoặc GIF, tối đa 2MB."}
                     </p>
                   </div>
@@ -703,7 +741,7 @@ export default function UserProfilePage() {
               </div>
 
               <div>
-                <label style={{ display: "block", fontSize: "0.85rem", color: "#cbd5e1", marginBottom: "0.4rem" }}>
+                <label style={{ display: "block", fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "0.4rem" }}>
                   Tiểu sử (Bio)
                 </label>
                 <textarea
@@ -715,9 +753,9 @@ export default function UserProfilePage() {
                     width: "100%",
                     padding: "0.6rem 0.8rem",
                     borderRadius: "8px",
-                    background: "#0f172a",
+                    background: "var(--surface-sunken)",
                     border: "1px solid #334155",
-                    color: "#fff",
+                    color: "var(--text-primary)",
                     fontSize: "0.9rem"
                   }}
                 />
@@ -749,8 +787,8 @@ export default function UserProfilePage() {
                   style={{
                     padding: "0.6rem 1.2rem",
                     borderRadius: "8px",
-                    background: "#334155",
-                    color: "#cbd5e1",
+                    background: "var(--line)",
+                    color: "var(--text-secondary)",
                     border: "none",
                     cursor: "pointer",
                     fontWeight: 600,
@@ -766,7 +804,7 @@ export default function UserProfilePage() {
                     padding: "0.6rem 1.4rem",
                     borderRadius: "8px",
                     background: "linear-gradient(135deg, #0f6bff, #00b8a9)",
-                    color: "#fff",
+                    color: "var(--text-primary)",
                     border: "none",
                     cursor: "pointer",
                     fontWeight: 700,
@@ -798,8 +836,8 @@ export default function UserProfilePage() {
         >
           <div
             style={{
-              background: "#1e293b",
-              border: "1px solid rgba(255,255,255,0.15)",
+              background: "var(--surface-card)",
+              border: "1px solid var(--line)",
               borderRadius: "16px",
               width: "100%",
               maxWidth: "460px",
@@ -809,13 +847,13 @@ export default function UserProfilePage() {
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-              <h2 style={{ fontSize: "1.25rem", fontWeight: 700, margin: 0, color: "#fff" }}>
+              <h2 style={{ fontSize: "1.25rem", fontWeight: 700, margin: 0, color: "var(--text-primary)" }}>
                 Đổi Mật Khẩu
               </h2>
               <button
                 onClick={() => setShowPasswordModal(false)}
                 type="button"
-                style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", padding: "0.25rem" }}
+                style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: "0.25rem" }}
               >
                 <X size={20} />
               </button>
@@ -823,7 +861,7 @@ export default function UserProfilePage() {
 
             <form onSubmit={handleChangePassword} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               <div>
-                <label style={{ display: "block", fontSize: "0.85rem", color: "#cbd5e1", marginBottom: "0.4rem" }}>
+                <label style={{ display: "block", fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "0.4rem" }}>
                   Mật khẩu hiện tại
                 </label>
                 <input
@@ -835,16 +873,16 @@ export default function UserProfilePage() {
                     width: "100%",
                     padding: "0.6rem 0.8rem",
                     borderRadius: "8px",
-                    background: "#0f172a",
+                    background: "var(--surface-sunken)",
                     border: "1px solid #334155",
-                    color: "#fff",
+                    color: "var(--text-primary)",
                     fontSize: "0.9rem"
                   }}
                 />
               </div>
 
               <div>
-                <label style={{ display: "block", fontSize: "0.85rem", color: "#cbd5e1", marginBottom: "0.4rem" }}>
+                <label style={{ display: "block", fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "0.4rem" }}>
                   Mật khẩu mới
                 </label>
                 <input
@@ -856,16 +894,16 @@ export default function UserProfilePage() {
                     width: "100%",
                     padding: "0.6rem 0.8rem",
                     borderRadius: "8px",
-                    background: "#0f172a",
+                    background: "var(--surface-sunken)",
                     border: "1px solid #334155",
-                    color: "#fff",
+                    color: "var(--text-primary)",
                     fontSize: "0.9rem"
                   }}
                 />
               </div>
 
               <div>
-                <label style={{ display: "block", fontSize: "0.85rem", color: "#cbd5e1", marginBottom: "0.4rem" }}>
+                <label style={{ display: "block", fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "0.4rem" }}>
                   Xác nhận mật khẩu mới
                 </label>
                 <input
@@ -877,9 +915,9 @@ export default function UserProfilePage() {
                     width: "100%",
                     padding: "0.6rem 0.8rem",
                     borderRadius: "8px",
-                    background: "#0f172a",
+                    background: "var(--surface-sunken)",
                     border: "1px solid #334155",
-                    color: "#fff",
+                    color: "var(--text-primary)",
                     fontSize: "0.9rem"
                   }}
                 />
@@ -911,8 +949,8 @@ export default function UserProfilePage() {
                   style={{
                     padding: "0.6rem 1.2rem",
                     borderRadius: "8px",
-                    background: "#334155",
-                    color: "#cbd5e1",
+                    background: "var(--line)",
+                    color: "var(--text-secondary)",
                     border: "none",
                     cursor: "pointer",
                     fontWeight: 600,
@@ -928,7 +966,7 @@ export default function UserProfilePage() {
                     padding: "0.6rem 1.4rem",
                     borderRadius: "8px",
                     background: "linear-gradient(135deg, #0f6bff, #00b8a9)",
-                    color: "#fff",
+                    color: "var(--text-primary)",
                     border: "none",
                     cursor: "pointer",
                     fontWeight: 700,

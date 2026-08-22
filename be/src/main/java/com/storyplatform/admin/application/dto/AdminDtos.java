@@ -34,12 +34,41 @@ public final class AdminDtos {
             long stories
     ) {}
 
+    /**
+     * One placement's advertising performance.
+     *
+     * <p>Counts come from ad_events, which records the platform's own banners
+     * and affiliate redirects. AdSense earnings are not in this database at all -
+     * they live in the AdSense account and would need the AdSense Management
+     * API to read - so nothing here should be labelled as AdSense revenue.
+     */
+    public record AdPlacementRow(
+            String placement,
+            long impressions,
+            long clicks,
+            /** Clicks per hundred impressions, rounded to two decimals. */
+            double ctr,
+            /** Banners currently switched on for the placement. */
+            long activeUnits
+    ) {}
+
+    public record AdOverview(
+            long impressions,
+            long clicks,
+            double ctr,
+            long activeUnits,
+            List<ChartPoint> impressionSeries,
+            List<ChartPoint> clickSeries,
+            List<AdPlacementRow> placements
+    ) {}
+
     public record AdminOverview(
             AdminStats stats,
             List<ChartPoint> revenueSeries,
             List<ChartPoint> trafficSeries,
             List<ChartPoint> readerSeries,
-            List<String> tasks
+            List<String> tasks,
+            AdOverview ads
     ) {}
 
     public record AdminStoryRow(

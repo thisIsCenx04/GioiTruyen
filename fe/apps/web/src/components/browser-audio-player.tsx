@@ -1,199 +1,271 @@
 "use client";
 
-import type {
-  PublicChapter,
-  PublishedChapterDetail,
-} from "@gioitruyen/api-client";
-import {
-  LoaderCircle,
-  Pause,
-  Play,
-  SkipBack,
-  SkipForward,
-  Volume2,
-} from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ChapterPage, PublicChapter, PublishedChapterDetail } from "@gioitruyen/api-client";
+import { Info, Lock, Pause, RotateCcw, Volume2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 
-type PlaybackState = "idle" | "loading" | "paused" | "playing" | "ended";
+import { TtsControls, TtsNotice, TtsOptions } from "@/components/tts-controls";
+import { readStored, useTts, writeStored } from "@/components/use-tts";
+import { API_BASE_URL, authedFetch } from "@/lib/api-base";
+import { chapterSpeech, estimateSeconds, formatDuration } from "@/lib/speech";
+import type { TtsVoice } from "@/lib/tts-service";
 
-function htmlToSpeechChunks(contentHtml: string) {
-  const document = new DOMParser().parseFromString(contentHtml, "text/html");
-  document.querySelectorAll("script, style, noscript").forEach((node) => node.remove());
-  const text = (document.body.textContent ?? "").replace(/\s+/gu, " ").trim();
-  const sentences = text.match(/[^.!?…]+[.!?…]+|[^.!?…]+$/gu) ?? [text];
-  const chunks: string[] = [];
-  let current = "";
+/**
+ * Nghe cả bộ truyện: một trang riêng, đọc liên tục từ chương này sang chương kia.
+ *
+ * <p>Bộ máy đọc nằm trong {@link TtsService}, dùng chung với trang đọc chương.
+ * Việc của component này chỉ là ba thứ mà bộ máy không biết: chương nào đang
+ * nghe, tải nội dung chương ấy về, và nhớ chỗ đang nghe dở của từng truyện.
+ *
+ * <p>Chữ để đọc lấy từ API của chương, không quét DOM - nên menu, quảng cáo hay
+ * chân trang không có đường lọt vào bản đọc. Danh sách đoạn hiện trên màn hình
+ * và danh sách mẩu đưa cho bộ đọc sinh ra từ cùng một lần cắt, nên chỗ tô sáng
+ * luôn là chỗ đang được đọc.
+ */
 
-  for (const sentence of sentences) {
-    const value = sentence.trim();
-    if (!value) continue;
-    if (current && `${current} ${value}`.length > 800) {
-      chunks.push(current);
-      current = value;
-    } else {
-      current = current ? `${current} ${value}` : value;
-    }
+const AUTO_NEXT_KEY = "gt:audio:autonext";
+
+/** Số chương giữ lại trong bộ nhớ đệm; đủ để tua lui vài chương mà không phình. */
+const CACHE_LIMIT = 8;
+
+function isLocked(chapter: PublicChapter): boolean {
+  return chapter.accessType === "PAID" && !chapter.unlocked;
+}
+
+type Bookmark = { index: number; chunk: number };
+
+function bookmarkKey(storyId: string) {
+  return `gt:audio:${storyId}`;
+}
+
+function readBookmark(storyId: string): Bookmark | null {
+  const raw = readStored(bookmarkKey(storyId));
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<Bookmark>;
+    if (typeof parsed.index !== "number" || parsed.index < 0) return null;
+    return { chunk: Math.max(0, parsed.chunk ?? 0), index: parsed.index };
+  } catch {
+    return null;
   }
-  if (current) chunks.push(current);
-  return chunks;
 }
 
 export function BrowserAudioPlayer({
-  chapters,
+  initial,
+  storyId,
+  storyIdOrSlug,
+  storySlug,
   storyTitle,
 }: Readonly<{
-  chapters: readonly PublicChapter[];
+  initial: ChapterPage;
+  storyId: string;
+  storyIdOrSlug: string;
+  storySlug: string;
   storyTitle: string;
 }>) {
-  const episodes = useMemo(
-    () => [...chapters].sort((left, right) => left.number - right.number),
-    [chapters],
-  );
+  const size = Math.max(initial.size, 1);
+  const total = initial.total;
+  const totalPages = initial.totalPages;
+
+  const [pages, setPages] = useState<Record<number, PublicChapter[]>>({ 1: initial.items });
   const [activeIndex, setActiveIndex] = useState(0);
-  const [chunkProgress, setChunkProgress] = useState({ current: 0, total: 0 });
-  const [error, setError] = useState("");
-  const [playback, setPlayback] = useState<PlaybackState>("idle");
-  const [rate, setRate] = useState(1);
+  const [listPage, setListPage] = useState(1);
+  const [paragraphs, setParagraphs] = useState<string[]>([]);
+  const [loadingChapter, setLoadingChapter] = useState(false);
+  const [chapterError, setChapterError] = useState("");
+  const [autoNext, setAutoNext] = useState(true);
+  const [resumePoint, setResumePoint] = useState<Bookmark | null>(null);
+
   const activeIndexRef = useRef(0);
-  const cacheRef = useRef(new Map<string, string[]>());
-  const chunkIndexRef = useRef(0);
-  const chunksRef = useRef<string[]>([]);
-  const playChapterRef = useRef<(index: number) => Promise<void>>(async () => undefined);
-  const rateRef = useRef(1);
-  const speakCurrentChunkRef = useRef<(token: number) => void>(() => undefined);
-  const tokenRef = useRef(0);
-
-  const speakCurrentChunk = useCallback((token: number) => {
-    if (token !== tokenRef.current) return;
-    const chunk = chunksRef.current[chunkIndexRef.current];
-    if (!chunk) {
-      const nextIndex = activeIndexRef.current + 1;
-      if (nextIndex < episodes.length) {
-        void playChapterRef.current(nextIndex);
-      } else {
-        setPlayback("ended");
-      }
-      return;
-    }
-
-    const utterance = new SpeechSynthesisUtterance(chunk);
-    utterance.lang = "vi-VN";
-    utterance.rate = rateRef.current;
-    const vietnameseVoice = window.speechSynthesis
-      .getVoices()
-      .find((voice) => voice.lang.toLowerCase().startsWith("vi"));
-    if (vietnameseVoice) utterance.voice = vietnameseVoice;
-    utterance.onend = () => {
-      if (token !== tokenRef.current) return;
-      chunkIndexRef.current += 1;
-      setChunkProgress({
-        current: chunkIndexRef.current,
-        total: chunksRef.current.length,
-      });
-      speakCurrentChunkRef.current(token);
-    };
-    utterance.onerror = (event) => {
-      if (token !== tokenRef.current || event.error === "canceled" || event.error === "interrupted") return;
-      setError("Trình duyệt không thể tiếp tục đọc chương này.");
-      setPlayback("idle");
-    };
-    window.speechSynthesis.speak(utterance);
-  }, [episodes.length]);
+  const autoNextRef = useRef(true);
+  const cacheRef = useRef(new Map<string, ReturnType<typeof chapterSpeech>>());
+  const pagesRef = useRef<Record<number, PublicChapter[]>>({ 1: initial.items });
+  const openRef = useRef<(index: number, fromChunk?: number, autoplay?: boolean) => Promise<void>>(
+    async () => undefined,
+  );
 
   useEffect(() => {
-    speakCurrentChunkRef.current = speakCurrentChunk;
-  }, [speakCurrentChunk]);
+    pagesRef.current = pages;
+  }, [pages]);
 
-  const playChapter = useCallback(async (index: number) => {
-    const chapter = episodes[index];
-    if (!chapter) return;
-    if (!("speechSynthesis" in window)) {
-      setError("Trình duyệt này chưa hỗ trợ đọc văn bản tiếng Việt.");
-      return;
+  useEffect(() => {
+    setResumePoint(readBookmark(storyId));
+    const saved = readStored(AUTO_NEXT_KEY) !== "off";
+    setAutoNext(saved);
+    autoNextRef.current = saved;
+  }, [storyId]);
+
+  /* Hết chương thì sang chương sau - mục đích của cả màn hình này là nghe liền
+     mạch, nên dừng lại sau mỗi chương thì vô nghĩa. */
+  const finish = useCallback(() => {
+    const next = activeIndexRef.current + 1;
+    if (autoNextRef.current && next < total) void openRef.current(next, 0, true);
+  }, [total]);
+
+  const tts = useTts(finish);
+  const { load, play, position, state, stop } = tts;
+
+  const chapterAt = useCallback((index: number): PublicChapter | undefined => {
+    const page = Math.floor(index / size) + 1;
+    return pagesRef.current[page]?.[index % size];
+  }, [size]);
+
+  /** Nạp trang chương chứa vị trí này, nếu chưa có. */
+  const ensurePage = useCallback(async (index: number): Promise<PublicChapter | undefined> => {
+    const page = Math.floor(index / size) + 1;
+    if (page < 1 || page > totalPages) return undefined;
+    if (!pagesRef.current[page]) {
+      const response = await authedFetch(
+        `${API_BASE_URL}/stories/${encodeURIComponent(storyIdOrSlug)}/chapters?page=${page}&size=${size}`,
+      ).catch(() => null);
+      if (!response?.ok) return undefined;
+      const loaded = (await response.json()) as ChapterPage;
+      pagesRef.current = { ...pagesRef.current, [page]: loaded.items };
+      setPages(pagesRef.current);
     }
+    return pagesRef.current[page]?.[index % size];
+  }, [size, storyIdOrSlug, totalPages]);
 
-    window.speechSynthesis.cancel();
-    const token = tokenRef.current + 1;
-    tokenRef.current = token;
+  /**
+   * Mở một chương: tải chữ, giao cho bộ máy đọc, và phát nếu được yêu cầu.
+   *
+   * <p>Gọi `stop()` ngay đầu là điều kiện để không bao giờ đọc chồng: mẩu của
+   * chương cũ có thể đang nằm trong hàng của engine, và nếu không huỷ thì nó
+   * vẫn phát tiếp sau khi màn hình đã hiện tên chương mới.
+   */
+  const open = useCallback(async (index: number, fromChunk = 0, autoplay = true) => {
+    if (index < 0 || index >= total) return;
+    stop();
     activeIndexRef.current = index;
-    chunkIndexRef.current = 0;
     setActiveIndex(index);
-    setChunkProgress({ current: 0, total: 0 });
-    setError("");
-    setPlayback("loading");
+    setListPage(Math.floor(index / size) + 1);
+    setChapterError("");
+    setLoadingChapter(true);
 
     try {
-      let chunks = cacheRef.current.get(chapter.id);
-      if (!chunks) {
-        let contentHtml = "";
-        try {
-          const response = await fetch(`/api/v1/chapters/${encodeURIComponent(chapter.id)}`, {
-            headers: { Accept: "application/json" },
-          });
-          if (response.ok) {
-            const contentType = response.headers.get("content-type") || "";
-            if (contentType.includes("json")) {
-              const detail = await response.json() as PublishedChapterDetail;
-              contentHtml = detail.contentHtml || (detail as Record<string, unknown>).synopsis as string || "";
-            }
-          }
-        } catch {
-          // Ignore network errors and fallback to chapter title
-        }
-
-        if (!contentHtml) {
-          contentHtml = `<p>${chapter.title}</p><p>Nội dung chương ${chapter.number} của truyện ${storyTitle}.</p>`;
-        }
-
-        chunks = htmlToSpeechChunks(contentHtml);
-        cacheRef.current.set(chapter.id, chunks);
+      const chapter = await ensurePage(index);
+      if (activeIndexRef.current !== index) return;
+      if (!chapter) {
+        setChapterError("Không tải được danh sách chương. Kiểm tra kết nối rồi thử lại.");
+        return;
       }
-      if (token !== tokenRef.current) return;
-      if (chunks.length === 0) throw new Error("Chương này chưa có nội dung để đọc.");
-      chunksRef.current = chunks;
-      setChunkProgress({ current: 0, total: chunks.length });
-      setPlayback("playing");
-      speakCurrentChunk(token);
-    } catch (requestError) {
-      if (token !== tokenRef.current) return;
-      setError(requestError instanceof Error ? requestError.message : "Không thể phát chương.");
-      setPlayback("idle");
+      if (isLocked(chapter)) {
+        setChapterError(
+          `Chương ${chapter.number} là chương trả phí và bạn chưa mở khoá, nên bản đọc dừng ở đây. `
+          + "Mở khoá chương rồi quay lại để nghe tiếp.",
+        );
+        setParagraphs([]);
+        return;
+      }
+
+      let prepared = cacheRef.current.get(chapter.id);
+      if (!prepared) {
+        const response = await authedFetch(
+          `${API_BASE_URL}/chapters/${encodeURIComponent(chapter.id)}`,
+          { headers: { Accept: "application/json" } },
+        );
+        if (!response.ok) throw new Error("Không tải được nội dung chương này.");
+        const detail = (await response.json()) as PublishedChapterDetail;
+        prepared = chapterSpeech(detail.contentHtml ?? "");
+        cacheRef.current.set(chapter.id, prepared);
+        // Bộ nhớ đệm có trần: nghe một bộ hai nghìn chương mà giữ hết thì tab
+        // phình theo thời gian nghe. Bỏ mục cũ nhất, giữ vài chương gần đây để
+        // tua lui không phải gọi mạng lại.
+        if (cacheRef.current.size > CACHE_LIMIT) {
+          const oldest = cacheRef.current.keys().next().value;
+          if (oldest) cacheRef.current.delete(oldest);
+        }
+      }
+      if (activeIndexRef.current !== index) return;
+
+      if (prepared.chunks.length === 0) {
+        setChapterError(`Chương ${chapter.number} không có chữ nào để đọc.`);
+        setParagraphs([]);
+        return;
+      }
+
+      setParagraphs(prepared.paragraphs);
+      // Đường dẫn tệp tiếng gắn với đúng chương vừa mở; đóng kín id ở đây nên
+      // không có đường nào phát nhầm tiếng của chương khác.
+      const chapterId = chapter.id;
+      load(
+        prepared.chunks,
+        prepared.paragraphs.length,
+        (chunkIndex: number, voice: TtsVoice) =>
+          `${API_BASE_URL}/chapters/${encodeURIComponent(chapterId)}/tts/${chunkIndex}.opus?voice=${voice}`,
+        fromChunk,
+      );
+      if (autoplay) play();
+
+      // Nạp sẵn trang chương kế tiếp để lúc hết chương cuối trang không bị một
+      // quãng im lặng chờ mạng.
+      void ensurePage(index + 1);
+    } catch (cause) {
+      if (activeIndexRef.current !== index) return;
+      setChapterError(cause instanceof Error ? cause.message : "Không phát được chương này.");
+    } finally {
+      if (activeIndexRef.current === index) setLoadingChapter(false);
     }
-  }, [episodes, speakCurrentChunk]);
+  }, [ensurePage, load, play, size, stop, total]);
 
   useEffect(() => {
-    playChapterRef.current = playChapter;
-  }, [playChapter]);
+    openRef.current = open;
+  }, [open]);
 
-  useEffect(() => () => {
-    tokenRef.current += 1;
-    window.speechSynthesis?.cancel();
-  }, []);
+  /* Ghi nhớ chỗ đang nghe dở. Chỉ ghi khi đang thật sự đọc, để việc mở trang
+     rồi bỏ đi không xoá mất vị trí của lần nghe trước. */
+  useEffect(() => {
+    if (state.status !== "playing") return;
+    writeStored(
+      bookmarkKey(storyId),
+      JSON.stringify({ chunk: position().chunk, index: activeIndexRef.current }),
+    );
+  }, [position, state.chunkIndex, state.status, storyId]);
 
-  function togglePlayback() {
-    if (playback === "playing") {
-      window.speechSynthesis.pause();
-      setPlayback("paused");
-    } else if (playback === "paused") {
-      window.speechSynthesis.resume();
-      setPlayback("playing");
-    } else {
-      void playChapter(activeIndex);
+  /* Điều khiển trên màn hình khoá và tai nghe. Nghe truyện thường là lúc màn
+     hình đã tắt, khi đó nút bấm trên trang không với tới được. */
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
+    const chapter = chapterAt(activeIndex);
+    navigator.mediaSession.metadata = new MediaMetadata({
+      album: storyTitle,
+      artist: "Đọc tự động · gioitruyen.com",
+      title: chapter?.title ?? storyTitle,
+    });
+    navigator.mediaSession.playbackState = state.status === "playing" ? "playing" : "paused";
+  }, [activeIndex, chapterAt, state.status, storyTitle]);
+
+  /* Cuộn theo đoạn đang đọc, nhưng chỉ khi đang thật sự phát: người đang tự
+     cuộn để tìm một đoạn khác sẽ rất bực nếu trang giật về chỗ cũ. */
+  useEffect(() => {
+    if (state.status !== "playing") return;
+    document
+      .querySelector(`[data-paragraph="${state.paragraphIndex}"]`)
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [state.paragraphIndex, state.status]);
+
+  /** Bấm Phát khi chưa mở chương nào thì mở chương đang chọn. */
+  function playFromHere() {
+    if (state.chunkCount === 0) {
+      void open(activeIndex, 0, true);
+      return;
     }
+    play();
   }
 
-  function changeRate(value: number) {
-    rateRef.current = value;
-    setRate(value);
-    if (playback === "playing" || playback === "paused") {
-      void playChapter(activeIndexRef.current);
-    }
-  }
-
-  const activeChapter = episodes[activeIndex];
-  const progress = chunkProgress.total === 0
+  const activeChapter = chapterAt(activeIndex);
+  const listItems = pages[listPage];
+  const resumeChapter = resumePoint ? chapterAt(resumePoint.index) : undefined;
+  const reading = state.status === "playing" || state.status === "paused";
+  const progress = state.chunkCount === 0
     ? 0
-    : Math.round((chunkProgress.current / chunkProgress.total) * 100);
+    : Math.round((state.chunkIndex / state.chunkCount) * 100);
+  const seconds = paragraphs.length === 0 ? null : estimateSeconds(paragraphs.join(" "), state.rate);
+
+  // Nút Phát của thanh dùng chung gọi thẳng tts.play(); ở trang này lần bấm đầu
+  // còn phải tải chương, nên đưa cho nó một controller có play() riêng.
+  const controller = { ...tts, play: playFromHere };
 
   return (
     <>
@@ -201,91 +273,199 @@ export function BrowserAudioPlayer({
         <header>
           <Volume2 aria-hidden="true" />
           <div>
-            <p className="detailEyebrow">{playback === "playing" ? "Đang phát" : "Bản đọc tự động"}</p>
-            <h2 id="audio-player-title">{activeChapter?.title ?? "Chưa có tập audio"}</h2>
+            <p className="detailEyebrow">
+              {loadingChapter ? "Đang tải chương" : STATUS_LABELS[state.status]}
+            </p>
+            <h2 id="audio-player-title">
+              {activeChapter?.title ?? `${storyTitle} — chưa có chương nào`}
+            </h2>
+            {activeChapter ? (
+              <p className="audioNowMeta">
+                Chương {activeChapter.number} / {total}
+                {seconds ? ` · khoảng ${formatDuration(seconds)}` : ""}
+                {` · giọng ${state.voice === "male" ? "nam" : "nữ"}`}
+              </p>
+            ) : null}
           </div>
         </header>
-        <div className="audioControlSurface">
+
+        {/* Nghe tiếp từ lần trước. Một bộ truyện dài hàng trăm chương thì việc
+            nhớ hộ vị trí quan trọng ngang cái nút phát. */}
+        {resumePoint && resumePoint.index !== activeIndex && !reading ? (
           <button
-            aria-label="Chương trước"
-            disabled={activeIndex === 0 || episodes.length === 0}
-            onClick={() => void playChapter(activeIndex - 1)}
+            className="audioResumeBar"
+            onClick={() => void open(resumePoint.index, resumePoint.chunk, true)}
             type="button"
           >
-            <SkipBack aria-hidden="true" />
+            <RotateCcw aria-hidden="true" size={15} />
+            Nghe tiếp chương {resumeChapter?.number ?? resumePoint.index + 1}
           </button>
-          <button
-            aria-label={playback === "playing" ? "Tạm dừng" : `Phát ${storyTitle}`}
-            className="audioPlayButton"
-            disabled={episodes.length === 0 || playback === "loading"}
-            onClick={togglePlayback}
-            type="button"
-          >
-            {playback === "loading" ? <LoaderCircle className="audioSpinner" aria-hidden="true" /> : playback === "playing" ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />}
-          </button>
-          <button
-            aria-label="Chương tiếp theo"
-            disabled={activeIndex >= episodes.length - 1}
-            onClick={() => void playChapter(activeIndex + 1)}
-            type="button"
-          >
-            <SkipForward aria-hidden="true" />
-          </button>
-          <div
-            aria-label={`Tiến độ ${progress}%`}
-            aria-valuemax={100}
-            aria-valuemin={0}
-            aria-valuenow={progress}
-            className="audioProgress"
-            role="progressbar"
-          >
-            <span style={{ width: `${progress}%` }} />
-          </div>
-          <label className="audioRate">
-            Tốc độ
-            <select onChange={(event) => changeRate(Number(event.target.value))} value={rate}>
-              <option value="0.75">0.75x</option>
-              <option value="1">1x</option>
-              <option value="1.25">1.25x</option>
-              <option value="1.5">1.5x</option>
-            </select>
-          </label>
-        </div>
-        {error && <p className="audioPlayerError" role="alert">{error}</p>}
+        ) : null}
+
+        <TtsControls
+          controller={controller}
+          onNextChapter={activeIndex < total - 1 ? () => void open(activeIndex + 1) : undefined}
+          onPreviousChapter={activeIndex > 0 ? () => void open(activeIndex - 1) : undefined}
+        />
+
+        {/* Tiến độ bằng chữ, không chỉ bằng thanh màu: người nghe muốn biết còn
+            bao lâu nữa, và một thanh chạy không trả lời được câu đó. */}
+        {reading && state.chunkCount > 0 ? (
+          <p className="audioProgressLine">
+            <span>
+              Đang đọc: <strong>Đoạn {state.paragraphIndex + 1} / {state.paragraphCount}</strong>
+              {" "}· đã đọc {progress}% chương này
+            </span>
+            {seconds != null && progress < 100 ? (
+              <span>Còn khoảng {formatDuration(Math.max(1, Math.round(seconds * (1 - progress / 100))))}</span>
+            ) : null}
+          </p>
+        ) : null}
+
+        {chapterError ? <p className="audioPlayerError" role="alert">{chapterError}</p> : null}
+        <TtsNotice controller={tts} />
+
+        {state.status === "completed" && activeIndex >= total - 1 ? (
+          <p className="audioPlayerNotice" role="status">
+            Đã nghe hết {total} chương của “{storyTitle}”.
+          </p>
+        ) : null}
+
+        <TtsOptions
+          autoNext={autoNext}
+          controller={tts}
+          onAutoNext={(next) => {
+            autoNextRef.current = next;
+            setAutoNext(next);
+            writeStored(AUTO_NEXT_KEY, next ? "on" : "off");
+          }}
+        />
+
+        <p className="audioPlayerHint">
+          <Info aria-hidden="true" size={14} />
+          Bản đọc do trình duyệt tạo trực tiếp từ chữ của chương, không phải file thu sẵn — hãy giữ
+          tab này mở trong lúc nghe. Trang tự nhớ chỗ đang nghe dở của từng truyện.
+        </p>
       </section>
+
+      {/* Chữ của chương, đúng những đoạn đang được đọc. Không có bản chữ thứ hai
+          nào ở đây: cả phần hiển thị lẫn phần đọc đều lấy từ cùng một lần cắt. */}
+      {paragraphs.length > 0 ? (
+        <section className="audioChapterText" aria-label="Nội dung chương đang đọc">
+          {paragraphs.map((paragraph, index) => (
+            <p
+              className={reading && index === state.paragraphIndex ? "isSpeaking" : undefined}
+              data-paragraph={index}
+              key={`${index}-${paragraph.slice(0, 24)}`}
+            >
+              {paragraph}
+            </p>
+          ))}
+        </section>
+      ) : null}
 
       <section className="chapterList audioEpisodeList" aria-labelledby="audio-episodes-title">
         <header>
           <div>
-            <p className="detailEyebrow">Danh sách tập</p>
-            <h2 id="audio-episodes-title">Tập audio đã có</h2>
+            <p className="detailEyebrow">Danh sách chương</p>
+            <h2 id="audio-episodes-title">Nghe từ chương bất kỳ</h2>
           </div>
-          <span>{episodes.length} tập</span>
+          <span>{total} chương</span>
         </header>
-        {episodes.length === 0 ? (
-          <p className="emptyCatalog">Truyện này chưa có tập audio công khai.</p>
+
+        {total === 0 ? (
+          <p className="emptyCatalog">Truyện này chưa có chương nào được đăng.</p>
         ) : (
-          <ol>
-            {episodes.map((chapter, index) => (
-              <li key={chapter.id}>
+          <>
+            <ol>
+              {(listItems ?? []).map((chapter, offset) => {
+                const index = (listPage - 1) * size + offset;
+                const locked = isLocked(chapter);
+                const current = index === activeIndex && reading;
+                return (
+                  <li key={chapter.id}>
+                    <button
+                      aria-current={index === activeIndex ? "true" : undefined}
+                      className="audioEpisodeButton"
+                      disabled={locked}
+                      onClick={() => void open(index)}
+                      type="button"
+                    >
+                      <span>{String(chapter.number).padStart(3, "0")}</span>
+                      <div>
+                        <strong>{chapter.title}</strong>
+                        <small>
+                          {locked
+                            ? `Chương trả phí · ${chapter.coinPrice} Xu`
+                            : current
+                              ? `Đang nghe · ${progress}%`
+                              : new Date(chapter.publishedAt).toLocaleDateString("vi-VN")}
+                        </small>
+                        {current ? (
+                          <span className="audioRowProgress">
+                            <span style={{ width: `${progress}%` }} />
+                          </span>
+                        ) : null}
+                      </div>
+                      {locked
+                        ? <Lock aria-hidden="true" />
+                        : current && state.status === "playing"
+                          ? <Pause aria-hidden="true" />
+                          : <Volume2 aria-hidden="true" />}
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+
+            {listItems == null ? <p className="emptyCatalog">Đang tải danh sách chương…</p> : null}
+
+            {totalPages > 1 ? (
+              <div className="audioListPager">
                 <button
-                  aria-current={index === activeIndex ? "true" : undefined}
-                  className="audioEpisodeButton"
-                  onClick={() => void playChapter(index)}
+                  disabled={listPage === 1}
+                  onClick={() => {
+                    const page = listPage - 1;
+                    setListPage(page);
+                    void ensurePage((page - 1) * size);
+                  }}
                   type="button"
                 >
-                  <span>{String(chapter.number).padStart(3, "0")}</span>
-                  <div>
-                    <strong>{chapter.title}</strong>
-                    <small>{new Date(chapter.publishedAt).toLocaleDateString("vi-VN")}</small>
-                  </div>
-                  <Volume2 aria-hidden="true" />
+                  Trang trước
                 </button>
-              </li>
-            ))}
-          </ol>
+                <span>
+                  Chương {(listPage - 1) * size + 1}–{Math.min(listPage * size, total)}
+                </span>
+                <button
+                  disabled={listPage >= totalPages}
+                  onClick={() => {
+                    const page = listPage + 1;
+                    setListPage(page);
+                    void ensurePage((page - 1) * size);
+                  }}
+                  type="button"
+                >
+                  Trang sau
+                </button>
+              </div>
+            ) : null}
+          </>
         )}
+
+        <p className="audioReadInstead">
+          Muốn đọc bằng mắt? <Link to={`/stories/${storySlug}`}>Mở bản chữ của {storyTitle}</Link>
+        </p>
       </section>
     </>
   );
 }
+
+/** Nhãn phải nói đúng trạng thái máy đang ở, không phải tên tính năng. */
+const STATUS_LABELS: Record<string, string> = {
+  completed: "Đã đọc xong",
+  error: "Bản đọc gặp sự cố",
+  idle: "Bản đọc tự động",
+  loading: "Đang dựng tiếng",
+  paused: "Đang tạm dừng",
+  playing: "Đang phát",
+};

@@ -1,5 +1,5 @@
 .sectionBox {
-  background: #ffffff;
+  background: var(--surface-card);
   border-radius: 12px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
   border: 1px solid #eef2f6;
@@ -228,7 +228,7 @@
   padding: 0.35rem 0.6rem;
   border-radius: 6px;
   border: 1px solid #cbd5e1;
-  background: #ffffff;
+  background: var(--surface-card);
   color: #1e293b;
 }
 

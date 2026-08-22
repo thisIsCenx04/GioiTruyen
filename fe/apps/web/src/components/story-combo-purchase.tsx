@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Sparkles, ShoppingBag, CheckCircle2, ShieldCheck, Tag } from "lucide-react";
 import { API_BASE_URL, authedFetch } from "@/lib/api-base";
+import { formatXu } from "@/lib/format";
 
 interface StoryComboPurchaseProps {
   storyId: string;
@@ -154,8 +155,8 @@ export function StoryComboPurchase({
               : hasDiscount
                 // "tiết kiệm 30%" rather than "-30%": a bare minus sign next to
                 // two prices reads as a subtraction, not as a saving.
-                ? `Mở toàn bộ ${totalRetailXu} Xu chương chỉ với ${actualComboXu} Xu — tiết kiệm ${savingsPercent}%`
-                : `Mở toàn bộ chương với ${actualComboXu} Xu`}
+                ? `Mở toàn bộ ${formatXu(totalRetailXu)} Xu chương chỉ với ${formatXu(actualComboXu)} Xu — tiết kiệm ${savingsPercent}%`
+                : `Mở toàn bộ chương với ${formatXu(actualComboXu)} Xu`}
         </small>
       </div>
       {isPurchased ? (
@@ -170,7 +171,7 @@ export function StoryComboPurchase({
           type="button"
         >
           <ShoppingBag aria-hidden="true" size={15} />
-          {unavailableReason ? "Combo" : `${actualComboXu} Xu`}
+          {unavailableReason ? "Combo" : `${formatXu(actualComboXu)} Xu`}
         </button>
       )}
     </div>
@@ -397,19 +398,19 @@ export function StoryComboPurchase({
                   {hasDiscount ? (
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem", color: "var(--text-muted)" }}>
                       <span>Tổng mua lẻ từng chương:</span>
-                      <span style={{ textDecoration: "line-through" }}>{totalRetailXu} Xu</span>
+                      <span style={{ textDecoration: "line-through" }}>{formatXu(totalRetailXu)} Xu</span>
                     </div>
                   ) : (
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem", color: "var(--text-muted)" }}>
                       <span>Tổng giá các chương:</span>
-                      <span>{totalRetailXu} Xu</span>
+                      <span>{formatXu(totalRetailXu)} Xu</span>
                     </div>
                   )}
 
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                     <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--text-primary)" }}>Giá Mua Combo:</span>
                     <strong style={{ fontSize: "1.4rem", fontWeight: 900, color: "#7c3aed" }}>
-                      {actualComboXu} Xu
+                      {formatXu(actualComboXu)} Xu
                     </strong>
                   </div>
 
@@ -429,7 +430,7 @@ export function StoryComboPurchase({
                       }}
                     >
                       <span>Tiết kiệm so với mua lẻ:</span>
-                      <strong>{savingsPercent}% ({savingsXu} Xu)</strong>
+                      <strong>{savingsPercent}% ({formatXu(savingsXu)} Xu)</strong>
                     </div>
                   ) : (
                     <p style={{ color: "var(--text-muted)", fontSize: "0.78rem", margin: 0 }}>
@@ -493,7 +494,7 @@ export function StoryComboPurchase({
                     }}
                   >
                     <ShoppingBag style={{ width: "1rem", height: "1rem" }} />
-                    {busy ? "Đang xử lý..." : `Xác nhận mua (${actualComboXu} Xu)`}
+                    {busy ? "Đang xử lý..." : `Xác nhận mua (${formatXu(actualComboXu)} Xu)`}
                   </button>
                 </div>
               </div>

@@ -1,5 +1,5 @@
 import { Eye, ImagePlus, Paperclip, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
-import { type FormEvent, type ReactNode, useEffect, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { coverUrl } from "@/components/story-cover";
@@ -17,11 +17,18 @@ import {
   loadAdminUsers,
 } from "../admin-data";
 import { getAccessToken, refreshAccessToken } from "../../../lib/auth";
+import { ChapterEditorPager, chapterPageCount, chapterPageSlice } from "@/components/chapter-editor-pager";
+import { MissingChaptersNotice } from "@/components/missing-chapters-notice";
+import { OperationDialog, type OperationOutcome } from "@/components/operation-dialog";
+import { mergeImportedChapters } from "@/components/publishing-workspace";
+import { formatXu } from "@/lib/format";
 import { AdminTable, StatBar, type Column, type Stat } from "./admin-table";
 import {
   type ImportedStory,
+  lastChapterNumber,
   parseStoryDocument,
-  parseStoryFile,
+  readChapterDraftsFromFiles,
+  readChapterText,
   splitByWordCount,
   WORDS_PER_CHAPTER,
   WORDS_PER_CHAPTER_ZHIHU,
@@ -46,10 +53,8 @@ type DrawerMode = "archive" | "create" | "delete" | "edit" | "reverse";
 type SortOrder = "asc" | "desc";
 type StoryChapterDraft = {
   id: string;
-  file?: File;
   content: string;
   title: string;
-  tags: string[];
   accessType?: "FREE" | "PAID";
   coinPrice?: number;
 };
@@ -70,7 +75,6 @@ export function formatShortDate(value: string | null | undefined) {
   const year = String(parsed.getFullYear()).slice(-2);
   return `${day}/${month}/${year}`;
 }
-
 
 /**
  * Timestamps as an admin reads them. Every list shows when a record was made
@@ -496,80 +500,6 @@ function TagEditor({
   );
 }
 
-function ChapterUploadList({
-  chapters,
-  onChange,
-}: Readonly<{
-  chapters: StoryChapterDraft[];
-  onChange: (chapters: StoryChapterDraft[]) => void;
-}>) {
-  const updateChapter = (id: string, patch: Partial<StoryChapterDraft>) => {
-    onChange(chapters.map((chapter) => (chapter.id === id ? { ...chapter, ...patch } : chapter)));
-  };
-
-  return (
-    <section className="chapterUploadPanel">
-      <header>
-        <span>Upload chương</span>
-        <label>
-          <Paperclip aria-hidden="true" size={16} />
-          Chọn nhiều file
-          <input
-            accept=".txt,.md,.doc,.docx,.pdf,.epub"
-            multiple
-            onChange={(event) => {
-              const files = Array.from(event.currentTarget.files ?? []);
-              if (files.length === 0) return;
-              const next = files.map((file, index) => ({
-                content: "",
-                file,
-                id: `${file.name}-${file.lastModified}-${index}`,
-                tags: [],
-                title: file.name.replace(/\.[^.]+$/u, ""),
-              }));
-              onChange([...chapters, ...next]);
-              event.currentTarget.value = "";
-            }}
-            type="file"
-          />
-        </label>
-      </header>
-      {chapters.length === 0 ? (
-        <p>Chọn file để tạo nhiều chương cùng lúc. Mỗi chương có tiêu đề và tag riêng.</p>
-      ) : (
-        <div className="chapterDraftList">
-          {chapters.map((chapter, index) => (
-            <article className="chapterDraftItem" key={chapter.id}>
-              <button
-                aria-label={`Xóa chương ${index + 1}`}
-                className="chapterDraftRemove"
-                onClick={() => onChange(chapters.filter((item) => item.id !== chapter.id))}
-                type="button"
-              >
-                <X aria-hidden="true" size={16} />
-              </button>
-              <Field label={`Chương ${index + 1}`}>
-                <input
-                  maxLength={240}
-                  onChange={(event) => updateChapter(chapter.id, { title: event.currentTarget.value })}
-                  value={chapter.title}
-                />
-              </Field>
-              <small>{chapter.file?.name ?? "Nội dung nhập trực tiếp"}</small>
-              <TagEditor
-                label="Tag chương"
-                onChange={(tags) => updateChapter(chapter.id, { tags })}
-                placeholder="Ví dụ: battle, flashback"
-                tags={chapter.tags}
-              />
-            </article>
-          ))}
-        </div>
-      )}
-    </section>
-  );
-}
-
 function ChapterImportWorkspace({
   chapters,
   collapsible = false,
@@ -581,6 +511,18 @@ function ChapterImportWorkspace({
   onChange: (chapters: StoryChapterDraft[]) => void;
 }>) {
   const [error, setError] = useState("");
+  /**
+   * What the last file upload did. The panel used to report only failures, in a
+   * red line: a successful overwrite of forty chapters looked exactly like
+   * nothing happening at all.
+   */
+  const [uploadReport, setUploadReport] = useState<{
+    added: number;
+    failed: string[];
+    mode: "append" | "replace";
+    skipped: number;
+    updated: number;
+  } | null>(null);
   const [bulkFreeCount, setBulkFreeCount] = useState(5);
   const [bulkPrice, setBulkPrice] = useState(5);
   const [openChapters, setOpenChapters] = useState<ReadonlySet<string>>(new Set());
@@ -593,6 +535,18 @@ function ChapterImportWorkspace({
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState("");
   const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false);
   const [singleDeleteId, setSingleDeleteId] = useState<string | null>(null);
+  /** Which page of the chapter list is on screen; a finished story runs to
+   *  thousands of chapters and the list used to render every one. */
+  const [page, setPage] = useState(1);
+  // Titles only, so the pager can label a page by the chapters' own numbers.
+  const chapterTitles = useMemo(() => chapters.map((chapter) => chapter.title), [chapters]);
+
+  // Deleting a run of chapters can leave the admin on a page past the end,
+  // which renders empty and reads as though the chapters were lost.
+  useEffect(() => {
+    const pages = chapterPageCount(chapters.length);
+    if (page > pages) setPage(pages);
+  }, [chapters.length, page]);
 
   const toggleChapter = (id: string) => {
     setOpenChapters((current) => {
@@ -637,7 +591,6 @@ function ChapterImportWorkspace({
     onChange([...chapters, {
       content: "",
       id: `manual-${Date.now()}`,
-      tags: [],
       title: `Chương ${chapters.length + 1}`,
       accessType: "FREE",
       coinPrice: 0,
@@ -655,39 +608,143 @@ function ChapterImportWorkspace({
     onChange(updated);
   };
 
-  const importFiles = async (files: File[]) => {
+  /**
+   * One picked file becomes one chapter, holding exactly what the file says.
+   *
+   * <p>Nothing is split here, however long the file runs. Uploading a file *as
+   * a chapter* is the publisher stating where the chapter ends, and that is a
+   * harder fact than any heuristic: a file that was cut into pieces here landed
+   * as chapters nobody wrote. Splitting belongs to the whole-story import,
+   * which is the only place the boundaries are genuinely unknown.
+   */
+  const importFiles = async (picked: File[], mode: "append" | "replace" = "append") => {
     setError("");
-    try {
-      const imported = (await Promise.all(files.map(async (file) => {
-        const parsed = await parseStoryFile(file);
-        return parsed.map((chapter, index) => ({
-          content: chapter.content,
-          file: parsed.length === 1 ? file : undefined,
-          id: `${file.name}-${file.lastModified}-${index}`,
-          tags: [],
-          title: chapter.title,
-          accessType: "FREE" as const,
-          coinPrice: 0,
-        }));
-      }))).flat();
-      onChange([...chapters, ...imported]);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Không thể đọc file chương.");
+    // The one shared implementation, identical to the publisher workspace:
+    // files read in chapter order, each split at its own chapter markers, and
+    // any chapter without a number in its title numbered on from the end of the
+    // story. Role and permission rules are unchanged and live elsewhere.
+    const read = await readChapterDraftsFromFiles(picked, lastChapterNumber(chapters) + 1);
+    const failed = read.failed;
+    const imported: StoryChapterDraft[] = read.chapters.map((chapter, position) => ({
+      content: chapter.content,
+      id: `upload-${Date.now()}-${position}`,
+      title: chapter.title,
+      accessType: "FREE" as const,
+      coinPrice: 0,
+    }));
+    if (imported.length > 0) {
+      // "append" adds the files after what is already there - the usual case of
+      // publishing the next few chapters. "replace" overwrites the existing
+      // chapters in order and keeps their ids, so re-uploading a corrected file
+      // updates the chapters readers already have rather than creating a second
+      // set beside them.
+      if (mode === "replace") {
+        // Matched by chapter number and title, the same rule the publisher
+        // workspace uses. Overwriting by position meant a file list in a
+        // different order rewrote the wrong chapters, and a re-upload that
+        // skipped one chapter shifted every chapter after it.
+        const merged = mergeImportedChapters(
+          chapters,
+          chapters.map((chapter, index) => ({
+            chapterNumber: index + 1,
+            title: chapter.title,
+          })),
+          imported,
+        );
+        onChange(merged.chapters);
+        setUploadReport({
+          added: merged.added.length,
+          failed,
+          mode,
+          skipped: merged.skipped.length,
+          updated: merged.updated.length,
+        });
+      } else {
+        onChange([...chapters, ...imported]);
+        setUploadReport({
+          added: imported.length,
+          failed,
+          mode,
+          skipped: 0,
+          updated: 0,
+        });
+      }
+    } else if (failed.length > 0) {
+      setUploadReport({ added: 0, failed, mode, skipped: 0, updated: 0 });
     }
+    if (failed.length > 0) setError(`Không đọc được: ${failed.join("; ")}`);
   };
 
   return (
     <section className="chapterUploadPanel">
+      {uploadReport ? (
+        <OperationDialog
+          onClose={() => setUploadReport(null)}
+          outcome={{
+            details: [
+              uploadReport.mode === "replace"
+                ? `▸ CẬP NHẬT chương đang có · ghi đè ${uploadReport.updated} · thêm mới ${uploadReport.added}`
+                  + `${uploadReport.skipped > 0 ? ` · giữ nguyên ${uploadReport.skipped}` : ""}`
+                : `▸ THÊM MỚI ${uploadReport.added} chương vào cuối danh sách`,
+              uploadReport.mode === "replace"
+                ? "Đã so chương theo cả số chương và tên chương, không ghi đè theo vị trí file."
+                : "",
+              "Mỗi file là một chương, giữ nguyên toàn bộ nội dung, không cắt theo số từ.",
+              uploadReport.skipped > 0
+                ? `Bỏ qua ${uploadReport.skipped} chương vì trùng cả số, tên và nội dung.`
+                : "",
+              ...uploadReport.failed.map((entry) => `Bỏ qua: ${entry}`),
+            ].filter(Boolean),
+            hint: "Danh sách bên dưới là bản nháp. Bấm Lưu để ghi thay đổi lên máy chủ.",
+            kind: uploadReport.failed.length === 0
+              ? "success"
+              : uploadReport.added + uploadReport.updated === 0
+                ? "error"
+                : "warning",
+            title: uploadReport.mode === "replace"
+              ? "Đã cập nhật chương từ file"
+              : "Đã thêm chương từ file",
+          }}
+        />
+      ) : null}
+      {/* Holes in the numbering, stated before anything is edited. The saved
+          story shows no sign of them - chapter_number is reassigned by position
+          on save, so it always reads 1…N however many the source skipped. */}
+      <MissingChaptersNotice titles={chapterTitles} />
+
       <header>
         <div>
           <strong>Chương và nội dung ({chapters.length} chương)</strong>
-          <small>Upload file Word để tự tách chương, hoặc bấm + để thêm từng chương.</small>
+          <small>
+            Thêm file: đọc file thành nhiều chương, tách theo dòng chương trong file.
+            Thêm chương: nhập tay một chương.
+          </small>
         </div>
         <div className="chapterUploadActions">
           <button onClick={addManualChapter} type="button"><Plus aria-hidden="true" size={16} /> Thêm chương</button>
+          {/* Overwrites the chapters already in the list, in order, keeping their
+              ids - so a corrected file updates what readers have instead of
+              adding a duplicate set alongside it. Offered only when there is
+              something to overwrite. */}
+          {chapters.length > 0 ? (
+            <label>
+              <Paperclip aria-hidden="true" size={16} /> Ghi đè chương cũ
+              <input accept=".txt,.md,.docx,.odt,.epub,.html,.htm,.rtf" multiple onChange={async (event) => {
+                const files = Array.from(event.currentTarget.files ?? []);
+                event.currentTarget.value = "";
+                if (files.length === 0) return;
+                if (!window.confirm(
+                  `Ghi đè nội dung ${Math.min(files.length, chapters.length)} chương đầu tiên bằng `
+                  + `${files.length} file vừa chọn?\n\nTiêu đề và nội dung sẽ bị thay. `
+                  + "Giá và quyền truy cập giữ nguyên.",
+                )) return;
+                await importFiles(files, "replace");
+              }} type="file" />
+            </label>
+          ) : null}
           <label>
-            <Paperclip aria-hidden="true" size={16} /> Upload file
-            <input accept=".txt,.md,.docx" multiple onChange={async (event) => {
+            <Paperclip aria-hidden="true" size={16} /> Thêm file
+            <input accept=".txt,.md,.docx,.odt,.epub,.html,.htm,.rtf" multiple onChange={async (event) => {
               const files = Array.from(event.currentTarget.files ?? []);
               if (files.length === 0) return;
               await importFiles(files);
@@ -850,97 +907,74 @@ function ChapterImportWorkspace({
       {error ? <p className="drawerError" role="alert">{error}</p> : null}
       {chapters.length === 0 ? <p>Chưa có chương. Upload file hoặc bấm + để nhập content trực tiếp.</p> : (
         <div className="chapterDraftList">
-          {chapters.map((chapter, index) => {
-            const expanded = !collapsible || openChapters.has(chapter.id);
-            return (
-            <article className="chapterDraftItem" key={chapter.id}>
-              {collapsible ? (
-                <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
-                  <label
-                    onClick={(e) => e.stopPropagation()}
-                    style={{ display: "flex", alignItems: "center", paddingLeft: "0.5rem", cursor: "pointer" }}
-                    title="Chọn chương này"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(chapter.id)}
-                      onChange={() => toggleSelectChapter(chapter.id)}
-                      style={{ width: "1.1rem", height: "1.1rem", cursor: "pointer" }}
-                    />
-                  </label>
+          {/* Only this page is mounted; the rest of the drafts stay in state and
+              are still submitted on save. */}
+          <ChapterEditorPager onChange={setPage} page={page} titles={chapterTitles} total={chapters.length} />
+          {chapterPageSlice(chapters, page).map(({ chapter, index }) => (
+            /* Same shape as the publisher's editor: a tick box, the title
+               taking the width left over, access and price, then delete - and
+               the text underneath. The two forms edit the same chapters, so a
+               publisher promoted to admin should not have to relearn the screen.
 
-                  <button
-                    aria-expanded={expanded}
-                    className="chapterDraftToggle"
-                    onClick={() => toggleChapter(chapter.id)}
-                    type="button"
-                    style={{ flex: 1 }}
-                  >
-                    <span className="chapterDraftToggleIcon">{expanded ? "−" : "+"}</span>
-                    <span className="chapterDraftToggleTitle">
-                      {chapter.title || `Chương ${index + 1}`}
-                    </span>
-                    <span className="chapterDraftToggleMeta">
-                      {chapter.accessType === "PAID" ? `${chapter.coinPrice} xu` : "Miễn phí"}
-                    </span>
-                  </button>
-                </div>
-              ) : null}
-
-              {expanded ? (
-                <>
-              <button aria-label={`Xóa chương ${index + 1}`} className="chapterDraftRemove" onClick={() => setSingleDeleteId(chapter.id)} type="button">
-                <X aria-hidden="true" size={16} />
-              </button>
-              <Field label={`Chương ${index + 1}`}>
-                <input maxLength={240} onChange={(event) => updateChapter(chapter.id, { title: event.currentTarget.value })} value={chapter.title} />
-              </Field>
-
-              {/* Lock & Coin price controls */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", margin: "0.5rem 0" }}>
-                <Field label="Quyền truy cập">
-                  <select
-                    value={chapter.accessType || "FREE"}
-                    onChange={(e) => {
-                      const nextType = e.target.value as "FREE" | "PAID";
-                      updateChapter(chapter.id, {
-                        accessType: nextType,
-                        coinPrice: nextType === "FREE" ? 0 : (chapter.coinPrice || 5)
-                      });
-                    }}
-                  >
-                    <option value="FREE">Miễn phí (FREE)</option>
-                    <option value="PAID">Khóa chương (PAID)</option>
-                  </select>
-                </Field>
-
+               The collapsed/expanded toggle is gone with it. Paging already
+               keeps the list short, and folding every row meant two clicks to
+               reach the one thing anyone opens this for: the text. */
+            <article className="pubChapterRow" key={chapter.id}>
+              <div className="pubChapterRowHead">
+                <input
+                  aria-label={`Chọn chương ${index + 1}`}
+                  checked={selectedIds.has(chapter.id)}
+                  className="pubChapterPick"
+                  onChange={() => toggleSelectChapter(chapter.id)}
+                  type="checkbox"
+                />
+                <input
+                  maxLength={240}
+                  onChange={(event) => updateChapter(chapter.id, { title: event.currentTarget.value })}
+                  placeholder={`Tên chương ${index + 1}`}
+                  value={chapter.title}
+                />
+                <select
+                  onChange={(event) => {
+                    const nextType = event.target.value as "FREE" | "PAID";
+                    updateChapter(chapter.id, {
+                      accessType: nextType,
+                      coinPrice: nextType === "FREE" ? 0 : (chapter.coinPrice || 5),
+                    });
+                  }}
+                  value={chapter.accessType || "FREE"}
+                >
+                  <option value="FREE">Miễn phí</option>
+                  <option value="PAID">Trả phí</option>
+                </select>
                 {chapter.accessType === "PAID" ? (
-                  <Field label="Số xu để mở khóa">
-                    <input
-                      type="number"
-                      min={1}
-                      max={1000}
-                      value={chapter.coinPrice ?? 5}
-                      onChange={(e) => updateChapter(chapter.id, { coinPrice: Number(e.target.value) })}
-                    />
-                  </Field>
-                ) : (
-                  <Field label="Số xu">
-                    <input type="text" disabled value="0 Xu (Free)" style={{ opacity: 0.6 }} />
-                  </Field>
-                )}
+                  <input
+                    aria-label="Số xu để mở khoá"
+                    min={1}
+                    onChange={(event) => updateChapter(chapter.id, { coinPrice: Number(event.target.value) })}
+                    placeholder="Xu"
+                    type="number"
+                    value={chapter.coinPrice || ""}
+                  />
+                ) : null}
+                <button
+                  aria-label={`Xoá chương ${index + 1}`}
+                  className="pubGhostBtn"
+                  onClick={() => setSingleDeleteId(chapter.id)}
+                  type="button"
+                >
+                  <Trash2 aria-hidden="true" size={14} />
+                </button>
               </div>
-
-              {chapter.file ? <small>File: {chapter.file.name}</small> : null}
-              <Field label="Nội dung chương">
-                <textarea onChange={(event) => updateChapter(chapter.id, { content: event.currentTarget.value })} placeholder="Nội dung chương..." rows={8} value={chapter.content} />
-              </Field>
-              <TagEditor label="Tag chương" onChange={(tags) => updateChapter(chapter.id, { tags })} placeholder="Ví dụ: battle, flashback" tags={chapter.tags} />
-                </>
-              ) : null}
+              <textarea
+                onChange={(event) => updateChapter(chapter.id, { content: event.currentTarget.value })}
+                placeholder="Nội dung chương…"
+                rows={8}
+                value={chapter.content}
+              />
             </article>
-            );
-          })}
+          ))}
+          <ChapterEditorPager onChange={setPage} page={page} titles={chapterTitles} total={chapters.length} />
         </div>
       )}
 
@@ -1263,10 +1297,13 @@ function OneshotContentEditor({
 function StoryDocumentImport({
   busy,
   onImported,
+  onOutcome,
   wordsPerChapter,
 }: Readonly<{
   busy: boolean;
   onImported: (imported: ImportedStory) => void;
+  /** Reports the read in full, the same way the publisher form does. */
+  onOutcome: (outcome: OperationOutcome) => void;
   wordsPerChapter: number;
 }>) {
   const [error, setError] = useState("");
@@ -1280,14 +1317,56 @@ function StoryDocumentImport({
     setSummary("");
     try {
       const imported = await parseStoryDocument(file, wordsPerChapter);
+
+      // A file that reads but is structurally wrong - chapters back to front -
+      // is refused rather than loaded, the same as on the publisher side.
+      if (imported.errors.length > 0) {
+        onOutcome({
+          details: imported.errors,
+          hint: "Không có gì được nạp vào form. Sửa file rồi upload lại.",
+          kind: "error",
+          title: `File “${file.name}” không hợp lệ`,
+        });
+        return;
+      }
+      if (imported.chapters.length === 0) {
+        onOutcome({
+          details: ["File không có nội dung nào đọc được thành chương."],
+          kind: "error",
+          title: `File “${file.name}” trống`,
+        });
+        return;
+      }
+
       onImported(imported);
-      setSummary(
-        `Đã đọc "${file.name}": ${imported.chapters.length} chương`
-        + ` (mỗi ${wordsPerChapter} từ)`
-        + (imported.authorName ? ` · tác giả ${imported.authorName}` : "")
-      );
+      setSummary(`Đã đọc "${file.name}": ${imported.chapters.length} chương`);
+      onOutcome({
+        details: [
+          `${imported.chapters.length} chương.`,
+          imported.autoSplit
+            ? `File không đánh dấu chương, nên đã cắt mỗi ${wordsPerChapter.toLocaleString("vi-VN")} từ một chương.`
+            : "Giữ đúng các chương mà file đã đánh dấu, không cắt thêm.",
+          `Nội dung: ${imported.sourceWords.toLocaleString("vi-VN")} từ trong file, `
+            + `${imported.keptWords.toLocaleString("vi-VN")} từ đã vào chương.`,
+          `Tên truyện: ${imported.title || "(chưa có)"}`,
+          imported.categoryNames.length > 0
+            ? `Thể loại trong file: ${imported.categoryNames.join(", ")}.`
+            : "Thể loại: file không ghi.",
+          imported.synopsis ? "Giới thiệu: đã lấy từ file." : "Giới thiệu: file không ghi.",
+          ...imported.warnings,
+        ].filter(Boolean),
+        hint: "Chương đã nạp vào form. Kiểm tra rồi bấm Lưu.",
+        kind: imported.warnings.length > 0 ? "warning" : "success",
+        title: `Đọc xong “${file.name}”`,
+      });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Không đọc được file truyện.");
+      const message = cause instanceof Error ? cause.message : "Không đọc được file truyện.";
+      setError(message);
+      onOutcome({
+        details: [message],
+        kind: "error",
+        title: `Không đọc được “${file.name}”`,
+      });
     } finally {
       setParsing(false);
     }
@@ -1307,7 +1386,7 @@ function StoryDocumentImport({
           <Paperclip aria-hidden="true" size={16} />
           {parsing ? "Đang đọc..." : "Chọn file"}
           <input
-            accept=".txt,.md,.docx"
+            accept=".txt,.md,.docx,.odt,.epub,.html,.htm,.rtf"
             disabled={busy || parsing}
             onChange={async (event) => {
               const file = event.currentTarget.files?.[0] ?? null;
@@ -1508,6 +1587,12 @@ export function StoryCrudWorkspace({
   // A story can belong to several genres at once.
   const [storyCategoryIds, setStoryCategoryIds] = useState<string[]>([]);
   const [comboPriceXu, setComboPriceXu] = useState<number | "">("");
+  /**
+   * The result of the last upload or save, shown as a dialog. The inline notice
+   * had nowhere to put what the operation actually did - how many chapters, how
+   * many words, what the server objected to.
+   */
+  const [outcome, setOutcome] = useState<OperationOutcome | null>(null);
   const selected = drawer?.story;
   const isOneshot = storyFormat === "ONESHOT";
 
@@ -1582,8 +1667,7 @@ export function StoryCrudWorkspace({
             setChapterDrafts(data.map((chap, idx) => ({
               content: chap.content || "",
               id: chap.id || `chap-${idx}`,
-              tags: [],
-              title: chap.title || `Chương ${idx + 1}`,
+                      title: chap.title || `Chương ${idx + 1}`,
               accessType: chap.accessType === "PAID" ? "PAID" : "FREE",
               coinPrice: Number(chap.coinPrice || 0)
             })));
@@ -1663,8 +1747,7 @@ export function StoryCrudWorkspace({
             .map((chapter, index) => ({
               content: chapter.content,
               id: `oneshot-${index}`,
-              tags: [],
-              title: chapter.title,
+                      title: chapter.title,
             }))
           : chapterDrafts;
 
@@ -1690,25 +1773,43 @@ export function StoryCrudWorkspace({
           // Explicit opt-in: tell server to replace chapters in DB when chapters were modified or deleted.
           if (sendChapters) {
             body.append("replaceChapters", "true");
+            // A list shorter than what the story holds is refused by default,
+            // because a truncated upload must not delete the difference. Here
+            // the shortening came from the delete buttons in this form, so it
+            // is confirmed and sent as deliberate - without this the delete
+            // appeared to work and the save came back rejected.
+            const removed = (selected?.chapterCount ?? 0) - submittedChapters.length;
+            if (removed > 0) {
+              if (!window.confirm(
+                `Sẽ xoá vĩnh viễn ${removed} chương khỏi truyện "${selected?.title ?? ""}".\n\n`
+                + "Chương đã có người mua sẽ được giữ lại. Tiếp tục?",
+              )) {
+                setBusy(false);
+                return;
+              }
+              body.append("allowChapterDeletion", "true");
+            }
           }
           // Tomcat caps a multipart request at a fixed number of parts, so each
           // chapter sends only what the server cannot work out for itself:
           // an empty tag list and a slug derivable from the title are skipped.
           submittedChapters.forEach((chapter, index) => {
-            // A chapter carries either an attached file or inline text, never both:
-            // the server prefers the file and ignores the textarea when one exists.
-            if (chapter.file) {
-              body.append(`chapters[${index}].file`, chapter.file);
-            } else {
-              body.append(`chapters[${index}].content`, chapter.content);
+            // Always the text. Files are decoded in the browser before they
+            // reach this list, so the server never guesses at an encoding and
+            // the form shows exactly what will be stored.
+            body.append(`chapters[${index}].content`, chapter.content);
+            // The chapter this draft edits. Only a real server id is sent: the
+            // list falls back to a synthetic "chap-N" key when the API omits
+            // one, and sending that would match nothing. Without an id the
+            // server pairs drafts to rows by position, which rewrites the wrong
+            // chapters as soon as one is inserted or reordered.
+            if (/^[0-9a-f-]{36}$/iu.test(chapter.id ?? "")) {
+              body.append(`chapters[${index}].id`, chapter.id);
             }
             body.append(`chapters[${index}].title`, chapter.title);
-            body.append(`chapters[${index}].slug`, buildStorySlug(chapter.title || chapter.file?.name || `chapter-${index + 1}`));
+            body.append(`chapters[${index}].slug`, buildStorySlug(chapter.title || `chapter-${index + 1}`));
             body.append(`chapters[${index}].accessType`, chapter.accessType || "FREE");
             body.append(`chapters[${index}].coinPrice`, String(chapter.coinPrice || 0));
-            if (chapter.tags.length > 0) {
-              body.append(`chapters[${index}].tags`, chapter.tags.join(","));
-            }
           });
         }
         await adminMutation(
@@ -1719,8 +1820,34 @@ export function StoryCrudWorkspace({
       }
       setDrawer(null);
       await refreshData();
+      setOutcome({
+        details: drawer.mode === "delete"
+          ? [`Đã xoá "${selected?.title ?? ""}" cùng toàn bộ chương của truyện.`]
+          : drawer.mode === "archive"
+            ? ["Truyện không còn hiển thị với người đọc. Chương và lượt mua vẫn giữ nguyên."]
+            : [
+              `Truyện: ${selected?.title ?? "(truyện mới)"}`,
+              chapterDrafts.length > 0
+                ? `Đã gửi ${chapterDrafts.length} chương.`
+                : "Lần lưu này không đổi chương nào.",
+              `Thể loại: ${storyCategoryIds.length} thể loại.`,
+            ],
+        kind: "success",
+        title: drawer.mode === "delete"
+          ? "Đã xoá truyện"
+          : drawer.mode === "archive"
+            ? "Đã ẩn truyện"
+            : selected ? "Đã lưu thay đổi" : "Đã tạo truyện mới",
+      });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Không thể lưu thay đổi.");
+      const message = cause instanceof Error ? cause.message : "Không thể lưu thay đổi.";
+      setError(message);
+      setOutcome({
+        details: [message],
+        hint: "Không có thay đổi nào được lưu. Sửa theo thông báo trên rồi thử lại.",
+        kind: "error",
+        title: "Lưu thất bại",
+      });
     } finally {
       setBusy(false);
     }
@@ -1990,6 +2117,7 @@ function formatShortDate(value: string | null | undefined) {
                     <StoryDocumentImport
                       busy={busy}
                       wordsPerChapter={isOneshot ? WORDS_PER_CHAPTER_ZHIHU : WORDS_PER_CHAPTER}
+                      onOutcome={setOutcome}
                       onImported={(imported) => {
                         setStoryTitle(imported.title);
                         setStorySlug(buildStorySlug(imported.title));
@@ -2003,8 +2131,7 @@ function formatShortDate(value: string | null | undefined) {
                         setChapterDrafts(imported.chapters.map((chapter, index) => ({
                           content: chapter.content,
                           id: `imported-${index}-${Date.now()}`,
-                          tags: [],
-                          title: chapter.title,
+                                              title: chapter.title,
                           accessType: "FREE",
                           coinPrice: 0,
                         })));
@@ -2162,7 +2289,7 @@ function formatShortDate(value: string | null | undefined) {
                             }}
                           >
                             <div style={{ marginBottom: "0.45rem", fontSize: "0.84rem", color: "#1e1b4b", fontWeight: 700 }}>
-                              Đang có <span style={{ color: "#4f46e5", fontWeight: 850 }}>{paidChaptersCount} chương đang khóa</span>, tổng xu mua lẻ là <span style={{ color: "#4f46e5", fontWeight: 850 }}>{totalRetailPrice} Xu</span>.
+                              Đang có <span style={{ color: "#4f46e5", fontWeight: 850 }}>{paidChaptersCount} chương đang khóa</span>, tổng xu mua lẻ là <span style={{ color: "#4f46e5", fontWeight: 850 }}>{formatXu(totalRetailPrice)} Xu</span>.
                             </div>
 
                             <Field label="Giá Combo (Xu)">
@@ -2228,6 +2355,8 @@ function formatShortDate(value: string | null | undefined) {
                 </div>
               </>
             )}
+            {/* Reports uploads and saves in full; see OperationDialog. */}
+            <OperationDialog onClose={() => setOutcome(null)} outcome={outcome} />
             <MutationNotice error={error} onDismiss={() => setError("")} />
             <FormActions
               // The delete button stays inert until the typed name matches:
@@ -2982,10 +3111,12 @@ export function CashFlowCrudWorkspace({ entries: initialEntries, users: initialU
                 <div className="drawerFieldGrid">
                   <Field label="Loại giao dịch">
                     <select name="entryType">
-                      <option value="TOPUP">Nạp xu</option>
+                      <option value="DEPOSIT">Nạp xu</option>
                       <option value="DONATION">Ủng hộ</option>
-                      <option value="ADJUSTMENT">Điều chỉnh</option>
-                      <option value="REWARD">Thưởng</option>
+                      <option value="EARNING">Doanh thu nhóm</option>
+                      <option value="WITHDRAWAL">Rút tiền</option>
+                      <option value="DAILY_REWARD">Thưởng ngày</option>
+                      <option value="ADMIN_ADJUSTMENT">Điều chỉnh</option>
                     </select>
                   </Field>
                   <Field label="Số xu">
@@ -3018,19 +3149,26 @@ export function CashFlowCrudWorkspace({ entries: initialEntries, users: initialU
 
 /** Ledger vocabulary, in the language the admin screen is written in. */
 const ENTRY_TYPE_LABELS: Record<string, string> = {
-  ADJUSTMENT: "Điều chỉnh thủ công",
+  ADMIN_ADJUSTMENT: "Điều chỉnh thủ công",
+  DAILY_REWARD: "Thưởng nhiệm vụ",
+  DEPOSIT: "Nạp xu",
   DONATION: "Ủng hộ đội ngũ",
+  EARNING: "Doanh thu nhóm",
   PURCHASE: "Mua chương",
+  RECOMMENDATION: "Đề cử ngọc",
+  REFERRAL_REWARD: "Thưởng giới thiệu",
+  REFUND: "Hoàn xu",
   REVERSAL: "Bút toán hoàn tiền",
-  REWARD: "Thưởng nhiệm vụ",
-  TOPUP: "Nạp xu",
   WITHDRAWAL: "Rút tiền",
 };
 
 const REFERENCE_LABELS: Record<string, string> = {
   ADMIN_ADJUSTMENT: "Điều chỉnh của quản trị viên",
+  DONATION: "Ủng hộ đội ngũ",
   PURCHASE_ORDER: "Đơn mua chương",
   QUEST: "Nhiệm vụ",
   STORY_PROMOTION: "Bố cáo truyện",
+  TEAM_EARNING: "Doanh thu nhóm",
   TOPUP: "Yêu cầu nạp xu",
+  WITHDRAWAL_REQUEST: "Yêu cầu rút tiền",
 };

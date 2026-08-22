@@ -69,6 +69,17 @@ public class PublicCatalogController {
         return catalogService.tagStories(slug);
     }
 
+    /**
+     * A team's published stories, for its public profile.
+     *
+     * <p>Not {@code /teams/{id}/stories}: that path belongs to the members-only
+     * workspace and includes drafts.
+     */
+    @GetMapping("/teams/{teamIdOrSlug}/published-stories")
+    public List<CatalogDtos.HomeStorySummary> teamStories(@PathVariable String teamIdOrSlug) {
+        return catalogService.teamStories(teamIdOrSlug);
+    }
+
     @GetMapping("/stories/{identifier}")
     public CatalogDtos.PublicStory story(@PathVariable String identifier) {
         return catalogService.story(identifier);

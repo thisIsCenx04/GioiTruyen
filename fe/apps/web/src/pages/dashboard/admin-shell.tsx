@@ -17,6 +17,8 @@ type AdminTabKey =
   | "payment-methods"
   | "topups"
   | "promotions"
+  | "pr-disputes"
+  | "withdrawals"
   | "authors";
 
 const adminTabs: Array<{
@@ -162,6 +164,32 @@ const adminTabs: Array<{
     ),
     href: "/dashboard/promotions",
     match: (p) => p.startsWith("/dashboard/promotions"),
+  },
+  {
+    key: "withdrawals",
+    label: "Duyệt rút tiền",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="5" width="20" height="14" rx="2" />
+        <path d="M2 10h20" />
+        <path d="M6 15h4" />
+      </svg>
+    ),
+    href: "/dashboard/withdrawals",
+    match: (p) => p.startsWith("/dashboard/withdrawals"),
+  },
+  {
+    key: "pr-disputes",
+    label: "Khiếu nại PR",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        <path d="M12 8v4" />
+        <path d="M12 16h.01" />
+      </svg>
+    ),
+    href: "/dashboard/pr-disputes",
+    match: (p) => p.startsWith("/dashboard/pr-disputes"),
   },
   {
     key: "authors",

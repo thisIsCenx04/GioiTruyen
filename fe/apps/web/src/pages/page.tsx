@@ -1,6 +1,8 @@
+import { Fragment } from "react";
 import type { HomeStorySummary, PromotedHomeStory, RankingBoard } from "@gioitruyen/api-client";
 import { Link } from "react-router-dom";
 
+import { AdsenseUnit, ADSENSE_SLOTS } from "@/components/adsense-unit";
 import { CatalogStoryCard } from "@/components/catalog-story-card";
 import { PromotedStoryCard } from "@/components/promoted-story-card";
 import { CommunityChat } from "@/components/community-chat";
@@ -50,14 +52,10 @@ export default async function HomePage() {
         tagLabel: "ĐỀ CỬ NỔI BẬT",
       }));
 
-  // Exclusive stories filter (or top curated fallback if sample data is small)
-  const exclusiveStories = stories.filter(
-    (s) => s.storyType === "EXCLUSIVE" || (s as any).story_type === "EXCLUSIVE",
-  );
-  const displayExclusiveStories = exclusiveStories.length >= 4
-    ? exclusiveStories.slice(0, 8)
-    : stories.slice(0, 8);
-
+  // A hand-built "Truyện Độc Quyền" shelf used to sit here. The API serves that
+  // shelf itself, so the page drew the heading twice; and when fewer than four
+  // exclusives existed this one quietly fell back to the newest stories of any
+  // kind, putting ordinary titles under a heading that promised exclusives.
   return (
     <PublicShell>
       <div className="homeLayout homeLayoutFull">
@@ -83,28 +81,25 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* 2. SECTION TRUYỆN ĐỘC QUYỀN (Immediately under Hero Section) */}
-        <section aria-labelledby="exclusive-section-title" className="storySection storyListBoard">
-          <header>
-            <div>
-              <p className="homeEyebrow">Chỉ có tại Giới Truyện</p>
-              <h2 id="exclusive-section-title">Truyện Độc Quyền</h2>
-            </div>
-            <Link to="/stories">Xem tất cả</Link>
-          </header>
-          <div className="catalogGrid">
-            {displayExclusiveStories.slice(0, 12).map((story, index) => (
-              <CatalogStoryCard index={index} key={`exclusive-${story.id}`} story={story} />
-            ))}
-          </div>
-        </section>
+        {/* Between the promoted board and the shelves: past the first screen,
+            below real content, and nowhere near the navigation. Renders nothing
+            until its slot id is set; see ADSENSE_SLOTS. */}
+        <AdsenseUnit format="horizontal" slot={ADSENSE_SLOTS.homeTop} />
 
-        {/* 3. CÁC SECTION TRUYỆN THEO DANH MỤC (Mỗi section hiển thị 12 card & nút Xem Tất Cả) */}
-        {storySections.map((section) => (
+        {/* 2. CÁC SECTION TRUYỆN THEO DANH MỤC (Mỗi section hiển thị 12 card & nút Xem Tất Cả)
+               Truyện độc quyền là shelf đầu tiên do API trả về. */}
+        {storySections.map((section, sectionIndex) => (
+          <Fragment key={section.id}>
+            {/* One more unit, deep enough that a reader who scrolls this far is
+                genuinely browsing. Two units on a long home page is what
+                AdSense's own guidance calls a reasonable density; a third
+                between every shelf would be the thing that annoys people. */}
+            {sectionIndex === 2 ? (
+              <AdsenseUnit format="rectangle" slot={ADSENSE_SLOTS.homeMid} />
+            ) : null}
           <section
             aria-labelledby={`${section.id}-title`}
             className="storySection storyListBoard"
-            key={section.id}
           >
             <header>
               <div>
@@ -126,6 +121,7 @@ export default async function HomePage() {
               <p className="emptyCatalog">Danh mục này đang chờ những chương truyện đầu tiên.</p>
             )}
           </section>
+          </Fragment>
         ))}
 
 
@@ -146,23 +142,11 @@ export default async function HomePage() {
         </section>
 
         {/* 6. THỂ LOẠI TRUYỆN PHỔ BIẾN */}
-        <section className="categorySection categorySectionLarge">
-          <header>
-            <h2>Thể loại</h2>
-            <Link to="/categories">Xem tất cả</Link>
-          </header>
-          <nav className="categoryDock categoryDockColor" aria-label="Thể loại nổi bật">
-            {categories.slice(0, 12).map((category, index) => (
-              <Link
-                data-tone={index % 8}
-                to={`/categories/${category.slug}`}
-                key={category.id}
-              >
-                <strong>{category.name}</strong>
-              </Link>
-            ))}
-          </nav>
-        </section>
+        {/* A row of twelve genre chips used to close the page. It showed the
+            first twelve genres alphabetically - "1x1", "Bách Hợp", "Báo Thù" -
+            which is neither the most read nor the most stocked, so it guided
+            nobody anywhere. The header already carries a genre menu, and
+            /categories lists all of them ranked by how many stories they hold. */}
       </div>
     </PublicShell>
   );

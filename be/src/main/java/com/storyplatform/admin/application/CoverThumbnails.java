@@ -65,13 +65,13 @@ public class CoverThumbnails {
             if (source == null || source.getWidth() <= 0) {
                 return;
             }
-            // An image already at card size gains nothing from a re-encode, and
-            // re-encoding would only soften it.
-            if (source.getWidth() <= TARGET_WIDTH) {
-                return;
-            }
-            int height = Math.max(1, Math.round(source.getHeight() * (TARGET_WIDTH / (float) source.getWidth())));
-            BufferedImage scaled = new BufferedImage(TARGET_WIDTH, height, BufferedImage.TYPE_INT_RGB);
+            // A cover already at or below card size is written out unchanged in
+            // size. Skipping it entirely left no file at the derived URL, so the
+            // page asked for a thumbnail that was never going to exist and took
+            // a 404 on every load before falling back to the original.
+            int width = Math.min(TARGET_WIDTH, source.getWidth());
+            int height = Math.max(1, Math.round(source.getHeight() * (width / (float) source.getWidth())));
+            BufferedImage scaled = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
             Graphics2D graphics = scaled.createGraphics();
             graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
                     RenderingHints.VALUE_INTERPOLATION_BICUBIC);
@@ -79,7 +79,7 @@ public class CoverThumbnails {
                     RenderingHints.VALUE_RENDER_QUALITY);
             graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                     RenderingHints.VALUE_ANTIALIAS_ON);
-            graphics.drawImage(source, 0, 0, TARGET_WIDTH, height, null);
+            graphics.drawImage(source, 0, 0, width, height, null);
             graphics.dispose();
 
             Files.createDirectories(thumb.getParent());

@@ -1,70 +1,60 @@
 "use client";
 
 import { Send } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 
+import { API_BASE_URL, authedFetch } from "@/lib/api-base";
 import { loginHref } from "@/lib/auth";
+
+/**
+ * The community chat panel.
+ *
+ * <p>This used to be theatre: three invented readers were seeded into
+ * localStorage on first visit, shown under a "Trực tiếp" badge, and anything
+ * typed was posted to /community/messages - a route that did not exist, whose
+ * failure was swallowed. Every visitor saw a private conversation that had
+ * never happened, and nothing anyone wrote reached another person.
+ *
+ * <p>It now reads and writes the real room. An empty room says so.
+ */
 
 export interface CommunityMessage {
   id: string;
+  userId: string;
   userName: string;
-  userAvatarTone: string;
+  userAvatarUrl: string | null;
   userRole?: string;
   content: string;
-  timestamp: string;
+  createdAt: string;
 }
 
-const INITIAL_MESSAGES: CommunityMessage[] = [
-  {
-    id: "1",
-    userName: "Vũ Đế",
-    userAvatarTone: "indigo",
-    userRole: "ADMIN",
-    content: "Chào mừng các bạn đến với cộng đồng Giới Truyện! Hãy cùng chia sẻ những bộ truyện hay nhé.",
-    timestamp: "10 phút trước",
-  },
-  {
-    id: "2",
-    userName: "Linh Kiếm Sơn",
-    userAvatarTone: "gold",
-    userRole: "TEAM",
-    content: "Team mình vừa cập nhật chương mới bộ Tiên Luyện Ma Tôn, mời các đạo hữu vào thưởng thức!",
-    timestamp: "5 phút trước",
-  },
-  {
-    id: "3",
-    userName: "Tiểu Bảo",
-    userAvatarTone: "cyan",
-    content: "Truyện cuốn quá team ơi! Mong chờ chương tiếp theo từng giờ.",
-    timestamp: "Vừa xong",
-  },
-];
+const MAX_LENGTH = 500;
+/** Cheap polling: the panel is a side attraction, not a messenger. */
+const REFRESH_MS = 20_000;
 
-const ZHIHU_INITIAL_MESSAGES: CommunityMessage[] = [
-  {
-    id: "z1",
-    userName: "Mộc Vãn Chi",
-    userAvatarTone: "indigo",
-    userRole: "ADMIN",
-    content: "Góc truyện ngắn Zhihu - đọc trọn một mạch, bàn luận thoải mái tại đây nhé!",
-    timestamp: "12 phút trước",
-  },
-  {
-    id: "z2",
-    userName: "Hạ Vũ",
-    userAvatarTone: "cyan",
-    content: "Mấy mẩu đoản văn kiểu này hợp đọc lúc nghỉ trưa ghê.",
-    timestamp: "6 phút trước",
-  },
-  {
-    id: "z3",
-    userName: "Tiểu Miên",
-    userAvatarTone: "gold",
-    content: "Có ai gợi ý truyện ngắn nào cảm động không ạ?",
-    timestamp: "Vừa xong",
-  },
-];
+/** "5 phút trước" - relative time, computed rather than stored as a label. */
+function relativeTime(iso: string): string {
+  const at = Date.parse(iso);
+  if (Number.isNaN(at)) return "";
+  const seconds = Math.max(0, Math.round((Date.now() - at) / 1000));
+  if (seconds < 60) return "Vừa xong";
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes} phút trước`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} giờ trước`;
+  const days = Math.round(hours / 24);
+  if (days < 30) return `${days} ngày trước`;
+  return new Date(at).toLocaleDateString("vi-VN");
+}
+
+/** A stable tone per person, so the same reader keeps the same colour. */
+const TONES = ["indigo", "cyan", "gold", "blue"] as const;
+function tone(userId: string): string {
+  let sum = 0;
+  for (let index = 0; index < userId.length; index += 1) sum += userId.charCodeAt(index);
+  return TONES[sum % TONES.length] ?? "indigo";
+}
 
 export function CommunityChat({
   channel = "main",
@@ -72,73 +62,75 @@ export function CommunityChat({
   title,
 }: Readonly<{ channel?: "main" | "zhihu"; compact?: boolean; title?: string }>) {
   const [messages, setMessages] = useState<CommunityMessage[]>([]);
+  const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userName, setUserName] = useState("Độc giả Giới Truyện");
-
-  // Each channel keeps its own thread, so the Zhihu corner does not mix with
-  // the main hall.
-  const storageKey = channel === "main"
-    ? "gioitruyen_community_messages"
-    : `gioitruyen_community_messages_${channel}`;
-  const seedMessages = channel === "zhihu" ? ZHIHU_INITIAL_MESSAGES : INITIAL_MESSAGES;
+  const listRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    // Load existing stored messages
+    setIsLoggedIn(
+      Boolean(localStorage.getItem("access_token") || localStorage.getItem("gioitruyen_token")),
+    );
+  }, []);
+
+  const load = useCallback(async () => {
     try {
-      const stored = localStorage.getItem(storageKey);
-      if (stored) {
-        setMessages(JSON.parse(stored));
-      } else {
-        setMessages(seedMessages);
-        localStorage.setItem(storageKey, JSON.stringify(seedMessages));
+      const response = await authedFetch(`${API_BASE_URL}/community/messages?room=${channel}`);
+      if (!response.ok) {
+        setState("error");
+        return;
       }
+      setMessages((await response.json()) as CommunityMessage[]);
+      setState("ready");
     } catch {
-      setMessages(seedMessages);
+      setState("error");
     }
+  }, [channel]);
 
-    // Check login state
-    const token = localStorage.getItem("access_token") || localStorage.getItem("gioitruyen_token");
-    if (token) {
-      setIsLoggedIn(true);
-      const savedName = localStorage.getItem("gioitruyen_user_name") || "Đạo Hữu Hào Hoa";
-      setUserName(savedName);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storageKey]);
+  useEffect(() => {
+    setState("loading");
+    void load();
+    const timer = window.setInterval(() => void load(), REFRESH_MS);
+    return () => window.clearInterval(timer);
+  }, [load]);
 
-  function handleSend(e: FormEvent) {
-    e.preventDefault();
-    if (!input.trim()) return;
+  // Newest message at the bottom, so the panel opens on the latest word.
+  useEffect(() => {
+    const list = listRef.current;
+    if (list) list.scrollTop = list.scrollHeight;
+  }, [messages]);
 
-    const newMessage: CommunityMessage = {
-      id: Date.now().toString(),
-      userName: userName,
-      userAvatarTone: ["indigo", "cyan", "gold", "blue"][Math.floor(Math.random() * 4)] || "indigo",
-      userRole: isLoggedIn ? "USER" : undefined,
-      content: input.trim(),
-      timestamp: "Vừa xong",
-    };
+  async function handleSend(event: FormEvent) {
+    event.preventDefault();
+    const content = input.trim();
+    if (!content || sending) return;
 
-    const updated = [...messages, newMessage];
-    setMessages(updated);
+    setSending(true);
+    setError(null);
     try {
-      localStorage.setItem(storageKey, JSON.stringify(updated.slice(-50)));
+      const response = await authedFetch(`${API_BASE_URL}/community/messages`, {
+        body: JSON.stringify({ content, room: channel }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      });
+      if (!response.ok) {
+        const detail = (await response.json().catch(() => null)) as { message?: string } | null;
+        setError(detail?.message ?? "Không gửi được tin nhắn. Vui lòng thử lại.");
+        return;
+      }
+      const posted = (await response.json()) as CommunityMessage;
+      setMessages((current) => [...current, posted]);
+      setInput("");
     } catch {
-      // ignore
+      setError("Mất kết nối tới máy chủ. Vui lòng thử lại.");
+    } finally {
+      setSending(false);
     }
-
-    // Persist to backend if API available
-    fetch("/api/v1/community/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newMessage),
-    }).catch(() => {
-      // Ignore network errors
-    });
-
-    setInput("");
   }
+
+  const remaining = MAX_LENGTH - input.length;
 
   return (
     <section className={`communityChatWidget ${compact ? "compactChat" : "fullChat"}`}>
@@ -146,26 +138,46 @@ export function CommunityChat({
         <div>
           <h3>{title ?? "Cộng đồng Giới Truyện"}</h3>
         </div>
-        <span className="liveBadge">
-          <span className="liveDot" />
-          Trực tiếp
-        </span>
+        {state === "ready" && messages.length > 0 ? (
+          <span className="chatCount">{messages.length} tin nhắn gần đây</span>
+        ) : null}
       </header>
 
-      <div className="chatMessageList">
-        {messages.map((msg) => (
-          <div key={msg.id} className="chatMessageItem">
-            <div className={`chatAvatar avatarTone-${msg.userAvatarTone}`}>
-              {msg.userName.slice(0, 1).toUpperCase()}
+      <div className="chatMessageList" ref={listRef}>
+        {state === "loading" ? <p className="chatNotice">Đang tải thảo luận…</p> : null}
+
+        {state === "error" ? (
+          <p className="chatNotice">
+            Không tải được khu thảo luận.{" "}
+            <button onClick={() => void load()} type="button">
+              Thử lại
+            </button>
+          </p>
+        ) : null}
+
+        {state === "ready" && messages.length === 0 ? (
+          <p className="chatNotice">
+            Chưa có tin nhắn nào. Hãy là người mở lời đầu tiên.
+          </p>
+        ) : null}
+
+        {messages.map((message) => (
+          <div className="chatMessageItem" key={message.id}>
+            <div className={`chatAvatar avatarTone-${tone(message.userId)}`}>
+              {message.userAvatarUrl ? (
+                <img alt="" aria-hidden="true" loading="lazy" src={message.userAvatarUrl} />
+              ) : (
+                message.userName.slice(0, 1).toUpperCase()
+              )}
             </div>
             <div className="chatMessageBody">
               <div className="chatAuthorRow">
-                <strong className="chatAuthorName">{msg.userName}</strong>
-                {msg.userRole === "ADMIN" && <span className="roleBadge adminRole">Admin</span>}
-                {msg.userRole === "TEAM" && <span className="roleBadge teamRole">Team</span>}
-                <span className="chatTime">{msg.timestamp}</span>
+                <strong className="chatAuthorName">{message.userName}</strong>
+                {message.userRole === "ADMIN" && <span className="roleBadge adminRole">Admin</span>}
+                {message.userRole === "TEAM" && <span className="roleBadge teamRole">Team</span>}
+                <span className="chatTime">{relativeTime(message.createdAt)}</span>
               </div>
-              <p className="chatText">{msg.content}</p>
+              <p className="chatText">{message.content}</p>
             </div>
           </div>
         ))}
@@ -173,26 +185,42 @@ export function CommunityChat({
 
       <div className="chatFooter">
         {isLoggedIn ? (
-          <form onSubmit={handleSend} className="chatForm">
+          <form className="chatForm" onSubmit={handleSend}>
             <input
-              type="text"
               className="chatInput"
-              placeholder="Nhập tin nhắn thảo luận..."
+              maxLength={MAX_LENGTH}
+              onChange={(event) => setInput(event.target.value)}
+              placeholder="Nhập tin nhắn thảo luận…"
+              type="text"
               value={input}
-              onChange={(e) => setInput(e.target.value)}
             />
-            <button type="submit" className="chatSendBtn" aria-label="Gửi tin nhắn">
+            <button
+              aria-label="Gửi tin nhắn"
+              className="chatSendBtn"
+              disabled={sending || input.trim().length === 0}
+              type="submit"
+            >
               <Send aria-hidden="true" />
             </button>
           </form>
         ) : (
           <div className="chatLoginNotice">
-            <span>Đăng nhập để tham gia bình luận trực tiếp</span>
-            <Link to={loginHref()} className="chatLoginBtn">
+            <span>Đăng nhập để tham gia thảo luận</span>
+            <Link className="chatLoginBtn" to={loginHref()}>
               Đăng nhập ngay
             </Link>
           </div>
         )}
+
+        {error ? (
+          <p className="chatError" role="alert">
+            {error}
+          </p>
+        ) : null}
+
+        {isLoggedIn && remaining < 80 ? (
+          <p className="chatHint">Còn {remaining} ký tự</p>
+        ) : null}
       </div>
     </section>
   );

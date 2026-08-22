@@ -4,9 +4,11 @@ public enum WalletTransactionType {
     DEPOSIT,
     PURCHASE,
     DONATION,
+    EARNING,
     RECOMMENDATION,
     DAILY_REWARD,
     REFERRAL_REWARD,
     REFUND,
-    ADMIN_ADJUSTMENT
+    ADMIN_ADJUSTMENT,
+    WITHDRAWAL
 }

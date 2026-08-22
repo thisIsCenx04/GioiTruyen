@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 
+import { trackAdEvent } from "../api/advertisementApi";
 import { canOpenAdvertisement, markAdvertisementOpened } from "../services/advertisementStorage";
 import type { GlobalAdvertisement } from "../types/advertisement";
 
@@ -38,11 +39,16 @@ export function useGlobalAdvertisement(advertisement: GlobalAdvertisement | null
   useEffect(() => {
     if (!advertisement || shouldIgnoreRoute(pathname)) return;
 
+    // The ad is armed on this page: that is the impression. One per route, not
+    // one per click attempt, so the rate stays comparable with page views.
+    void trackAdEvent(advertisement.id, "IMPRESSION");
+
     const handleClick = (event: MouseEvent) => {
       if (event.defaultPrevented || shouldIgnoreTarget(event.target)) return;
       if (!canOpenAdvertisement(advertisement)) return;
 
       markAdvertisementOpened(advertisement);
+      void trackAdEvent(advertisement.id, "REDIRECT");
       window.open(advertisement.targetUrl, "_blank", "noopener,noreferrer");
     };
 

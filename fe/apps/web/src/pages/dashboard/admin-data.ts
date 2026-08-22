@@ -12,6 +12,26 @@ export type ChartPoint = {
   value: number;
 };
 
+/** One placement's own-banner performance, from ad_events. */
+export type AdPlacementRow = {
+  placement: string;
+  impressions: number;
+  clicks: number;
+  /** Clicks per hundred impressions. */
+  ctr: number;
+  activeUnits: number;
+};
+
+export type AdOverview = {
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  activeUnits: number;
+  impressionSeries: ChartPoint[];
+  clickSeries: ChartPoint[];
+  placements: AdPlacementRow[];
+};
+
 export type AdminOverview = {
   stats: {
     revenueXu: number;
@@ -24,6 +44,17 @@ export type AdminOverview = {
   trafficSeries: ChartPoint[];
   readerSeries: ChartPoint[];
   tasks: string[];
+  ads: AdOverview;
+};
+
+const EMPTY_ADS: AdOverview = {
+  activeUnits: 0,
+  clicks: 0,
+  clickSeries: [],
+  ctr: 0,
+  impressions: 0,
+  impressionSeries: [],
+  placements: [],
 };
 
 export type AdminStoryRow = {
@@ -105,52 +136,72 @@ export type AdminCashFlowRow = {
   createdAt: string | null;
 };
 
-function send(path: `/${string}`, token: string | null) {
-  const headers: Record<string, string> = { Accept: "application/json" };
+function send(path: `/${string}`, token: string | null, init: RequestInit = {}) {
+  const headers: Record<string, string> = { Accept: "application/json", ...(init.headers as Record<string, string>) };
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
   return fetch(`${apiBaseUrl}${path}`, {
     cache: "no-store",
     credentials: "same-origin",
+    ...init,
     headers,
     signal: AbortSignal.timeout(8000),
   });
 }
 
-async function adminRequest<T>(path: `/${string}`): Promise<T> {
-  let response = await send(path, getAccessToken());
+async function adminRequest<T>(path: `/${string}`, init: RequestInit = {}): Promise<T> {
+  let response = await send(path, getAccessToken(), init);
 
   // Access tokens expire after 30 minutes; renew once before giving up so an
   // admin mid-session is not silently logged out.
   if (response.status === 401) {
     const renewed = await refreshAccessToken();
     if (renewed) {
-      response = await send(path, renewed);
+      response = await send(path, renewed, init);
     }
   }
 
   if (!response.ok) {
-    throw new Error(`Admin API request failed: ${response.status} ${response.statusText}`);
+    // The server's own explanation, when it sent one. "HTTP 409" tells an
+    // admin nothing about which rule they hit.
+    const problem = (await response.json().catch(() => null)) as { detail?: string } | null;
+    throw new Error(problem?.detail
+      ?? `Admin API request failed: ${response.status} ${response.statusText}`);
   }
 
-  return (await response.json()) as T;
+  // 200 with no body is a valid answer for a command endpoint.
+  const text = await response.text();
+  return (text ? JSON.parse(text) : undefined) as T;
+}
+
+/**
+ * The admin API, for calls that are not one of the named loaders above.
+ *
+ * <p>Same token handling and the same one-shot refresh; the difference is that
+ * it takes a method and a body, so a command can use it too.
+ */
+export function adminFetch<T>(path: `/${string}`, init: RequestInit = {}): Promise<T> {
+  return adminRequest<T>(path, init);
 }
 
 export function loadAdminOverview() {
-  return adminRequest<AdminOverview>("/admin/dashboard").catch(() => ({
-    stats: {
-      readers: 0,
-      revenueXu: 0,
-      stories: 0,
-      teams: 0,
-      visits: 0,
-    },
-    revenueSeries: [],
-    readerSeries: [],
-    tasks: [],
-    trafficSeries: [],
-  }));
+  return adminRequest<AdminOverview>("/admin/dashboard")
+    .then((overview) => ({ ...overview, ads: overview.ads ?? EMPTY_ADS }))
+    .catch(() => ({
+      ads: EMPTY_ADS,
+      stats: {
+        readers: 0,
+        revenueXu: 0,
+        stories: 0,
+        teams: 0,
+        visits: 0,
+      },
+      revenueSeries: [],
+      readerSeries: [],
+      tasks: [],
+      trafficSeries: [],
+    }));
 }
 
 export function loadAdminStories() {

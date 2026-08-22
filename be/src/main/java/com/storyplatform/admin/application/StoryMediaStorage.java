@@ -133,6 +133,49 @@ public class StoryMediaStorage {
     }
 
     /**
+     * Stores a screenshot submitted as proof of PR work.
+     *
+     * <p>Kept because a link is not evidence: a TikTok can be deleted or made
+     * private the day after it is approved, and then neither side can show what
+     * was there. The screenshot is what the submission looked like at the moment
+     * it was made, which is what a dispute needs.
+     */
+    public String storePrProof(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw badRequest("pr.proof_missing", "Chưa chọn ảnh chụp màn hình.");
+        }
+        if (file.getSize() > MAX_BANNER_BYTES) {
+            throw badRequest("pr.proof_too_large", "Ảnh chụp tối đa 5MB mỗi tấm.");
+        }
+
+        String extension = extensionOf(file.getOriginalFilename());
+        if (!ALLOWED_EXTENSIONS.contains(extension)) {
+            throw badRequest("pr.proof_unsupported", "Ảnh chụp phải là PNG, JPEG, WEBP hoặc GIF.");
+        }
+        String contentType = file.getContentType();
+        if (contentType != null && !ALLOWED_IMAGE_TYPES.contains(contentType.toLowerCase(Locale.ROOT))) {
+            throw badRequest("pr.proof_unsupported", "Ảnh chụp phải là PNG, JPEG, WEBP hoặc GIF.");
+        }
+
+        // Generated name: the uploader is a member of the public here, so a
+        // crafted filename must not be able to escape the upload directory.
+        String storedName = UUID.randomUUID() + "." + extension;
+        Path target = uploadRoot.resolve("pr-proof").resolve(storedName).normalize();
+        if (!target.startsWith(uploadRoot)) {
+            throw badRequest("pr.proof_invalid", "Resolved upload path is outside the upload directory");
+        }
+
+        try {
+            Files.createDirectories(target.getParent());
+            file.transferTo(target);
+        } catch (IOException exception) {
+            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "pr.proof_write_failed",
+                    "Could not store screenshot", "Không lưu được ảnh chụp: " + exception.getMessage());
+        }
+        return publicPrefix + "/pr-proof/" + storedName;
+    }
+
+    /**
      * Stores a page banner and returns its public URL.
      *
      * <p>A banner spans the full width of a hero section, so it is allowed to be

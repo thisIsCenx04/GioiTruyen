@@ -200,10 +200,13 @@ main { min-height: 100vh; }
 
 .catalogCard {
   width: 100% !important;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--surface-card);
+  border: 1px solid var(--line);
   border-radius: 8px;
   overflow: hidden;
+  /* The FULL banner is positioned against the card so it can sit over the
+     cover's corner instead of inside it. */
+  position: relative;
   display: flex !important;
   flex-direction: column !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
@@ -277,7 +280,7 @@ main { min-height: 100vh; }
 }
 
 .catalogCardBody h3 a {
-  color: #0f172a !important;
+  color: var(--text-primary) !important;
   text-decoration: none !important;
   display: -webkit-box !important;
   -webkit-line-clamp: 2 !important;
@@ -293,7 +296,7 @@ main { min-height: 100vh; }
   text-align: left !important;
 }
 
-[data-theme="dark"] .catalogCardBody h3 a { color: #f8fafc; }
+
 
 .catalogCardMetaRow {
   display: flex;
@@ -352,8 +355,8 @@ main { min-height: 100vh; }
   grid-template-columns: repeat(3, 1fr);
   row-gap: 8px !important;
   column-gap: 10px !important;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--surface-card);
+  border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.15);
   z-index: 1000;
@@ -376,7 +379,7 @@ main { min-height: 100vh; }
   justify-content: flex-start !important;
   gap: 0.35rem !important;
   padding: 0.3rem 0.5rem !important;
-  color: #1e293b !important;
+  color: var(--text-primary) !important;
   font-size: 0.75rem !important;
   font-weight: 600 !important;
   line-height: 1.3 !important;
@@ -388,9 +391,7 @@ main { min-height: 100vh; }
   text-overflow: ellipsis !important;
 }
 
-[data-theme="dark"] .siteHeader .mainNav .categoryNavDropdownMenu a.categoryDropdownItem {
-  color: #cbd5e1 !important;
-}
+
 
 .dropdownChevron {
   color: #94a3b8;
@@ -450,12 +451,12 @@ main { min-height: 100vh; }
 .creatorBanner > a:not(.primaryAction) { color: var(--blue); font-size: .7rem; font-weight: 700; text-decoration: none; }
 
 .homeAside { display: flex; flex-direction: column; gap: .75rem; min-width: 0; }
-.sideCard { background: white; border: 1px solid var(--line); border-radius: .8rem; padding: 1rem; }
+.sideCard { background: var(--surface-card); border: 1px solid var(--line); border-radius: .8rem; padding: 1rem; }
 .sideCard header { align-items: center; display: flex; justify-content: space-between; }
 .sideCard h2 { font-size: .88rem; margin: 0; }
 .rankingTabs { background: #f7f8fc; border-radius: .35rem; display: grid; font-size: .61rem; grid-template-columns: repeat(3, 1fr); margin: .7rem 0; text-align: center; }
 .rankingTabs > * { padding: .45rem; }
-.rankingTabs b { background: white; border: 1px solid #9dbbff; border-radius: .35rem; color: var(--blue); }
+.rankingTabs b { background: var(--surface-card); border: 1px solid #9dbbff; border-radius: .35rem; color: var(--blue); }
 .rankingCard ol { list-style: none; margin: 0; padding: 0; }
 .rankingCard li { align-items: center; display: grid; gap: .55rem; grid-template-columns: 1.2rem 2rem 1fr auto; min-height: 3.15rem; }
 .rankingCard li > b { font-size: .68rem; text-align: center; }
@@ -489,10 +490,10 @@ main { min-height: 100vh; }
 .pageIntro h1 { font-size: clamp(2.4rem, 5vw, 4.5rem); letter-spacing: -.05em; margin: 0; }
 .catalogSearch { margin-top: 1.5rem; position: relative; }
 .catalogSearch > label { display: block; font-size: .68rem; font-weight: 800; margin-bottom: .5rem; }
-.searchControl { background: white; border: 1px solid var(--line); border-radius: .65rem; display: grid; grid-template-columns: 1fr auto; overflow: hidden; }
+.searchControl { background: var(--surface-card); border: 1px solid var(--line); border-radius: .65rem; display: grid; grid-template-columns: 1fr auto; overflow: hidden; }
 .searchControl input { border: 0; min-width: 0; padding: .9rem; }
 .searchControl button { background: var(--blue); border: 0; color: white; font-weight: 700; padding: 0 1rem; }
-.suggestionList { background: white; border: 1px solid var(--line); box-shadow: 0 1rem 2rem rgb(30 55 110 / 12%); left: 0; list-style: none; margin: .25rem 0 0; padding: .5rem; position: absolute; right: 0; z-index: 10; }
+.suggestionList { background: var(--surface-card); border: 1px solid var(--line); box-shadow: 0 1rem 2rem rgb(30 55 110 / 12%); left: 0; list-style: none; margin: .25rem 0 0; padding: .5rem; position: absolute; right: 0; z-index: 10; }
 .suggestionList a { display: flex; justify-content: space-between; padding: .7rem; text-decoration: none; }
 .suggestionList small { color: var(--muted); }
 .resultHeading, .chapterList > header { align-items: center; display: flex; justify-content: space-between; margin-bottom: 1rem; }
@@ -523,7 +524,7 @@ main { min-height: 100vh; }
 .detailCover small { align-self: start; background: #ff603d; border-radius: .3rem; color: white; font-size: .65rem; font-weight: 800; padding: .45rem .55rem; }
 .storyMasthead h1 { font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -.04em; margin: .5rem 0 1rem; }
 .synopsis { color: #4c5871; font-size: .85rem; line-height: 1.8; max-width: 43rem; }
-.chapterList { background: white; border: 1px solid var(--line); border-radius: .85rem; margin-top: 2rem; padding: 1.25rem; }
+.chapterList { background: var(--surface-card); border: 1px solid var(--line); border-radius: .85rem; margin-top: 2rem; padding: 1.25rem; }
 .chapterList ol { border-top: 1px solid var(--line); list-style: none; margin: 0; padding: 0; }
 .chapterList li { border-bottom: 1px solid var(--line); }
 .chapterList li > a { align-items: center; display: grid; gap: 1rem; grid-template-columns: 3rem 1fr auto; min-height: 3.8rem; text-decoration: none; }
@@ -719,14 +720,14 @@ main { min-height: 100vh; }
 .categoryDockColor a[data-tone="6"],
 .categoryDockColor a[data-tone="7"] {
   background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--line);
   color: #1e293b;
 }
 
 .categoryPillButton {
-  background: #f8fafc !important;
-  border: 1px solid #e2e8f0 !important;
-  color: #1e293b !important;
+  background: var(--surface-sunken) !important;
+  border: 1px solid var(--line) !important;
+  color: var(--text-primary) !important;
   box-shadow: none !important;
 }
 
@@ -814,7 +815,7 @@ main { min-height: 100vh; }
 .loadingCard p { height: .8rem; margin-top: .7rem; width: 55%; }
 
 .suggestionState {
-  background: white;
+  background: var(--surface-card);
   border: 1px solid var(--line);
   border-radius: .55rem;
   box-shadow: 0 .8rem 1.8rem rgb(30 55 110 / 10%);
@@ -899,7 +900,7 @@ main { min-height: 100vh; }
 
 .storyDetailCard {
   align-items: start;
-  background: white;
+  background: var(--surface-card);
   border: 1px solid #dce4f3;
   border-radius: .6rem;
   box-shadow: 0 .35rem 1rem rgb(36 62 115 / 7%);
@@ -928,7 +929,7 @@ main { min-height: 100vh; }
 .storyDetailMain { min-width: 0; }
 
 .storyDetailMain > h1 {
-  color: #111827;
+  color: var(--text-primary);
   font-family: var(--utility);
   font-size: clamp(1.45rem, 2.8vw, 2.2rem);
   font-weight: 900;
@@ -999,7 +1000,7 @@ main { min-height: 100vh; }
 }
 
 .teamBadge {
-  background: white;
+  background: var(--surface-card);
   border-color: #39c8ef;
   border-radius: 999rem;
   color: #087ba0;
@@ -1043,7 +1044,7 @@ main { min-height: 100vh; }
 .storyActionReport { background: #27303d; cursor: pointer; }
 
 .storyDescriptionBlock {
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--line);
   margin-top: 1.25rem;
   padding-top: 1rem;
   width: 100%;
@@ -1113,7 +1114,7 @@ main { min-height: 100vh; }
 }
 
 .storyChapterPanel {
-  background: white;
+  background: var(--surface-card);
   border: 1px solid #dce4f3;
   border-radius: .6rem;
   box-shadow: 0 .35rem 1rem rgb(36 62 115 / 7%);
@@ -1432,10 +1433,55 @@ main { min-height: 100vh; }
 .topupHistoryCode { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .76rem; }
 .topupHistoryDate { color: var(--text-muted); font-size: .76rem; white-space: nowrap; }
 
+.walletTabs { margin-bottom: 1rem; }
+
+.walletSectionHeader {
+  align-items: flex-end;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-bottom: .9rem;
+}
+
+.walletSectionHeader h2 { margin: .2rem 0 0; }
+
+.walletSectionHeader button {
+  background: transparent;
+  border: 0;
+  color: var(--accent-hover);
+  cursor: pointer;
+  font-size: .8rem;
+  font-weight: 750;
+}
+
+.walletLedgerList {
+  display: grid;
+  gap: .3rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.walletLedgerList li {
+  align-items: center;
+  border-bottom: 1px solid #eef3fa;
+  display: grid;
+  font-size: .8rem;
+  gap: .5rem;
+  grid-template-columns: 9.5rem 1fr 8rem 9rem minmax(8rem, 1fr);
+  padding: .55rem 0;
+}
+
+.walletAmountIn,
+.walletAmountOut { font-weight: 800; }
+.walletAmountIn { color: #14713d; }
+.walletAmountOut { color: #b33a3a; }
+
 @media (max-width: 60rem) {
   .topupWorkspace { grid-template-columns: 1fr; }
   .walletBalanceRow { grid-template-columns: 1fr; }
   .topupHistory li { grid-template-columns: 1fr 1fr; }
+  .walletLedgerList li { grid-template-columns: 1fr 1fr; }
 }
 
 /* Guest preview banner and the sign-in prompt shown when they try to claim. */
@@ -1502,7 +1548,7 @@ main { min-height: 100vh; }
 
 .storyShareSheet {
   background: var(--white);
-  border: 1px solid #dfeaf6;
+  border: 1px solid var(--line);
   border-radius: .6rem;
   box-shadow: 0 .8rem 2rem rgb(17 26 58 / 14%);
   display: grid;
@@ -1674,7 +1720,7 @@ main { min-height: 100vh; }
    the same card as the chapter panel plus reading-optimised typography. */
 
 .storyRecommendations {
-  background: white;
+  background: var(--surface-card);
   border: 1px solid #dce4f3;
   border-radius: .6rem;
   box-shadow: 0 .35rem 1rem rgb(36 62 115 / 7%);
@@ -1684,7 +1730,7 @@ main { min-height: 100vh; }
 }
 
 .oneshotReader {
-  background: white;
+  background: var(--surface-card);
   border: 1px solid #d8e3f4;
   border-radius: .8rem;
   box-shadow: 0 .8rem 2rem rgb(36 62 115 / 8%);
@@ -1903,7 +1949,7 @@ main { min-height: 100vh; }
 }
 
 .storyRecommendations {
-  background: white;
+  background: var(--surface-card);
   border: 1px solid #d8e3f4;
   border-radius: .8rem;
   box-shadow: 0 .8rem 2rem rgb(36 62 115 / 8%);
@@ -1954,7 +2000,7 @@ main { min-height: 100vh; }
 }
 
 .storyReportDialog {
-  background: white;
+  background: var(--surface-card);
   border-radius: .65rem;
   box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 25%);
   margin: auto;
@@ -2545,7 +2591,7 @@ main { min-height: 100vh; }
 }
 
 .communityGrid a {
-  background: white;
+  background: var(--surface-card);
   border: 1px solid var(--line);
   border-radius: .75rem;
   box-shadow: 0 .8rem 1.8rem rgb(24 47 100 / 7%);
@@ -2699,12 +2745,14 @@ main { min-height: 100vh; }
 }
 
 .promotedCard {
-  background: white;
-  border: 1px solid #e2e8f0;
+  background: var(--surface-card);
+  border: 1px solid var(--line);
   border-radius: 0.45rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   min-width: 0;
   overflow: hidden;
+  /* Anchors the FULL banner; see .catalogCard. */
+  position: relative;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -2962,7 +3010,7 @@ main { min-height: 100vh; }
 }
 
 .catalogGridVertical .catalogCard {
-  background: white;
+  background: var(--surface-card);
   border: 1px solid #dce9f7;
   border-radius: .38rem;
   box-shadow: 0 .55rem 1.2rem rgb(33 80 150 / 9%);
@@ -3062,14 +3110,14 @@ main { min-height: 100vh; }
    ──────────────────────────────────────────────────────────────── */
 .rankingPanel {
   align-self: start;
-  background: white;
-  border: 1px solid #e2e8f0;
+  background: var(--surface-card);
+  border: 1px solid var(--line);
   border-radius: 12px;
   padding: 1.1rem;
 }
 
 .rankingPanel h2 {
-  color: #0f172a;
+  color: var(--text-primary);
   font-size: 1.05rem;
   font-weight: 800;
   letter-spacing: .01em;
@@ -3103,7 +3151,7 @@ main { min-height: 100vh; }
 }
 
 .rankingPanel .rankingTabs > button:hover {
-  color: #0f172a;
+  color: var(--text-primary);
 }
 
 .rankingPanel .rankingTabs > button.isActive {
@@ -3119,7 +3167,7 @@ main { min-height: 100vh; }
 
 .rankingPanel li {
   align-items: center;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--line);
   display: grid;
   gap: .65rem;
   grid-template-columns: 1.5rem 3rem minmax(0, 1fr);
@@ -3185,7 +3233,7 @@ main { min-height: 100vh; }
 }
 
 .rankingPanel li div a {
-  color: #0f172a;
+  color: var(--text-primary);
   display: -webkit-box;
   font-size: .92rem;
   font-weight: 700;
@@ -3230,7 +3278,7 @@ main { min-height: 100vh; }
 }
 
 .rankingBoard {
-  background: white;
+  background: var(--surface-card);
   border: 1px solid #dce9f7;
   border-radius: .55rem;
   box-shadow: 0 .7rem 1.9rem rgb(33 80 150 / 8%);
@@ -3378,13 +3426,32 @@ main { min-height: 100vh; }
   align-items: center;
   display: grid;
   gap: 1.25rem;
-  grid-template-columns: 12rem minmax(16rem, 31rem) minmax(0, 1fr);
+  /* Thứ tự nhường chỗ: ô tìm kiếm co lại trước, cụm nút bên phải giữ nguyên.
+     Trước đây ngược lại - ô tìm kiếm là minmax(16rem, 31rem) nên nó giành đủ
+     496px, còn cụm nút là minmax(0, 1fr) nên co được về 0 và bị bóp. Trong dải
+     833px-1090px cụm nút chỉ còn 136px trong khi cần 255px, và nút "Đăng ký"
+     bị đẩy hẳn ra ngoài màn hình - không bấm được trên tablet và laptop nhỏ.
+
+     Nay ô tìm kiếm nhận min 0 (co được) còn cụm nút nhận auto (không nhỏ hơn
+     nội dung của nó). */
+  grid-template-columns: auto minmax(0, 31rem) auto;
   min-height: 4.65rem;
 }
 
 .siteHeaderTop .brandLink {
   align-items: center;
   display: inline-flex;
+  /* Logo là chữ viết tay trong ảnh, không phải chữ do trình duyệt vẽ, nên co
+     nhỏ là nhoè không đọc được. Ở cột `auto` nó bị bóp còn một vệt mờ trên
+     màn hình điện thoại. Sàn này giữ nó ở kích thước còn đọc ra tên. */
+  flex: none;
+  min-width: 7.5rem;
+}
+
+.siteHeaderTop .brandLink img {
+  height: auto;
+  max-height: 2.9rem;
+  width: 100%;
 }
 
 .siteHeaderTop .headerSearch {
@@ -3482,7 +3549,9 @@ main { min-height: 100vh; }
 }
 
 .profileMenu > div {
-  background: white;
+  /* Was hardcoded white while the links inside use --ink, which in dark theme
+     is near-white: the menu rendered white-on-white and every item vanished. */
+  background: var(--surface-card);
   border: 1px solid var(--line);
   border-radius: .65rem;
   box-shadow: 0 1rem 2.4rem rgb(24 47 100 / 14%);
@@ -4039,6 +4108,449 @@ main { min-height: 100vh; }
 
 .audioSpinner { animation: audio-spin 800ms linear infinite; }
 
+/* ── Trình nghe: phần thêm cho bản đọc cả bộ truyện ───────────────────
+   Khối audio phía trên được viết cho một hàng điều khiển cố định năm ô. Bản
+   đọc cả bộ có thêm ô chọn giọng, thêm thanh nghe tiếp và thêm phân trang
+   chương, nên phần dưới đây nới hàng đó ra và cho nó xuống dòng khi chật. */
+
+.audioControlSurface {
+  grid-template-columns: auto auto auto auto minmax(6rem, 1fr) auto;
+}
+
+/* Dưới 46rem hàng sáu ô không còn chỗ: xếp thành hai hàng, cụm nút phát ở
+   trên, hai ô chọn ở dưới, thanh tiến độ chiếm trọn bề ngang. */
+@media (max-width: 46rem) {
+  .audioControlSurface {
+    grid-template-columns: repeat(4, auto);
+    justify-content: center;
+  }
+
+  .audioControlSurface > .audioProgress {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+
+  .audioControlSurface > .audioRate {
+    grid-column: 1 / -1;
+    justify-content: center;
+    order: 4;
+  }
+}
+
+.audioNowMeta {
+  color: var(--muted);
+  font-size: .74rem;
+  margin: .25rem 0 0;
+}
+
+/* Thanh "nghe tiếp": với một bộ vài trăm chương thì đây là nút được bấm nhiều
+   hơn cả nút phát, nên nó nằm ngay trên cụm điều khiển chứ không giấu đi. */
+.audioResumeBar {
+  align-items: center;
+  background: color-mix(in srgb, var(--blue) 10%, var(--white));
+  border: 1px dashed color-mix(in srgb, var(--blue) 45%, transparent);
+  border-radius: .55rem;
+  color: var(--blue);
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  font-size: .8rem;
+  font-weight: 800;
+  gap: .45rem;
+  margin-top: .9rem;
+  padding: .55rem .75rem;
+  width: 100%;
+}
+
+.audioResumeBar:hover {
+  background: color-mix(in srgb, var(--blue) 16%, var(--white));
+}
+
+.audioPlayerNotice {
+  background: color-mix(in srgb, #15803d 10%, var(--white));
+  border-left: 3px solid #15803d;
+  color: #14532d;
+  font-size: .78rem;
+  margin: .8rem 0 0;
+  padding: .7rem .8rem;
+}
+
+.audioPlayerHint {
+  align-items: flex-start;
+  color: var(--muted);
+  display: flex;
+  font-size: .74rem;
+  gap: .4rem;
+  line-height: 1.5;
+  margin: .7rem 0 0;
+}
+
+.audioPlayerHint > svg { flex: none; margin-top: .12rem; }
+
+.audioListPager {
+  align-items: center;
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: .6rem;
+  justify-content: space-between;
+  padding: .8rem 1rem;
+}
+
+.audioListPager > span {
+  color: var(--muted);
+  font-size: .75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.audioListPager > button {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: .45rem;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: .76rem;
+  font-weight: 700;
+  padding: .4rem .8rem;
+}
+
+.audioListPager > button:disabled { cursor: not-allowed; opacity: .45; }
+
+.audioEpisodeButton:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+.audioEpisodeButton:disabled:hover { background: transparent; color: inherit; }
+
+.audioReadInstead {
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: .78rem;
+  margin: 0;
+  padding: .85rem 1rem;
+}
+
+
+/* ── Tiến độ bằng chữ, ô chọn giọng, bìa thật ─────────────────────────
+   Thanh màu nói được "đang chạy" nhưng không nói được "còn bao lâu". Dòng
+   dưới đây trả lời câu đó, và nó nằm ngay dưới cụm điều khiển. */
+
+.audioProgressLine {
+  color: var(--text-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: .8rem;
+  font-variant-numeric: tabular-nums;
+  gap: .3rem 1rem;
+  justify-content: space-between;
+  margin: .7rem 0 0;
+}
+
+.audioProgressLine strong { color: var(--blue); }
+
+.audioVoiceRow {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-top: .8rem;
+}
+
+.audioVoiceRow > span {
+  color: var(--text-secondary);
+  font-size: .78rem;
+  font-weight: 800;
+}
+
+/* Hai nút Nam/Nữ dính nhau thành một cặp, để đọc ra là "chọn một trong hai"
+   chứ không phải hai hành động rời. */
+.audioVoicePick {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: .45rem;
+}
+
+.audioVoicePick > button {
+  background: var(--white);
+  border: 0;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: .8rem;
+  font-weight: 700;
+  min-width: 3.6rem;
+  padding: .4rem .85rem;
+}
+
+.audioVoicePick > button + button { border-left: 1px solid var(--line); }
+
+.audioVoicePick > button[aria-pressed="true"] {
+  background: var(--blue);
+  color: var(--text-on-accent);
+}
+
+.audioVoiceRow > small {
+  color: var(--muted);
+  font-size: .72rem;
+  flex: 1 1 100%;
+}
+
+[data-theme="dark"] .audioVoicePick > button {
+  background: var(--surface-card);
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .audioVoicePick > button[aria-pressed="true"] {
+  background: var(--blue);
+  color: var(--text-on-accent);
+}
+
+/* Thanh tiến độ nhỏ ngay trong dòng chương đang nghe. */
+.audioRowProgress {
+  background: var(--line);
+  border-radius: 999rem;
+  display: block;
+  height: .25rem;
+  margin-top: .35rem;
+  overflow: hidden;
+  width: 100%;
+}
+
+.audioRowProgress > span {
+  background: linear-gradient(90deg, var(--blue), var(--cyan));
+  display: block;
+  height: 100%;
+  transition: width 180ms linear;
+}
+
+/* Bìa thật trên trang nghe, cùng kích thước với trang truyện chữ. */
+.audioDetailHero .detailCover {
+  border-radius: .6rem;
+  flex: none;
+  overflow: hidden;
+  position: relative;
+  width: clamp(8rem, 26vw, 12.5rem);
+}
+
+.audioDetailHero .detailCover .coverImage {
+  display: block;
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.audioBadge {
+  background: var(--blue);
+  border-radius: .3rem;
+  color: var(--text-on-accent);
+  font-size: .6rem;
+  font-weight: 900;
+  letter-spacing: .06em;
+  padding: .18rem .4rem;
+}
+
+.audioReadLink {
+  align-items: center;
+  color: var(--blue);
+  display: inline-flex;
+  font-weight: 700;
+  gap: .3rem;
+  text-decoration: none;
+}
+
+.audioReadLink:hover { text-decoration: underline; }
+
+[data-theme="dark"] .audioRowProgress { background: color-mix(in srgb, var(--line) 70%, transparent); }
+
+
+/* ── Chữ của chương, đoạn đang đọc được tô sáng ───────────────────────
+   Không phải một bản chữ riêng: đây chính là các đoạn mà bộ đọc đang đọc, nên
+   chỗ tô sáng không thể lệch với tiếng. */
+
+.audioChapterText {
+  background: var(--surface-card);
+  border: 1px solid var(--line);
+  border-radius: .75rem;
+  font-size: 1rem;
+  line-height: 1.85;
+  margin-top: 1rem;
+  max-height: 34rem;
+  overflow-y: auto;
+  padding: clamp(1rem, 3vw, 1.6rem);
+}
+
+.audioChapterText p {
+  border-radius: .35rem;
+  color: var(--text-primary);
+  margin: 0 0 1rem;
+  padding: .2rem .45rem;
+  transition: background 200ms ease;
+}
+
+.audioChapterText p:last-child { margin-bottom: 0; }
+
+/* Nền nhạt cộng một vạch bên trái: người nhìn lướt vẫn thấy ngay đoạn nào
+   đang được đọc, kể cả khi màn hình nghiêng hoặc chói. */
+.audioChapterText p.isSpeaking {
+  background: color-mix(in srgb, var(--blue) 12%, transparent);
+  box-shadow: inset .18rem 0 0 var(--blue);
+  font-weight: 500;
+}
+
+.audioOptionRow {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem 1.2rem;
+  margin-top: .8rem;
+}
+
+.audioVoiceRow { margin-top: 0; }
+
+.audioAutoNext {
+  align-items: center;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  font-size: .8rem;
+  font-weight: 700;
+  gap: .4rem;
+}
+
+.audioAutoNext input { cursor: pointer; }
+
+[data-theme="dark"] .audioChapterText p.isSpeaking {
+  background: color-mix(in srgb, var(--blue) 24%, transparent);
+}
+
+
+/* ── Bản đọc tự động trên trang đọc chương ────────────────────────────
+   Một dải gọn nằm trên chữ chương: người muốn nghe thấy ngay, người muốn đọc
+   chỉ lướt qua. Không dùng khung .audioPlayerPanel vì ở đây nó phải nhường
+   chỗ cho chữ truyện, không được chiếm nửa màn hình đầu. */
+
+.chapterTtsPanel {
+  background: color-mix(in srgb, var(--blue) 5%, var(--surface-card, #fff));
+  border: 1px solid color-mix(in srgb, var(--blue) 22%, transparent);
+  border-radius: .7rem;
+  margin: 0 0 1.4rem;
+  padding: .85rem 1rem 1rem;
+}
+
+.chapterTtsPanel > header {
+  align-items: center;
+  display: flex;
+  gap: .55rem;
+  margin-bottom: .7rem;
+}
+
+.chapterTtsPanel > header > svg { color: var(--blue); flex: none; }
+
+.chapterTtsPanel > header strong {
+  display: block;
+  font-size: .88rem;
+}
+
+.chapterTtsPanel > header small {
+  color: var(--muted, #64748b);
+  display: block;
+  font-size: .74rem;
+  font-variant-numeric: tabular-nums;
+  margin-top: .1rem;
+}
+
+.chapterTtsPanel .audioControlSurface {
+  background: transparent;
+  border: 0;
+  margin-top: 0;
+  padding: 0;
+}
+
+.chapterTtsPanel .audioPlayerHint { margin-top: .6rem; }
+
+/* Nút chữ trong dòng thông tin: trông như một liên kết, không phải nút khối. */
+.chapterTtsJump {
+  background: none;
+  border: 0;
+  color: var(--blue);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-decoration: underline;
+}
+
+/* Đoạn đang đọc, tô ngay trên chữ chương thật của trang đọc. Dùng chung tên
+   lớp với trang nghe để một luật là đủ cho cả hai nơi. */
+.chapterProse .isSpeaking {
+  background: color-mix(in srgb, var(--blue) 12%, transparent);
+  border-radius: .3rem;
+  box-shadow: inset .18rem 0 0 var(--blue);
+  padding-left: .45rem;
+}
+
+[data-theme="night"] .chapterProse .isSpeaking,
+[data-theme="dark"] .chapterProse .isSpeaking {
+  background: color-mix(in srgb, var(--blue) 26%, transparent);
+}
+
+[data-theme="dark"] .chapterTtsPanel {
+  background: color-mix(in srgb, var(--blue) 12%, transparent);
+}
+
+.plainPageLede {
+  color: var(--text-secondary);
+  font-size: .88rem;
+  line-height: 1.6;
+  margin: .4rem 0 1.1rem;
+  max-width: 46rem;
+}
+
+/* Khối audio cũ viết bằng màu sáng cố định (#f4fbff, var(--white)), nên ở nền
+   tối chữ đen nằm trên nền trắng giữa một trang đen. Buộc chúng về token. */
+[data-theme="dark"] .audioPlayerPanel,
+[data-theme="dark"] .audioListPager > button,
+[data-theme="dark"] .audioControlSurface button,
+[data-theme="dark"] .audioRate select {
+  background: var(--surface-card);
+  border-color: var(--line);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .audioControlSurface {
+  background: var(--surface-sunken);
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .audioPlayButton {
+  background: linear-gradient(135deg, var(--blue), var(--cyan));
+  color: var(--text-on-accent);
+}
+
+[data-theme="dark"] .audioProgress { background: var(--line); }
+
+[data-theme="dark"] .audioEpisodeButton:hover,
+[data-theme="dark"] .audioEpisodeButton[aria-current="true"] {
+  background: color-mix(in srgb, var(--blue) 18%, transparent);
+}
+
+[data-theme="dark"] .audioResumeBar {
+  background: color-mix(in srgb, var(--blue) 18%, transparent);
+}
+
+[data-theme="dark"] .audioPlayerNotice {
+  background: color-mix(in srgb, #4ade80 12%, transparent);
+  border-left-color: #4ade80;
+  color: #bbf7d0;
+}
+
+[data-theme="dark"] .audioPlayerError {
+  background: color-mix(in srgb, #f87171 12%, transparent);
+  color: #fecaca;
+}
+
+
 @keyframes audio-spin {
   to { transform: rotate(360deg); }
 }
@@ -4192,7 +4704,7 @@ main { min-height: 100vh; }
   border-radius: 2rem;
   padding: 0.65rem 1.15rem;
   text-decoration: none;
-  color: #111827;
+  color: var(--text-primary);
   font-size: 0.85rem;
   font-weight: 800;
   box-shadow: 0 0.25rem 0.75rem rgba(15, 95, 255, 0.04);
@@ -4374,7 +4886,7 @@ main { min-height: 100vh; }
 }
 
 .teamFormGroup label {
-  color: #1e293b;
+  color: var(--text-primary);
   font-size: 0.85rem;
   font-weight: 800;
 }
@@ -4840,7 +5352,7 @@ main { min-height: 100vh; }
 
 .rankingColumnCard {
   background: var(--white);
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--line);
   border-radius: 1.1rem;
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
   display: flex;
@@ -5160,7 +5672,7 @@ main { min-height: 100vh; }
 
 .homeMiniRanking,
 .homeDiscussionPanel {
-  background: white;
+  background: var(--surface-card);
   border: 1px solid #dce8f6;
   border-radius: .75rem;
   box-shadow: 0 .75rem 1.8rem rgb(24 47 100 / 7%);
@@ -5315,7 +5827,7 @@ main { min-height: 100vh; }
 }
 
 .legalTableWrap td {
-  background: white;
+  background: var(--surface-card);
   font-size: .82rem;
 }
 
@@ -5781,7 +6293,7 @@ main { min-height: 100vh; }
 
 .termCard {
   background: var(--white);
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--line);
   border-radius: 1rem;
   padding: 1.5rem 1.25rem;
   box-shadow: 0 4px 20px rgba(15, 23, 42, 0.03);
@@ -5855,7 +6367,7 @@ main { min-height: 100vh; }
 .teamsRankingSection {
   margin-bottom: 3.5rem;
   background: var(--white);
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--line);
   border-radius: 1.2rem;
   padding: 1.75rem 2rem;
   box-shadow: 0 6px 24px rgba(15, 23, 42, 0.04);
@@ -5915,7 +6427,7 @@ main { min-height: 100vh; }
 
 .topTeamCard {
   background: var(--surface-sunken);
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--line);
   border-radius: 0.9rem;
   padding: 1.1rem 0.9rem;
   display: flex;
@@ -6601,7 +7113,7 @@ main { min-height: 100vh; }
 
 .zhihuQuickStats article {
   align-items: center;
-  background: white;
+  background: var(--surface-card);
   border: 1px solid var(--line);
   border-radius: .85rem;
   box-shadow: 0 .75rem 2rem rgb(24 47 100 / 8%);
@@ -6677,7 +7189,7 @@ main { min-height: 100vh; }
 }
 
 .zhihuBottomRail > section {
-  background: white;
+  background: var(--surface-card);
   border: 1px solid var(--line);
   border-radius: 1rem;
   box-shadow: 0 .6rem 1.8rem rgb(24 47 100 / 5%);
@@ -6929,31 +7441,45 @@ main { min-height: 100vh; }
   margin: 0;
 }
 
-.liveBadge {
-  align-items: center;
-  background: rgba(255, 255, 255, 0.2);
+/* A pulsing "Trực tiếp" badge used to sit here. Nothing was live: the panel
+   polls, and the messages it showed were invented in the browser. The count of
+   real messages is the honest thing to put in that corner. */
+.chatCount {
+  background: rgb(255 255 255 / 20%);
   border-radius: 999px;
-  display: inline-flex;
   font-size: 0.65rem;
   font-weight: 800;
-  gap: 0.35rem;
   padding: 0.25rem 0.6rem;
-  text-transform: uppercase;
+  white-space: nowrap;
 }
 
-.liveDot {
-  animation: livePulse 1.5s infinite;
-  background: #22c55e;
-  border-radius: 50%;
-  height: 0.45rem;
-  width: 0.45rem;
+/* Loading, empty and failed states, centred in the message area. */
+.chatNotice {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  margin: auto;
+  padding: 1.5rem 1rem;
+  text-align: center;
 }
 
-@keyframes livePulse {
-  0% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(1.3); }
-  100% { opacity: 1; transform: scale(1); }
+.chatNotice button {
+  background: none;
+  border: 0;
+  color: var(--blue);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 0;
+  text-decoration: underline;
 }
+
+.chatError {
+  color: var(--danger, #dc2626);
+  font-size: 0.75rem;
+  margin: 0.5rem 0 0;
+}
+
+.chatHint { color: var(--text-muted); font-size: 0.7rem; margin: 0.35rem 0 0; text-align: right; }
 
 .chatMessageList {
   background: var(--surface-sunken);
@@ -6983,8 +7509,11 @@ main { min-height: 100vh; }
   height: 2.2rem;
   justify-content: center;
   min-width: 2.2rem;
+  overflow: hidden;
   width: 2.2rem;
 }
+
+.chatAvatar img { height: 100%; object-fit: cover; width: 100%; }
 
 .avatarTone-indigo { background: #4f46e5; }
 .avatarTone-gold { background: #d97706; }
@@ -7010,9 +7539,11 @@ main { min-height: 100vh; }
   top: .85rem;
 }
 
+/* The inner tail must be the bubble's own fill. It was --text-on-accent, which
+   is white in both themes, so in dark mode a white dart sat on a dark bubble. */
 .chatMessageBody::after {
   border: .38rem solid transparent;
-  border-right-color: var(--text-on-accent);
+  border-right-color: var(--surface-card);
   content: "";
   left: -.72rem;
   position: absolute;
@@ -7045,7 +7576,7 @@ main { min-height: 100vh; }
 .teamRole { background: #fef3c7; color: #d97706; }
 
 .chatTime {
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 0.65rem;
   margin-left: auto;
 }
@@ -7059,7 +7590,7 @@ main { min-height: 100vh; }
 
 .chatFooter {
   background: var(--white);
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--line);
   padding: 0.75rem 1rem;
 }
 
@@ -7068,15 +7599,20 @@ main { min-height: 100vh; }
   gap: 0.5rem;
 }
 
+/* An input does not inherit colour: without these two rules the typed text and
+   its placeholder stayed near-black on the dark theme's sunken background. */
 .chatInput {
   background: var(--surface-sunken);
   border: 2px solid var(--border-strong);
   border-radius: 999px;
+  color: var(--text-primary);
   flex: 1;
   font-size: 0.8rem;
   outline: none;
   padding: 0.55rem 0.85rem;
 }
+
+.chatInput::placeholder { color: var(--text-muted); }
 
 .chatInput:focus {
   border-color: #0f5fff;
@@ -7098,6 +7634,12 @@ main { min-height: 100vh; }
 
 .chatSendBtn:hover {
   background: #1d4ed8;
+}
+
+.chatSendBtn:disabled {
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: .5;
 }
 
 .chatSendBtn svg {
@@ -7914,7 +8456,7 @@ button {
 .adGateContinue {
   align-items: center;
   background: var(--white);
-  border: 1px solid #dfeaf6;
+  border: 1px solid var(--line);
   border-radius: .6rem;
   cursor: pointer;
   display: flex;
@@ -8166,7 +8708,7 @@ button {
 .isGem .profileBalanceIcon { background: #38bdf8; color: #06283a; }
 
 .profileBalanceLabel {
-  color: #fcd34d;
+  color: var(--text-secondary);
   display: block;
   font-size: .72rem;
   font-weight: 800;
@@ -8174,10 +8716,10 @@ button {
   text-transform: uppercase;
 }
 
-.isGem .profileBalanceLabel { color: #7dd3fc; }
+.isGem .profileBalanceLabel { color: var(--text-secondary); }
 
 .profileBalance strong {
-  color: var(--text-on-accent);
+  color: var(--text-primary);
   display: block;
   font-size: 1.4rem;
   font-weight: 900;
@@ -8803,8 +9345,8 @@ button {
 }
 
 .publisherStatCard {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--surface-card);
+  border: 1px solid var(--line);
   border-radius: 12px;
   display: flex;
   flex-direction: column;
@@ -8822,7 +9364,7 @@ button {
 }
 
 .publisherStatCard strong {
-  color: #0f172a;
+  color: var(--text-primary);
   font-size: 1.5rem;
   font-weight: 850;
 }
@@ -8833,15 +9375,15 @@ button {
 }
 
 .publisherCard {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--surface-card);
+  border: 1px solid var(--line);
   border-radius: 12px;
   min-width: 0;
   padding: 1.1rem;
 }
 
 .publisherCard h2 {
-  color: #0f172a;
+  color: var(--text-primary);
   font-size: 1.05rem;
   font-weight: 800;
   margin: 0 0 .8rem;
@@ -8891,7 +9433,7 @@ button {
 
 .publisherStoryList li {
   align-items: center;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--line);
   display: grid;
   gap: .75rem;
   grid-template-columns: 3rem minmax(0, 1fr) auto;
@@ -8943,7 +9485,7 @@ button {
 }
 
 .publisherStoryInfo a {
-  color: #0f172a;
+  color: var(--text-primary);
   display: block;
   font-size: .92rem;
   font-weight: 700;
@@ -8977,8 +9519,8 @@ button {
 }
 
 .publisherNotice {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--surface-card);
+  border: 1px solid var(--line);
   border-radius: 12px;
   color: #64748b;
   margin: 1.25rem auto;
@@ -8988,7 +9530,7 @@ button {
 }
 
 .publisherNotice h1 {
-  color: #0f172a;
+  color: var(--text-primary);
   font-size: 1.25rem;
   margin: 0 0 .5rem;
 }
@@ -9016,25 +9558,69 @@ button {
 .pubStoryPicker ul { display: grid; gap: .3rem; list-style: none; margin: .8rem 0 0; padding: 0; }
 
 .pubNewBtn,
+/* ── Nút trong khu vực xuất bản ──
+   Ba cấp độ dùng chung một khuôn: cùng chiều cao, cùng bo góc, cùng cỡ chữ, nên
+   xếp cạnh nhau trên một hàng là thẳng hàng. Chỉ màu và viền phân biệt việc
+   chúng làm.
+
+   .pubPrimaryBtn trước đây được dùng 8 lần mà không có một dòng CSS nào - toàn
+   bộ nút hành động chính ở màn PR (Publish, Duyệt & trả, Nhận nhiệm vụ, Nộp
+   bài) hiện ra dưới dạng nút xám mặc định của trình duyệt, lệch hẳn khỏi phần
+   còn lại. */
+.pubPrimaryBtn,
 .pubGhostBtn,
 .pubDangerBtn {
   align-items: center;
-  background: #fff;
-  border: 1px solid #dbe3ec;
   border-radius: 8px;
   cursor: pointer;
   display: inline-flex;
+  font: inherit;
   font-size: .85rem;
   font-weight: 700;
   gap: .35rem;
   justify-content: center;
+  /* Nhãn tiếng Việt dài ("Duyệt & trả 60.000 Xu") không được xuống dòng giữa
+     chừng; hàng chứa nút mới là chỗ xuống dòng. */
+  line-height: 1.25;
+  min-height: 2.45rem;
   padding: .5rem .85rem;
+  text-align: center;
+  text-decoration: none;
+  transition: background .15s ease, border-color .15s ease;
+  white-space: nowrap;
 }
 
+.pubGhostBtn,
+.pubDangerBtn {
+  background: var(--surface-card);
+  border: 1px solid var(--line);
+  color: var(--text-primary);
+}
+
+.pubPrimaryBtn {
+  background: var(--blue);
+  border: 1px solid var(--blue);
+  color: var(--text-on-accent);
+}
+
+.pubPrimaryBtn:hover { background: var(--accent-hover, #0b4fd0); border-color: var(--accent-hover, #0b4fd0); }
+
 .pubNewBtn { border-color: var(--blue); color: var(--blue); width: 100%; }
-.pubNewBtn:hover, .pubGhostBtn:hover { background: #f4f8ff; }
+.pubNewBtn:hover, .pubGhostBtn:hover { background: var(--accent-soft); }
 .pubDangerBtn { border-color: #f3c9c9; color: #dc2626; }
 .pubDangerBtn:hover { background: #fef2f2; }
+
+/* Một nút đang chạy vẫn phải đọc được là nút - làm mờ, không đổi thành xám. */
+.pubPrimaryBtn:disabled,
+.pubGhostBtn:disabled,
+.pubDangerBtn:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+.pubPrimaryBtn svg,
+.pubGhostBtn svg,
+.pubDangerBtn svg { flex: none; }
 
 .pubStoryBtn {
   align-items: center;
@@ -9055,7 +9641,7 @@ button {
 
 .pubStoryText { min-width: 0; }
 .pubStoryText strong {
-  color: #0f172a;
+  color: var(--text-primary);
   display: block;
   font-size: .88rem;
   font-weight: 700;
@@ -9077,10 +9663,10 @@ button {
 .pubChapterRow input,
 .pubChapterRow select,
 .pubChapterRow textarea {
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid #dbe3ec;
   border-radius: 8px;
-  color: #0f172a;
+  color: var(--text-primary);
   font: inherit;
   font-size: .9rem;
   padding: .5rem .6rem;
@@ -9108,7 +9694,7 @@ button {
 
 .pubChapterExisting { border-top: 1px solid #eef2f6; padding-top: .8rem; }
 .pubChapterExisting h3,
-.pubChapterEditorHead h3 { color: #0f172a; font-size: .95rem; font-weight: 800; margin: 0; }
+.pubChapterEditorHead h3 { color: var(--text-primary); font-size: .95rem; font-weight: 800; margin: 0; }
 .pubChapterExisting ol { display: grid; gap: .2rem; margin: .5rem 0; padding-left: 1.1rem; }
 .pubChapterExisting li { font-size: .85rem; }
 .pubChapterExisting li small { color: #64748b; margin-left: .4rem; }
@@ -9127,15 +9713,43 @@ button {
   padding: .6rem;
 }
 
+/* Five children: the tick box, the title, the access dropdown, the price when
+   the chapter is paid, and the delete button.
+
+   The template used to name three columns, from before the tick box existed.
+   Grid then put the tick box in the wide first column and pushed everything
+   along one: the title landed in the 8rem track and was cut off after a few
+   characters, and the delete button wrapped onto a row of its own. The title is
+   the only part that should take the space left over. */
 .pubChapterRowHead {
+  align-items: center;
   display: grid;
   gap: .4rem;
-  grid-template-columns: minmax(0, 1fr) 8rem auto;
-  align-items: center;
+  grid-template-columns: auto minmax(0, 1fr) 8rem auto;
 }
 
 .pubChapterRowHead:has(input[type="number"]) {
-  grid-template-columns: minmax(0, 1fr) 8rem 5.5rem auto;
+  grid-template-columns: auto minmax(0, 1fr) 8rem 5.5rem auto;
+}
+
+/* The chapter title reads left to right like the text it names. */
+.pubChapterRowHead > input:not([type="checkbox"]):not([type="number"]) {
+  text-align: left;
+  width: 100%;
+}
+
+/* Below the phone breakpoint the row has no width to divide, so the title takes
+   a line of its own and the controls sit under it. */
+@media (max-width: 640px) {
+  .pubChapterRowHead,
+  .pubChapterRowHead:has(input[type="number"]) {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .pubChapterRowHead > select,
+  .pubChapterRowHead > input[type="number"] {
+    grid-column: 2;
+  }
 }
 
 .pubActions { border-top: 1px solid #eef2f6; display: flex; flex-wrap: wrap; gap: .6rem; padding-top: .85rem; }
@@ -9268,7 +9882,7 @@ button {
   white-space: nowrap;
 }
 
-.pubTab:hover { color: #0f172a; }
+.pubTab:hover { color: var(--text-primary); }
 .pubTab.isActive { border-bottom-color: var(--blue); color: var(--blue); }
 
 /* An action, not a place. Pushed to the far end and given a filled treatment so
@@ -9341,7 +9955,7 @@ button {
   padding: .85rem 1rem;
 }
 
-.pubImportPanel strong { color: #0f172a; display: block; font-size: .92rem; font-weight: 800; }
+.pubImportPanel strong { color: var(--text-primary); display: block; font-size: .92rem; font-weight: 800; }
 .pubImportPanel small { color: #475569; display: block; font-size: .8rem; line-height: 1.5; margin-top: .2rem; }
 
 .pubImportBtn {
@@ -9414,8 +10028,8 @@ button {
 }
 
 .plainEmpty {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--surface-card);
+  border: 1px solid var(--line);
   border-radius: 12px;
   color: #64748b;
   font-size: .92rem;
@@ -9427,19 +10041,25 @@ button {
 .plainEmpty a { color: var(--blue); font-weight: 700; }
 
 /* ── Team directory ── */
+/* Four teams to a row, so the six-row block before the ranking table is a
+   predictable twenty-four cards. auto-fill made the count depend on viewport
+   width, which meant the table landed in a different place on every screen. */
 .teamGrid {
   display: grid;
   gap: .75rem;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
+@media (width <= 68rem) { .teamGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (width <= 40rem) { .teamGrid { grid-template-columns: minmax(0, 1fr); } }
+
 .teamCard {
   align-items: start;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--surface-card, #fff);
+  border: 1px solid var(--line, #e2e8f0);
   border-radius: 12px;
   display: grid;
   gap: .8rem;
@@ -9456,9 +10076,9 @@ button {
 .teamAvatar {
   align-items: center;
   aspect-ratio: 1;
-  background: #f1f5f9;
+  background: var(--surface-sunken, #f1f5f9);
   border-radius: 50%;
-  color: #64748b;
+  color: var(--text-secondary, #64748b);
   display: flex;
   font-size: 1.1rem;
   font-weight: 800;
@@ -9471,7 +10091,7 @@ button {
 
 .teamCardBody { min-width: 0; }
 .teamCardBody strong {
-  color: #0f172a;
+  color: var(--text-primary, #0f172a);
   display: block;
   font-size: .95rem;
   font-weight: 750;
@@ -9481,7 +10101,7 @@ button {
 }
 .teamCardBody small { color: var(--blue); display: block; font-size: .8rem; font-weight: 650; margin-top: .1rem; }
 .teamCardBody p {
-  color: #64748b;
+  color: var(--text-secondary, #64748b);
   display: -webkit-box;
   font-size: .85rem;
   line-height: 1.5;
@@ -9491,11 +10111,119 @@ button {
   -webkit-line-clamp: 2;
 }
 
+/* ── Team ranking table ──
+   Four independent leaderboards side by side: reads, published stories,
+   favourites and follows. Always five rows; a team that does not exist yet
+   leaves an empty row rather than shortening the table, so the block keeps a
+   fixed height and does not shove the listing below it around. */
+.teamRankBoard {
+  background: var(--surface-card, #fff);
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: 14px;
+  margin: 1.25rem 0;
+  overflow: hidden;
+}
+
+.teamRankBoard > header {
+  align-items: baseline;
+  border-bottom: 1px solid var(--line, #e2e8f0);
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem .75rem;
+  padding: .9rem 1.1rem;
+}
+
+.teamRankBoard > header h2 {
+  color: var(--text-primary, #0f172a);
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: .02em;
+  margin: 0;
+}
+
+.teamRankBoard > header p { color: var(--text-secondary, #64748b); font-size: .82rem; margin: 0; }
+
+.teamRankColumns {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.teamRankColumn { border-right: 1px solid var(--line, #e2e8f0); min-width: 0; }
+.teamRankColumn:last-child { border-right: 0; }
+
+.teamRankColumn > h3 {
+  background: var(--surface-sunken, #f8fafc);
+  color: var(--text-secondary, #475569);
+  font-size: .74rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  margin: 0;
+  padding: .55rem .8rem;
+  text-transform: uppercase;
+}
+
+.teamRankColumn > ol { list-style: none; margin: 0; padding: 0; }
+
+.teamRankRow {
+  align-items: center;
+  border-top: 1px solid var(--line, #e2e8f0);
+  display: grid;
+  gap: .5rem;
+  grid-template-columns: 1.25rem minmax(0, 1fr) auto;
+  min-height: 2.6rem;
+  padding: .35rem .8rem;
+}
+
+.teamRankRow > span:first-child {
+  color: var(--text-secondary, #94a3b8);
+  font-size: .78rem;
+  font-weight: 800;
+}
+
+/* Top three read as places, not just list positions. */
+.teamRankRow[data-place="1"] > span:first-child { color: #d97706; }
+.teamRankRow[data-place="2"] > span:first-child { color: #64748b; }
+.teamRankRow[data-place="3"] > span:first-child { color: #b45309; }
+
+.teamRankRow a {
+  color: var(--text-primary, #0f172a);
+  font-size: .85rem;
+  font-weight: 650;
+  overflow: hidden;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.teamRankRow a:hover { color: var(--blue); text-decoration: underline; }
+
+.teamRankRow b {
+  color: var(--blue);
+  font-size: .82rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
+}
+
+/* An empty slot: dashes, so the row reads as "nobody yet" rather than "zero". */
+.teamRankRow[data-empty="true"] > span:first-child,
+.teamRankEmpty { color: var(--text-muted, #cbd5e1); font-size: .85rem; }
+
+@media (width <= 60rem) {
+  .teamRankColumns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .teamRankColumn:nth-child(2) { border-right: 0; }
+  .teamRankColumn:nth-child(-n+2) { border-bottom: 1px solid var(--line, #e2e8f0); }
+}
+
+@media (width <= 36rem) {
+  .teamRankColumns { grid-template-columns: minmax(0, 1fr); }
+  .teamRankColumn { border-bottom: 1px solid var(--line, #e2e8f0); border-right: 0; }
+}
+
 /* ── Shared plain call to action ── */
 .plainCta {
   align-items: center;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--surface-card);
+  border: 1px solid var(--line);
   border-radius: 12px;
   display: flex;
   flex-wrap: wrap;
@@ -9504,7 +10232,7 @@ button {
   padding: 1.25rem;
 }
 
-.plainCta h2 { color: #0f172a; font-size: 1.05rem; font-weight: 800; margin: 0 0 .3rem; }
+.plainCta h2 { color: var(--text-primary); font-size: 1.05rem; font-weight: 800; margin: 0 0 .3rem; }
 .plainCta p { color: #64748b; font-size: .9rem; line-height: 1.6; margin: 0; max-width: 42rem; }
 
 .plainCtaActions { display: flex; flex-wrap: wrap; gap: .6rem; }
@@ -9525,8 +10253,8 @@ button {
 /* ── Team profile head ── */
 .teamProfileHead {
   align-items: center;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--surface-card);
+  border: 1px solid var(--line);
   border-radius: 12px;
   display: grid;
   gap: 1rem;
@@ -9537,7 +10265,7 @@ button {
 .teamAvatarLarge { font-size: 1.6rem; }
 
 .teamProfileHead h1 {
-  color: #0f172a;
+  color: var(--text-primary);
   font-size: clamp(1.2rem, 2.2vw, 1.6rem);
   font-weight: 850;
   margin: 0;
@@ -9956,40 +10684,1175 @@ button {
   padding: .2rem .34rem;
   white-space: nowrap;
 }
+/* Finished: a solid red wedge filling the top-right corner of the card, with a
+   dashed rule following its inner edge.
 
-/* Finished: a diagonal band across the top-right corner. The wrapper is the
-   corner it may paint in; the band inside is rotated and deliberately wider
-   than that box, so its ends are clipped and read as folded under. */
+   Anchored to the card, not the cover: the cover clips its contents, so inside
+   it the mark could only ever sit within the artwork's rounded corner and read
+   as part of the picture. Earlier this was a narrow band whose ends were cut
+   off square, which looked like a stripe laid across the art rather than a tag
+   wrapped around the corner. */
 .fullRibbon {
-  height: 3.4rem;
+  height: 3.9rem;
   overflow: hidden;
   pointer-events: none;
   position: absolute;
   right: 0;
   top: 0;
-  width: 3.4rem;
-  z-index: 4;
+  width: 3.9rem;
+  z-index: 6;
+}
+
+/* The wedge itself: the half of the box on the corner side of the diagonal. */
+.fullRibbon::before {
+  background: linear-gradient(135deg, #ef4444 0%, #c81e1e 55%, #a51616 100%);
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
+  content: "";
+  inset: 0;
+  position: absolute;
+}
+
+/* The dashed rule inside the long edge. Rotated onto the diagonal, then nudged
+   along its own perpendicular towards the corner so it sits inside the red. */
+.fullRibbon::after {
+  border-top: .075rem dashed rgb(255 255 255 / 88%);
+  content: "";
+  left: 50%;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(45deg) translateY(-.34rem);
+  width: 160%;
 }
 
 .fullRibbon span {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  box-shadow: 0 .1rem .35rem rgb(15 23 42 / 28%);
-  color: #1d4ed8;
-  display: block;
-  font-size: .53rem;
+  color: #fff;
+  font-size: .66rem;
   font-weight: 900;
-  left: -.85rem;
-  letter-spacing: .08em;
+  left: 66.6%;
+  letter-spacing: .12em;
   line-height: 1;
-  padding: .18rem 0;
   position: absolute;
-  text-align: center;
-  top: .78rem;
-  transform: rotate(45deg);
-  width: 5rem;
+  text-shadow: 0 .05rem .16rem rgb(69 10 10 / 60%);
+  /* The centroid of the wedge, so the word sits in the middle of the red
+     rather than crowding either edge. */
+  top: 33.3%;
+  transform: translate(-50%, -50%) rotate(45deg);
+  white-space: nowrap;
 }
 
-[data-theme="dark"] .fullRibbon span {
-  background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%);
-  color: #dbeafe;
+/* Two cards per row on a phone leaves the cover about 160px wide, where the
+   full-size wedge covers too much of the artwork. */
+@media (max-width: 480px) {
+  .fullRibbon { height: 3.1rem; width: 3.1rem; }
+  .fullRibbon span { font-size: .55rem; letter-spacing: .08em; }
+  .fullRibbon::after { transform: translate(-50%, -50%) rotate(45deg) translateY(-.27rem); }
 }
+
+/* ── Publisher cover field ────────────────────────────────────────────
+   The picker alone gave no sign the story already had a cover, so every
+   reopen looked like the image had been lost. */
+.pubCoverField {
+  align-items: flex-start;
+  display: flex;
+  gap: .75rem;
+}
+
+.pubCoverField > div {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+  min-width: 0;
+}
+
+.pubCoverPreview {
+  aspect-ratio: 3 / 4;
+  border: 1px solid var(--line);
+  border-radius: .4rem;
+  flex: none;
+  object-fit: cover;
+  width: 5.5rem;
+}
+
+.pubCoverEmpty {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--surface-sunken) 0 .4rem,
+    transparent .4rem .8rem
+  );
+  display: block;
+}
+
+/* ── Chapter list pager, inside the edit forms ───────────────────────
+   A finished translation runs past 2,500 chapters. The form used to mount
+   every one of them, so the page took seconds to render and reaching a
+   chapter in the middle meant scrolling for minutes. */
+.chapterEditPager {
+  align-items: center;
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  border-radius: .5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+  justify-content: space-between;
+  margin: .75rem 0;
+  padding: .5rem .7rem;
+  position: sticky;
+  /* Sticky so the pager stays reachable while a long chapter is being edited. */
+  top: .25rem;
+  z-index: 5;
+}
+
+.chapterEditPagerCount {
+  color: var(--text-secondary);
+  font-size: .78rem;
+  font-weight: 700;
+}
+
+.chapterEditPagerPages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem;
+}
+
+.chapterEditPagerPages > span {
+  align-items: center;
+  display: flex;
+  gap: .25rem;
+}
+
+.chapterEditPagerPages em {
+  color: var(--text-muted);
+  font-style: normal;
+}
+
+.chapterEditPagerPages button {
+  background: var(--surface-card);
+  border: 1px solid var(--line);
+  border-radius: .35rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: .78rem;
+  font-weight: 700;
+  min-width: 2rem;
+  padding: .3rem .5rem;
+}
+
+.chapterEditPagerPages button:hover:not(:disabled) {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.chapterEditPagerPages button:disabled {
+  cursor: not-allowed;
+  opacity: .45;
+}
+
+.chapterEditPagerPages button.isCurrent {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: var(--text-on-accent);
+}
+
+.chapterEditPagerJump {
+  align-items: center;
+  color: var(--text-secondary);
+  display: flex;
+  font-size: .76rem;
+  gap: .35rem;
+}
+
+.chapterEditPagerJump input {
+  border: 1px solid var(--line);
+  border-radius: .35rem;
+  padding: .25rem .35rem;
+  width: 4rem;
+}
+
+@media (max-width: 640px) {
+  .chapterEditPager { position: static; }
+}
+
+/* ── Operation result dialog ──────────────────────────────────────────
+   Uploads and saves used to report themselves in one line above a very long
+   form, where the detail that matters - how many chapters, how many words,
+   what the server objected to - had nowhere to go and was easy to miss. */
+.opDialogBackdrop {
+  align-items: center;
+  background: rgb(8 15 28 / 55%);
+  backdrop-filter: blur(3px);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 1rem;
+  position: fixed;
+  z-index: 300;
+}
+
+.opDialog {
+  background: var(--surface-card);
+  border: 1px solid var(--line);
+  border-radius: .8rem;
+  box-shadow: 0 1.5rem 3rem rgb(8 18 40 / 35%);
+  max-height: 85vh;
+  max-width: 32rem;
+  overflow-y: auto;
+  padding: 1.25rem;
+  width: 100%;
+}
+
+.opDialogHead {
+  align-items: flex-start;
+  display: flex;
+  gap: .75rem;
+}
+
+.opDialogHead h2 {
+  font-size: 1.05rem;
+  line-height: 1.35;
+  margin: .1rem 0 0;
+}
+
+.opDialogEyebrow {
+  font-size: .7rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+/* The icon and eyebrow carry the status; the body text stays readable. */
+.opDialog[data-kind="success"] .opDialogHead > svg,
+.opDialog[data-kind="success"] .opDialogEyebrow { color: #15803d; }
+.opDialog[data-kind="warning"] .opDialogHead > svg,
+.opDialog[data-kind="warning"] .opDialogEyebrow { color: #b45309; }
+.opDialog[data-kind="error"] .opDialogHead > svg,
+.opDialog[data-kind="error"] .opDialogEyebrow { color: #b91c1c; }
+
+[data-theme="dark"] .opDialog[data-kind="success"] .opDialogHead > svg,
+[data-theme="dark"] .opDialog[data-kind="success"] .opDialogEyebrow { color: #4ade80; }
+[data-theme="dark"] .opDialog[data-kind="warning"] .opDialogHead > svg,
+[data-theme="dark"] .opDialog[data-kind="warning"] .opDialogEyebrow { color: #fbbf24; }
+[data-theme="dark"] .opDialog[data-kind="error"] .opDialogHead > svg,
+[data-theme="dark"] .opDialog[data-kind="error"] .opDialogEyebrow { color: #f87171; }
+
+.opDialogDetails {
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  font-size: .84rem;
+  gap: .4rem;
+  line-height: 1.5;
+  margin: 1rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.opDialogHint {
+  background: var(--surface-sunken);
+  border-radius: .45rem;
+  color: var(--text-secondary);
+  font-size: .82rem;
+  line-height: 1.5;
+  margin: .9rem 0 0;
+  padding: .6rem .7rem;
+}
+
+.opDialogActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.1rem;
+}
+
+.opDialogClose {
+  background: var(--blue);
+  border: 0;
+  border-radius: .45rem;
+  color: var(--text-on-accent);
+  cursor: pointer;
+  font-size: .85rem;
+  font-weight: 800;
+  padding: .5rem 1.1rem;
+}
+
+/* ── Hộp thoại hỏi, thay cho window.prompt ────────────────────────────
+   Dùng chung khung .opDialog để một lời hỏi và một lời đáp trông cùng một
+   nhà, chỉ khác phần ruột: bên trên là các ô nhập, bên dưới là hai nút. */
+
+.askDialog {
+  display: flex;
+  flex-direction: column;
+  gap: .85rem;
+  max-width: 34rem;
+}
+
+.askDialogTitle {
+  font-size: 1.05rem;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.askDialogIntro {
+  color: var(--text-secondary);
+  font-size: .86rem;
+  line-height: 1.55;
+  margin: -.25rem 0 0;
+}
+
+.askDialogLines {
+  background: var(--surface-sunken);
+  border-radius: .5rem;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  font-size: .83rem;
+  gap: .35rem;
+  line-height: 1.5;
+  margin: 0;
+  padding: .7rem .8rem .7rem 1.75rem;
+}
+
+/* Điều không lấy lại được. Một vệt màu bên trái, không phải cả khối đỏ - khối
+   đỏ dùng cho lỗi đã xảy ra, còn đây mới chỉ là lời cảnh báo trước. */
+.askDialogWarning {
+  background: color-mix(in srgb, #b45309 10%, var(--surface-card));
+  border-left: 3px solid #b45309;
+  border-radius: .3rem;
+  color: var(--text-primary);
+  font-size: .83rem;
+  line-height: 1.5;
+  margin: 0;
+  padding: .55rem .7rem;
+}
+
+[data-theme="dark"] .askDialogWarning {
+  background: color-mix(in srgb, #fbbf24 12%, var(--surface-card));
+  border-left-color: #fbbf24;
+}
+
+.askDialogField {
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+}
+
+.askDialogField > label {
+  font-size: .84rem;
+  font-weight: 700;
+}
+
+.askDialogRequired { color: #b91c1c; }
+[data-theme="dark"] .askDialogRequired { color: #f87171; }
+
+.askDialogHint {
+  color: var(--text-secondary);
+  font-size: .78rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.askDialogField input,
+.askDialogField select,
+.askDialogField textarea {
+  background: var(--surface-input, var(--surface-card));
+  border: 1px solid var(--line);
+  border-radius: .45rem;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: .88rem;
+  padding: .5rem .6rem;
+  width: 100%;
+}
+
+.askDialogField textarea {
+  line-height: 1.55;
+  min-height: 5.5rem;
+  resize: vertical;
+}
+
+.askDialogField input:focus-visible,
+.askDialogField select:focus-visible,
+.askDialogField textarea:focus-visible {
+  border-color: var(--blue);
+  outline: 2px solid color-mix(in srgb, var(--blue) 45%, transparent);
+  outline-offset: 1px;
+}
+
+.askDialogField [aria-invalid] { border-color: #b91c1c; }
+
+.askDialogError {
+  color: #b91c1c;
+  font-size: .78rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
+[data-theme="dark"] .askDialogField [aria-invalid] { border-color: #f87171; }
+[data-theme="dark"] .askDialogError { color: #f87171; }
+
+.askDialogActions {
+  display: flex;
+  gap: .5rem;
+  justify-content: flex-end;
+  margin-top: .15rem;
+}
+
+/* Trên điện thoại hai nút xếp dọc và chiếm hết bề ngang: ngón tay không phải
+   nhắm vào một mục tiêu hẹp nằm sát mép phải. Nút chính lên trên. */
+@media (max-width: 30rem) {
+  .askDialogActions {
+    flex-direction: column-reverse;
+  }
+
+  .askDialogActions > button {
+    justify-content: center;
+    width: 100%;
+  }
+}
+
+/* The eye that replaced the word "đọc" beside a view count. */
+.pubViewIcon {
+  margin-right: .15rem;
+  vertical-align: -.12em;
+}
+
+/* ── "A new version is out" banner ───────────────────────────────────
+   A single-page app keeps running the bundle it loaded with, so a tab left
+   open goes on using an old deploy indefinitely. */
+.updateBanner {
+  align-items: center;
+  background: var(--blue);
+  border-radius: .5rem;
+  bottom: 1rem;
+  box-shadow: 0 .6rem 1.6rem rgb(8 18 40 / 30%);
+  color: var(--text-on-accent);
+  display: flex;
+  font-size: .84rem;
+  font-weight: 700;
+  gap: .6rem;
+  left: 50%;
+  padding: .6rem .8rem;
+  position: fixed;
+  transform: translateX(-50%);
+  z-index: 250;
+}
+
+.updateBanner button {
+  background: rgb(255 255 255 / 18%);
+  border: 1px solid rgb(255 255 255 / 45%);
+  border-radius: .35rem;
+  color: inherit;
+  cursor: pointer;
+  font-size: .8rem;
+  font-weight: 800;
+  padding: .3rem .6rem;
+}
+
+.updateBannerDismiss {
+  background: transparent;
+  border: 0;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0 .3rem;
+}
+
+@media (max-width: 480px) {
+  .updateBanner {
+    left: .6rem;
+    right: .6rem;
+    transform: none;
+  }
+}
+
+/* ── Missing-chapter warning ──
+   A story can be saved and published with holes in its numbering: one upload
+   ran to "Chương 386" with no chapter 87 in it. The saved story shows nothing
+   of this, so it is stated where the story is opened. */
+.missingChapterBanner {
+  align-items: center;
+  background: color-mix(in srgb, #f59e0b 12%, var(--surface-card));
+  border: 1px solid color-mix(in srgb, #f59e0b 45%, var(--line));
+  border-radius: .7rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem .85rem;
+  margin-bottom: 1rem;
+  padding: .8rem 1rem;
+}
+
+.missingChapterBanner > svg { color: #b45309; flex: none; }
+
+.missingChapterBanner p {
+  color: var(--text-primary);
+  flex: 1 1 18rem;
+  font-size: .86rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.missingChapterBanner p strong { color: #b45309; }
+
+.missingChapterBanner button {
+  background: #b45309;
+  border: 0;
+  border-radius: .45rem;
+  color: #fff;
+  cursor: pointer;
+  font-size: .8rem;
+  font-weight: 700;
+  padding: .45rem .9rem;
+  white-space: nowrap;
+}
+
+.missingChapterBanner button:hover { background: #92400e; }
+
+.missingChapterDialogBackdrop {
+  align-items: center;
+  backdrop-filter: blur(3px);
+  background: rgb(8 15 28 / 55%);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 1rem;
+  position: fixed;
+  z-index: 300;
+}
+
+.missingChapterDialog {
+  background: var(--surface-card);
+  border: 1px solid var(--line);
+  border-radius: .8rem;
+  box-shadow: 0 1.5rem 3rem rgb(8 18 40 / 35%);
+  display: flex;
+  flex-direction: column;
+  max-height: 85vh;
+  max-width: 36rem;
+  padding: 1.25rem;
+  width: 100%;
+}
+
+.missingChapterDialog > header {
+  align-items: flex-start;
+  display: flex;
+  gap: .75rem;
+  justify-content: space-between;
+}
+
+.missingChapterDialog > header p {
+  color: #b45309;
+  font-size: .7rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.missingChapterDialog > header h2 {
+  color: var(--text-primary);
+  font-size: 1.05rem;
+  margin: .1rem 0 0;
+}
+
+.missingChapterDialog > header button {
+  background: transparent;
+  border: 0;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex: none;
+  padding: .2rem;
+}
+
+/* The numbers themselves. A story can be missing hundreds, so the list scrolls
+   inside the dialog rather than pushing the buttons off the screen. */
+.missingChapterList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  margin: .9rem 0 0;
+  max-height: 40vh;
+  overflow-y: auto;
+  padding: .2rem;
+}
+
+.missingChapterList span {
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  border-radius: .35rem;
+  color: var(--text-primary);
+  font-size: .8rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  padding: .25rem .5rem;
+}
+
+.missingChapterHint {
+  color: var(--text-secondary);
+  font-size: .8rem;
+  line-height: 1.55;
+  margin: .9rem 0 0;
+}
+
+.missingChapterDialog > footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.missingChapterDialog > footer button {
+  background: var(--blue);
+  border: 0;
+  border-radius: .45rem;
+  color: var(--text-on-accent);
+  cursor: pointer;
+  font-size: .82rem;
+  font-weight: 700;
+  padding: .5rem 1.1rem;
+}
+
+/* ── Synopsis field ──
+   A story introduction runs to several paragraphs. It used to sit in a
+   half-width column four rows tall, which showed about two lines of it, and the
+   form loaded the 500-character teaser rather than the real text - so it looked
+   as though the synopsis itself had been cut. */
+.pubField.pubFieldWide { grid-column: 1 / -1; }
+
+.pubField > span {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  justify-content: space-between;
+}
+
+/* Counts up while typing, so the ceiling is never a surprise at save time. */
+.pubFieldCount {
+  color: var(--text-muted);
+  font-size: .72rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.pubSynopsis {
+  line-height: 1.65;
+  min-height: 16rem;
+  resize: vertical;
+}
+
+/* ── Quick chapter pricing and selection ──
+   Twenty chapters to a page and a story running to hundreds left "select all"
+   and "one at a time" as the only two options, so pricing one volume meant
+   twenty clicks. */
+.pubQuickPrice {
+  align-items: center;
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  border-radius: .6rem;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: .8rem;
+  gap: .45rem .6rem;
+  margin-bottom: .6rem;
+  padding: .6rem .8rem;
+}
+
+.pubQuickPrice strong {
+  color: var(--text-primary);
+  font-size: .8rem;
+  font-weight: 800;
+  margin-right: .2rem;
+}
+
+.pubQuickPrice span { color: var(--text-secondary); }
+
+.pubQuickPrice input {
+  background: var(--surface-card);
+  border: 1px solid var(--line);
+  border-radius: .35rem;
+  color: var(--text-primary);
+  font: inherit;
+  padding: .25rem .4rem;
+  width: 4.5rem;
+}
+
+.pubQuickPrice button { margin-left: auto; }
+
+.pubLinkBtn {
+  background: none;
+  border: 0;
+  color: var(--blue);
+  cursor: pointer;
+  font: inherit;
+  font-size: .78rem;
+  font-weight: 700;
+  padding: 0;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
+.pubLinkBtn:disabled { color: var(--text-muted); cursor: not-allowed; text-decoration: none; }
+
+.pubRangePick {
+  align-items: center;
+  color: var(--text-secondary);
+  display: flex;
+  font-size: .78rem;
+  gap: .3rem;
+}
+
+.pubRangePick input {
+  background: var(--surface-card);
+  border: 1px solid var(--line);
+  border-radius: .35rem;
+  color: var(--text-primary);
+  font: inherit;
+  padding: .22rem .35rem;
+  width: 4rem;
+}
+
+/* ── PR campaigns ──
+   A team hires readers to promote a story off-platform. The screen has two
+   jobs: writing a campaign, which happens once, and judging what comes back,
+   which happens daily - so the review queue leads. */
+.prQueue { border-left: 3px solid #b45309; margin-bottom: 1rem; }
+.prQueue h2 { color: #b45309; font-size: .95rem; margin: 0 0 .7rem; }
+.prQueue ul { display: grid; gap: .5rem; list-style: none; margin: 0; padding: 0; }
+
+.prQueue li {
+  align-items: center;
+  background: var(--surface-sunken);
+  border-radius: .5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem .8rem;
+  padding: .55rem .75rem;
+}
+.prQueue li strong { color: var(--text-primary); font-size: .88rem; }
+.prQueue li span { color: var(--text-secondary); font-size: .8rem; }
+.prQueue li button { margin-left: auto; }
+
+.prQueueWarn { color: var(--text-secondary); font-size: .8rem; line-height: 1.55; margin: .8rem 0 0; }
+
+.prToolbar { display: flex; justify-content: flex-end; margin: 1rem 0; }
+
+.prFormGrid {
+  display: grid;
+  gap: .8rem 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  margin-bottom: 1rem;
+}
+
+/* The bill, itemised before any coins move. */
+.prCost {
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  border-radius: .6rem;
+  display: grid;
+  gap: .4rem;
+  padding: .85rem 1rem;
+}
+.prCost > div { display: flex; font-size: .86rem; justify-content: space-between; }
+.prCost span { color: var(--text-secondary); }
+.prCost b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.prCostTotal { border-top: 1px solid var(--line); font-weight: 700; padding-top: .4rem; }
+.prCostTotal b { color: var(--blue); }
+.prCostNote { color: var(--text-secondary); font-size: .8rem; line-height: 1.55; margin: .6rem 0 0; }
+.prFormActions { display: flex; justify-content: flex-end; margin-top: 1rem; }
+
+.prQuest { margin-bottom: 1rem; }
+
+.prQuestHead {
+  align-items: flex-start;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  gap: .7rem 1rem;
+  margin-bottom: .85rem;
+  padding-bottom: .85rem;
+}
+.prQuestHead h3 { color: var(--text-primary); font-size: 1rem; margin: .4rem 0 .15rem; }
+.prQuestHead small { color: var(--text-secondary); font-size: .8rem; }
+.prQuestActions { display: flex; flex-wrap: wrap; gap: .4rem; margin-left: auto; }
+
+.prBadge {
+  border-radius: .3rem;
+  display: inline-block;
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  margin-right: .35rem;
+  padding: .12rem .45rem;
+  text-transform: uppercase;
+}
+.prBadge.isDRAFT { background: var(--surface-sunken); color: var(--text-secondary); }
+.prBadge.isOPEN { background: #dcfce7; color: #15803d; }
+.prBadge.isFULL { background: #dbeafe; color: #1d4ed8; }
+.prBadge.isCLOSED, .prBadge.isCANCELLED { background: var(--surface-sunken); color: var(--text-muted); }
+.prBadge.isKind, .prBadge.isPlatform { background: var(--surface-sunken); color: var(--text-secondary); }
+.prBadge.isClaimSUBMITTED { background: #fef3c7; color: #b45309; }
+.prBadge.isClaimAPPROVED { background: #dcfce7; color: #15803d; }
+.prBadge.isClaimREJECTED, .prBadge.isClaimEXPIRED { background: #fee2e2; color: #b91c1c; }
+.prBadge.isClaimPENDING { background: #e0e7ff; color: #4338ca; }
+.prBadge.isClaimCLAIMED { background: var(--surface-sunken); color: var(--text-secondary); }
+
+.prStats {
+  display: grid;
+  gap: .6rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
+}
+.prStats > div { display: grid; gap: .1rem; }
+.prStats span { color: var(--text-muted); font-size: .72rem; }
+.prStats b { color: var(--text-primary); font-size: .92rem; font-variant-numeric: tabular-nums; }
+
+.prClaims { border-top: 1px solid var(--line); display: grid; gap: .7rem; margin-top: .9rem; padding-top: .9rem; }
+
+.prClaim {
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  border-radius: .55rem;
+  padding: .8rem .9rem;
+}
+.prClaim > header { align-items: center; display: flex; flex-wrap: wrap; gap: .4rem .6rem; margin-bottom: .5rem; }
+.prClaim > header strong { color: var(--text-primary); font-size: .88rem; }
+
+.prDue {
+  align-items: center;
+  color: var(--text-secondary);
+  display: inline-flex;
+  font-size: .75rem;
+  gap: .25rem;
+}
+/* Two days from the deadline the submission gets paid whether or not the owner
+   has looked at it, so the countdown stops being informational. */
+.prDue.isUrgent { color: #b91c1c; font-weight: 700; }
+
+.prNote { color: var(--text-secondary); font-size: .84rem; line-height: 1.55; margin: 0 0 .35rem; overflow-wrap: anywhere; }
+.prNote a { color: var(--blue); }
+.prNote.isReject { color: #b91c1c; }
+
+.prShots { display: flex; flex-wrap: wrap; gap: .4rem; margin: .5rem 0; }
+.prShots img { border: 1px solid var(--line); border-radius: .35rem; height: 5rem; object-fit: cover; width: 5rem; }
+
+.prClaimActions { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .6rem; }
+.prPaid { color: #15803d; font-size: .82rem; font-weight: 700; }
+
+.prHelp { margin-top: 1.5rem; }
+.prHelp h2 { align-items: center; color: var(--text-primary); display: flex; font-size: .95rem; gap: .4rem; margin: 0 0 .7rem; }
+.prHelp ul { color: var(--text-secondary); display: grid; gap: .4rem; font-size: .86rem; line-height: 1.55; margin: 0; padding-left: 1.1rem; }
+.prHelp strong { color: var(--text-primary); }
+
+/* ── Quest page: PR work beside daily quests ──
+   Two different things. A PR quest is paid work for a team, worth reading
+   before committing an evening to it; a daily quest is something a reader has
+   half-done already. Merging them into one list made both harder to scan. */
+.questTabs { border-bottom: 1px solid var(--line); display: flex; gap: 1.2rem; margin: 1.2rem 0; }
+
+.questTab {
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: .88rem;
+  font-weight: 700;
+  padding: 0 0 .6rem;
+}
+.questTab.isActive { border-bottom-color: var(--blue); color: var(--blue); }
+
+/* Ba khối: bảng PR chiếm 60%, "của tôi" và nhiệm vụ ngày xếp chồng ở 40%. */
+.questColumns {
+  align-items: start;
+  display: grid;
+  gap: 1.25rem 1.25rem;
+  grid-template-areas: "main side" "main daily";
+  grid-template-columns: 3fr 2fr;
+}
+.questColumnMain { grid-area: main; }
+.questColumnSide { grid-area: side; }
+.questColumnDaily { grid-area: daily; }
+@media (width <= 62rem) { .questColumns { grid-template-columns: minmax(0, 1fr); } }
+
+.questColumnMain, .questColumnSide { min-width: 0; }
+
+.questColumnTitle {
+  color: var(--text-primary);
+  font-size: .95rem;
+  font-weight: 800;
+  margin: 1.4rem 0 .5rem;
+}
+.questColumnMain > .questColumnTitle:first-child,
+.questColumnSide > .questColumnTitle:first-child { margin-top: 0; }
+
+.questColumnNote { color: var(--text-secondary); font-size: .84rem; line-height: 1.6; margin: 0 0 .9rem; }
+
+.prBoardFilters { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .9rem; }
+
+.prBoardFilters select {
+  background: var(--surface-card);
+  border: 1px solid var(--line);
+  border-radius: .45rem;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: .82rem;
+  padding: .35rem .5rem;
+}
+
+.prFilterToggle {
+  align-items: center;
+  color: var(--text-secondary);
+  display: flex;
+  font-size: .82rem;
+  gap: .35rem;
+}
+
+.prBoardList, .prMineList { display: grid; gap: .8rem; list-style: none; margin: 0; padding: 0; }
+
+.prMineCard {
+  background: var(--surface-card);
+  border: 1px solid var(--line);
+  border-radius: .7rem;
+  padding: 1rem 1.1rem;
+}
+
+.prCardTeam { color: var(--text-secondary); font-size: .83rem; margin: .3rem 0 0; }
+.prCardTeam a { color: var(--blue); font-weight: 650; }
+
+.prCardRecord { color: var(--text-muted); font-size: .78rem; margin: .2rem 0 0; }
+
+/* The KPI as the team wrote it, line breaks intact - it is the thing the work
+   will be judged against, so it must not be reflowed into a paragraph. */
+.prCardKpi {
+  background: var(--surface-sunken);
+  border-radius: .45rem;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: .82rem;
+  line-height: 1.6;
+  margin: .7rem 0 0;
+  overflow-x: auto;
+  padding: .6rem .7rem;
+  white-space: pre-wrap;
+}
+
+.prCardStats { display: flex; flex-wrap: wrap; gap: 1.2rem; margin-top: .8rem; }
+.prCardStats > div { display: grid; gap: .1rem; }
+.prCardStats span { color: var(--text-muted); font-size: .72rem; }
+.prCardStats b { color: var(--text-primary); font-size: .92rem; font-variant-numeric: tabular-nums; }
+
+.prEscrow {
+  background: color-mix(in srgb, #15803d 10%, var(--surface-card));
+  border-radius: .4rem;
+  color: var(--text-secondary);
+  font-size: .78rem;
+  line-height: 1.5;
+  margin: .7rem 0 0;
+  padding: .45rem .6rem;
+}
+
+
+.prMineCard > header { align-items: center; display: flex; flex-wrap: wrap; gap: .4rem; }
+.prMineCard > header strong { color: var(--text-primary); font-size: .9rem; width: 100%; }
+.prMineReward { color: var(--blue); font-size: .82rem; font-weight: 750; margin-left: auto; }
+
+.prRejectBox {
+  background: color-mix(in srgb, #b91c1c 8%, var(--surface-card));
+  border-radius: .45rem;
+  color: var(--text-secondary);
+  font-size: .82rem;
+  line-height: 1.55;
+  margin: .6rem 0 0;
+  padding: .55rem .7rem;
+}
+.prRejectBox strong { color: #b91c1c; }
+.prRejectBox p { margin: .3rem 0 0; }
+
+.prKpiDetails { margin-top: .6rem; }
+.prKpiDetails summary { color: var(--blue); cursor: pointer; font-size: .8rem; font-weight: 650; }
+
+.prSubmitForm { display: grid; gap: .6rem; margin-top: .8rem; }
+
+.prUpload { align-items: center; display: flex; flex-wrap: wrap; gap: .5rem; }
+.prUpload label { cursor: pointer; }
+.prUpload input[type="file"] { display: none; }
+.prUpload small { color: var(--text-muted); font-size: .74rem; }
+
+.prDisputeBtn {
+  align-items: center;
+  background: none;
+  border: 0;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: .78rem;
+  gap: .3rem;
+  margin-top: .6rem;
+  padding: 0;
+  text-decoration: underline;
+}
+.prDisputeBtn:hover { color: #b91c1c; }
+
+/* ── Admin: PR dispute queue ── */
+.prDispute {
+  background: var(--surface-card);
+  border: 1px solid var(--line);
+  border-radius: .7rem;
+  padding: 1rem 1.15rem;
+}
+.prDispute > header { align-items: center; display: flex; flex-wrap: wrap; gap: .4rem .6rem; margin-bottom: .7rem; }
+.prDispute > header strong { color: var(--text-primary); font-size: .95rem; }
+.prDisputeMeta { color: var(--text-muted); font-size: .78rem; margin-left: auto; }
+
+/* ── Responsive cho khu vực PR ──
+   Các màn PR viết trên màn hình rộng và chưa được thử ở cỡ điện thoại. Ba chỗ
+   hỏng khi thu hẹp: hàng nút bị đẩy tràn ngang, ô số trong "đặt giá nhanh" bị
+   bóp còn vài ký tự, và nút "Áp dụng" bị margin-left:auto đẩy lệch hẳn. */
+@media (width <= 48rem) {
+  /* Nút trong hàng hành động trải đủ rộng để bấm trúng bằng ngón tay, thay vì
+     ba nút chen nhau trên một dòng chật. */
+  .prQuestActions,
+  .prClaimActions,
+  .pubConfirmActions {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .prQuestActions { margin-left: 0; }
+
+  .prQuestActions > button,
+  .prClaimActions > button {
+    flex: 1 1 auto;
+    min-width: 9rem;
+  }
+
+  /* Nhãn dài được phép xuống dòng khi cả nút đã chiếm hết bề ngang - lúc này
+     xuống dòng là cách duy nhất để đọc hết. */
+  .prClaimActions > button { white-space: normal; }
+
+  .prQueue li button { margin-left: 0; }
+
+  .pubQuickPrice { gap: .4rem .5rem; }
+  .pubQuickPrice button { margin-left: 0; width: 100%; }
+  .pubQuickPrice input { width: 4rem; }
+
+  .prBoardFilters select { flex: 1 1 8rem; min-width: 0; }
+
+  
+  .prStats { gap: .5rem 1rem; }
+
+  .prMineReward { margin-left: 0; }
+  .prDisputeBtn { white-space: normal; }
+}
+
+/* Ảnh chụp minh hoạ co lại theo màn, không đẩy thẻ rộng ra. */
+@media (width <= 30rem) {
+  .prShots img { height: 4rem; width: 4rem; }
+  .prCardStats { gap: .5rem .9rem; }
+  .prCardStats > div { flex: 1 1 5rem; }
+}
+
+/* Ba khối xếp lại khi thành một cột: việc đang dở trước, rồi việc có thể
+   nhận, cuối cùng là nhiệm vụ ngày. */
+@media (width <= 62rem) {
+  .questColumns { display: flex; flex-direction: column; }
+  .questColumnSide { order: -1; }
+  .questColumnMain { order: 0; }
+  .questColumnDaily { order: 1; }
+}
+
+/* Nhãn "MỚI" trên bìa trang chi tiết: góc trên bên phải, cùng chỗ dải FULL
+   chiếm khi truyện đã hoàn - hai nhãn không bao giờ xuất hiện cùng lúc. */
+.detailCover .coverNewTag {
+  background: #ff603d;
+  border-radius: .3rem;
+  color: #fff;
+  font-size: .65rem;
+  font-weight: 800;
+  padding: .3rem .5rem;
+  position: absolute;
+  right: .35rem;
+  top: .35rem;
+  z-index: 5;
+}
+
+/* ── Thẻ nhiệm vụ PR ──
+   Gradient xanh dương → trắng theo tông của trang. Màu đậm ở góc trên trái, nơi
+   mắt chạm vào trước, rồi nhạt dần xuống nút hành động. */
+.prCard {
+  background:
+    linear-gradient(150deg,
+      color-mix(in srgb, var(--blue) 14%, var(--surface-card)) 0%,
+      color-mix(in srgb, var(--blue) 4%, var(--surface-card)) 42%,
+      var(--surface-card) 100%);
+  border: 1px solid color-mix(in srgb, var(--blue) 22%, var(--line));
+  border-radius: .85rem;
+  box-shadow: 0 .35rem 1.1rem color-mix(in srgb, var(--blue) 10%, transparent);
+  display: grid;
+  gap: .7rem;
+  padding: 1rem 1.1rem;
+  transition: box-shadow .18s ease, transform .18s ease;
+}
+
+.prCard:hover {
+  box-shadow: 0 .7rem 1.6rem color-mix(in srgb, var(--blue) 18%, transparent);
+  transform: translateY(-2px);
+}
+
+.prCardTop { align-items: start; display: flex; gap: 1rem; justify-content: space-between; }
+.prCardHeadings { min-width: 0; }
+.prCardBadges { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .45rem; }
+
+.prCardHeadings h3 {
+  color: var(--text-primary);
+  font-size: 1.02rem;
+  font-weight: 800;
+  line-height: 1.35;
+  margin: 0;
+}
+
+/* Con số là lý do người ta dừng lại ở thẻ này, nên nó to và đứng riêng. */
+.prCardPrice {
+  display: grid;
+  flex: none;
+  justify-items: end;
+  line-height: 1.15;
+  text-align: right;
+}
+
+.prCardPrice b {
+  color: var(--blue);
+  font-size: 1.45rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 850;
+  letter-spacing: -.02em;
+}
+
+.prCardPrice span { color: var(--text-muted); font-size: .7rem; font-weight: 600; }
+
+.prBadge.isRate { background: #dcfce7; color: #15803d; }
+
+.prCardMeta {
+  align-items: center;
+  color: var(--text-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: .78rem;
+  font-weight: 600;
+  gap: .35rem .9rem;
+}
+
+.prCardMeta span { align-items: center; display: inline-flex; gap: .28rem; }
+.prCardMeta svg { color: var(--text-muted); }
+
+/* "Đã ký quỹ" thay cho cả một câu giải thích: tiền đã bị trừ khỏi ví nhóm và
+   hệ thống đang giữ. Chi tiết nằm ở phần luật cuối trang. */
+.prCardEscrowChip {
+  background: #dcfce7;
+  border-radius: 999px;
+  color: #15803d;
+  font-size: .72rem;
+  font-weight: 800;
+  margin-left: auto;
+  padding: .15rem .55rem;
+}
+
+.prCardCta { width: 100%; }

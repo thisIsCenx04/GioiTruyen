@@ -2,7 +2,7 @@
 
 import { BookOpen, Coins, Eye, PenLine, Users } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { PublisherTabs } from "@/components/publisher-tabs";
 import { PublicShell } from "@/components/site-chrome";
@@ -76,6 +76,7 @@ export function PublisherDashboard({ teamId }: Readonly<{ teamId: string }>) {
   const [overview, setOverview] = useState<TeamOverview | null>(null);
   const [stories, setStories] = useState<TeamStoryRow[]>([]);
   const [state, setState] = useState<"loading" | "ready" | "forbidden" | "error">("loading");
+  const navigate = useNavigate();
 
   useEffect(() => {
     let active = true;
@@ -88,6 +89,10 @@ export function PublisherDashboard({ teamId }: Readonly<{ teamId: string }>) {
         if (!active) return;
         // 403/404 both mean "not your team" - the API answers 404 for a
         // non-member on purpose, so treat them the same in the UI.
+        if (overviewRes.status === 403 && storiesRes.ok) {
+          navigate(`/teams/${encodeURIComponent(teamId)}/stories`, { replace: true });
+          return;
+        }
         if (overviewRes.status === 403 || overviewRes.status === 404) {
           setState("forbidden");
           return;
@@ -107,7 +112,7 @@ export function PublisherDashboard({ teamId }: Readonly<{ teamId: string }>) {
     return () => {
       active = false;
     };
-  }, [teamId]);
+  }, [navigate, teamId]);
 
   if (state === "loading") {
     return (
@@ -163,15 +168,18 @@ export function PublisherDashboard({ teamId }: Readonly<{ teamId: string }>) {
         <div className="publisherContainer">
           <header className="publisherHeading">
             <div>
-              <h1>BẢNG ĐIỀU KHIỂN ĐĂNG TRUYỆN</h1>
+              {/* The team's own name leads. "Bảng điều khiển đăng truyện" was
+                  the same words on every team's page, and the one thing that
+                  told them apart sat underneath in small grey text. */}
+              <h1>NHÓM XUẤT BẢN · {overview.teamName.toLocaleUpperCase("vi")}</h1>
               <span>
-                {overview.teamName}
+                Bảng điều khiển
                 {ROLE_LABELS[overview.memberRole] ? ` · ${ROLE_LABELS[overview.memberRole]}` : ""}
               </span>
             </div>
           </header>
 
-          <PublisherTabs active="dashboard" teamId={teamId} />
+          <PublisherTabs active="dashboard" memberRole={overview.memberRole} teamId={teamId} />
 
           <div className="publisherStatGrid">
             {statCards.map((card) => (

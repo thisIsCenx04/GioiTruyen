@@ -7,9 +7,19 @@ import {
   WORDS_PER_CHAPTER_ZHIHU,
 } from "./story-import";
 
-/** Minimal stand-in for the File the drawer hands to the parser. */
+/**
+ * Minimal stand-in for the File the drawer hands to the parser.
+ *
+ * <p>Carries real bytes, because the parser decides the format from them rather
+ * than from the extension.
+ */
 function fakeFile(name: string, text: string) {
-  return { name, text: async () => text } as unknown as File;
+  const bytes = new TextEncoder().encode(text);
+  return {
+    name,
+    arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+    text: async () => text,
+  } as unknown as File;
 }
 
 const paragraphOf30Words = Array.from({ length: 30 }, (_, index) => `tu${index}`).join(" ");
@@ -118,9 +128,13 @@ describe("parseStoryDocument", () => {
     expect(imported.chapters.length).toBeGreaterThan(1);
   });
 
-  it("still cuts an over-long chapter that the file declared as one heading", async () => {
-    // A single heading covering 1800 words is more than a chapter's worth, so
-    // the budget applies even though the document has headings of its own.
+  /**
+   * One heading over the whole document has not divided anything, so it is not
+   * treated as a chapter boundary and the text is cut by word count instead.
+   * The parts are numbered plainly rather than as "Chương 1: Mở đầu (1/2)",
+   * which claimed the author had written a division they had not.
+   */
+  it("cuts a document whose single heading covers everything", async () => {
     const imported = await parseStoryDocument(fakeFile("truyen.txt", [
       "Tên Truyện",
       "",
@@ -129,8 +143,34 @@ describe("parseStoryDocument", () => {
     ].join("\n")));
 
     expect(imported.chapters.length).toBeGreaterThan(1);
-    expect(imported.chapters[0]!.title).toBe("Chương 1: Mở đầu (1/2)");
+    expect(imported.chapters.map((chapter) => chapter.title))
+      .toEqual(["Chương 1", "Chương 2"]);
     expect(imported.autoSplit).toBe(true);
+  });
+
+  /**
+   * Lines that look like headings without being any - a stray number, a
+   * numbered list - would otherwise carve a novel into a couple of enormous
+   * "chapters". Two headings across 1,800 words means chapters of 900; two
+   * across 24,000 means they are not headings.
+   */
+  it("ignores headings that do not actually divide the document", async () => {
+    const imported = await parseStoryDocument(fakeFile("truyen.txt", [
+      "Tên Truyện",
+      "",
+      "1",
+      ...paragraphs(400),
+      "3. Một mục trong danh sách",
+      ...paragraphs(400),
+    ].join("\n")));
+
+    // 24,000 words at 800 each, not two chapters of 12,000.
+    expect(imported.chapters.length).toBeGreaterThan(20);
+    expect(imported.autoSplit).toBe(true);
+    for (const chapter of imported.chapters) {
+      expect(chapter.content.split(/\s+/u).filter(Boolean).length)
+        .toBeLessThan(WORDS_PER_CHAPTER * 2);
+    }
   });
 
   it("uses the Zhihu budget when one is given", async () => {

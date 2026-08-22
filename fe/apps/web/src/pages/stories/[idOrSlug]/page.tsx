@@ -10,6 +10,7 @@ import { Link } from "react-router-dom";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 const cache = <T extends (...args: any[]) => any>(fn: T) => fn;
 
+import { AdsenseUnit, ADSENSE_SLOTS } from "@/components/adsense-unit";
 import { CatalogStoryCard } from "@/components/catalog-story-card";
 import { ChapterListItem } from "@/components/chapter-list-item";
 import { Comments } from "@/components/comments";
@@ -134,9 +135,13 @@ export default async function StoryPage({ params, searchParams }: StoryPageProps
             {story.storyType === "EXCLUSIVE" ? (
               <span className="coverTagRow"><span className="exclusiveBadge">ĐỘC QUYỀN</span></span>
             ) : null}
+            {/* FULL và MỚI cùng nằm ở góc trên bên phải, đối diện nhãn độc
+                quyền. Trước đây MỚI là một <small> không có class, bị luật
+                chung của .detailCover bắt và thả xuống ngay trên nhãn ĐỘC
+                QUYỀN - hai nhãn đè lên nhau, không đọc được nhãn nào. */}
             {story.completionStatus === "COMPLETED"
               ? <span className="fullRibbon"><span>FULL</span></span>
-              : <small>MỚI</small>}
+              : <small className="coverNewTag">MỚI</small>}
           </div>
 
           <div className="storyDetailMain">
@@ -177,12 +182,11 @@ export default async function StoryPage({ params, searchParams }: StoryPageProps
               <div className="storyActionRow">
                 {firstChapter && <Link className="storyAction storyActionStart" to={`/truyen/${story.slug}/chuong-${firstChapter.number}` as string}><BookOpen /> Đọc từ đầu</Link>}
                 {latestChapter && <Link className="storyAction storyActionLatest" to={`/truyen/${story.slug}/chuong-${latestChapter.number}` as string}><Star /> Đọc tập mới</Link>}
-                {/* The read-aloud player exists for every story's text, but only
-                    a story published as audio advertises it - that is what the
-                    type is for. Without this link the player at /audio was
-                    reachable only from the audio shelf, so a reader who came in
-                    from search or a category never found it. */}
-                {story.storyType === "AUDIO" && (
+                {/* Bản đọc được dựng từ chính chữ của chương, nên mọi truyện có
+                    chương đều nghe được - không riêng truyện gắn nhãn AUDIO.
+                    Trước đây điều kiện storyType === "AUDIO" giấu nút này ở gần
+                    như toàn bộ kho truyện. */}
+                {firstChapter && (
                   <Link className="storyAction storyActionListen" to={`/audio/${story.slug}` as string}>
                     <Headphones /> Nghe truyện
                   </Link>
@@ -193,6 +197,15 @@ export default async function StoryPage({ params, searchParams }: StoryPageProps
             </div>
 
             <StoryDescription synopsis={story.synopsis} />
+
+            {/* Below the synopsis, before the chapter list - a natural break in
+                the page rather than an interruption of the text. Renders
+                nothing until its slot id is set; see ADSENSE_SLOTS. */}
+            <AdsenseUnit
+              className="storyDetailAd"
+              slot={ADSENSE_SLOTS.storyDetail}
+              style={{ display: "block", margin: "1rem 0" }}
+            />
 
             {storyTags.length > 0 ? (
               <ul className="storyTagList" aria-label="Tag của truyện">

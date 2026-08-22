@@ -64,8 +64,16 @@ export function createPublicCatalogClient(options: ClientOptions = {}) {
   return {
     home: () => request<HomeResponse>("/home"),
     /** Home sections on their own, which is how the shelves are rendered. */
-    storySections: async (): Promise<HomeSection[]> =>
-      (await request<HomeResponse>("/home")).sections ?? [],
+    /**
+     * The catalog shelves: exclusives, editor picks, recent updates, original
+     * writing, audio and finished stories.
+     *
+     * <p>This used to fetch "/home" and return its sections - the same three
+     * shelves the caller had already loaded, fetched a second time. The home
+     * page then drew them twice under headings that said the same thing, and
+     * the six shelves this endpoint actually serves were never shown at all.
+     */
+    storySections: () => request<HomeSection[]>("/stories/sections"),
     promotedHome: () => request<PromotedHomeStory[]>("/promotions/home"),
     categories: () => request<CategoryTaxonomy>("/categories"),
     categoryStories: (slug: string) =>
@@ -162,10 +170,10 @@ export function createBrowserWalletClient(options: ClientOptions = {}) {
         body,
         idempotencyKey,
       }),
-    withdrawals: (teamId: string, cursor?: string) =>
-      request<WithdrawalPage>(`/teams/${encode(teamId)}/withdrawals`, { query: { cursor } }),
-    createWithdrawal: (teamId: string, body: Record<string, any>, idempotencyKey?: string) =>
-      request<WithdrawalReceipt>(`/teams/${encode(teamId)}/withdrawals`, {
+    withdrawals: (cursor?: string) =>
+      request<WithdrawalPage>("/wallets/me/withdrawals", { query: { cursor } }),
+    createWithdrawal: (body: Record<string, any>, idempotencyKey?: string) =>
+      request<WithdrawalReceipt>("/wallets/me/withdrawals", {
         method: "POST",
         body,
         idempotencyKey,

@@ -35,6 +35,10 @@ type StorySummary = {
   publishedAt: string;
   storyFormat: string;
   storyType: string;
+  /** Carries the FULL and ĐỘC QUYỀN marks onto the cards on this page too. */
+  progressStatus?: string;
+  latestChapterNumber?: number;
+  teamName?: string | null;
 };
 
 const number = new Intl.NumberFormat("vi-VN");
@@ -66,20 +70,16 @@ export function TeamProfile({ teamId }: Readonly<{ teamId: string }>) {
         setTeam(loaded);
         setState("ready");
 
-        // The catalog is the only public source of a team's stories - the
-        // /teams/{id}/stories endpoint is for members and includes drafts.
-        const sections = await authedFetch(`${API_BASE_URL}/stories/sections`)
-          .then((res) => (res.ok ? (res.json() as Promise<Array<{ stories: StorySummary[] }>>) : []))
+        // Asked of the database directly. This used to pull the home shelves
+        // and keep the entries whose team matched, but a shelf holds only eight
+        // stories - so a team whose work had scrolled off them got an empty
+        // list under a heading that correctly said it had published two.
+        const mine = await authedFetch(
+          `${API_BASE_URL}/teams/${encodeURIComponent(teamId)}/published-stories`,
+        )
+          .then((res) => (res.ok ? (res.json() as Promise<StorySummary[]>) : []))
           .catch(() => []);
         if (!active) return;
-        const mine = [
-          ...new Map(
-            sections
-              .flatMap((section) => section.stories)
-              .filter((story) => story.teamId === loaded.id)
-              .map((story) => [story.id, story] as const),
-          ).values(),
-        ];
         setStories(mine);
       } catch {
         if (active) setState("error");
@@ -137,6 +137,10 @@ export function TeamProfile({ teamId }: Readonly<{ teamId: string }>) {
             <h2>TRUYỆN CỦA NHÓM</h2>
             <span>{stories.length > 0 ? `${stories.length} truyện` : ""}</span>
           </header>
+          {/* One message for the empty case now: the list holds the team's
+              published stories, so nothing in it means there are none. The old
+              wording apologised for the shelf-filtering that used to hide
+              them. */}
           {stories.length > 0 ? (
             <div className="catalogGrid catalogGridVertical plainStoryGrid">
               {stories.map((story, index) => (
@@ -144,11 +148,7 @@ export function TeamProfile({ teamId }: Readonly<{ teamId: string }>) {
               ))}
             </div>
           ) : (
-            <p className="plainEmpty">
-              {team.storyCount > 0
-                ? "Truyện của nhóm chưa xuất hiện trong danh sách đang hiển thị."
-                : "Nhóm chưa đăng truyện nào."}
-            </p>
+            <p className="plainEmpty">Nhóm chưa đăng truyện nào.</p>
           )}
         </section>
       </div>

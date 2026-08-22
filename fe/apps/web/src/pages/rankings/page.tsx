@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { RankingBoard } from "@gioitruyen/api-client";
-import { Crown, Eye, ThumbsUp } from "lucide-react";
+import { Crown, Eye, Gem, ThumbsUp } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { PublicShell } from "@/components/site-chrome";
@@ -149,9 +149,10 @@ export default function RankingsPage() {
                   { length: BOARD_SLOT_COUNT },
                   (_, index) => board.stories[index] ?? null,
                 );
-                // Only the view board publishes a figure; revenue and gem totals
-                // decide the order and stay private.
-                const showsMetric = board.id === "views";
+                // Revenue stays private, but the recommendation board now shows
+                // the gem count next to each ranked story.
+                const showsMetric = board.id === "views" || board.id === "recommendations";
+                const MetricIcon = board.id === "recommendations" ? Gem : Eye;
 
                 return (
                   <section className={styles.board} key={board.id}>
@@ -190,7 +191,7 @@ export default function RankingsPage() {
                               </span>
                               {showsMetric ? (
                                 <span className={styles.rowMetric}>
-                                  <Eye aria-hidden="true" size={12} />
+                                  <MetricIcon aria-hidden="true" size={12} />
                                   {compactNumber.format(item.metricValue)}
                                 </span>
                               ) : null}

@@ -28,7 +28,7 @@
 .actionTrigger span { color: white; }
 
 .panel {
-  background: white;
+  background: var(--surface-card);
   border: 0.08rem solid var(--line);
   border-radius: 0 2rem 0 0;
   box-shadow: 0.65rem 0.65rem 0 #e0e5f5;

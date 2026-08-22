@@ -16,14 +16,48 @@ type Member = {
   joinedAt: string | null;
 };
 
-type Overview = { teamName: string; memberRole: string };
+type Overview = { teamName: string; memberRole: string; ownerAccess: boolean };
+
+type DonationSupporter = {
+  id: string;
+  userEmail: string;
+  displayName: string | null;
+  storyTitle: string | null;
+  grossCoin: number;
+  teamNetCoin: number;
+  message: string | null;
+  createdAt: string | null;
+};
+
+type RecommendationSupporter = {
+  id: string;
+  userEmail: string;
+  displayName: string | null;
+  storyTitle: string | null;
+  gemAmount: number;
+  createdAt: string | null;
+};
+
+type Supporters = {
+  donations: DonationSupporter[];
+  recommendations: RecommendationSupporter[];
+};
 
 const ROLE_LABELS: Readonly<Record<string, string>> = {
   OWNER: "Chủ nhóm",
   MANAGER: "Quản lý",
   EDITOR: "Biên tập",
   MEMBER: "Thành viên",
+  ADMIN: "Quản trị viên",
 };
+
+const number = new Intl.NumberFormat("vi-VN");
+
+function time(value: string | null) {
+  if (!value) return "";
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? "" : parsed.toLocaleString("vi-VN");
+}
 
 /**
  * Team settings for the people who run one.
@@ -41,18 +75,30 @@ export function TeamManage({ teamId }: Readonly<{ teamId: string }>) {
   const [description, setDescription] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("MEMBER");
+  const [activeTab, setActiveTab] = useState<"profile" | "supporters">("profile");
+  const [supporters, setSupporters] = useState<Supporters>({ donations: [], recommendations: [] });
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
-    const [overviewRes, membersRes, teamRes] = await Promise.all([
-      authedFetch(`${API_BASE_URL}/teams/${encodeURIComponent(teamId)}/dashboard`),
+    const overviewRes = await authedFetch(`${API_BASE_URL}/teams/${encodeURIComponent(teamId)}/access`);
+    if (overviewRes.ok) {
+      const loadedOverview = (await overviewRes.json()) as Overview;
+      setOverview(loadedOverview);
+      if (!loadedOverview.ownerAccess) return;
+    } else {
+      setError("Bạn không có quyền thao tác này.");
+      return;
+    }
+
+    const [membersRes, teamRes, supportersRes] = await Promise.all([
       authedFetch(`${API_BASE_URL}/teams/${encodeURIComponent(teamId)}/members`),
       authedFetch(`${API_BASE_URL}/teams/${encodeURIComponent(teamId)}`),
+      authedFetch(`${API_BASE_URL}/teams/${encodeURIComponent(teamId)}/supporters`),
     ]);
-    if (overviewRes.ok) setOverview((await overviewRes.json()) as Overview);
     if (membersRes.ok) setMembers((await membersRes.json()) as Member[]);
+    if (supportersRes.ok) setSupporters((await supportersRes.json()) as Supporters);
     if (teamRes.ok) {
       const team = await teamRes.json() as { name?: string; avatarUrl?: string; description?: string };
       setName(team.name ?? "");
@@ -63,7 +109,7 @@ export function TeamManage({ teamId }: Readonly<{ teamId: string }>) {
 
   useEffect(() => { void load(); }, [load]);
 
-  const isOwner = overview?.memberRole === "OWNER";
+  const isOwner = overview?.ownerAccess === true;
 
   async function send(path: string, method: string, body?: unknown, ok = "Đã lưu.") {
     setBusy(true);
@@ -99,18 +145,41 @@ export function TeamManage({ teamId }: Readonly<{ teamId: string }>) {
             </div>
           </header>
 
-          <PublisherTabs active="team" teamId={teamId} />
+          <PublisherTabs active="team" memberRole={overview?.memberRole} teamId={teamId} />
 
           {error ? <p className="questError" role="alert">{error}</p> : null}
           {notice ? <p className="questNotice" role="status">{notice}</p> : null}
 
-          {!isOwner ? (
-            <p className="pubHint">
-              Chỉ chủ nhóm mới sửa được thông tin nhóm và thêm thành viên. Bạn đang
-              xem ở chế độ chỉ đọc.
-            </p>
-          ) : null}
+          {overview && !isOwner ? (
+            <section className="publisherCard">
+              <h2>Bạn không có quyền thao tác này.</h2>
+              <p className="pubHint">Thành viên trong team chỉ được đăng và quản lý truyện.</p>
+            </section>
+          ) : overview ? (
+            <>
+              <div className="pubTabs" role="tablist" aria-label="Quản lý nhóm">
+                <button
+                  aria-selected={activeTab === "profile"}
+                  className={activeTab === "profile" ? "pubTab isActive" : "pubTab"}
+                  onClick={() => setActiveTab("profile")}
+                  role="tab"
+                  type="button"
+                >
+                  Thông tin
+                </button>
+                <button
+                  aria-selected={activeTab === "supporters"}
+                  className={activeTab === "supporters" ? "pubTab isActive" : "pubTab"}
+                  onClick={() => setActiveTab("supporters")}
+                  role="tab"
+                  type="button"
+                >
+                  Ủng hộ & đề cử
+                </button>
+              </div>
 
+          {activeTab === "profile" ? (
+          <>
           <section className="publisherCard">
             <h2>Thông tin nhóm</h2>
             <label className="pubField">
@@ -239,6 +308,62 @@ export function TeamManage({ teamId }: Readonly<{ teamId: string }>) {
               ))}
             </ul>
           </section>
+          </>
+          ) : (
+            <section className="publisherCard">
+              <header className="publisherCardHeader">
+                <h2>Ủng hộ & đề cử ngọc</h2>
+                <span>{supporters.donations.length + supporters.recommendations.length} lượt</span>
+              </header>
+              <div className="publisherChartRow">
+                <div>
+                  <h3>Donate xu</h3>
+                  {supporters.donations.length === 0 ? (
+                    <p className="pubHint">Chưa có lượt donate.</p>
+                  ) : (
+                    <ul className="teamMemberList">
+                      {supporters.donations.map((row) => (
+                        <li key={row.id}>
+                          <div>
+                            <strong>{row.displayName || row.userEmail}</strong>
+                            <small>
+                              {number.format(row.grossCoin)} xu · team nhận {number.format(row.teamNetCoin)} xu
+                              {row.storyTitle ? ` · ${row.storyTitle}` : ""}
+                            </small>
+                            {row.message ? <small>{row.message}</small> : null}
+                          </div>
+                          <small>{time(row.createdAt)}</small>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <div>
+                  <h3>Đề cử ngọc</h3>
+                  {supporters.recommendations.length === 0 ? (
+                    <p className="pubHint">Chưa có lượt đề cử.</p>
+                  ) : (
+                    <ul className="teamMemberList">
+                      {supporters.recommendations.map((row) => (
+                        <li key={row.id}>
+                          <div>
+                            <strong>{row.displayName || row.userEmail}</strong>
+                            <small>
+                              {number.format(row.gemAmount)} ngọc
+                              {row.storyTitle ? ` · ${row.storyTitle}` : ""}
+                            </small>
+                          </div>
+                          <small>{time(row.createdAt)}</small>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </section>
+          )}
+            </>
+          ) : null}
         </div>
       </main>
     </PublicShell>

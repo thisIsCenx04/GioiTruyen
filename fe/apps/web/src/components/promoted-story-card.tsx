@@ -49,7 +49,6 @@ export function PromotedStoryCard({
         {story.storyType === "EXCLUSIVE" ? (
           <span className="promotedExclusiveTag">ĐỘC QUYỀN</span>
         ) : null}
-        {isFull ? <span className="fullRibbon"><span>FULL</span></span> : null}
         <span className="slotBadge">#{booking.slotPosition}</span>
         <span className="promotedCoverTitle">{story.title}</span>
         <span className="promotedMetric">
@@ -61,6 +60,8 @@ export function PromotedStoryCard({
           </span>
         </span>
       </Link>
+      {/* Anchored to the card, not the cover: see the catalog card for why. */}
+      {isFull ? <span className="fullRibbon"><span>FULL</span></span> : null}
       <div className="promotedBody">
         <h3>
           <Link to={`/truyen/${story.slug}` as string}>{story.title}</Link>

@@ -1,4 +1,4 @@
-import { BarChart3, BookOpen, Megaphone, Users } from "lucide-react";
+import { BarChart3, BookOpen, Megaphone, Users, Video } from "lucide-react";
 import { Link } from "react-router-dom";
 
 /**
@@ -11,12 +11,17 @@ import { Link } from "react-router-dom";
 export function PublisherTabs({
   teamId,
   active,
-}: Readonly<{ teamId: string; active: "dashboard" | "stories" | "team" }>) {
+  memberRole,
+}: Readonly<{ teamId: string; active: "dashboard" | "stories" | "team" | "pr"; memberRole?: string }>) {
+  const ownerAccess = !memberRole || memberRole === "OWNER" || memberRole === "ADMIN";
   const tabs = [
     { id: "dashboard" as const, label: "Thống kê", icon: BarChart3, to: `/teams/${teamId}/dashboard` },
     { id: "stories" as const, label: "Quản lý truyện", icon: BookOpen, to: `/teams/${teamId}/stories` },
     { id: "team" as const, label: "Quản lý nhóm", icon: Users, to: `/teams/${teamId}/manage` },
-  ];
+    // PR quests spend the team wallet and commit it to strangers, so the tab
+    // follows the same owner-only rule as the rest of the money surfaces.
+    { id: "pr" as const, label: "Chiến dịch PR", icon: Video, to: `/teams/${teamId}/pr` },
+  ].filter((tab) => ownerAccess || tab.id === "stories");
 
   return (
     <nav aria-label="Bảng điều khiển đăng truyện" className="pubTabs">

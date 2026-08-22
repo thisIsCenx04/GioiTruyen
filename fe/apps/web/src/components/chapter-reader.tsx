@@ -11,7 +11,9 @@ import { Link } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 
+import { AdsenseUnit, ADSENSE_SLOTS } from "./adsense-unit";
 import { ChapterAdGate } from "./chapter-ad-gate";
+import { ChapterTtsPlayer } from "./chapter-tts-player";
 import { Comments } from "./comments";
 import { CopyGuard } from "./copy-guard";
 import styles from "./chapter-reader.module.css";
@@ -217,6 +219,27 @@ export function ChapterReader({
             }}>{night ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}</button>
           </div>
         </header>
+        {/* Above the chapter text, below the title: the reader has not started
+            yet, so nothing is interrupted, and this is the most viewable
+            position on the page. A short banner shape rather than a block, so
+            the first paragraph still lands above the fold on a phone. Renders
+            nothing until its slot id is set; see ADSENSE_SLOTS. */}
+        <AdsenseUnit
+          format="horizontal"
+          slot={ADSENSE_SLOTS.chapterTop}
+          style={{ display: "block", margin: "0 0 1.25rem" }}
+        />
+        {/* Bản đọc đặt ngay trên chữ chương: người muốn nghe thấy nó không
+            phải tìm, người muốn đọc chỉ lướt qua một dải nhỏ. */}
+        <ChapterTtsPlayer
+          chapterId={chapter.id}
+          chapterTitle={chapter.title}
+          contentHtml={chapter.contentHtml}
+          nextHref={nextHref || undefined}
+          previousHref={chapter.previous
+            ? `/truyen/${storySlug}/chuong-${chapter.previous.number}`
+            : undefined}
+        />
         {/* The global class is what CopyGuard scopes itself to; the module
             class carries the typography. */}
         <div className={`chapterProse ${styles.prose}`}
@@ -224,6 +247,14 @@ export function ChapterReader({
         {/* A house banner sits inside the chapter; the interstitial below
             handles the move to the next one. */}
         <ReaderAdBanner seed={chapter.id} />
+        {/* After the chapter text, before the navigation: the reader has
+            finished and is choosing what to do next, so an ad here interrupts
+            nothing. Renders nothing until its slot id is set; see
+            ADSENSE_SLOTS. */}
+        <AdsenseUnit
+          slot={ADSENSE_SLOTS.chapterFooter}
+          style={{ display: "block", margin: "1.25rem 0" }}
+        />
         <nav aria-label="Điều hướng chương" className={styles.chapterNav}>
           {chapter.previous ? (
             <Link to={`/truyen/${storySlug}/chuong-${chapter.previous.number}` as string}>

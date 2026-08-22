@@ -1,5 +1,7 @@
 package com.storyplatform.admin.api;
 
+import com.storyplatform.admin.application.dto.AdminDtos.AdOverview;
+import com.storyplatform.admin.application.dto.AdminDtos.AdPlacementRow;
 import com.storyplatform.admin.application.dto.AdminDtos.AdminOverview;
 import com.storyplatform.admin.application.dto.AdminDtos.AdminStats;
 import com.storyplatform.admin.application.dto.AdminDtos.ChartPoint;
@@ -17,7 +19,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/admin/dashboard")
 public class AdminDashboardController {
 
-    private static final int SERIES_DAYS = 7;
+    /**
+     * The dashboard offers 7-day, 30-day and 3-month views, but only seven
+     * points were ever sent, so picking "3 tháng" quietly showed the same week
+     * under a different label. Ninety covers the widest range on offer.
+     */
+    private static final int SERIES_DAYS = 90;
 
     private final JdbcClient jdbc;
 
@@ -44,8 +51,68 @@ public class AdminDashboardController {
                         + "WHERE viewed_at >= ? GROUP BY DATE(viewed_at)"),
                 dailySeries("SELECT DATE(created_at) AS d, COUNT(*) AS v FROM users "
                         + "WHERE created_at >= ? GROUP BY DATE(created_at)"),
-                pendingTasks()
+                pendingTasks(),
+                ads()
         );
+    }
+
+    /**
+     * Advertising performance from ad_events.
+     *
+     * <p>These are the platform's own banners and affiliate redirects - the rows
+     * this database actually holds. AdSense impressions and earnings are not
+     * here: they live in the AdSense account and can only be read through the
+     * AdSense Management API, which needs its own OAuth credentials. The panel
+     * says so rather than showing zeroes that look like a collapse in traffic.
+     *
+     * <p>A REDIRECT counts as a click: both mean the reader acted on the ad, and
+     * an affiliate link records the leaving hop rather than a press.
+     */
+    private AdOverview ads() {
+        long impressions = count("SELECT COUNT(*) FROM ad_events WHERE event_type = 'IMPRESSION'");
+        long clicks = count("SELECT COUNT(*) FROM ad_events WHERE event_type IN ('CLICK', 'REDIRECT')");
+        long activeUnits = count("SELECT COUNT(*) FROM advertisements WHERE is_active = TRUE");
+
+        List<AdPlacementRow> placements = jdbc.sql("""
+                        SELECT a.placement,
+                               SUM(e.event_type = 'IMPRESSION')                AS impressions,
+                               SUM(e.event_type IN ('CLICK', 'REDIRECT'))      AS clicks,
+                               COUNT(DISTINCT IF(a.is_active, a.id, NULL))     AS active_units
+                        FROM advertisements a
+                        LEFT JOIN ad_events e ON e.advertisement_id = a.id
+                        GROUP BY a.placement
+                        ORDER BY impressions DESC, a.placement ASC
+                        """)
+                .query((rs, rowNum) -> {
+                    long shown = rs.getLong("impressions");
+                    long pressed = rs.getLong("clicks");
+                    return new AdPlacementRow(
+                            rs.getString("placement"),
+                            shown,
+                            pressed,
+                            ctr(pressed, shown),
+                            rs.getLong("active_units")
+                    );
+                })
+                .list();
+
+        return new AdOverview(
+                impressions,
+                clicks,
+                ctr(clicks, impressions),
+                activeUnits,
+                dailySeries("SELECT DATE(created_at) AS d, COUNT(*) AS v FROM ad_events "
+                        + "WHERE event_type = 'IMPRESSION' AND created_at >= ? GROUP BY DATE(created_at)"),
+                dailySeries("SELECT DATE(created_at) AS d, COUNT(*) AS v FROM ad_events "
+                        + "WHERE event_type IN ('CLICK', 'REDIRECT') AND created_at >= ? "
+                        + "GROUP BY DATE(created_at)"),
+                placements
+        );
+    }
+
+    /** Click-through rate as a percentage; a placement never shown has none. */
+    private static double ctr(long clicks, long impressions) {
+        return impressions == 0 ? 0d : Math.round(clicks * 10000d / impressions) / 100d;
     }
 
     private long count(String sql) {

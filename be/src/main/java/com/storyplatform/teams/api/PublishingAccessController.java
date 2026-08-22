@@ -23,7 +23,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class PublishingAccessController {
 
     /** Team roles that may open the publisher workspace. */
-    private static final List<String> PUBLISHING_ROLES = List.of("OWNER", "MANAGER", "EDITOR");
+    private static final List<String> PUBLISHING_ROLES = List.of("OWNER", "MANAGER", "EDITOR", "MEMBER");
 
     private final JdbcClient jdbc;
 
@@ -83,9 +83,7 @@ public class PublishingAccessController {
                 // Slug when the team has one, so the address bar reads
                 // /teams/nha-dich-anh-trang/dashboard rather than a raw UUID.
                 // TeamWorkspaceController accepts either form.
-                canPublish
-                        ? "/teams/" + firstNonBlank(membership.teamSlug(), membership.teamId()) + "/dashboard"
-                        : "/dang-ky-dang-truyen"
+                publishingEntryPath(canPublish, membership)
         );
     }
 
@@ -105,6 +103,17 @@ public class PublishingAccessController {
     /** Falls back to the id when a team has no slug yet. */
     private static String firstNonBlank(String preferred, String fallback) {
         return preferred == null || preferred.isBlank() ? fallback : preferred;
+    }
+
+    private static String publishingEntryPath(boolean canPublish, Membership membership) {
+        if (!canPublish || membership == null) {
+            return "/dang-ky-dang-truyen";
+        }
+        String teamRef = firstNonBlank(membership.teamSlug(), membership.teamId());
+        return switch (membership.memberRole()) {
+            case "OWNER", "ADMIN" -> "/teams/" + teamRef + "/dashboard";
+            default -> "/teams/" + teamRef + "/stories";
+        };
     }
 
     private record Membership(String teamId, String teamSlug, String teamName, String memberRole) {}

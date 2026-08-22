@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
 import org.springframework.web.server.ResponseStatusException;
@@ -44,9 +45,11 @@ import org.springframework.web.server.ResponseStatusException;
 public class TeamWorkspaceController {
 
     private static final int SERIES_DAYS = 7;
+    private static final int DAILY_MEMBER_INVITE_LIMIT = 2;
+    private static final int MAX_ACTIVE_TEAM_ACCOUNTS = 10;
 
     /** Team roles allowed to open the workspace. MEMBER is read-only elsewhere. */
-    private static final Set<String> PUBLISHING_ROLES = Set.of("OWNER", "MANAGER", "EDITOR");
+    private static final Set<String> PUBLISHING_ROLES = Set.of("OWNER", "MANAGER", "EDITOR", "MEMBER");
 
     private final JdbcClient jdbc;
 
@@ -82,11 +85,19 @@ public class TeamWorkspaceController {
 
     // ---------------------------------------------------------------- reads
 
+    @GetMapping("/access")
+    @Transactional(readOnly = true)
+    public TeamAccess access(@PathVariable("teamId") String teamRef, @AuthenticationPrincipal Jwt jwt) {
+        String teamId = resolveTeamId(teamRef);
+        String role = requireMembershipOrAdmin(teamId, jwt);
+        return new TeamAccess(teamId, teamName(teamId), role, canSeeOwnerSurfaces(role));
+    }
+
     @GetMapping("/dashboard")
     @Transactional(readOnly = true)
     public TeamOverview dashboard(@PathVariable("teamId") String teamRef, @AuthenticationPrincipal Jwt jwt) {
         String teamId = resolveTeamId(teamRef);
-        String role = requireMembership(teamId, jwt);
+        String role = requireOwnerOrAdmin(teamId, jwt);
 
         TeamStats stats = new TeamStats(
                 scalar("SELECT COALESCE(SUM(net_coin), 0) FROM team_ledger WHERE team_id = ?", teamId),
@@ -132,12 +143,28 @@ public class TeamWorkspaceController {
     @Transactional(readOnly = true)
     public List<TeamStoryRow> stories(@PathVariable("teamId") String teamRef, @AuthenticationPrincipal Jwt jwt) {
         String teamId = resolveTeamId(teamRef);
-        requireMembership(teamId, jwt);
+        String role = requireMembershipOrAdmin(teamId, jwt);
+        boolean showFinancials = canSeeOwnerSurfaces(role);
         return jdbc.sql("""
                 SELECT s.id, s.slug, s.title, s.cover_url, s.status, s.progress_status,
                        s.story_format, s.story_type, s.view_count_cache, s.follow_count_cache,
                        s.favorite_count_cache, s.combo_price_xu, s.original_author,
-                       s.short_description, s.published_at, s.last_chapter_at, s.updated_at,
+                       -- The full synopsis as well as the 500-character teaser.
+                       -- The edit form used to load the teaser and save it back
+                       -- as the synopsis, so every edit clipped the
+                       -- introduction to 500 characters and the loss was
+                       -- permanent - one round trip through the form and the
+                       -- rest of the text was gone.
+                       s.short_description, s.description,
+                       s.published_at, s.last_chapter_at, s.updated_at,
+                       -- Genres and tags the story already carries. The edit
+                       -- form has to load these back: without them it opened
+                       -- with nothing ticked and no tags, and saving wrote that
+                       -- emptiness over what the story had.
+                       (SELECT GROUP_CONCAT(sg.genre_id) FROM story_genres sg
+                         WHERE sg.story_id = s.id) AS category_ids,
+                       (SELECT GROUP_CONCAT(st.label ORDER BY st.label SEPARATOR ',')
+                          FROM story_tags st WHERE st.story_id = s.id) AS tag_labels,
                        (SELECT COUNT(*) FROM chapters c WHERE c.story_id = s.id) AS chapter_count,
                        (SELECT COUNT(*) FROM chapters c
                          WHERE c.story_id = s.id AND c.status = 'PUBLISHED') AS published_chapter_count,
@@ -177,12 +204,16 @@ public class TeamWorkspaceController {
                         rs.getObject("combo_price_xu") == null ? null : rs.getLong("combo_price_xu"),
                         rs.getString("original_author"),
                         rs.getString("short_description"),
+
+                        rs.getString("description"),
+                        splitCsv(rs.getString("category_ids")),
+                        splitCsv(rs.getString("tag_labels")),
                         rs.getInt("chapter_count"),
                         rs.getInt("published_chapter_count"),
                         instant(rs, "published_at"),
                         instant(rs, "last_chapter_at"),
                         instant(rs, "updated_at"),
-                        rs.getLong("revenue_xu")
+                        showFinancials ? rs.getLong("revenue_xu") : 0L
                 ))
                 .list();
     }
@@ -262,6 +293,55 @@ public class TeamWorkspaceController {
         }
         requireStoryOwnedByTeam(teamId, storyId);
         storyWriter.archive(UUID.fromString(storyId));
+    }
+
+    /**
+     * Removes a story and its chapters for good.
+     *
+     * <p>Hiding is the safe operation and stays the default; this exists because
+     * a team that uploaded the wrong file, or a duplicate, otherwise carries it
+     * in their list forever.
+     *
+     * <p>Refused once anyone has paid for any part of the story. A chapter
+     * someone bought cannot be deleted without taking away what they paid for,
+     * and the unlock rows reference it. Those stories can still be hidden, which
+     * achieves the same thing for readers browsing the site.
+     */
+    @DeleteMapping("/stories/{storyId}/permanent")
+    @Transactional
+    public void deleteStory(
+            @PathVariable("teamId") String teamRef,
+            @PathVariable String storyId,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        String teamId = resolveTeamId(teamRef);
+        String role = requireMembership(teamId, jwt);
+        if (!"OWNER".equals(role)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Chỉ chủ nhóm mới được xoá vĩnh viễn truyện.");
+        }
+        requireStoryOwnedByTeam(teamId, storyId);
+
+        long unlocks = scalar("""
+                SELECT COUNT(*) FROM chapter_unlocks cu
+                JOIN chapters c ON c.id = cu.chapter_id
+                WHERE c.story_id = ?
+                """, storyId);
+        long combos = scalar("SELECT COUNT(*) FROM story_combo_purchases WHERE story_id = ?", storyId);
+        if (unlocks + combos > 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Truyện đã có %d lượt mua nên không xoá được. Hãy dùng \"Ẩn truyện\" để gỡ khỏi trang."
+                            .formatted(unlocks + combos));
+        }
+
+        // Chapters go first: the foreign key from chapters to stories is not
+        // ON DELETE CASCADE, so the story row would refuse to go otherwise.
+        jdbc.sql("DELETE FROM chapters WHERE story_id = ?").param(storyId).update();
+        jdbc.sql("DELETE FROM story_genres WHERE story_id = ?").param(storyId).update();
+        jdbc.sql("DELETE FROM story_tags WHERE story_id = ?").param(storyId).update();
+        jdbc.sql("DELETE FROM stories WHERE id = ? AND team_id = ?")
+                .params(storyId, teamId)
+                .update();
     }
 
     /**
@@ -440,7 +520,7 @@ public class TeamWorkspaceController {
     @Transactional(readOnly = true)
     public TeamEarnings earnings(@PathVariable("teamId") String teamRef, @AuthenticationPrincipal Jwt jwt) {
         String teamId = resolveTeamId(teamRef);
-        requireMembership(teamId, jwt);
+        requireOwnerOrAdmin(teamId, jwt);
 
         List<EarningRow> byType = jdbc.sql("""
                 SELECT type, COALESCE(SUM(net_coin), 0) AS net, COUNT(*) AS entries
@@ -465,6 +545,118 @@ public class TeamWorkspaceController {
                         """, teamId),
                 byType
         );
+    }
+
+    @GetMapping("/analytics")
+    @Transactional(readOnly = true)
+    public TeamAnalyticsReport analytics(
+            @PathVariable("teamId") String teamRef,
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam(defaultValue = "30D") String period
+    ) {
+        String teamId = resolveTeamId(teamRef);
+        requireOwnerOrAdmin(teamId, jwt);
+
+        int days = switch (period == null ? "" : period.toUpperCase(Locale.ROOT)) {
+            case "7D" -> 7;
+            case "90D" -> 90;
+            default -> 30;
+        };
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        LocalDate from = today.minusDays(days - 1L);
+        List<DayValue> rows = jdbc.sql("""
+                        SELECT DATE(v.viewed_at) AS d, COUNT(*) AS v
+                        FROM story_views v
+                        JOIN stories s ON s.id = v.story_id
+                        WHERE s.team_id = ? AND v.viewed_at >= ?
+                        GROUP BY DATE(v.viewed_at)
+                        """)
+                .params(List.of(teamId, from.atStartOfDay(ZoneOffset.UTC).toInstant()))
+                .query((rs, rowNum) -> new DayValue(rs.getDate("d").toLocalDate(), rs.getLong("v")))
+                .list();
+
+        List<AnalyticsBucket> series = new ArrayList<>(days);
+        long total = 0L;
+        for (int offset = 0; offset < days; offset++) {
+            LocalDate day = from.plusDays(offset);
+            long value = rows.stream()
+                    .filter(row -> row.day().equals(day))
+                    .mapToLong(DayValue::value)
+                    .findFirst()
+                    .orElse(0L);
+            total += value;
+            series.add(new AnalyticsBucket(
+                    day.atStartOfDay(ZoneOffset.UTC).toInstant().toString(),
+                    value,
+                    0,
+                    value,
+                    value,
+                    1.0
+            ));
+        }
+
+        return new TeamAnalyticsReport(
+                teamId,
+                days == 7 ? "7D" : days == 90 ? "90D" : "30D",
+                from.atStartOfDay(ZoneOffset.UTC).toInstant().toString(),
+                today.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant().toString(),
+                new AnalyticsTotals(total, total, 0, total == 0 ? 1.0 : 1.0),
+                series,
+                List.of()
+        );
+    }
+
+    @GetMapping("/supporters")
+    @Transactional(readOnly = true)
+    public TeamSupporters supporters(@PathVariable("teamId") String teamRef, @AuthenticationPrincipal Jwt jwt) {
+        String teamId = resolveTeamId(teamRef);
+        requireOwnerOrAdmin(teamId, jwt);
+
+        List<DonationSupporterRow> donations = jdbc.sql("""
+                SELECT d.id, d.gross_coin, d.team_net_coin, d.message, d.created_at,
+                       u.email, u.display_name, s.title AS story_title
+                FROM donations d
+                JOIN users u ON u.id = d.user_id
+                LEFT JOIN stories s ON s.id = d.story_id
+                WHERE d.team_id = ?
+                ORDER BY d.created_at DESC
+                LIMIT 100
+                """)
+                .param(teamId)
+                .query((rs, rowNum) -> new DonationSupporterRow(
+                        rs.getString("id"),
+                        rs.getString("email"),
+                        rs.getString("display_name"),
+                        rs.getString("story_title"),
+                        rs.getLong("gross_coin"),
+                        rs.getLong("team_net_coin"),
+                        rs.getString("message"),
+                        instant(rs, "created_at")
+                ))
+                .list();
+
+        List<RecommendationSupporterRow> recommendations = jdbc.sql("""
+                SELECT r.id, r.gem_amount, r.created_at,
+                       u.email, u.display_name, s.title AS story_title
+                FROM story_recommendations r
+                JOIN stories s ON s.id = r.story_id
+                JOIN users u ON u.id = r.user_id
+                WHERE s.team_id = ?
+                ORDER BY r.created_at DESC
+                LIMIT 100
+                """)
+                .param(teamId)
+                .query((rs, rowNum) -> new RecommendationSupporterRow(
+                        rs.getString("id"),
+                        rs.getString("email"),
+                        rs.getString("display_name"),
+                        rs.getString("story_title"),
+                        rs.getLong("gem_amount"),
+                        instant(rs, "created_at")
+                ))
+                .list();
+
+        return new TeamSupporters(donations, recommendations);
     }
 
     /* ------------------------------------------------------ team management */
@@ -570,6 +762,7 @@ public class TeamWorkspaceController {
     ) {
         String teamId = resolveTeamId(teamRef);
         requireOwner(teamId, jwt);
+        String ownerId = jwt.getSubject();
 
         String email = request.email() == null ? "" : request.email().trim();
         if (email.isEmpty()) {
@@ -591,13 +784,55 @@ public class TeamWorkspaceController {
             default -> "MEMBER";
         };
 
-        jdbc.sql("""
-                INSERT INTO team_members (team_id, user_id, member_role, status, joined_at)
-                VALUES (?, ?, ?, 'ACTIVE', NOW(3))
-                ON DUPLICATE KEY UPDATE member_role = VALUES(member_role), status = 'ACTIVE'
+        String existingStatus = jdbc.sql("""
+                SELECT status FROM team_members
+                WHERE team_id = ? AND user_id = ?
+                LIMIT 1
                 """)
-                .params(teamId, userId, role)
-                .update();
+                .params(teamId, userId)
+                .query(String.class)
+                .optional()
+                .orElse(null);
+
+        if ("ACTIVE".equals(existingStatus)) {
+            jdbc.sql("UPDATE team_members SET member_role = ? WHERE team_id = ? AND user_id = ?")
+                    .params(role, teamId, userId)
+                    .update();
+        } else {
+            long activeAccounts = scalar("""
+                    SELECT COUNT(*) FROM team_members
+                    WHERE team_id = ?
+                      AND status = 'ACTIVE'
+                    """, teamId);
+            if (activeAccounts >= MAX_ACTIVE_TEAM_ACCOUNTS) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Mỗi team chỉ được tối đa 10 tài khoản. Hãy xoá bớt thành viên trước khi thêm người mới.");
+            }
+
+            long addedToday = scalar("""
+                    SELECT COUNT(*) FROM team_members
+                    WHERE team_id = ?
+                      AND member_role <> 'OWNER'
+                      AND joined_at >= UTC_TIMESTAMP(3) - INTERVAL 1 DAY
+                    """, teamId);
+            if (addedToday >= DAILY_MEMBER_INVITE_LIMIT) {
+                throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                        "Mỗi team chỉ thêm tối đa 2 thành viên trong 24 giờ. Hãy thử lại sau.");
+            }
+
+            jdbc.sql("""
+                    INSERT INTO team_members (team_id, user_id, member_role, status, added_by, joined_at, removed_at)
+                    VALUES (?, ?, ?, 'ACTIVE', ?, NOW(3), NULL)
+                    ON DUPLICATE KEY UPDATE
+                        member_role = VALUES(member_role),
+                        status = 'ACTIVE',
+                        added_by = VALUES(added_by),
+                        joined_at = VALUES(joined_at),
+                        removed_at = NULL
+                    """)
+                    .params(teamId, userId, role, ownerId)
+                    .update();
+        }
 
         return jdbc.sql("""
                 SELECT m.user_id, m.member_role, m.status, m.joined_at,
@@ -637,7 +872,7 @@ public class TeamWorkspaceController {
     @Transactional(readOnly = true)
     public List<TeamMemberRow> members(@PathVariable("teamId") String teamRef, @AuthenticationPrincipal Jwt jwt) {
         String teamId = resolveTeamId(teamRef);
-        requireMembership(teamId, jwt);
+        requireOwnerOrAdmin(teamId, jwt);
         return jdbc.sql("""
                 SELECT m.user_id, m.member_role, m.status, m.joined_at,
                        u.username, u.display_name, u.avatar_url
@@ -688,6 +923,36 @@ public class TeamWorkspaceController {
         return role;
     }
 
+    private String requireMembershipOrAdmin(String teamId, Jwt jwt) {
+        if (isAdmin(jwt)) {
+            return "ADMIN";
+        }
+        return requireMembership(teamId, jwt);
+    }
+
+    private String requireOwnerOrAdmin(String teamId, Jwt jwt) {
+        String role = requireMembershipOrAdmin(teamId, jwt);
+        if (!canSeeOwnerSurfaces(role)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không có quyền thao tác này.");
+        }
+        return role;
+    }
+
+    private static boolean canSeeOwnerSurfaces(String role) {
+        return "OWNER".equals(role) || "ADMIN".equals(role);
+    }
+
+    private static boolean isAdmin(Jwt jwt) {
+        if (jwt == null) {
+            return false;
+        }
+        String role = jwt.getClaimAsString("role");
+        String scope = jwt.getClaimAsString("scope");
+        return "ADMIN".equalsIgnoreCase(role)
+                || (scope != null && java.util.Arrays.stream(scope.split("\\s+"))
+                .anyMatch("ADMIN"::equalsIgnoreCase));
+    }
+
     /** Stops a member of team A reading team B's chapters by passing its story id. */
     private void requireStoryOwnedByTeam(String teamId, String storyId) {
         long owned = scalar("SELECT COUNT(*) FROM stories WHERE id = ? AND team_id = ?", storyId, teamId);
@@ -723,6 +988,22 @@ public class TeamWorkspaceController {
                 .query(String.class)
                 .optional()
                 .orElse(teamRef);
+    }
+
+    /**
+     * Splits a GROUP_CONCAT result into a list, empty when the story has none.
+     *
+     * <p>GROUP_CONCAT returns SQL NULL rather than an empty string when nothing
+     * matched, and an empty list is what the edit form wants in that case.
+     */
+    private static List<String> splitCsv(String joined) {
+        if (joined == null || joined.isBlank()) {
+            return List.of();
+        }
+        return java.util.Arrays.stream(joined.split(","))
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .toList();
     }
 
     private String teamName(String teamId) {
@@ -816,6 +1097,8 @@ public class TeamWorkspaceController {
             List<String> tasks
     ) {}
 
+    public record TeamAccess(String teamId, String teamName, String memberRole, boolean ownerAccess) {}
+
     public record TeamStoryRow(
             String id,
             String slug,
@@ -832,6 +1115,14 @@ public class TeamWorkspaceController {
             Long comboPriceXu,
             String originalAuthor,
             String shortDescription,
+
+            /** The full synopsis, not the 500-character teaser above. */
+
+            String description,
+            /** Genres already linked, so the edit form can tick them again. */
+            List<String> categoryIds,
+            /** Tag labels already linked, for the same reason. */
+            List<String> tags,
             int chapterCount,
             int publishedChapterCount,
             String publishedAt,
@@ -860,6 +1151,59 @@ public class TeamWorkspaceController {
     public record EarningRow(String type, long netCoin, long entries) {}
 
     public record TeamEarnings(long totalNetCoin, long last30DaysNetCoin, List<EarningRow> byType) {}
+
+    public record AnalyticsTotals(
+            long rawEvents,
+            long validViews,
+            long invalidViews,
+            double qualityRate
+    ) {}
+
+    public record AnalyticsBucket(
+            String start,
+            long validViews,
+            long invalidViews,
+            long completedViews,
+            long rawEvents,
+            double qualityRate
+    ) {}
+
+    public record AnalyticsReason(String code, long count) {}
+
+    public record TeamAnalyticsReport(
+            String teamId,
+            String period,
+            String from,
+            String to,
+            AnalyticsTotals totals,
+            List<AnalyticsBucket> series,
+            List<AnalyticsReason> reasons
+    ) {}
+
+    public record DonationSupporterRow(
+            String id,
+            String userEmail,
+            String displayName,
+            String storyTitle,
+            long grossCoin,
+            long teamNetCoin,
+            String message,
+            String createdAt
+    ) {}
+
+    public record RecommendationSupporterRow(
+            String id,
+            String userEmail,
+            String displayName,
+            String storyTitle,
+            long gemAmount,
+            String createdAt
+    ) {}
+
+    public record TeamSupporters(
+            List<DonationSupporterRow> donations,
+            List<RecommendationSupporterRow> recommendations
+    ) {}
 
     public record TeamMemberRow(
             String userId,

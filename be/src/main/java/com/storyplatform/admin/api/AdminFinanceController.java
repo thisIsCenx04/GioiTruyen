@@ -28,8 +28,8 @@ public class AdminFinanceController {
      * Mirrors the wallet_transactions.type column enum defined in the schema.
      */
     private static final Set<String> ENTRY_TYPES = Set.of(
-            "DEPOSIT", "PURCHASE", "DONATION", "RECOMMENDATION",
-            "DAILY_REWARD", "REFERRAL_REWARD", "REFUND", "ADMIN_ADJUSTMENT");
+            "DEPOSIT", "PURCHASE", "DONATION", "EARNING", "RECOMMENDATION",
+            "DAILY_REWARD", "REFERRAL_REWARD", "REFUND", "ADMIN_ADJUSTMENT", "WITHDRAWAL");
 
     private static final String LIST_SQL = """
             SELECT wt.id, wt.type, wt.amount, wt.reference_type, wt.reference_id,

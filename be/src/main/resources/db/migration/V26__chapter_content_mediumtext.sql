@@ -1,0 +1,11 @@
+-- chapters.content was TEXT, which MySQL caps at 65,535 BYTES - not characters.
+-- Vietnamese prose in UTF-8 runs about three bytes per character, so the real
+-- ceiling was roughly 7,000 words. A publisher uploading one long chapter as a
+-- single file got "Trường content quá dài" after the whole upload had already
+-- been sent, with no way to tell beforehand that it would not fit.
+--
+-- MEDIUMTEXT holds 16 MB, which is past any chapter anyone will write, and lets
+-- a per-chapter file upload store exactly what the file says - which is the rule
+-- for chapter uploads: the publisher decides where a chapter ends, not a limit
+-- nobody was told about.
+ALTER TABLE chapters MODIFY COLUMN content MEDIUMTEXT NOT NULL;

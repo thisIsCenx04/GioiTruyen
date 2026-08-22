@@ -101,34 +101,52 @@ export async function loadHome() {
     withTimeout(catalog.rankingBoards(), 10000, [], outcome),
   ]);
 
-  // One "all stories" shelf in front of the API's own sections, built from the
-  // sections themselves - deduplicated because a story can appear in several.
-  const allStories = [
-    ...new Map(
-      storySections.flatMap((section) => section.stories).map((story) => [story.id, story]),
-    ).values(),
-  ];
-
-  const mergedStorySections = allStories.length > 0
-    ? [
-        {
-          id: "sec-all-stories",
-          tag: "all",
-          title: "TRUYỆN MỚI CẬP NHẬT",
-          stories: allStories,
-        },
-        ...storySections,
-      ]
-    : storySections;
-
+  // A synthetic "TRUYỆN MỚI CẬP NHẬT" shelf used to be prepended here, built by
+  // pooling every other shelf. Being a union it could never hold a story the
+  // page was not already showing, and it sat directly above the API's own
+  // "Truyện vừa cập nhật" - so the home page opened with the same six covers
+  // twice under two headings that say the same thing. The API's shelves stand
+  // on their own.
   return {
     ...home,
     degraded: outcome.degraded,
     promotions,
     rankingBoards,
-    storySections: mergedStorySections,
+    storySections: mergeSectionsByTitle(storySections),
     taxonomy,
   };
+}
+
+/**
+ * Folds shelves that share a heading into one.
+ *
+ * <p>Two sections with the same title read as a rendering fault, whatever
+ * produced them: the reader sees one heading, scrolls a row, and meets the
+ * heading again. Merging keeps every story - the survivor simply grows another
+ * row - and keeps the position of the first occurrence, so the page order does
+ * not shift. Stories are deduplicated by id because the same story legitimately
+ * appears on several shelves.
+ */
+export function mergeSectionsByTitle<T extends { title: string; stories: HomeStorySummary[] }>(
+  sections: T[],
+): T[] {
+  const merged = new Map<string, T>();
+  for (const section of sections) {
+    const key = section.title.trim().toLocaleLowerCase("vi");
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, { ...section, stories: [...section.stories] });
+      continue;
+    }
+    const seen = new Set(existing.stories.map((story) => story.id));
+    for (const story of section.stories) {
+      if (!seen.has(story.id)) {
+        seen.add(story.id);
+        existing.stories.push(story);
+      }
+    }
+  }
+  return [...merged.values()];
 }
 
 export async function loadStorySections() {

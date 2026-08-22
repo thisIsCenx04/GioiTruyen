@@ -319,8 +319,8 @@
 
 .storySheet,
 .chapterDesk {
-  background: white;
-  border: 0.08rem solid #ccd3e5;
+  background: var(--surface-card);
+  border: 0.08rem solid var(--line);
   box-shadow: 0.7rem 0.8rem 0 #e6eaf5;
 }
 
@@ -461,8 +461,8 @@
 
 .addChapter input,
 .addChapter textarea {
-  background: white;
-  border-color: #b8c1d7;
+  background: var(--surface-card);
+  border-color: var(--border-strong, #b8c1d7);
   color: var(--ink);
 }
 

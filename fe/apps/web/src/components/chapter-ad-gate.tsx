@@ -4,7 +4,7 @@ import { Play, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { AdsenseUnit } from "./adsense-unit";
+import { AdsenseUnit, ADSENSE_SLOTS } from "./adsense-unit";
 
 /**
  * The interstitial shown when a reader moves to the next chapter.
@@ -79,7 +79,7 @@ export function ChapterAdGate({
           {/* No fixed minHeight here: the slot's own CSS reserves the space and
               shrinks it per breakpoint, and an inline height would override
               every one of those media queries. */}
-          <AdsenseUnit format="rectangle" style={{ display: "block", width: "100%" }} />
+          <AdsenseUnit format="rectangle" slot={ADSENSE_SLOTS.chapterGate} style={{ display: "block", width: "100%" }} />
         </div>
 
         {/* Enabled the whole time: it now skips the remaining wait rather than

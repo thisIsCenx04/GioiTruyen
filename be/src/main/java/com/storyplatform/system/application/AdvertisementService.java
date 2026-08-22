@@ -145,17 +145,28 @@ public class AdvertisementService {
         if (!Boolean.TRUE.equals(advertisement.getIsActive())) {
             throw new ApiException(HttpStatus.CONFLICT, "advertisement.inactive", "Advertisement inactive", "Advertisement is inactive");
         }
-        AdEvent event = new AdEvent();
-        event.setId(UUID.randomUUID());
-        event.setAdvertisementId(advertisementId);
-        event.setUserId(request.userId());
-        event.setSessionId(request.sessionId());
-        event.setStoryId(request.storyId());
-        event.setPageUrl(request.pageUrl());
-        event.setIpHash(ipHash);
-        event.setEventType(request.eventType());
-        event.setCreatedAt(Instant.now(clock));
-        adEventRepository.save(event);
+        // Inserted directly rather than through the repository. Spring Data JDBC
+        // reads a populated @Id as "this row already exists" and emits an UPDATE,
+        // which failed with "Id ... not found in database" - so every single
+        // tracked impression and click answered 500. Nothing exercised this path
+        // until the front end started reporting events, which is why the table
+        // was empty and the defect invisible.
+        jdbc.sql("""
+                        INSERT INTO ad_events (id, advertisement_id, user_id, session_id, story_id,
+                                               page_url, ip_hash, event_type, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """)
+                .params(
+                        UUID.randomUUID().toString(),
+                        advertisementId.toString(),
+                        request.userId() == null ? null : request.userId().toString(),
+                        request.sessionId(),
+                        request.storyId() == null ? null : request.storyId().toString(),
+                        request.pageUrl(),
+                        ipHash,
+                        request.eventType().name(),
+                        java.sql.Timestamp.from(Instant.now(clock)))
+                .update();
     }
 
     private ActiveAdvertisementResponse toActiveResponse(Advertisement advertisement) {

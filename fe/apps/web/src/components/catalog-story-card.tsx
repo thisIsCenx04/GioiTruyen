@@ -68,7 +68,6 @@ export function CatalogStoryCard({
         {story.storyType === "EXCLUSIVE" ? (
           <span className="coverTagRow"><span className="exclusiveBadge">ĐỘC QUYỀN</span></span>
         ) : null}
-        {fullState ? <span className="fullRibbon"><span>FULL</span></span> : null}
         {cover
           ? (
             <img
@@ -95,6 +94,10 @@ export function CatalogStoryCard({
           </span>
         </div>
       </Link>
+      {/* Outside the cover on purpose: the cover clips its contents, which kept
+          the ribbon tucked inside the artwork's rounded corner. Anchored to the
+          card it sits on top of the picture like a tag stuck on a product. */}
+      {fullState ? <span className="fullRibbon"><span>FULL</span></span> : null}
       <div className="catalogCardBody">
         <h3 title={story.title}>
           <Link to={href}>{story.title}</Link>

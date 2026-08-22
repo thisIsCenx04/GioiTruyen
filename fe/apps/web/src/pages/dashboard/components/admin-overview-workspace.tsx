@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { AdminOverview, ChartPoint } from "../admin-data";
+import type { AdminOverview, AdOverview, ChartPoint } from "../admin-data";
 import { BarChart, PointLineChart } from "./admin-charts";
 
 type Range = "7d" | "30d" | "90d";
@@ -75,22 +75,20 @@ const STAT_CARDS = [
       </svg>
     ),
   },
-  {
-    key: "stories" as const,
-    label: "Tổng Số Truyện",
-    sub: "Truyện trên nền tảng",
-    detail: "Tổng số tác phẩm công khai trên thư viện Giới Truyện",
-    explanation: "Bao gồm Truyện chữ, Truyện dịch, Độc quyền, Sáng tác & Audio đã được xuất bản.",
-    fmt: (v: number) => v.toLocaleString("vi-VN"),
-    gradient: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="7" height="9" rx="1" /><rect x="14" y="3" width="7" height="5" rx="1" />
-        <rect x="14" y="12" width="7" height="9" rx="1" /><rect x="3" y="16" width="7" height="5" rx="1" />
-      </svg>
-    ),
-  },
+  // "Tổng Số Truyện" used to close this row. It is a stock figure, not a signal:
+  // it only ever goes up, it says nothing about how the platform is doing today,
+  // and the content tab already lists every story with its status.
 ];
+
+/** Placement codes as stored in advertisements.placement. */
+const PLACEMENT_LABELS: Record<string, string> = {
+  GLOBAL_CLICK: "Click toàn trang",
+  HOME: "Trang chủ",
+  READER: "Trang đọc chương",
+  SIDEBAR: "Cột bên",
+  STORY_DETAIL: "Trang chi tiết truyện",
+  STORY_OPEN: "Khi mở truyện",
+};
 
 function RangeSelector({ value, onChange }: { value: Range; onChange: (r: Range) => void }) {
   return (
@@ -116,6 +114,125 @@ function RangeSelector({ value, onChange }: { value: Range; onChange: (r: Range)
         </button>
       ))}
     </div>
+  );
+}
+
+const CARD_STYLE: React.CSSProperties = {
+  background: "var(--surface-card, #fff)",
+  border: "1px solid var(--line, #dfeaf6)",
+  borderRadius: "12px",
+  boxShadow: "0 2px 10px rgba(24,47,100,0.05)",
+  padding: "1rem 1.25rem",
+};
+
+/**
+ * Advertising performance.
+ *
+ * <p>Everything here is the platform's own banners and affiliate redirects, the
+ * events this database records. AdSense impressions, clicks and earnings are
+ * not in it: those live in the AdSense account and can only be read through the
+ * AdSense Management API, which needs its own OAuth client. Rather than draw an
+ * empty AdSense chart that reads as "nobody saw an ad today", the panel says
+ * where those numbers are.
+ */
+function AdsPanel({ ads, range }: Readonly<{ ads: AdOverview; range: Range }>) {
+  const ranked = [...ads.placements].sort((left, right) => right.ctr - left.ctr);
+  const best = ranked.find((row) => row.impressions > 0);
+  const idle = ads.placements.filter((row) => row.activeUnits === 0);
+
+  return (
+    <section style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+      <div style={{ display: "grid", gap: "0.75rem", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
+        <div style={CARD_STYLE}>
+          <h3 style={{ color: "var(--text-primary, #0f172a)", fontSize: "0.95rem", fontWeight: 700, margin: "0 0 0.1rem" }}>
+            Lượt hiển thị quảng cáo
+          </h3>
+          <p style={{ color: "var(--text-secondary, #64748b)", fontSize: "0.75rem", margin: "0 0 0.65rem" }}>
+            Banner của hệ thống, theo từng ngày
+          </p>
+          <PointLineChart series={filterByRange(ads.impressionSeries, range)} />
+        </div>
+
+        <div style={CARD_STYLE}>
+          <h3 style={{ color: "var(--text-primary, #0f172a)", fontSize: "0.95rem", fontWeight: 700, margin: "0 0 0.1rem" }}>
+            Lượt click &amp; chuyển hướng
+          </h3>
+          <p style={{ color: "var(--text-secondary, #64748b)", fontSize: "0.75rem", margin: "0 0 0.65rem" }}>
+            Tính cả link tiếp thị liên kết được bấm
+          </p>
+          <BarChart series={filterByRange(ads.clickSeries, range)} />
+        </div>
+      </div>
+
+      <div style={CARD_STYLE}>
+        <div style={{ alignItems: "baseline", display: "flex", flexWrap: "wrap", gap: "0.5rem 1.25rem", marginBottom: "0.75rem" }}>
+          <h3 style={{ color: "var(--text-primary, #0f172a)", fontSize: "0.95rem", fontWeight: 700, margin: 0 }}>
+            Hiệu quả theo vị trí đặt
+          </h3>
+          <span style={{ color: "var(--text-secondary, #64748b)", fontSize: "0.78rem" }}>
+            {ads.impressions.toLocaleString("vi-VN")} hiển thị ·{" "}
+            {ads.clicks.toLocaleString("vi-VN")} click · CTR {ads.ctr}% ·{" "}
+            {ads.activeUnits} banner đang bật
+          </span>
+        </div>
+
+        {ads.placements.length === 0 ? (
+          <p style={{ color: "var(--text-muted, #94a3b8)", fontSize: "0.82rem", margin: 0 }}>
+            Chưa có banner nào được tạo. Vào tab Quảng cáo để thêm vị trí đầu tiên.
+          </p>
+        ) : (
+          <table style={{ borderCollapse: "collapse", fontSize: "0.82rem", width: "100%" }}>
+            <thead>
+              <tr style={{ color: "var(--text-secondary, #64748b)", textAlign: "left" }}>
+                <th style={{ padding: "0.4rem 0.5rem" }}>Vị trí</th>
+                <th style={{ padding: "0.4rem 0.5rem", textAlign: "right" }}>Hiển thị</th>
+                <th style={{ padding: "0.4rem 0.5rem", textAlign: "right" }}>Click</th>
+                <th style={{ padding: "0.4rem 0.5rem", textAlign: "right" }}>CTR</th>
+                <th style={{ padding: "0.4rem 0.5rem", textAlign: "right" }}>Đang bật</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ads.placements.map((row) => (
+                <tr key={row.placement} style={{ borderTop: "1px solid var(--line, #e2e8f0)" }}>
+                  <td style={{ color: "var(--text-primary, #0f172a)", fontWeight: 650, padding: "0.45rem 0.5rem" }}>
+                    {PLACEMENT_LABELS[row.placement] ?? row.placement}
+                  </td>
+                  <td style={{ padding: "0.45rem 0.5rem", textAlign: "right" }}>
+                    {row.impressions.toLocaleString("vi-VN")}
+                  </td>
+                  <td style={{ padding: "0.45rem 0.5rem", textAlign: "right" }}>
+                    {row.clicks.toLocaleString("vi-VN")}
+                  </td>
+                  <td style={{ fontWeight: 700, padding: "0.45rem 0.5rem", textAlign: "right" }}>{row.ctr}%</td>
+                  <td style={{ padding: "0.45rem 0.5rem", textAlign: "right" }}>{row.activeUnits}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        {/* What the table implies, said plainly - only when there is enough
+            data to imply it. A CTR computed from a handful of impressions is
+            noise, so the suggestion waits for a hundred. */}
+        {best && best.impressions >= 100 ? (
+          <p style={{ color: "var(--text-secondary, #475569)", fontSize: "0.8rem", margin: "0.75rem 0 0" }}>
+            Vị trí <strong>{PLACEMENT_LABELS[best.placement] ?? best.placement}</strong> đang hiệu quả nhất
+            với CTR {best.ctr}%. Cân nhắc dồn banner giá trị cao vào đây.
+            {idle.length > 0
+              ? ` ${idle.length} vị trí chưa bật banner nào: ${idle
+                  .map((row) => PLACEMENT_LABELS[row.placement] ?? row.placement)
+                  .join(", ")}.`
+              : ""}
+          </p>
+        ) : null}
+
+        <p style={{ color: "var(--text-muted, #94a3b8)", fontSize: "0.75rem", lineHeight: 1.5, margin: "0.75rem 0 0" }}>
+          Số liệu trên là banner &amp; link tiếp thị của hệ thống. Doanh thu, lượt hiển thị và click
+          của Google AdSense không nằm trong cơ sở dữ liệu này — xem tại AdSense Dashboard, hoặc cấp
+          OAuth cho AdSense Management API để đồng bộ tự động vào đây.
+        </p>
+      </div>
+    </section>
   );
 }
 
@@ -269,6 +386,8 @@ export function OverviewWorkspace({ overview }: Readonly<{ overview: AdminOvervi
           <BarChart series={filteredRevenue} />
         </div>
       </div>
+
+      <AdsPanel ads={overview.ads} range={range} />
     </div>
   );
 }

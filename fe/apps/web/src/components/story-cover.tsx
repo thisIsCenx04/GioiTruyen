@@ -29,7 +29,10 @@ export function coverUrl(coverAssetId: string | null | undefined): string {
  */
 export function coverThumbUrl(coverAssetId: string | null | undefined): string {
   const original = coverUrl(coverAssetId);
-  const match = /^(\/uploads\/stories\/)([^/]+)\.(png|jpe?g)$/iu.exec(original);
+  // The prefix is not anchored: stored URLs carry the API context path
+  // ("/api/v1/uploads/stories/…"), and anchoring at "/uploads" matched none of
+  // them - every card silently kept loading the full-size original.
+  const match = /^(.*\/uploads\/stories\/)([^/]+)\.(png|jpe?g)$/iu.exec(original);
   return match ? `${match[1]}thumb/${match[2]}.jpg` : original;
 }
 

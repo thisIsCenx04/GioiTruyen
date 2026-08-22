@@ -86,11 +86,16 @@ server:
     max-http-form-post-size: ${MAX_HTTP_FORM_POST_SIZE:100MB}
     max-swallow-size: 100MB
     # Tomcat caps a multipart request at 50 parts by default, and a story is
-    # submitted as up to four parts per chapter (title, slug, content, tags) - so
-    # a 12-chapter upload already tripped FileCountLimitExceededException before
-    # any controller ran. Long translations legitimately reach 1000+ chapters,
-    # so the ceiling is sized for the 3000-chapter limit the admin API enforces.
-    max-part-count: ${MAX_PART_COUNT:15000}
+    # submitted as six parts per chapter (id, title, slug, content, accessType,
+    # coinPrice) - so a 12-chapter upload already tripped
+    # FileCountLimitExceededException before any controller ran.
+    #
+    # Sized for the 3000-chapter limit the admin API enforces: 6 x 3000 = 18000
+    # plus the story's own fields. At 15000 the real ceiling was about 2490
+    # chapters, below the limit the form advertises, and a longer story failed
+    # inside Tomcat - so the publisher got an opaque error instead of the
+    # "quá nhiều chương" message the form is written to show.
+    max-part-count: ${MAX_PART_COUNT:20000}
     max-parameter-count: ${MAX_PARAMETER_COUNT:40000}
 
 management:

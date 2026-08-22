@@ -11,9 +11,11 @@ import java.math.RoundingMode;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -30,10 +32,67 @@ public class MonetizationFlowService {
     private static final BigDecimal DEFAULT_DONATION_FEE_RATE = new BigDecimal("0.10");
 
     private final NamedParameterJdbcTemplate jdbc;
+    private final long withdrawalMinimumGrossXu;
+    private final long withdrawalFreeFromGrossXu;
+    private final long withdrawalFlatFeeXu;
+    private final long withdrawalMaximumGrossXu;
 
-    public MonetizationFlowService(NamedParameterJdbcTemplate jdbc) {
+    public MonetizationFlowService(
+            NamedParameterJdbcTemplate jdbc,
+            @Value("${app.monetization.withdrawals.minimum-gross-xu:100000}") long withdrawalMinimumGrossXu,
+            @Value("${app.monetization.withdrawals.free-from-gross-xu:1000000}") long withdrawalFreeFromGrossXu,
+            @Value("${app.monetization.withdrawals.flat-fee-xu:20000}") long withdrawalFlatFeeXu,
+            @Value("${app.monetization.withdrawals.maximum-gross-xu:1000000000}") long withdrawalMaximumGrossXu
+    ) {
         this.jdbc = jdbc;
+        this.withdrawalMinimumGrossXu = withdrawalMinimumGrossXu;
+        this.withdrawalFreeFromGrossXu = withdrawalFreeFromGrossXu;
+        this.withdrawalFlatFeeXu = withdrawalFlatFeeXu;
+        this.withdrawalMaximumGrossXu = withdrawalMaximumGrossXu;
     }
+
+    public record WalletTransactionRow(
+            UUID id,
+            String currency,
+            String type,
+            long amount,
+            long balanceAfter,
+            String referenceType,
+            UUID referenceId,
+            String description,
+            Instant createdAt
+    ) {}
+
+    public record WithdrawalRequest(
+            String accountName,
+            String accountNumber,
+            String bankName,
+            long grossAmountXu
+    ) {}
+
+    public record WithdrawalReceipt(
+            UUID id,
+            UUID teamId,
+            String accountName,
+            String bankName,
+            String destinationMasked,
+            long grossAmountXu,
+            long feeXu,
+            long netAmountXu,
+            String state,
+            /** Lời của quản trị viên. Huỷ thì bắt buộc có, người rút đọc được. */
+            String adminNote,
+            /** Mã giao dịch ngân hàng, để người rút đối chiếu với sao kê. */
+            String transferReference,
+            /** Lời của người rút khi báo chưa nhận được tiền. */
+            String confirmNote,
+            Instant reviewedAt,
+            Instant paidAt,
+            Instant confirmedAt,
+            Instant createdAt
+    ) {}
+
+    public record WithdrawalPage(List<WithdrawalReceipt> items, String nextCursor) {}
 
     @Transactional(readOnly = true)
     public WalletResponse wallet(UUID userId) {
@@ -49,6 +108,130 @@ public class MonetizationFlowService {
                 ).stream()
                 .findFirst()
                 .orElse(new WalletResponse(0, 0, null));
+    }
+
+    @Transactional(readOnly = true)
+    public List<WalletTransactionRow> walletTransactions(UUID userId, boolean admin) {
+        if (!admin) {
+            requireOwnedTeam(userId);
+        }
+        return jdbc.query(
+                """
+                        SELECT id, currency, type, amount, balance_after, reference_type,
+                               reference_id, description, created_at
+                        FROM wallet_transactions
+                        WHERE user_id = :userId
+                        ORDER BY created_at DESC
+                        LIMIT 200
+                        """,
+                Map.of("userId", userId.toString()),
+                (rs, rowNum) -> new WalletTransactionRow(
+                        UUID.fromString(rs.getString("id")),
+                        rs.getString("currency"),
+                        rs.getString("type"),
+                        rs.getLong("amount"),
+                        rs.getLong("balance_after"),
+                        rs.getString("reference_type"),
+                        rs.getString("reference_id") == null ? null : UUID.fromString(rs.getString("reference_id")),
+                        rs.getString("description"),
+                        rs.getTimestamp("created_at").toInstant()
+                )
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public WithdrawalPage withdrawals(UUID userId, boolean admin, String cursor) {
+        if (!admin) {
+            requireOwnedTeam(userId);
+        }
+        Instant before = parseCursor(cursor);
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("userId", userId.toString())
+                .addValue("before", before == null ? null : java.sql.Timestamp.from(before))
+                .addValue("limit", 51);
+
+        List<WithdrawalReceipt> rows = jdbc.query(
+                """
+                        SELECT id, team_id, account_name, bank_name, account_number,
+                               gross_amount_xu, fee_xu, net_amount_xu, state, admin_note,
+                               transfer_reference, confirm_note, reviewed_at, paid_at,
+                               confirmed_at, created_at
+                        FROM withdrawal_requests
+                        WHERE user_id = :userId
+                          AND (:before IS NULL OR created_at < :before)
+                        ORDER BY created_at DESC
+                        LIMIT :limit
+                        """,
+                params,
+                (rs, rowNum) -> withdrawal(rs)
+        );
+        boolean hasMore = rows.size() > 50;
+        List<WithdrawalReceipt> items = hasMore ? rows.subList(0, 50) : rows;
+        String nextCursor = hasMore ? items.get(items.size() - 1).createdAt().toString() : null;
+        return new WithdrawalPage(items, nextCursor);
+    }
+
+    @Transactional
+    public WithdrawalReceipt createWithdrawal(UUID userId, boolean admin, WithdrawalRequest request) {
+        UUID teamId = admin ? ownerTeamId(userId).orElse(null) : requireOwnedTeam(userId);
+        String accountName = requireText(request.accountName(), "Tên trên thẻ");
+        String accountNumber = requireText(request.accountNumber(), "Số tài khoản");
+        String bankName = requireText(request.bankName(), "Ngân hàng");
+        if (accountName.length() > 160 || accountNumber.length() > 80 || bankName.length() > 120) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "withdrawal.destination_too_long",
+                    "Destination too long", "Thông tin nhận tiền vượt quá giới hạn cho phép.");
+        }
+
+        long gross = request.grossAmountXu();
+        if (gross < withdrawalMinimumGrossXu || gross > withdrawalMaximumGrossXu) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "withdrawal.amount_invalid",
+                    "Invalid withdrawal amount",
+                    "Số xu rút phải từ %d đến %d.".formatted(withdrawalMinimumGrossXu, withdrawalMaximumGrossXu));
+        }
+        long fee = gross >= withdrawalFreeFromGrossXu ? 0 : withdrawalFlatFeeXu;
+        long net = gross - fee;
+        if (net <= 0) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "withdrawal.net_amount_invalid",
+                    "Invalid withdrawal net amount", "Số xu nhận sau phí phải lớn hơn 0.");
+        }
+
+        WalletBalance wallet = lockWallet(userId);
+        if (wallet.coinBalance() < gross) {
+            throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "withdrawal.insufficient_balance",
+                    "Insufficient balance", "Số dư xu không đủ để tạo yêu cầu rút.");
+        }
+
+        long newBalance = wallet.coinBalance() - gross;
+        UUID withdrawalId = UUID.randomUUID();
+        Instant now = Instant.now();
+        updateCoinBalance(userId, newBalance);
+
+        jdbc.update(
+                """
+                        INSERT INTO withdrawal_requests
+                            (id, user_id, team_id, account_name, account_number, bank_name,
+                             gross_amount_xu, fee_xu, net_amount_xu, state, created_at, updated_at)
+                        VALUES
+                            (:id, :userId, :teamId, :accountName, :accountNumber, :bankName,
+                             :gross, :fee, :net, 'PENDING_REVIEW', :createdAt, :updatedAt)
+                        """,
+                new MapSqlParameterSource()
+                        .addValue("id", withdrawalId.toString())
+                        .addValue("userId", userId.toString())
+                        .addValue("teamId", teamId == null ? null : teamId.toString())
+                        .addValue("accountName", accountName)
+                        .addValue("accountNumber", accountNumber)
+                        .addValue("bankName", bankName)
+                        .addValue("gross", gross)
+                        .addValue("fee", fee)
+                        .addValue("net", net)
+                        .addValue("createdAt", now)
+                        .addValue("updatedAt", now)
+        );
+        insertWalletTransaction(UUID.randomUUID(), userId, "WITHDRAWAL", -gross, newBalance,
+                "WITHDRAWAL_REQUEST", withdrawalId, "Yêu cầu rút tiền", now);
+
+        return findWithdrawal(withdrawalId);
     }
 
     @Transactional
@@ -470,7 +653,7 @@ public class MonetizationFlowService {
                         .addValue("amount", amount)
                         .addValue("balanceAfter", balanceAfter)
                         .addValue("referenceType", referenceType)
-                        .addValue("referenceId", referenceId.toString())
+                        .addValue("referenceId", referenceId == null ? null : referenceId.toString())
                         .addValue("description", description)
                         .addValue("createdAt", now)
         );
@@ -524,12 +707,23 @@ public class MonetizationFlowService {
         }
 
         String ownerId = jdbc.query(
-                        "SELECT created_by FROM teams WHERE id = :teamId",
+                        """
+                                SELECT user_id FROM team_members
+                                WHERE team_id = :teamId AND member_role = 'OWNER' AND status = 'ACTIVE'
+                                ORDER BY joined_at
+                                LIMIT 1
+                                """,
                         new MapSqlParameterSource("teamId", teamId.toString()),
-                        (rs, rowNum) -> rs.getString("created_by"))
+                        (rs, rowNum) -> rs.getString("user_id"))
                 .stream()
                 .findFirst()
-                .orElse(null);
+                .orElseGet(() -> jdbc.query(
+                                "SELECT created_by FROM teams WHERE id = :teamId",
+                                new MapSqlParameterSource("teamId", teamId.toString()),
+                                (rs, rowNum) -> rs.getString("created_by"))
+                        .stream()
+                        .findFirst()
+                        .orElse(null));
         if (ownerId == null) {
             return;
         }
@@ -612,6 +806,394 @@ public class MonetizationFlowService {
                 .findFirst()
                 .map(BigDecimal::new)
                 .orElse(fallback);
+    }
+
+    private UUID requireOwnedTeam(UUID userId) {
+        return ownerTeamId(userId).orElseThrow(() -> new ApiException(
+                HttpStatus.FORBIDDEN,
+                "team.owner_required",
+                "Owner required",
+                "Bạn không có quyền thao tác này."));
+    }
+
+    private Optional<UUID> ownerTeamId(UUID userId) {
+        Optional<UUID> ownedByRole = jdbc.query(
+                        """
+                                SELECT t.id FROM team_members m
+                                JOIN teams t ON t.id = m.team_id
+                                WHERE m.user_id = :userId
+                                  AND m.member_role = 'OWNER'
+                                  AND m.status = 'ACTIVE'
+                                  AND t.status = 'ACTIVE'
+                                ORDER BY m.joined_at
+                                LIMIT 1
+                                """,
+                        Map.of("userId", userId.toString()),
+                        (rs, rowNum) -> UUID.fromString(rs.getString("id")))
+                .stream()
+                .findFirst();
+        if (ownedByRole.isPresent()) {
+            return ownedByRole;
+        }
+        return jdbc.query(
+                        """
+                                SELECT id FROM teams
+                                WHERE created_by = :userId AND status = 'ACTIVE'
+                                ORDER BY created_at
+                                LIMIT 1
+                                """,
+                        Map.of("userId", userId.toString()),
+                        (rs, rowNum) -> UUID.fromString(rs.getString("id")))
+                .stream()
+                .findFirst();
+    }
+
+
+    /* ── Duyệt rút tiền ──────────────────────────────────────────────────
+       Vòng đời:
+
+         PENDING_REVIEW ──duyệt──> APPROVED ──đã chuyển──> PAID
+               │                      │                     │
+               │                      │              ┌──────┴───────┐
+               │                      │         xác nhận      báo chưa nhận
+               │                      │              │              │
+               └──────huỷ─────────────┴──> REJECTED  COMPLETED   DISPUTED
+                                            (hoàn xu)                │
+                                                 ▲───huỷ─────────────┤
+                                                 └───chuyển lại──> PAID
+
+       Xu bị trừ ngay lúc gửi yêu cầu, nên mọi đường dẫn tới REJECTED đều phải
+       hoàn lại - nếu không người dùng mất trắng số xu của yêu cầu bị huỷ.
+
+       Mọi phép đổi trạng thái là một câu UPDATE có điều kiện, không phải đọc
+       rồi mới ghi: giữa hai bước đó một quản trị viên khác có thể vừa huỷ, và
+       bản ghi sẽ bị đẩy ngược từ REJECTED về PAID. Điều kiện nằm trong mệnh đề
+       WHERE nên chỉ đúng một lệnh thắng, số còn lại nhận rows = 0. */
+
+    /** Một dòng trong hàng đợi của quản trị viên: kèm người gửi và nhóm. */
+    public record AdminWithdrawalRow(
+            UUID id,
+            UUID userId,
+            String userName,
+            String userEmail,
+            UUID teamId,
+            String teamName,
+            String accountName,
+            String accountNumber,
+            String bankName,
+            long grossAmountXu,
+            long feeXu,
+            long netAmountXu,
+            String state,
+            String adminNote,
+            String transferReference,
+            String confirmNote,
+            Instant reviewedAt,
+            Instant paidAt,
+            Instant confirmedAt,
+            Instant createdAt
+    ) {}
+
+    @Transactional(readOnly = true)
+    public List<AdminWithdrawalRow> adminWithdrawals(String state) {
+        boolean all = state == null || state.isBlank() || "ALL".equalsIgnoreCase(state);
+        MapSqlParameterSource params = new MapSqlParameterSource().addValue("state", all ? null : state);
+
+        // Số tài khoản đầy đủ chỉ lộ ở màn hình này: quản trị viên phải gõ nó
+        // vào giao diện ngân hàng, che đi thì không chuyển tiền được.
+        return jdbc.query(
+                """
+                        SELECT w.id, w.user_id, u.display_name AS user_name, u.email AS user_email,
+                               w.team_id, t.name AS team_name,
+                               w.account_name, w.account_number, w.bank_name,
+                               w.gross_amount_xu, w.fee_xu, w.net_amount_xu, w.state,
+                               w.admin_note, w.transfer_reference, w.confirm_note,
+                               w.reviewed_at, w.paid_at, w.confirmed_at, w.created_at
+                        FROM withdrawal_requests w
+                        JOIN users u ON u.id = w.user_id
+                        LEFT JOIN teams t ON t.id = w.team_id
+                        WHERE (:state IS NULL OR w.state = :state)
+                        ORDER BY w.created_at DESC
+                        LIMIT 200
+                        """,
+                params,
+                (rs, rowNum) -> new AdminWithdrawalRow(
+                        UUID.fromString(rs.getString("id")),
+                        UUID.fromString(rs.getString("user_id")),
+                        rs.getString("user_name"),
+                        rs.getString("user_email"),
+                        rs.getString("team_id") == null ? null : UUID.fromString(rs.getString("team_id")),
+                        rs.getString("team_name"),
+                        rs.getString("account_name"),
+                        rs.getString("account_number"),
+                        rs.getString("bank_name"),
+                        rs.getLong("gross_amount_xu"),
+                        rs.getLong("fee_xu"),
+                        rs.getLong("net_amount_xu"),
+                        rs.getString("state"),
+                        rs.getString("admin_note"),
+                        rs.getString("transfer_reference"),
+                        rs.getString("confirm_note"),
+                        instantOrNull(rs, "reviewed_at"),
+                        instantOrNull(rs, "paid_at"),
+                        instantOrNull(rs, "confirmed_at"),
+                        rs.getTimestamp("created_at").toInstant()
+                )
+        );
+    }
+
+    private void requireChanged(int rows, String expected) {
+        if (rows != 1) {
+            throw new ApiException(HttpStatus.CONFLICT, "withdrawal.wrong_state",
+                    "Withdrawal in wrong state",
+                    "Yêu cầu rút không còn ở trạng thái %s. Tải lại danh sách rồi thao tác lại."
+                            .formatted(expected));
+        }
+    }
+
+    /** Duyệt: chấp nhận yêu cầu, chưa chuyển tiền. */
+    @Transactional
+    public WithdrawalReceipt approveWithdrawal(UUID adminId, UUID id, String note) {
+        int rows = jdbc.update(
+                """
+                        UPDATE withdrawal_requests
+                           SET state = 'APPROVED', admin_note = :note, reviewed_by = :adminId,
+                               reviewed_at = NOW(3), updated_at = NOW(3)
+                         WHERE id = :id AND state = 'PENDING_REVIEW'
+                        """,
+                new MapSqlParameterSource()
+                        .addValue("adminId", adminId.toString())
+                        .addValue("id", id.toString())
+                        .addValue("note", blankToNull(note))
+        );
+        requireChanged(rows, "chờ duyệt");
+        return findWithdrawal(id);
+    }
+
+    /**
+     * Đánh dấu đã chuyển tiền. Từ đây quả bóng sang chân người rút.
+     *
+     * <p>DISPUTED cũng vào được đây: người rút báo chưa nhận, quản trị viên
+     * chuyển lại rồi đánh dấu đã chuyển lần nữa.
+     */
+    @Transactional
+    public WithdrawalReceipt markWithdrawalPaid(UUID adminId, UUID id, String reference, String note) {
+        int rows = jdbc.update(
+                """
+                        UPDATE withdrawal_requests
+                           SET state = 'PAID', admin_note = :note, transfer_reference = :reference,
+                               reviewed_by = :adminId, reviewed_at = NOW(3), paid_at = NOW(3),
+                               confirm_note = NULL, updated_at = NOW(3)
+                         WHERE id = :id
+                           AND state IN ('PENDING_REVIEW', 'APPROVED', 'PROCESSING', 'DISPUTED')
+                        """,
+                new MapSqlParameterSource()
+                        .addValue("adminId", adminId.toString())
+                        .addValue("id", id.toString())
+                        .addValue("note", blankToNull(note))
+                        .addValue("reference", blankToNull(reference))
+        );
+        requireChanged(rows, "đang chờ chuyển tiền");
+        return findWithdrawal(id);
+    }
+
+    /**
+     * Huỷ yêu cầu và hoàn xu.
+     *
+     * <p>Ghi chú là bắt buộc: người rút bị lấy lại một khoản họ đã yêu cầu và
+     * phải biết vì sao. Một lần huỷ không lý do là một khiếu nại chắc chắn tới.
+     */
+    @Transactional
+    public WithdrawalReceipt rejectWithdrawal(UUID adminId, UUID id, String note) {
+        String reason = requireText(note, "Lý do huỷ");
+        if (reason.length() > 500) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "withdrawal.note_too_long",
+                    "Note too long", "Lý do huỷ tối đa 500 ký tự.");
+        }
+        int rows = jdbc.update(
+                """
+                        UPDATE withdrawal_requests
+                           SET state = 'REJECTED', admin_note = :note, reviewed_by = :adminId,
+                               reviewed_at = NOW(3), updated_at = NOW(3)
+                         WHERE id = :id
+                           AND state IN ('PENDING_REVIEW', 'APPROVED', 'PROCESSING', 'PAID', 'DISPUTED')
+                        """,
+                new MapSqlParameterSource()
+                        .addValue("adminId", adminId.toString())
+                        .addValue("id", id.toString())
+                        .addValue("note", reason)
+        );
+        requireChanged(rows, "chưa chốt");
+        refundWithdrawal(id);
+        return findWithdrawal(id);
+    }
+
+    /**
+     * Trả xu về ví, đúng một lần.
+     *
+     * <p>`refunded_at IS NULL` trong mệnh đề WHERE là chốt chặn: hai quản trị
+     * viên cùng bấm huỷ trong một tích tắc thì chỉ một người ghi được mốc đó,
+     * và người kia không cộng thêm một lần xu nữa.
+     */
+    private void refundWithdrawal(UUID id) {
+        int claimed = jdbc.update(
+                "UPDATE withdrawal_requests SET refunded_at = NOW(3) WHERE id = :id AND refunded_at IS NULL",
+                Map.of("id", id.toString())
+        );
+        if (claimed != 1) return;
+
+        Map<String, Object> row = jdbc.queryForMap(
+                "SELECT user_id, gross_amount_xu FROM withdrawal_requests WHERE id = :id",
+                Map.of("id", id.toString())
+        );
+        UUID userId = UUID.fromString((String) row.get("user_id"));
+        long gross = ((Number) row.get("gross_amount_xu")).longValue();
+
+        WalletBalance wallet = lockWallet(userId);
+        long newBalance = wallet.coinBalance() + gross;
+        updateCoinBalance(userId, newBalance);
+        insertWalletTransaction(UUID.randomUUID(), userId, "REFUND", gross, newBalance,
+                "WITHDRAWAL_REQUEST", id, "Hoàn xu do yêu cầu rút bị huỷ", Instant.now());
+    }
+
+    /** Người rút xác nhận đã nhận được tiền. Đây là điểm kết của một yêu cầu. */
+    @Transactional
+    public WithdrawalReceipt confirmWithdrawal(UUID userId, UUID id) {
+        int rows = jdbc.update(
+                """
+                        UPDATE withdrawal_requests
+                           SET state = 'COMPLETED', confirmed_at = NOW(3), updated_at = NOW(3)
+                         WHERE id = :id AND user_id = :userId AND state = 'PAID'
+                        """,
+                new MapSqlParameterSource()
+                        .addValue("id", id.toString())
+                        .addValue("userId", userId.toString())
+        );
+        if (rows != 1) requireOwnWithdrawal(userId, id);
+        requireChanged(rows, "đã chuyển tiền");
+        return findWithdrawal(id);
+    }
+
+    /** Người rút báo chưa nhận được tiền; yêu cầu quay lại bàn quản trị viên. */
+    @Transactional
+    public WithdrawalReceipt disputeWithdrawal(UUID userId, UUID id, String note) {
+        String reason = requireText(note, "Ghi chú");
+        if (reason.length() > 500) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "withdrawal.note_too_long",
+                    "Note too long", "Ghi chú tối đa 500 ký tự.");
+        }
+        int rows = jdbc.update(
+                """
+                        UPDATE withdrawal_requests
+                           SET state = 'DISPUTED', confirm_note = :note, updated_at = NOW(3)
+                         WHERE id = :id AND user_id = :userId AND state = 'PAID'
+                        """,
+                new MapSqlParameterSource()
+                        .addValue("id", id.toString())
+                        .addValue("note", reason)
+                        .addValue("userId", userId.toString())
+        );
+        if (rows != 1) requireOwnWithdrawal(userId, id);
+        requireChanged(rows, "đã chuyển tiền");
+        return findWithdrawal(id);
+    }
+
+    /**
+     * Yêu cầu này có thuộc về người đang gọi không.
+     *
+     * <p>Gọi khi câu UPDATE không đổi được dòng nào, để phân biệt hai lý do rất
+     * khác nhau: yêu cầu của người khác (404) hay yêu cầu của mình nhưng sai
+     * trạng thái (409). Trả về 409 cho cả hai là chỉ cho người lạ biết yêu cầu
+     * đó có tồn tại.
+     */
+    private void requireOwnWithdrawal(UUID userId, UUID id) {
+        Integer mine = jdbc.query(
+                "SELECT 1 FROM withdrawal_requests WHERE id = :id AND user_id = :userId LIMIT 1",
+                Map.of("id", id.toString(), "userId", userId.toString()),
+                rs -> rs.next() ? 1 : null
+        );
+        if (mine == null) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "withdrawal.not_found",
+                    "Withdrawal not found", "Không tìm thấy yêu cầu rút tiền.");
+        }
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private static String requireText(String value, String label) {
+        if (value == null || value.isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "withdrawal.missing_field",
+                    "Missing field", label + " không được để trống.");
+        }
+        return value.trim();
+    }
+
+    private static Instant parseCursor(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Instant.parse(value.trim());
+        } catch (java.time.format.DateTimeParseException exception) {
+            return null;
+        }
+    }
+
+    private WithdrawalReceipt findWithdrawal(UUID id) {
+        return jdbc.query(
+                        """
+                                SELECT id, team_id, account_name, bank_name, account_number,
+                                       gross_amount_xu, fee_xu, net_amount_xu, state, admin_note,
+                                       transfer_reference, confirm_note, reviewed_at, paid_at,
+                                       confirmed_at, created_at
+                                FROM withdrawal_requests
+                                WHERE id = :id
+                                LIMIT 1
+                                """,
+                        Map.of("id", id.toString()),
+                        (rs, rowNum) -> withdrawal(rs))
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,
+                        "withdrawal.not_found", "Withdrawal not found", "Không tìm thấy yêu cầu rút tiền."));
+    }
+
+    private static WithdrawalReceipt withdrawal(ResultSet rs) throws SQLException {
+        String teamId = rs.getString("team_id");
+        return new WithdrawalReceipt(
+                UUID.fromString(rs.getString("id")),
+                teamId == null ? null : UUID.fromString(teamId),
+                rs.getString("account_name"),
+                rs.getString("bank_name"),
+                maskAccount(rs.getString("account_number")),
+                rs.getLong("gross_amount_xu"),
+                rs.getLong("fee_xu"),
+                rs.getLong("net_amount_xu"),
+                rs.getString("state"),
+                rs.getString("admin_note"),
+                rs.getString("transfer_reference"),
+                rs.getString("confirm_note"),
+                instantOrNull(rs, "reviewed_at"),
+                instantOrNull(rs, "paid_at"),
+                instantOrNull(rs, "confirmed_at"),
+                rs.getTimestamp("created_at").toInstant()
+        );
+    }
+
+    private static Instant instantOrNull(ResultSet rs, String column) throws SQLException {
+        java.sql.Timestamp value = rs.getTimestamp(column);
+        return value == null ? null : value.toInstant();
+    }
+
+    private static String maskAccount(String accountNumber) {
+        if (accountNumber == null || accountNumber.isBlank()) {
+            return "";
+        }
+        String trimmed = accountNumber.trim();
+        int shown = Math.min(4, trimmed.length());
+        return "**** " + trimmed.substring(trimmed.length() - shown);
     }
 
     private WalletResponse wallet(ResultSet rs) throws SQLException {

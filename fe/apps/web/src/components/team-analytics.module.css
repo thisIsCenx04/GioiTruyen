@@ -90,7 +90,7 @@
 }
 
 .totals article {
-  background: white;
+  background: var(--surface-card);
   min-height: 11rem;
   padding: clamp(1.4rem, 3vw, 2.4rem);
 }
@@ -127,7 +127,7 @@
 
 .chartSection,
 .reasons {
-  background: white;
+  background: var(--surface-card);
   margin-top: 1rem;
   padding: clamp(1.5rem, 4vw, 3.5rem);
 }

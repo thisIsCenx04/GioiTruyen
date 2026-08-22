@@ -21,6 +21,9 @@ type Team = {
   description: string | null;
   avatarUrl: string | null;
   storyCount: number;
+  totalViews: number;
+  totalFavorites: number;
+  totalFollows: number;
 };
 
 const number = new Intl.NumberFormat("vi-VN");
@@ -28,6 +31,110 @@ const number = new Intl.NumberFormat("vi-VN");
 /** Initial shown in place of a missing picture - a letter, not artwork. */
 function initial(name: string): string {
   return name.trim().charAt(0).toLocaleUpperCase("vi") || "?";
+}
+
+/** Teams shown before the ranking table: four to a row, six rows. */
+const TEAMS_BEFORE_RANKING = 24;
+/** Rows every ranking column keeps, filled or not. */
+const RANKING_ROWS = 5;
+
+type RankingColumn = {
+  key: string;
+  title: string;
+  value: (team: Team) => number;
+};
+
+const RANKING_COLUMNS: RankingColumn[] = [
+  { key: "views", title: "Tổng lượt xem", value: (team) => team.totalViews },
+  { key: "stories", title: "Truyện đã đăng", value: (team) => team.storyCount },
+  { key: "favorites", title: "Lượt yêu thích", value: (team) => team.totalFavorites },
+  { key: "follows", title: "Lượt theo dõi", value: (team) => team.totalFollows },
+];
+
+/**
+ * Five best teams by one measure.
+ *
+ * Teams with nothing to show for the measure are left out rather than padding
+ * the table with zeroes - a leaderboard listing teams on nought reads as if
+ * they placed, and the empty rows say "nobody yet" more honestly.
+ */
+function leaders(teams: Team[], column: RankingColumn): Team[] {
+  return teams
+    .filter((team) => column.value(team) > 0)
+    .sort((left, right) => column.value(right) - column.value(left) || left.name.localeCompare(right.name, "vi"))
+    .slice(0, RANKING_ROWS);
+}
+
+function TeamRankingBoard({ teams }: { teams: Team[] }) {
+  return (
+    <section aria-labelledby="team-ranking-title" className="teamRankBoard">
+      <header>
+        <h2 id="team-ranking-title">BẢNG XẾP HẠNG NHÓM</h2>
+        <p>Tổng hợp trên toàn bộ truyện đã xuất bản của mỗi nhóm.</p>
+      </header>
+      <div className="teamRankColumns">
+        {RANKING_COLUMNS.map((column) => {
+          const top = leaders(teams, column);
+          return (
+            <div className="teamRankColumn" key={column.key}>
+              <h3>{column.title}</h3>
+              <ol>
+                {Array.from({ length: RANKING_ROWS }, (_, index) => {
+                  const team = top[index];
+                  return (
+                    <li
+                      className="teamRankRow"
+                      data-empty={team ? undefined : "true"}
+                      data-place={index + 1}
+                      key={`${column.key}-${index}`}
+                    >
+                      <span>{index + 1}</span>
+                      {team ? (
+                        <>
+                          <Link to={`/teams/${team.slug || team.id}`}>{team.name}</Link>
+                          <b>{number.format(column.value(team))}</b>
+                        </>
+                      ) : (
+                        <>
+                          <span className="teamRankEmpty">—</span>
+                          <span className="teamRankEmpty">—</span>
+                        </>
+                      )}
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function TeamCards({ teams }: { teams: Team[] }) {
+  return (
+    <ul className="teamGrid">
+      {teams.map((team) => (
+        <li key={team.id}>
+          <Link className="teamCard" to={`/teams/${team.slug || team.id}`}>
+            <span className="teamAvatar">
+              {team.avatarUrl ? (
+                <img alt="" aria-hidden="true" loading="lazy" src={team.avatarUrl} />
+              ) : (
+                <span aria-hidden="true">{initial(team.name)}</span>
+              )}
+            </span>
+            <span className="teamCardBody">
+              <strong>{team.name}</strong>
+              <small>{number.format(team.storyCount)} truyện đã đăng</small>
+              {team.description ? <p>{team.description}</p> : null}
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 export function TeamDirectory() {
@@ -43,7 +150,19 @@ export function TeamDirectory() {
           setState("error");
           return;
         }
-        setTeams((await response.json()) as Team[]);
+        // The totals arrived with a later backend; an older one still answers
+        // this route, so a missing figure counts as zero instead of rendering
+        // "NaN" in the ranking table.
+        const rows = (await response.json()) as Team[];
+        setTeams(
+          rows.map((team) => ({
+            ...team,
+            storyCount: Number(team.storyCount) || 0,
+            totalFavorites: Number(team.totalFavorites) || 0,
+            totalFollows: Number(team.totalFollows) || 0,
+            totalViews: Number(team.totalViews) || 0,
+          })),
+        );
         setState("ready");
       })
       .catch(() => {
@@ -74,27 +193,17 @@ export function TeamDirectory() {
           <p className="plainEmpty">Chưa có nhóm xuất bản nào.</p>
         ) : null}
 
-        {teams.length > 0 ? (
-          <ul className="teamGrid">
-            {teams.map((team) => (
-              <li key={team.id}>
-                <Link className="teamCard" to={`/teams/${team.slug || team.id}`}>
-                  <span className="teamAvatar">
-                    {team.avatarUrl ? (
-                      <img alt="" aria-hidden="true" loading="lazy" src={team.avatarUrl} />
-                    ) : (
-                      <span aria-hidden="true">{initial(team.name)}</span>
-                    )}
-                  </span>
-                  <span className="teamCardBody">
-                    <strong>{team.name}</strong>
-                    <small>{number.format(team.storyCount)} truyện đã đăng</small>
-                    {team.description ? <p>{team.description}</p> : null}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+        {/* Six rows of cards, the ranking table, then whatever is left. The
+            table is placed after a fixed number of cards rather than at the end
+            so that a reader meets it without scrolling past every team; the
+            ranking itself is always computed over all teams, not just the ones
+            above it. */}
+        {teams.length > 0 ? <TeamCards teams={teams.slice(0, TEAMS_BEFORE_RANKING)} /> : null}
+
+        {teams.length > 0 ? <TeamRankingBoard teams={teams} /> : null}
+
+        {teams.length > TEAMS_BEFORE_RANKING ? (
+          <TeamCards teams={teams.slice(TEAMS_BEFORE_RANKING)} />
         ) : null}
 
         {/* The application form lives at its own route; duplicating it here meant

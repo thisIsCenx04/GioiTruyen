@@ -7,7 +7,7 @@
 
 .header {
   align-items: center;
-  background: #ffffff;
+  background: var(--surface-card);
   border: 1px solid #e2e8f0;
   border-radius: 1.25rem;
   box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.05);
@@ -47,7 +47,7 @@
 }
 
 .stream {
-  background: #ffffff;
+  background: var(--surface-card);
   border: 1px solid #e2e8f0;
   border-radius: 1.25rem;
   box-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.06);
@@ -104,7 +104,7 @@
 }
 
 .list li {
-  background: #ffffff;
+  background: var(--surface-card);
   border: 1px solid #e2e8f0;
   border-radius: 0.9rem;
   transition: all 150ms ease;

@@ -7,27 +7,27 @@ import { loadHome } from "@/lib/catalog";
 export const revalidate = 60;
 
 /**
- * Audio stories.
+ * Truyện audio.
  *
- * Deliberately the same shape as the stories and rankings pages: a plain
- * heading with a count, then the grid. The previous version opened with a
- * 400px tinted hero and three glass stat cards with coloured icon circles,
- * which looked like a different site from the one it sits inside.
+ * <p>Trang này từng chỉ liệt kê truyện có `storyType === "AUDIO"`, tức là những
+ * bộ có người thu âm sẵn - trên thực tế gần như không có bộ nào, nên tab Audio
+ * luôn trống. Nhưng bản đọc ở đây do trình duyệt tạo ra từ chính chữ của
+ * chương, nên điều kiện để nghe được một bộ truyện chỉ là nó có chương. Vì vậy
+ * toàn bộ kho truyện nằm ở đây.
+ *
+ * <p>Vẫn giữ nguyên hình dạng của trang truyện và trang bảng xếp hạng: một tiêu
+ * đề kèm số đếm, rồi tới lưới truyện.
  */
 export default async function AudioStoriesPage() {
-  const home = await loadHome();
-  const everything = [
+  const home = await loadHome().catch(() => null);
+  const sections = home?.storySections && home.storySections.length > 0
+    ? home.storySections
+    : home?.sections ?? [];
+  const stories = [
     ...new Map(
-      home.storySections
-        .flatMap((section) => section.stories)
-        .map((story) => [story.id, story] as const),
+      sections.flatMap((section) => section.stories).map((story) => [story.id, story] as const),
     ).values(),
   ];
-  // The page used to list the whole catalog; now that stories carry a type it
-  // shows only the ones actually published as audio.
-  const stories = everything.filter(
-    (story) => (story as { storyType?: string }).storyType === "AUDIO",
-  );
 
   return (
     <PublicShell>
@@ -37,6 +37,11 @@ export default async function AudioStoriesPage() {
             <h1>TRUYỆN AUDIO</h1>
             <span>{stories.length} truyện</span>
           </header>
+
+          <p className="plainPageLede">
+            Mọi truyện trên gioitruyen đều nghe được: trình duyệt đọc thẳng chữ của từng chương,
+            chạy liên tục hết chương này sang chương khác, và nhớ giúp bạn chỗ đang nghe dở.
+          </p>
 
           {stories.length > 0 ? (
             <div className="catalogGrid catalogGridVertical plainStoryGrid">
@@ -52,7 +57,7 @@ export default async function AudioStoriesPage() {
             </div>
           ) : (
             <p className="plainEmpty">
-              Chưa có truyện audio nào. <Link to="/stories">Xem truyện chữ</Link> trong lúc chờ nhé.
+              Chưa tải được danh sách truyện. <Link to="/stories">Thử trang truyện chữ</Link> xem sao.
             </p>
           )}
         </div>

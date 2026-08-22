@@ -120,7 +120,8 @@ export type CategoryTaxonomy = { version: string; groups: CategoryGroup[] };
 
 export type HomeSection = {
   id: string;
-  type: string;
+  /** Only the /home shelves carry this; /stories/sections identifies by tag. */
+  type?: string;
   title: string;
   /** Set on tag-driven shelves; the "full"/"new"/"original" pages read it. */
   tag?: string;
@@ -225,8 +226,23 @@ export type WithdrawalState =
   | "REJECTED"
   | "FAILED";
 
-export type WithdrawalReceipt = { id: string; state: WithdrawalState } & Unspecified;
-export type WithdrawalPage = Unspecified;
+export type WithdrawalReceipt = {
+  id: string;
+  teamId: string | null;
+  accountName: string;
+  bankName: string;
+  destinationMasked: string;
+  grossAmountXu: number;
+  feeXu: number;
+  netAmountXu: number;
+  state: WithdrawalState;
+  createdAt: string;
+} & Unspecified;
+
+export type WithdrawalPage = {
+  items: WithdrawalReceipt[];
+  nextCursor: string | null;
+} & Unspecified;
 
 /* --------------------------------------------------------------------- team */
 

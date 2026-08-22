@@ -1,0 +1,12 @@
+-- The story synopsis, widened to hold a real introduction.
+--
+-- TEXT is 65,535 *bytes*, and Vietnamese in UTF-8 costs about three bytes a
+-- character, so the old column stopped at roughly 21,800 characters - well
+-- under the 100,000 the publishing form now accepts. MEDIUMTEXT holds 16 MB,
+-- which is about 5.5 million Vietnamese characters: far more than the limit,
+-- so the ceiling is the one the form states rather than one MySQL imposes
+-- silently by refusing the whole row.
+--
+-- short_description stays VARCHAR(500). It is the card teaser - the line under
+-- a cover in a listing - and is derived from the synopsis on save.
+ALTER TABLE stories MODIFY COLUMN description MEDIUMTEXT;

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { XuIcon, NgocIcon } from "@/components/currency-icons";
+import { PrQuestBoard } from "@/components/pr-quest-board";
 import { PublicShell } from "@/components/site-chrome";
 import { isLoggedIn } from "@/lib/auth";
 import {
@@ -23,6 +24,8 @@ export default function QuestsPage() {
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  /** Which tab is on screen: the open board, or the PR work already finished. */
+  const [tab, setTab] = useState<"open" | "history">("open");
   const signedIn = isLoggedIn();
 
   const refresh = useCallback(async () => {
@@ -92,7 +95,7 @@ export default function QuestsPage() {
       <main className="questPageShell">
         <header className="questHeader">
           <div>
-            <p className="detailEyebrow">Nhiệm vụ hằng ngày</p>
+            <p className="detailEyebrow">Nhiệm vụ</p>
             <h1>Nhiệm vụ của tôi</h1>
             <p className="questHeaderNote">
               Nhiệm vụ làm mới mỗi ngày. Đọc truyện và tương tác để nhận xu và ngọc.
@@ -114,7 +117,55 @@ export default function QuestsPage() {
         {notice ? <p className="questNotice" role="status">{notice}</p> : null}
         {error ? <p className="questError" role="alert">{error}</p> : null}
 
-        <ul className="questList">
+        {/* Two kinds of quest, and they are not alike. A PR quest is paid work
+            for a team, worth reading carefully before committing an evening; a
+            daily quest is something you have already half-done by reading. So
+            they get separate columns rather than one merged list. */}
+        <nav aria-label="Loại nhiệm vụ" className="questTabs">
+          <button
+            aria-current={tab === "open" ? "page" : undefined}
+            className={tab === "open" ? "questTab isActive" : "questTab"}
+            onClick={() => setTab("open")}
+            type="button"
+          >
+            Nhiệm vụ
+          </button>
+          <button
+            aria-current={tab === "history" ? "page" : undefined}
+            className={tab === "history" ? "questTab isActive" : "questTab"}
+            onClick={() => setTab("history")}
+            type="button"
+          >
+            Lịch sử PR
+          </button>
+        </nav>
+
+        {tab === "history" ? (
+          <PrQuestBoard view="history" />
+        ) : (
+          <div className="questColumns">
+            <section className="questColumnMain">
+              <h2 className="questColumnTitle">Nhiệm vụ PR từ nhóm xuất bản</h2>
+              {/* Đoạn giải thích ba dòng ở đây đã bỏ: nó lặp lại đúng thứ mỗi
+                  thẻ bên dưới đã nói bằng con số, và đẩy thẻ đầu tiên xuống
+                  dưới màn hình đầu trên điện thoại. */}
+              <PrQuestBoard view="board" />
+            </section>
+
+            {/* Ba khối, ba thứ tự khác nhau giữa desktop và điện thoại.
+                Trên desktop: bảng PR bên trái, "của tôi" và nhiệm vụ ngày xếp
+                bên phải. Trên điện thoại tất cả thành một cột, và thứ tự đúng
+                là: việc đang dở → việc có thể nhận → nhiệm vụ ngày. Gộp hai
+                khối phải vào một cột khiến bảng PR bị đẩy xuống dưới toàn bộ
+                danh sách nhiệm vụ ngày, tức là thứ chính nằm sau thứ phụ. */}
+            <aside className="questColumnSide">
+              <h2 className="questColumnTitle">Nhiệm vụ PR của tôi</h2>
+              <PrQuestBoard view="mine" />
+            </aside>
+
+            <section className="questColumnDaily">
+              <h2 className="questColumnTitle">Nhiệm vụ hằng ngày</h2>
+              <ul className="questList">
           {quests.map((quest) => {
             const percent = Math.min(
               100,
@@ -157,7 +208,10 @@ export default function QuestsPage() {
               </li>
             );
           })}
-        </ul>
+              </ul>
+            </section>
+          </div>
+        )}
 
         {showLoginPrompt ? (
           <div className="questLoginPrompt" role="dialog" aria-modal="true" aria-labelledby="quest-login-title">

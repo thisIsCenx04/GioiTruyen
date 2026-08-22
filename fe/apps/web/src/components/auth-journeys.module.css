@@ -270,7 +270,7 @@
 }
 
 .recovery li {
-  background: white;
+  background: var(--surface-card);
   border: 1px solid #ccd4ec;
   font: 750 0.8rem/1 var(--utility);
   padding: 0.75rem;

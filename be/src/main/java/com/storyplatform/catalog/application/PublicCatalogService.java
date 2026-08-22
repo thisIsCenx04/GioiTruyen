@@ -44,8 +44,14 @@ public class PublicCatalogService {
     private static final String SERIAL_FILTER = "s.story_format <> 'ONESHOT'";
     /** Most chapters one page may carry; the story itself is unbounded. */
     private static final int MAX_CHAPTER_PAGE_SIZE = 100;
-    /** Cards per shelf on the catalog pages. */
-    private static final int SHELF_SIZE = 8;
+    /**
+     * Cards per shelf on the catalog pages.
+     *
+     * <p>Twelve fills two full rows at every breakpoint the grid uses (six, five,
+     * four, three and two per row). At eight the home page drew one full row and
+     * a ragged second one.
+     */
+    private static final int SHELF_SIZE = 12;
     /** Ranking window covering everything, as opposed to a number of days. */
     private static final String PERIOD_ALL = "ALL";
 
@@ -236,6 +242,30 @@ public class PublicCatalogService {
                 new MapSqlParameterSource()
                         .addValue("slug", slug)
                         .addValue("limit", DEFAULT_LIMIT),
+                (rs, rowNum) -> summary(rs)
+        );
+    }
+
+    /**
+     * Everything a team has published, for its public profile.
+     *
+     * <p>The profile used to fetch the home shelves and keep the entries whose
+     * team matched. Those shelves hold eight stories each, so a team whose work
+     * had scrolled off them showed an empty list under a heading that correctly
+     * said it had published two - the page contradicted itself. Asking the
+     * database directly is the only way the list can be complete.
+     *
+     * <p>Accepts an id or a slug because the profile URL carries either.
+     */
+    public List<CatalogDtos.HomeStorySummary> teamStories(String teamIdOrSlug) {
+        return jdbc.query(
+                // Leading newline required; see searchSummaries for the failure mode.
+                STORY_SUMMARY_SELECT.formatted(PUBLISHED_STORY_FILTER + """
+
+                        AND (t.id = :team OR t.slug = :team)
+                        ORDER BY s.last_chapter_at DESC, s.published_at DESC
+                        """),
+                new MapSqlParameterSource("team", teamIdOrSlug),
                 (rs, rowNum) -> summary(rs)
         );
     }
@@ -775,14 +805,20 @@ public class PublicCatalogService {
                 new MapSqlParameterSource(),
                 (rs, rowNum) -> new CatalogDtos.RankingStory(
                         rowNum + 1,
-                        // Only the view board publishes its figure. Coin revenue
-                        // and gem totals order the rows and stay private.
-                        "VIEWS".equals(metric) ? rs.getLong("score") : 0L,
+                        // Views and recommendations are public counters. Coin
+                        // revenue still orders the kim bang without exposing
+                        // how much a story earned.
+                        "REVENUE".equals(metric) ? 0L : rs.getLong("score"),
                         summary(rs)
                 )
         );
         // No subtitle: the board titles say what they rank on their own.
-        return new CatalogDtos.RankingBoard(id, title, "", "VIEWS".equals(metric) ? "lượt" : "", stories);
+        return new CatalogDtos.RankingBoard(
+                id,
+                title,
+                "",
+                "GEM_RECOMMENDATION".equals(metric) ? "ngọc" : "VIEWS".equals(metric) ? "lượt" : "",
+                stories);
     }
 
     /** Sum of one daily-rollup column over the last {@code days} days. */

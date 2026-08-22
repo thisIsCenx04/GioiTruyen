@@ -3061,3 +3061,134 @@ button:disabled { cursor: wait; opacity: 0.55; }
 @media (max-width: 640px) {
   .promoSlots { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* ── Bàn duyệt rút tiền ───────────────────────────────────────────────
+   Mỗi yêu cầu là một thẻ, vì quản trị viên phải đọc đủ bốn thứ trước khi
+   quyết định: ai rút, bao nhiêu, chuyển vào đâu, và đã có chuyện gì xảy ra. */
+
+.adminWithdrawal {
+  background: var(--surface-card, #fff);
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: .7rem;
+  padding: .9rem 1rem;
+}
+
+.adminWithdrawal > header {
+  align-items: baseline;
+  border-bottom: 1px solid var(--line, #e2e8f0);
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem .8rem;
+  margin-bottom: .8rem;
+  padding-bottom: .7rem;
+}
+
+.adminWithdrawal > header strong {
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.adminWithdrawalMeta {
+  color: var(--text-secondary, #64748b);
+  font-size: .78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Màu mang thông tin: đỏ là việc cần xử lý gấp, xanh là đã xong. */
+.adminWithdrawalState {
+  border-radius: 999rem;
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .03em;
+  padding: .2rem .6rem;
+  text-transform: uppercase;
+}
+
+.adminWithdrawalState[data-state="PENDING_REVIEW"],
+.adminWithdrawalState[data-state="APPROVED"] {
+  background: color-mix(in srgb, #b45309 14%, transparent);
+  color: #92400e;
+}
+
+.adminWithdrawalState[data-state="DISPUTED"] {
+  background: color-mix(in srgb, #b91c1c 14%, transparent);
+  color: #991b1b;
+}
+
+.adminWithdrawalState[data-state="PAID"] {
+  background: color-mix(in srgb, var(--blue) 16%, transparent);
+  color: var(--blue);
+}
+
+.adminWithdrawalState[data-state="COMPLETED"] {
+  background: color-mix(in srgb, #15803d 14%, transparent);
+  color: #166534;
+}
+
+.adminWithdrawalState[data-state="REJECTED"],
+.adminWithdrawalState[data-state="FAILED"] {
+  background: color-mix(in srgb, #64748b 16%, transparent);
+  color: #475569;
+}
+
+.adminWithdrawalFacts {
+  display: grid;
+  gap: .7rem 1.2rem;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  margin: 0;
+}
+
+.adminWithdrawalFacts dt {
+  color: var(--text-secondary, #64748b);
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.adminWithdrawalFacts dd {
+  font-size: .84rem;
+  margin: .15rem 0 0;
+}
+
+.adminWithdrawalFacts dd small {
+  color: var(--text-secondary, #64748b);
+  display: block;
+  font-size: .74rem;
+  margin-top: .1rem;
+}
+
+/* Số tài khoản phải chọn được để dán sang giao diện ngân hàng, và phải là chữ
+   đều nét để không đọc nhầm 0 với O. */
+.adminWithdrawalAccount small {
+  font-family: ui-monospace, "SFMono-Regular", "Cascadia Mono", Consolas, monospace;
+  user-select: all;
+}
+
+.adminWithdrawalNote {
+  background: var(--surface-sunken, #f8fafc);
+  border-radius: .45rem;
+  font-size: .82rem;
+  line-height: 1.5;
+  margin: .8rem 0 0;
+  padding: .55rem .7rem;
+}
+
+.adminWithdrawalNote.isAlert {
+  background: color-mix(in srgb, #b91c1c 8%, transparent);
+  border-left: 3px solid #b91c1c;
+}
+
+.adminWithdrawalActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-top: .9rem;
+}
+
+.adminWithdrawalDone {
+  color: var(--text-secondary, #64748b);
+  font-size: .8rem;
+}
+
+[data-theme="dark"] .adminWithdrawalNote { background: var(--surface-sunken); }

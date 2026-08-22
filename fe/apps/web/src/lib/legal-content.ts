@@ -252,6 +252,38 @@ export const privacyContent: LegalPageContent = {
       ],
       title: "VI. Thay đổi chính sách",
     },
+    // Required by the AdSense programme policies: a site running Google ads has
+    // to disclose the third-party cookies those ads set, name Google, and point
+    // readers at the opt-out. The policy said nothing about advertising at all,
+    // which is the most common reason a site is refused or suspended.
+    {
+      blocks: [
+        {
+          text: "Website sử dụng dịch vụ quảng cáo của bên thứ ba, trong đó có Google AdSense, để duy trì chi phí vận hành và giữ nội dung miễn phí cho người đọc.",
+          type: "paragraph",
+        },
+        {
+          items: [
+            "Google và các đối tác quảng cáo của Google sử dụng cookie để hiển thị quảng cáo dựa trên những lần bạn đã truy cập website này hoặc các website khác.",
+            "Cookie quảng cáo giúp Google và đối tác hiển thị quảng cáo phù hợp hơn với bạn, đồng thời giới hạn số lần bạn nhìn thấy cùng một quảng cáo.",
+            "Bên thứ ba có thể thu thập địa chỉ IP, loại trình duyệt, thiết bị, trang bạn đang xem và thời điểm truy cập. Website không chia sẻ tên đăng nhập, email hay thông tin ví của bạn cho các đơn vị quảng cáo.",
+            "Bạn có thể tắt quảng cáo cá nhân hoá bất cứ lúc nào tại Cài đặt quảng cáo của Google: https://www.google.com/settings/ads",
+            "Bạn cũng có thể từ chối cookie của các nhà cung cấp khác tại: https://www.aboutads.info/choices",
+            "Bạn có thể chặn hoặc xoá cookie trong phần cài đặt trình duyệt. Website vẫn hoạt động bình thường khi cookie quảng cáo bị chặn.",
+          ],
+          type: "list",
+        },
+        {
+          text: "Chính sách quyền riêng tư của Google được công bố tại: https://policies.google.com/technologies/ads",
+          type: "paragraph",
+        },
+        {
+          text: "Website không đặt quảng cáo xen vào giữa nội dung đã trả phí, và không bắt buộc người đọc phải xem hết quảng cáo mới được đọc tiếp.",
+          type: "paragraph",
+        },
+      ],
+      title: "VII. Quảng cáo và cookie của bên thứ ba",
+    },
   ],
 };
 

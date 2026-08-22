@@ -3,7 +3,7 @@ import {
   Bookmark,
   CalendarDays,
   ListMusic,
-  Volume2,
+
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
@@ -11,6 +11,7 @@ const cache = <T extends (...args: any[]) => any>(fn: T) => fn;
 
 import { BrowserAudioPlayer } from "@/components/browser-audio-player";
 import { RankingPanel } from "@/components/ranking-panel";
+import { coverThumbUrl, coverUrl, onCoverError, StoryCoverPlaceholder } from "@/components/story-cover";
 import { PublicShell } from "@/components/site-chrome";
 import { catalog, loadHome } from "@/lib/catalog";
 
@@ -24,7 +25,11 @@ const loadAudioStory = cache(async (identifier: string) => {
   try {
     const [story, chapters, home] = await Promise.all([
       catalog.story(identifier),
-      catalog.chapters(identifier, 80),
+      // Trang một, một trăm chương - kích cỡ tối đa máy chủ cho phép. Chỗ này
+      // từng viết catalog.chapters(identifier, 80), mà tham số thứ hai là SỐ
+      // TRANG chứ không phải cỡ trang: mọi truyện đều bị hỏi trang 80 và trả về
+      // rỗng, nên danh sách chương của trang nghe luôn trống.
+      catalog.chapters(identifier, 1, 100),
       loadHome(),
     ]);
     const rankingStories = [
@@ -64,6 +69,7 @@ export default async function AudioDetailPage({ params }: AudioDetailProps) {
   }
 
   const { chapters, rankingStories, story } = result;
+  const cover = coverUrl(story.coverAssetId);
   return (
     <PublicShell>
       <article className="catalogDetailPage audioDetailPage">
@@ -75,35 +81,56 @@ export default async function AudioDetailPage({ params }: AudioDetailProps) {
           <strong>{story.title}</strong>
         </nav>
 
+        {/* Cùng một tấm bìa, cùng một cách bày như trang truyện chữ. Trước đây
+            chỗ này là một ô màu với cái loa ở giữa, nên người vừa bấm "Nghe
+            truyện" từ trang truyện không nhận ra mình vẫn đang ở đúng bộ đó. */}
         <header className="monkeyDetailHero audioDetailHero">
-          <div className="detailHeroCover" data-tone="indigo">
-            <Volume2 aria-hidden="true" />
-            <small>Audio</small>
+          <div className="detailCover storyDetailCover" data-tone="indigo">
+            {cover
+              ? (
+                <img
+                  alt={`Bìa ${story.title}`}
+                  className="coverImage"
+                  decoding="async"
+                  fetchPriority="high"
+                  loading="eager"
+                  onError={onCoverError(cover)}
+                  src={coverThumbUrl(story.coverAssetId)}
+                />
+              )
+              : <StoryCoverPlaceholder />}
+            <span className="coverTagRow"><span className="audioBadge">NGHE</span></span>
           </div>
           <div>
             <p className="detailEyebrow">Nghe truyện</p>
             <h1>{story.title}</h1>
             <p>{story.synopsis}</p>
             <div className="detailHeroStats">
-              <span title="Số tập nghe">
+              <span title="Số chương nghe được">
                 <ListMusic aria-hidden="true" />
-                {numberFormatter.format(chapters.items.length)}
+                {numberFormatter.format(chapters.total)} chương
               </span>
               <span title="Ngày đăng">
                 <CalendarDays aria-hidden="true" />
                 {new Date(story.publishedAt).toLocaleDateString("vi-VN")}
               </span>
-              <span title="Lưu vào tủ">
+              <Link className="audioReadLink" to={`/stories/${story.slug}`}>
                 <Bookmark aria-hidden="true" />
-                Theo dõi
-              </span>
+                Xem bản chữ
+              </Link>
             </div>
           </div>
         </header>
 
         <div className="storyRankingLayout detailContentLayout">
           <div className="homeSectionStack">
-            <BrowserAudioPlayer chapters={chapters.items} storyTitle={story.title} />
+            <BrowserAudioPlayer
+              initial={chapters}
+              storyId={story.id}
+              storyIdOrSlug={idOrSlug}
+              storySlug={story.slug}
+              storyTitle={story.title}
+            />
           </div>
           <RankingPanel stories={rankingStories} />
         </div>

@@ -20,12 +20,15 @@ import PageL2F1dGgvdmVyaWZ5 from './pages/auth/verify/page';
 import PageL2NhdGVnb3JpZXM from './pages/categories/page';
 import PageL2NhdGVnb3JpZXMvOnNsdWc from './pages/categories/[slug]/page';
 import { ScrollToTop } from './components/scroll-to-top';
+import { UpdateAvailable } from "@/components/update-available";
 import PageTagSlug from './pages/tags/[slug]/page';
 import PageQuests from './pages/quests/page';
 import AdminQuestsPage from './pages/dashboard/quests/page';
 import AdminPaymentMethodsPage from './pages/dashboard/payment-methods/page';
 import AdminTopupsPage from './pages/dashboard/topups/page';
 import AdminPromotionsPage from './pages/dashboard/promotions/page';
+import AdminPrDisputesPage from './pages/dashboard/pr-disputes/page';
+import AdminWithdrawalsPage from './pages/dashboard/withdrawals/page';
 import AdminAuthorApplicationsPage from './pages/dashboard/authors/page';
 import AuthorApplicationPage from './pages/dang-ky-dang-truyen/page';
 import PageL2NvbW11bml0eQ from './pages/community/page';
@@ -56,6 +59,7 @@ import PageL3N0b3JpZXMvOmlkT3JTbHVn from './pages/stories/[idOrSlug]/page';
 import PageL3RlYW1z from './pages/teams/page';
 import PageL3RlYW1zLzp0ZWFtSWQvYW5hbHl0aWNz from './pages/teams/[teamId]/analytics/page';
 import PublisherDashboardPage from './pages/teams/[teamId]/dashboard/page';
+import TeamPrQuestPage from './pages/teams/[teamId]/pr/page';
 import TeamManagePage from './pages/teams/[teamId]/manage/page';
 import PageL3RlYW1zLzp0ZWFtSWQ from './pages/teams/[teamId]/page';
 import PageL3RlYW1zLzp0ZWFtSWQvc3Rvcmllcw from './pages/teams/[teamId]/stories/page';
@@ -278,6 +282,8 @@ function App() {
   return (
     <Router>
       <ScrollToTop />
+      {/* Tells a reader when the site has been redeployed under their open tab. */}
+      <UpdateAvailable />
       <GlobalAdvertisementManager />
       <Routes>
         <Route element={<Layout />}>
@@ -313,6 +319,8 @@ function App() {
           <Route path="/dashboard/payment-methods" element={<DashboardLayout><AdminPaymentMethodsPage /></DashboardLayout>} />
           <Route path="/dashboard/topups" element={<DashboardLayout><AdminTopupsPage /></DashboardLayout>} />
           <Route path="/dashboard/promotions" element={<DashboardLayout><AdminPromotionsPage /></DashboardLayout>} />
+          <Route path="/dashboard/pr-disputes" element={<DashboardLayout><AdminPrDisputesPage /></DashboardLayout>} />
+          <Route path="/dashboard/withdrawals" element={<DashboardLayout><AdminWithdrawalsPage /></DashboardLayout>} />
           <Route path="/dashboard/authors" element={<DashboardLayout><AdminAuthorApplicationsPage /></DashboardLayout>} />
           <Route path="/dang-ky-dang-truyen" element={<AuthorApplicationPage />} />
           <Route path="/dashboard/login" element={<PageL2Rhc2hib2FyZC9sb2dpbg />} />
@@ -334,6 +342,7 @@ function App() {
           <Route path="/stories/:idOrSlug" element={<WrappedPageL3N0b3JpZXMvOmlkT3JTbHVn />} />
           <Route path="/teams" element={<PageL3RlYW1z />} />
           <Route path="/teams/:teamId/dashboard" element={<PublisherDashboardPage />} />
+          <Route path="/teams/:teamId/pr" element={<TeamPrQuestPage />} />
           <Route path="/teams/:teamId/manage" element={<TeamManagePage />} />
           <Route path="/teams/:teamId/analytics" element={<WrappedPageL3RlYW1zLzp0ZWFtSWQvYW5hbHl0aWNz />} />
           <Route path="/teams/:teamId" element={<WrappedPageL3RlYW1zLzp0ZWFtSWQ />} />
