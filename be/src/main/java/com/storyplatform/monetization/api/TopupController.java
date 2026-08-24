@@ -60,6 +60,18 @@ public class TopupController {
         return topupService.submitTopup(currentUser(jwt), paymentId);
     }
 
+    /**
+     * Người nạp tự huỷ đơn của mình. Đặt cạnh {@code /submit} vì đây là hướng
+     * ngược lại của cùng một quyết định, trên cùng một đơn.
+     */
+    @PostMapping("/topups/{paymentId}/cancel")
+    public TopupService.TopupInstruction cancel(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable String paymentId
+    ) {
+        return topupService.cancelTopup(currentUser(jwt), paymentId);
+    }
+
     @GetMapping("/topups/{paymentId}")
     public TopupService.TopupInstruction get(
             @AuthenticationPrincipal Jwt jwt,

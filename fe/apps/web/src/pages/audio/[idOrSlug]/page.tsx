@@ -81,59 +81,43 @@ export default async function AudioDetailPage({ params }: AudioDetailProps) {
           <strong>{story.title}</strong>
         </nav>
 
-        {/* Cùng một tấm bìa, cùng một cách bày như trang truyện chữ. Trước đây
-            chỗ này là một ô màu với cái loa ở giữa, nên người vừa bấm "Nghe
-            truyện" từ trang truyện không nhận ra mình vẫn đang ở đúng bộ đó. */}
-        <header className="monkeyDetailHero audioDetailHero">
-          <div className="detailCover storyDetailCover" data-tone="indigo">
-            {cover
-              ? (
-                <img
-                  alt={`Bìa ${story.title}`}
-                  className="coverImage"
-                  decoding="async"
-                  fetchPriority="high"
-                  loading="eager"
-                  onError={onCoverError(cover)}
-                  src={coverThumbUrl(story.coverAssetId)}
-                />
-              )
-              : <StoryCoverPlaceholder />}
-            <span className="coverTagRow"><span className="audioBadge">NGHE</span></span>
-          </div>
-          <div>
-            <p className="detailEyebrow">Nghe truyện</p>
-            <h1>{story.title}</h1>
-            <p>{story.synopsis}</p>
-            <div className="detailHeroStats">
-              <span title="Số chương nghe được">
-                <ListMusic aria-hidden="true" />
-                {numberFormatter.format(chapters.total)} chương
-              </span>
-              <span title="Ngày đăng">
-                <CalendarDays aria-hidden="true" />
-                {new Date(story.publishedAt).toLocaleDateString("vi-VN")}
-              </span>
-              <Link className="audioReadLink" to={`/stories/${story.slug}`}>
-                <Bookmark aria-hidden="true" />
-                Xem bản chữ
-              </Link>
-            </div>
-          </div>
-        </header>
+        {/* Trình phát lên trước, rồi mới tới thông tin truyện và danh sách
+            chương. Người vào trang này để bấm nghe, không phải để đọc lý lịch
+            truyện - nên nút phát phải nằm trong tầm mắt ngay khi trang mở. */}
+        <BrowserAudioPlayer
+          coverUrl={cover ? coverThumbUrl(story.coverAssetId) : null}
+          detail={(
+            <section className="audioStoryDetail" aria-label="Thông tin truyện">
+              <p className="detailEyebrow">Về truyện này</p>
+              <h2>{story.title}</h2>
+              {story.synopsis ? <p className="audioStorySynopsis">{story.synopsis}</p> : null}
+              <div className="detailHeroStats">
+                <span title="Số chương nghe được">
+                  <ListMusic aria-hidden="true" />
+                  {numberFormatter.format(chapters.total)} chương
+                </span>
+                <span title="Ngày đăng">
+                  <CalendarDays aria-hidden="true" />
+                  {new Date(story.publishedAt).toLocaleDateString("vi-VN")}
+                </span>
+                <Link className="audioReadLink" to={`/stories/${story.slug}`}>
+                  <Bookmark aria-hidden="true" />
+                  Xem bản chữ
+                </Link>
+              </div>
+            </section>
+          )}
+          initial={chapters}
+          storyId={story.id}
+          storyIdOrSlug={idOrSlug}
+          storySlug={story.slug}
+          storySynopsis={story.synopsis}
+          storyTitle={story.title}
+        />
 
-        <div className="storyRankingLayout detailContentLayout">
-          <div className="homeSectionStack">
-            <BrowserAudioPlayer
-              initial={chapters}
-              storyId={story.id}
-              storyIdOrSlug={idOrSlug}
-              storySlug={story.slug}
-              storyTitle={story.title}
-            />
-          </div>
-          <RankingPanel stories={rankingStories} />
-        </div>
+        {/* Bảng xếp hạng xuống cuối trang: bố cục mới trải hết bề ngang cho trình
+            phát, không còn cột phải để nó đứng. */}
+        <RankingPanel stories={rankingStories} />
       </article>
     </PublicShell>
   );

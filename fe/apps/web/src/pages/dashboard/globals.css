@@ -2060,6 +2060,10 @@ button:disabled { cursor: wait; opacity: 0.55; }
   text-transform: uppercase;
 }
 
+/* Hai nút thoát ở hàng logo. Trên màn rộng thanh bên đã có "Về Trang Chủ Web"
+   và thẻ quản trị viên ở chân, nên ở đây chúng thừa. */
+.adminBrandActions { display: none; }
+
 /* ── Nav section label ── */
 .adminNavLabel {
   color: var(--sidebar-muted);
@@ -2231,10 +2235,19 @@ button:disabled { cursor: wait; opacity: 0.55; }
   position: sticky !important;
   top: 0 !important;
   z-index: 20 !important;
-  /* Cancels the shell padding so the sticky band spans the full width. */
-  margin-left: calc(-1 * clamp(1.25rem, 2.5vw, 2.25rem)) !important;
-  margin-right: calc(-1 * clamp(1.25rem, 2.5vw, 2.25rem)) !important;
-  padding: 1.25rem clamp(1.25rem, 2.5vw, 2.25rem) 1rem !important;
+  /* Triệt tiêu lề của .adminDashboard để dải tiêu đề trải hết bề ngang.
+     Con số lấy từ chính .adminDashboard qua biến, không chép tay nữa: hai
+     nơi từng giữ hai giá trị khác nhau ở khổ điện thoại (20px ở đây, 12px
+     bên kia), nên dải tiêu đề thòi ra ngoài màn.
+
+     Mặc định 0: trang nào không bọc trong .adminDashboard thì không có lề
+     nào để triệt tiêu. Trước đây các trang đó vẫn nhận -20px mỗi bên, thành
+     ra dải tiêu đề rộng 400px nằm trong khung 360px và bị `overflow-x:
+     hidden` cắt cụt - đúng chỗ dòng mô tả bị mất chữ ở hai màn rút tiền
+     và khiếu nại PR. */
+  margin-left: calc(-1 * var(--dash-gutter, 0px)) !important;
+  margin-right: calc(-1 * var(--dash-gutter, 0px)) !important;
+  padding: 1.25rem var(--dash-gutter, 0px) 1rem !important;
 }
 
 /* The sort toolbar rides directly beneath the heading. */
@@ -2288,10 +2301,14 @@ button:disabled { cursor: wait; opacity: 0.55; }
 
 /* ── Dashboard page ── */
 .adminDashboard {
+  /* Một nguồn duy nhất cho lề ngang: dải tiêu đề sticky đọc lại biến này
+     để triệt tiêu đúng bằng chỉ số đang dùng. */
+  --dash-gutter: clamp(1.25rem, 2.5vw, 2.25rem);
+
   margin: 0 auto !important;
   max-width: 100% !important;
   min-width: 0 !important;
-  padding: 1.75rem clamp(1.25rem, 2.5vw, 2.25rem) 4rem !important;
+  padding: 1.75rem var(--dash-gutter) 4rem !important;
 }
 
 /* ── Top bar (page header) ──
@@ -2872,6 +2889,37 @@ button:disabled { cursor: wait; opacity: 0.55; }
     display: none !important;
   }
 
+  /* Bốn thứ vừa ẩn ở trên bao gồm cả nút đăng xuất và lối về trang chủ.
+     Hai việc đó vẫn cần làm được trên điện thoại, nên chúng quay lại ở
+     dạng hai nút biểu tượng ngang hàng với logo. */
+  .adminBrandActions {
+    display: flex !important;
+    gap: .35rem;
+    margin-left: auto;
+  }
+
+  .adminBrandActions a,
+  .adminBrandActions button {
+    align-items: center;
+    background: color-mix(in srgb, var(--sidebar-text, #fff) 10%, transparent);
+    border: 1px solid var(--sidebar-border);
+    border-radius: .5rem;
+    color: var(--sidebar-text, #fff);
+    cursor: pointer;
+    display: inline-flex;
+    height: 2.2rem;
+    justify-content: center;
+    padding: 0;
+    width: 2.2rem;
+  }
+
+  /* Đăng xuất là việc không làm lại được, nên nó khác màu với nút bên cạnh. */
+  .adminBrandActions button {
+    background: color-mix(in srgb, #ef4444 18%, transparent);
+    border-color: color-mix(in srgb, #ef4444 45%, transparent);
+    color: #fecaca;
+  }
+
   .adminSidebar nav {
     display: flex !important;
     gap: .4rem !important;
@@ -2889,7 +2937,9 @@ button:disabled { cursor: wait; opacity: 0.55; }
   }
 
   .adminDashboard {
-    padding: 1rem .75rem 5rem !important;
+    --dash-gutter: .75rem;
+
+    padding: 1rem var(--dash-gutter) 5rem !important;
   }
 
   .adminTopbar {

@@ -350,8 +350,29 @@ public class AdminStoryController {
             story.setTitle(title);
             story.setSlug(slug);
             story.setOriginalAuthor(authorName);
-            story.setShortDescription(shortDescription);
-            story.setDescription(description);
+            // Giới thiệu chỉ đổi khi lệnh gọi thật sự mang phần giới thiệu.
+            //
+            // Hai cách hỏng đã xảy ra, và cả hai đều âm thầm:
+            //
+            //   1. Form không có ô giới thiệu (màn sửa chương chẳng hạn) gửi lên
+            //      một giá trị rỗng, và cả văn án bị xoá trắng.
+            //   2. Form nạp nhầm short_description - bản rút gọn 500 ký tự - rồi
+            //      lưu đè lên bản đầy đủ. Trong CSDL còn nguyên dấu vết: những
+            //      truyện có description dài đúng bằng short_description ở mức
+            //      496-499 ký tự chính là các nạn nhân, và bản gốc mất hẳn.
+            //
+            // Chương và giới thiệu không liên quan gì nhau, nên sửa cái này
+            // không được phép chạm vào cái kia.
+            if (description != null && !description.isBlank()) {
+                String existing = story.getDescription();
+                if (isTeaserOverwrite(existing, story.getShortDescription(), description)) {
+                    log.warn("Bỏ qua giới thiệu rút gọn ghi đè bản đầy đủ của truyện {} ({} -> {} ký tự)",
+                            storyId, existing.length(), description.length());
+                } else {
+                    story.setShortDescription(shortDescription);
+                    story.setDescription(description);
+                }
+            }
             // A missing upload on edit keeps whatever cover the story already has.
             if (coverUrl != null) {
                 story.setCoverUrl(coverUrl);
@@ -371,9 +392,16 @@ public class AdminStoryController {
         // Written through JDBC rather than the entity: the combo price is a
         // monetisation setting read by MonetizationFlowService, not part of the
         // Story aggregate the repository maps.
-        jdbc.sql("UPDATE stories SET combo_price_xu = ? WHERE id = ?")
-                .params(request.comboPriceXu(), storyId.toString())
-                .update();
+        //
+        // Chỉ ghi khi lệnh gọi thực sự nói về combo. Sửa chương, đổi thể loại
+        // hay bất kỳ việc gì khác đều không đụng tới giá combo - hai thứ đó
+        // không liên quan gì nhau, và gộp chúng vào một câu UPDATE là lý do một
+        // truyện mở bán combo từ lâu bỗng "mất tiêu" sau một lần thêm chương.
+        if (request.comboPriceXu() != null) {
+            jdbc.sql("UPDATE stories SET combo_price_xu = ? WHERE id = ?")
+                    .params(request.comboPriceXu() > 0 ? request.comboPriceXu() : null, storyId.toString())
+                    .update();
+        }
 
         List<String> categoryIds = replaceGenres(storyId, requestedCategoryIds(request));
         replaceTags(storyId, request.tags());
@@ -837,14 +865,48 @@ public class AdminStoryController {
                 parseCoin(formValue(request, "comboPriceXu")));
     }
 
-    /** A blank or non-numeric combo price means "not configured", not an error. */
-    private static Long parseCoin(String value) {
+    /**
+     * True khi giới thiệu gửi lên chính là bản teaser đang lưu, ngắn hơn văn án
+     * đầy đủ - nghĩa là form đã nạp nhầm {@code short_description} và sắp ghi đè
+     * lên {@code description}.
+     *
+     * <p>Dấu vết trong CSDL rất rõ: những truyện có description dài đúng bằng
+     * short_description ở mức 496-499 ký tự là các nạn nhân, và bản gốc mất hẳn.
+     * Một lần lưu nhầm là mất vĩnh viễn, nên chặn ở đây chứ không phải sửa sau.
+     *
+     * <p>Giỏ ghi đè hợp lệ - người dùng thật sự muốn rút ngắn văn án - không trùng
+     * kiểu này, vì bản mới khi đó không giống hệt teaser cũ từng ký tự.
+     */
+    public static boolean isTeaserOverwrite(String existingDescription,
+                                            String existingShortDescription,
+                                            String incomingDescription) {
+        return existingDescription != null
+                && incomingDescription != null
+                && existingDescription.length() > incomingDescription.length()
+                && incomingDescription.equals(existingShortDescription);
+    }
+
+    /**
+     * Giá combo gửi lên, hoặc null khi lệnh gọi không nói gì về combo.
+     *
+     * <p>Phân biệt "không gửi" với "gửi số 0" là điều kiện để việc sửa chương
+     * không xoá mất combo. Trước đây cả hai đều thành null, và câu UPDATE chạy
+     * vô điều kiện trên mọi lần lưu - nên một form không có ô combo là đủ để
+     * xoá sạch giá của một truyện đã mở bán từ lâu.
+     *
+     * <ul>
+     *   <li>null - không gửi, giữ nguyên giá đang có.</li>
+     *   <li>0 - cố ý gỡ combo.</li>
+     *   <li>số dương - đặt giá đó.</li>
+     * </ul>
+     */
+    public static Long parseCoin(String value) {
         if (value == null || value.isBlank()) {
             return null;
         }
         try {
             long parsed = Long.parseLong(value.trim());
-            return parsed > 0 ? parsed : null;
+            return parsed > 0 ? parsed : 0L;
         } catch (NumberFormatException ignored) {
             return null;
         }

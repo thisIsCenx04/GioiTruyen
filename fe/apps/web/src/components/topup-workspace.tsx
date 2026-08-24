@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 
 import { isLoggedIn } from "@/lib/auth";
 import {
+  cancelTopup,
   createTopup,
   loadDepositPackages,
   loadPaymentMethods,
@@ -63,6 +64,7 @@ export function TopupWorkspace() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const signedIn = isLoggedIn();
 
   useEffect(() => {
@@ -111,6 +113,31 @@ export function TopupWorkspace() {
       setError(cause instanceof Error ? cause.message : "Không gửi được xác nhận chuyển khoản.");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  /**
+   * Huỷ đơn nạp đang mở.
+   *
+   * Bấm nhầm gói, đổi ý, hoặc trót báo "đã chuyển khoản" khi chưa chuyển -
+   * trước đây ba trường hợp này đều phải chờ hệ thống tự dọn sau hai tiếng.
+   * Xác nhận trước khi gọi, vì đơn đã huỷ không mở lại được.
+   */
+  async function abandonTopup() {
+    if (!instruction) return;
+    const warning = instruction.status === "PENDING"
+      ? "Huỷ yêu cầu nạp này? Nếu bạn đã chuyển tiền thật thì đừng huỷ — hãy chờ quản trị viên đối chiếu."
+      : "Huỷ yêu cầu nạp này? Mã giao dịch hiện tại sẽ không còn dùng được.";
+    if (!window.confirm(warning)) return;
+    setCancelling(true);
+    setError("");
+    try {
+      setInstruction(await cancelTopup(instruction.paymentId));
+      void loadTopupHistory().then(setHistory);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Không huỷ được yêu cầu nạp.");
+    } finally {
+      setCancelling(false);
     }
   }
 
@@ -244,16 +271,45 @@ export function TopupWorkspace() {
             {instruction.status === "DRAFT" ? (
               <div className="topupConfirm">
                 <p>Sau khi chuyển khoản xong, bấm nút bên dưới để gửi yêu cầu tới quản trị viên.</p>
-                <button disabled={submitting} onClick={() => void confirmTransfer()} type="button">
-                  {submitting ? "Đang gửi…" : "Tôi đã chuyển khoản"}
-                </button>
+                <div className="topupConfirmActions">
+                  <button disabled={submitting || cancelling} onClick={() => void confirmTransfer()} type="button">
+                    {submitting ? "Đang gửi…" : "Tôi đã chuyển khoản"}
+                  </button>
+                  {/* Lối thoát cho người bấm nhầm gói hoặc đổi ý. Không có nó, đơn
+                      nằm đó hai tiếng chờ hệ thống tự dọn. */}
+                  <button
+                    className="topupCancelBtn"
+                    disabled={submitting || cancelling}
+                    onClick={() => void abandonTopup()}
+                    type="button"
+                  >
+                    {cancelling ? "Đang huỷ…" : "Huỷ yêu cầu"}
+                  </button>
+                </div>
               </div>
             ) : null}
 
-            {instruction.status === "PENDING" ? (
+            {/* Đơn đã huỷ vẫn còn hiện mã QR và nội dung chuyển khoản ở trên.
+                Nói thẳng là đừng dùng nữa, kẻo có người chuyển theo mã cũ. */}
+            {instruction.status === "CANCELLED" ? (
               <p className="topupPendingNote">
-                Đã gửi yêu cầu. Quản trị viên sẽ đối chiếu và cộng xu cho bạn, thường trong vài phút.
+                Yêu cầu này đã huỷ. Đừng chuyển khoản theo mã ở trên nữa — hãy chọn gói
+                và bấm tạo yêu cầu mới để nhận mã khác.
               </p>
+            ) : null}
+
+            {instruction.status === "PENDING" ? (
+              <div className="topupPendingNote">
+                <p>Đã gửi yêu cầu. Quản trị viên sẽ đối chiếu và cộng xu cho bạn, thường trong vài phút.</p>
+                <button
+                  className="topupCancelBtn"
+                  disabled={cancelling}
+                  onClick={() => void abandonTopup()}
+                  type="button"
+                >
+                  {cancelling ? "Đang huỷ…" : "Huỷ yêu cầu"}
+                </button>
+              </div>
             ) : null}
           </>
         ) : (

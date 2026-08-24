@@ -2,6 +2,7 @@ package com.storyplatform.catalog.api;
 
 import com.storyplatform.catalog.application.PublicCatalogService;
 import com.storyplatform.catalog.application.dto.CatalogDtos;
+import com.storyplatform.shared.api.ClientIp;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -168,16 +169,13 @@ public class PublicCatalogController {
     /**
      * The caller's address as far as it can be trusted.
      *
-     * <p>Behind nginx every request arrives from localhost, so the forwarded
-     * header is read first; its leftmost entry is the original client. It is
-     * only ever hashed for de-duplication, never stored or shown.
+     * <p>Chỉ dùng để băm ra khoá chống đếm trùng, không lưu và không hiển thị.
+     * Phần đọc địa chỉ nằm trong {@link ClientIp}: bản cũ lấy phần tử đầu của
+     * X-Forwarded-For, mà đó là phần client tự viết — ai cũng đổi được để tự đếm
+     * cho mình bao nhiêu lượt xem túy thích.
      */
     private static String clientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
+        return ClientIp.of(request);
     }
 
     @GetMapping("/search")

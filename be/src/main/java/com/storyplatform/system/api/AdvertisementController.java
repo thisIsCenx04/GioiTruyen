@@ -50,10 +50,9 @@ public class AdvertisementController {
     }
 
     private String ipHash(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        String ip = forwarded == null || forwarded.isBlank()
-                ? request.getRemoteAddr()
-                : forwarded.split(",")[0].trim();
+        // Địa chỉ này là thứ duy nhất chặn một người tự bấm quảng cáo của chính
+        // mình hàng nghìn lần, nên nó không được phép lấy từ tiêu đề client tự viết.
+        String ip = com.storyplatform.shared.api.ClientIp.of(request);
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(ip.getBytes(StandardCharsets.UTF_8)));
         } catch (NoSuchAlgorithmException exception) {

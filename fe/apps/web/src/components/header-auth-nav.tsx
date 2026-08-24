@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import {
   getAccessToken,
   isAdminUser,
+  revalidateSession,
   isLoggedIn as checkIsLoggedIn,
   loginHref,
   refreshAccessToken,
@@ -52,13 +53,25 @@ export function HeaderAuthNav() {
       setIsAdmin(isAdminUser());
     };
 
-    updateAuthState();
+    /**
+     * Kiểm lại vai trò trước khi vẽ lại menu.
+     *
+     * Vai trò nằm trong access token đã ký và sống 30 phút, nên đọc token
+     * không thể thấy một lần đổi quyền vừa xảy ra: người bị hạ từ ADMIN
+     * xuống vẫn thấy mục "Bảng quản trị" cho đến khi token hết hạn. Gia hạn
+     * sớm buộc máy chủ đọc lại vai trò từ CSDL.
+     */
+    const recheckRole = () => {
+      void revalidateSession().finally(updateAuthState);
+    };
 
-    window.addEventListener("focus", updateAuthState);
+    recheckRole();
+
+    window.addEventListener("focus", recheckRole);
     window.addEventListener("storage", updateAuthState);
     window.addEventListener("auth-change", updateAuthState);
     return () => {
-      window.removeEventListener("focus", updateAuthState);
+      window.removeEventListener("focus", recheckRole);
       window.removeEventListener("storage", updateAuthState);
       window.removeEventListener("auth-change", updateAuthState);
     };

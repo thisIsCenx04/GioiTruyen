@@ -122,17 +122,12 @@ public class AdminPrDisputeController {
         }
 
         long penalty = Math.max(0, request.penaltyXu());
-        if (penalty > 0 && request.upheld()) {
-            // Which way the coins move depends on who complained: a creator who
-            // was not paid is owed by the team, a team whose post came down is
-            // owed by the creator.
-            boolean fromTeam = "CREATOR".equals(dispute[1]);
-            String payer = fromTeam ? dispute[3] : dispute[2];
-            String payee = fromTeam ? dispute[2] : dispute[3];
-            transfer(payer, payee, penalty, disputeId, dispute[4]);
-        }
 
-        jdbc.sql("""
+        // Chốt phán quyết trước, chuyển xu sau. Trước đây ngược lại, và số dòng
+        // câu UPDATE đổi được cũng không ai xem: hai quản trị viên cùng bấm
+        // "Chấp nhận khiếu nại" thì cả hai đọc thấy OPEN, cả hai chuyển tiền, và
+        // bên bị phạt mất hai lần trong im lặng.
+        int resolved = jdbc.sql("""
                         UPDATE pr_disputes
                            SET status = ?, admin_id = ?, admin_note = ?, penalty_xu = ?,
                                resolved_at = NOW(3)
@@ -142,6 +137,20 @@ public class AdminPrDisputeController {
                         request.note() == null ? null : request.note().trim(),
                         request.upheld() ? penalty : 0L, disputeId)
                 .update();
+        if (resolved == 0) {
+            throw new ApiException(HttpStatus.CONFLICT, "pr.dispute_closed", "Already resolved",
+                    "Khiếu nại này vừa được người khác xử lý. Hãy tải lại danh sách.");
+        }
+
+        if (penalty > 0 && request.upheld()) {
+            // Which way the coins move depends on who complained: a creator who
+            // was not paid is owed by the team, a team whose post came down is
+            // owed by the creator.
+            boolean fromTeam = "CREATOR".equals(dispute[1]);
+            String payer = fromTeam ? dispute[3] : dispute[2];
+            String payee = fromTeam ? dispute[2] : dispute[3];
+            transfer(payer, payee, penalty, disputeId, dispute[4]);
+        }
 
         // Both sides are told the outcome. A ruling nobody hears about settles
         // nothing: the loser repeats the behaviour and the winner assumes the

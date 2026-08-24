@@ -21,7 +21,7 @@ export type ApiProblem = {
 
 /** Bước kế tiếp cho từng mã lỗi. Chỉ nói việc làm được, không nhắc lại lỗi. */
 const NEXT_STEP: Record<string, string> = {
-  "pr.already_claimed": "Bạn đã nhận nhiệm vụ này rồi. Mở tab “Nhiệm vụ PR của tôi” để nộp bài.",
+  "pr.already_claimed": "Bạn đã nhận nhiệm vụ này rồi. Mở tab “Nhiệm vụ PR của tôi” để gửi kết quả.",
   "pr.already_published": "Nhiệm vụ đã lên bảng nên không sửa được nữa. Muốn đổi thì dừng nhiệm vụ rồi tạo nhiệm vụ mới.",
   "pr.budget_too_high": "Giảm số Xu mỗi suất hoặc giảm số suất, rồi thử lại.",
   "pr.contact_required": "Điền kênh liên hệ để người nhận trao đổi lại được với nhóm.",
@@ -34,7 +34,7 @@ const NEXT_STEP: Record<string, string> = {
   "pr.not_found": "Nhiệm vụ có thể vừa bị gỡ. Tải lại trang.",
   "pr.not_open": "Nhiệm vụ đã đóng hoặc hết hạn đăng ký nên không nhận thêm được.",
   "pr.not_pending": "Đơn này đã được xử lý rồi. Tải lại danh sách để thấy trạng thái mới.",
-  "pr.not_submittable": "Chỉ nộp bài được khi suất đang ở trạng thái “Đã nhận”.",
+  "pr.not_submittable": "Chỉ gửi kết quả được khi suất đang ở trạng thái “Đã nhận”.",
   "pr.not_submitted": "Chỉ duyệt được sau khi người nhận đã nộp link bài đăng.",
   "pr.own_team": "Bạn không nhận được nhiệm vụ của chính nhóm mình.",
   "pr.too_many_claims": "Bạn đang giữ quá nhiều nhiệm vụ chưa nộp. Hoàn thành bớt rồi quay lại.",

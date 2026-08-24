@@ -40,6 +40,8 @@ type Quest = {
   registrationEndsAt: string | null;
   publishedAt: string | null;
   createdAt: string | null;
+  /** Ai đang giữ suất, kèm sẵn trong danh sách để không phải mở từng thẻ. */
+  claimants: Array<{ userId: string; name: string; status: string }>;
 };
 
 type Claim = {
@@ -86,7 +88,7 @@ const CLAIM_LABELS: Record<string, string> = {
   CANCELLED: "Đã huỷ",
   CLAIMED: "Đang làm",
   DECLINED: "Không được chọn",
-  EXPIRED: "Quá hạn nộp",
+  EXPIRED: "Quá hạn gửi",
   PENDING: "Chờ duyệt đơn",
   REJECTED: "Bị từ chối",
   SUBMITTED: "Chờ duyệt bài",
@@ -330,7 +332,7 @@ export function PrQuestWorkspace({ teamId }: Readonly<{ teamId: string }>) {
             requiredMessage: "Thiếu kênh liên hệ thì người nhận không trao đổi lại được với nhóm.",
           },
         ],
-        intro: "Người nhận sẽ được sửa lại và nộp bài lần nữa, chừng nào chưa hết hạn nộp.",
+        intro: "Người nhận sẽ được sửa lại và gửi kết quả lần nữa, chừng nào chưa hết hạn.",
         onSubmit: (values) => run("Từ chối bài", () =>
           authedFetch(`${base}/pr-quests/claims/${claimId}/reject`, {
             body: JSON.stringify({
@@ -644,6 +646,22 @@ export function PrQuestWorkspace({ teamId }: Readonly<{ teamId: string }>) {
                   </div>
                 </header>
 
+                {/* Ai đang giữ suất, hiện ngay trên thẻ. Trước đây chỉ có con số
+                    "1/1 suất", nên chủ nhiệm vụ phải bấm mở mới biết ai đã nhận. */}
+                {quest.claimants.length > 0 ? (
+                  <div className="prClaimants">
+                    <span>Người nhận</span>
+                    <ul>
+                      {quest.claimants.map((person) => (
+                        <li key={person.userId + person.status}>
+                          {person.name}
+                          <em>{CLAIM_LABELS[person.status] ?? person.status}</em>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+
                 <div className="prStats">
                   <div><span>Thưởng/người</span><b>{formatXu(quest.rewardXu)} Xu</b></div>
                   <div><span>Suất</span><b>{quest.claimedCount}/{quest.slotCount}</b></div>
@@ -740,7 +758,7 @@ export function PrQuestWorkspace({ teamId }: Readonly<{ teamId: string }>) {
             <h2><Video aria-hidden="true" size={16} /> Luật của chiến dịch PR</h2>
             <ul>
               <li>Xu bị trừ ngay khi publish và được <strong>ký quỹ</strong> — người nhận thấy được tiền đã có sẵn.</li>
-              <li>Người nhận có <strong>7 ngày</strong> để nộp bài. Quá hạn thì suất được trả về cho người khác.</li>
+              <li>Người nhận có <strong>7 ngày</strong> để gửi kết quả. Quá hạn thì suất được trả về cho người khác.</li>
               <li>Bạn có <strong>7 ngày</strong> để duyệt bài. Quá hạn hệ thống <strong>tự duyệt và trả Xu</strong>.</li>
               <li>Từ chối bắt buộc ghi lý do và để lại kênh liên hệ, để hai bên trao đổi tiếp.</li>
               <li>Dừng chiến dịch chỉ hoàn phần suất chưa ai nhận. Suất đã nhận vẫn phải duyệt.</li>

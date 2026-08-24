@@ -38,9 +38,11 @@ export default async function AudioStoriesPage() {
             <span>{stories.length} truyện</span>
           </header>
 
+          {/* Lời nhắc, không phải bản mô tả kỹ thuật. Điều duy nhất người nghe cần
+              biết trước là đừng đóng tab, vì tiếng được dựng ngay trên máy họ. */}
           <p className="plainPageLede">
-            Mọi truyện trên gioitruyen đều nghe được: trình duyệt đọc thẳng chữ của từng chương,
-            chạy liên tục hết chương này sang chương khác, và nhớ giúp bạn chỗ đang nghe dở.
+            Nhớ giữ tab này mở trong lúc nghe nhé — đóng tab là giọng đọc dừng theo.
+            Chỗ đang nghe dở được nhớ hộ, mở lại là nghe tiếp được. Chúc bạn nghe truyện vui vẻ!
           </p>
 
           {stories.length > 0 ? (

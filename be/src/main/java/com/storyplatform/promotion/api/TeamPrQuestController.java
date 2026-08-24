@@ -85,8 +85,19 @@ public class TeamPrQuestController {
             String status,
             String registrationEndsAt,
             String publishedAt,
-            String createdAt
+            String createdAt,
+            /**
+             * Tên những người đã nhận hoặc đã đăng ký, kèm ngay trong danh sách.
+             *
+             * <p>Danh sách chi tiết nằm sau một cú bấm ở {@code /claims}, nhưng chủ
+             * nhiệm vụ cần thấy ngay ai đang giữ suất mà không phải mở từng thẻ.
+             */
+            List<Claimant> claimants
     ) {
+    }
+
+    /** Một người đang giữ suất, rút gọn cho danh sách nhiệm vụ. */
+    public record Claimant(String userId, String name, String status) {
     }
 
     /** What publishing would cost, so the form can show it before any money moves. */
@@ -113,12 +124,28 @@ public class TeamPrQuestController {
     @Transactional(readOnly = true)
     public List<TeamQuestRow> list(@PathVariable("teamId") String teamRef, @AuthenticationPrincipal Jwt jwt) {
         String teamId = requireManager(teamRef, jwt);
+        // GROUP_CONCAT thay vì một truy vấn cho mỗi nhiệm vụ: danh sách người nhận
+        // hiện thẳng trên thẻ, nên nó phải đi cùng một lần gọi với danh sách
+        // nhiệm vụ, không phải N lần gọi nữa.
+        //
+        // Bỏ DECLINED và EXPIRED: đó là những người không còn giữ suất nào.
         return jdbc.sql("""
                         SELECT q.*, s.title AS story_title,
                                (SELECT COUNT(1) FROM pr_quest_claims c
                                  WHERE c.quest_id = q.id AND c.status = 'PENDING') AS pending_count,
                                (SELECT COUNT(1) FROM pr_quest_claims c
-                                 WHERE c.quest_id = q.id AND c.status = 'SUBMITTED') AS awaiting_review
+                                 WHERE c.quest_id = q.id AND c.status = 'SUBMITTED') AS awaiting_review,
+                               (SELECT GROUP_CONCAT(
+                                          CONCAT_WS('', cu.id,
+                                                    COALESCE(NULLIF(cu.display_name, ''),
+                                                             SUBSTRING_INDEX(cu.email, '@', 1)),
+                                                    c.status)
+                                          ORDER BY c.created_at SEPARATOR '')
+                                  FROM pr_quest_claims c
+                                  JOIN users cu ON cu.id = c.user_id
+                                 WHERE c.quest_id = q.id
+                                   AND c.status IN ('PENDING', 'CLAIMED', 'SUBMITTED', 'REJECTED', 'APPROVED')
+                               ) AS claimants
                         FROM pr_quests q
                         LEFT JOIN stories s ON s.id = q.story_id
                         WHERE q.team_id = ?
@@ -134,8 +161,20 @@ public class TeamPrQuestController {
                         rs.getLong("escrow_xu"), rs.getLong("paid_xu"),
                         rs.getLong("publish_fee_xu"), rs.getString("status"),
                         text(rs, "registration_ends_at"), text(rs, "published_at"),
-                        text(rs, "created_at")))
+                        text(rs, "created_at"), claimants(rs.getString("claimants"))))
                 .list();
+    }
+
+    /** Tách chuỗi GROUP_CONCAT thành danh sách. Rỗng thì là chưa ai nhận. */
+    private static List<Claimant> claimants(String packed) {
+        if (packed == null || packed.isBlank()) return List.of();
+        List<Claimant> people = new java.util.ArrayList<>();
+        for (String entry : packed.split("")) {
+            String[] parts = entry.split("", -1);
+            if (parts.length < 3) continue;
+            people.add(new Claimant(parts[0], parts[1], parts[2]));
+        }
+        return List.copyOf(people);
     }
 
     /** Applications and submissions on one quest - the owner's work queue. */

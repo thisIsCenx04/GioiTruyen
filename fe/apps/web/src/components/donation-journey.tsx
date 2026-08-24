@@ -40,6 +40,14 @@ type DonationJourneyProps = Readonly<{
   storyTitle: string;
   teamId: string;
   variant?: "default" | "action";
+  /**
+   * "story" khi ủng hộ từ trang truyện, "team" khi ủng hộ thẳng cho nhóm.
+   *
+   * <p>Tiền đi cùng một đường trong cả hai trường hợp: lệnh gọi chỉ mang
+   * teamId, không mang storyId, nên khoản ủng hộ không bao giờ tính vào thứ hạng
+   * của truyện nào. Chỉ câu chữ trên biên nhận là khác.
+   */
+  context?: "story" | "team";
 }>;
 
 function safeUUID(): string {
@@ -57,6 +65,7 @@ export function DonationJourney({
   storyTitle,
   teamId,
   variant = "default",
+  context = "story",
 }: DonationJourneyProps) {
   // Donating moves coins between accounts, so the call has to carry the token.
   const api = useMemo(
@@ -191,7 +200,9 @@ export function DonationJourney({
           <div>
             <strong>{xu(receipt.grossCoin)} XU đã được gửi.</strong>
             <p>
-              Món quà cho đội ngũ của “{storyTitle}” đã ghi vào sổ giao dịch.
+              {context === "team"
+                ? `Món quà cho nhóm “${storyTitle}” đã ghi vào sổ giao dịch.`
+                : `Món quà cho đội ngũ của “${storyTitle}” đã ghi vào sổ giao dịch.`}
             </p>
             <small>Mã biên nhận · {receipt.donationId.slice(0, 8)}</small>
           </div>

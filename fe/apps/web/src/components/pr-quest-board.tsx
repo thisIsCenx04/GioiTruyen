@@ -68,7 +68,7 @@ const CLAIM_LABELS: Record<string, string> = {
   CANCELLED: "Đã huỷ",
   CLAIMED: "Đang làm",
   DECLINED: "Không được chọn",
-  EXPIRED: "Quá hạn nộp",
+  EXPIRED: "Quá hạn gửi",
   PENDING: "Chờ nhóm duyệt đơn",
   REJECTED: "Bị từ chối — sửa và nộp lại",
   SUBMITTED: "Chờ nhóm duyệt bài",
@@ -383,8 +383,8 @@ function PrClaimCard({
         "Không có ảnh thì khi khiếu nại, quản trị viên chỉ còn cái link đã hỏng để nhìn.",
       ],
       onSubmit: () => sendSubmission(),
-      submitLabel: "Vẫn nộp",
-      title: "Nộp bài mà không có ảnh?",
+      submitLabel: "Vẫn gửi",
+      title: "Gửi kết quả mà không có ảnh?",
     });
   }
 
@@ -397,7 +397,7 @@ function PrClaimCard({
         method: "POST",
       });
       if (!response.ok) {
-        onOutcome(await failureOutcome("Nộp bài thất bại", response));
+        onOutcome(await failureOutcome("Gửi kết quả thất bại", response));
         return;
       }
       onOutcome({
@@ -406,7 +406,7 @@ function PrClaimCard({
           "Quá hạn mà nhóm không phản hồi, hệ thống sẽ tự duyệt và trả Xu cho bạn.",
         ],
         kind: "success",
-        title: "Đã nộp bài",
+        title: "Đã gửi kết quả",
       });
       setFiles([]);
       onDone();
@@ -480,7 +480,7 @@ function PrClaimCard({
       {quest.claimStatus === "CLAIMED" && submitLeft != null ? (
         <p className={submitLeft <= 2 ? "prDue isUrgent" : "prDue"}>
           <Clock aria-hidden="true" size={13} />
-          {submitLeft <= 0 ? "Đã quá hạn nộp" : `Còn ${submitLeft} ngày để nộp bài`}
+          {submitLeft <= 0 ? "Đã quá hạn gửi" : `Còn ${submitLeft} ngày để gửi kết quả`}
         </p>
       ) : null}
 
@@ -558,7 +558,7 @@ function PrClaimCard({
             onClick={() => void submit()}
             type="button"
           >
-            {submitting ? "Đang nộp…" : "Nộp bài"}
+            {submitting ? "Đang gửi…" : "Gửi kết quả"}
           </button>
         </div>
       ) : null}

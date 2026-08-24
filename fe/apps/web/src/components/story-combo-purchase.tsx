@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Sparkles, ShoppingBag, CheckCircle2, ShieldCheck, Tag } from "lucide-react";
 import { API_BASE_URL, authedFetch } from "@/lib/api-base";
 import { formatXu } from "@/lib/format";
@@ -52,6 +52,14 @@ export function StoryComboPurchase({
   // default discount - so the price shown had no relation to the chapter prices
   // in the database or to the amount the purchase endpoint actually charges.
   const [pricing, setPricing] = useState<ComboPricing | null>(null);
+  /**
+   * Ba trạng thái trước đây bị gộp chung vào `pricing === null`: đang tải, tải
+   * hỏng, và truyện thật sự không có combo. Cả ba đều hiện ra một câu duy nhất
+   * là "chưa có combo", nên một lần mạng chập chờn cũng khiến người đọc tin
+   * rằng truyện không mở bán - và tác giả không hiểu vì sao giá mình đặt không
+   * ai thấy. Tách ra để mỗi trạng thái nói đúng chuyện của nó.
+   */
+  const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
 
   const totalRetailXu = pricing?.chapterTotalXu ?? 0;
   const actualComboXu = pricing?.comboPriceXu ?? 0;
@@ -61,37 +69,49 @@ export function StoryComboPurchase({
   const hasDiscount = (pricing?.configured ?? false) && (pricing?.discountPercent ?? 0) > 0;
   const savingsPercent = pricing?.discountPercent ?? 0;
 
+  /**
+   * Nạp giá combo. Phần `catch` rỗng trước đây nuốt lỗi mạng rồi để giao diện
+   * nằm nguyên ở trạng thái ban đầu, không phân biệt được với "truyện không có
+   * combo". Giờ mỗi kết cục đều ghi lại được, và khi hỏng thì có nút thử lại.
+   */
+  const loadCombo = useCallback(async () => {
+    setLoadState("loading");
+    try {
+      const res = await authedFetch(`${API_BASE_URL}/stories/${storyId}/combo-status`);
+      if (!res.ok) {
+        setLoadState("error");
+        return;
+      }
+      const data = (await res.json()) as ComboPricing & { purchased?: boolean };
+      setPricing({
+        chapterTotalXu: data.chapterTotalXu ?? 0,
+        comboPriceXu: data.comboPriceXu ?? 0,
+        configured: data.configured ?? false,
+        discountPercent: data.discountPercent ?? 0,
+      });
+      if (data.purchased) setIsPurchased(true);
+      setLoadState("ready");
+    } catch {
+      // Mất mạng hoặc máy chủ không trả lời. Nói rõ là hỏng, không im lặng.
+      setLoadState("error");
+    }
+  }, [storyId]);
+
   useEffect(() => {
     let active = true;
-    async function checkCombo() {
-      try {
-        const res = await authedFetch(`${API_BASE_URL}/stories/${storyId}/combo-status`);
-        if (res.ok && active) {
-          const data = (await res.json()) as ComboPricing & { purchased?: boolean };
-          setPricing({
-            chapterTotalXu: data.chapterTotalXu ?? 0,
-            comboPriceXu: data.comboPriceXu ?? 0,
-            configured: data.configured ?? false,
-            discountPercent: data.discountPercent ?? 0,
-          });
-          if (data.purchased) setIsPurchased(true);
-        }
-      } catch {
-        // Offline or unreachable: the button stays disabled rather than quoting
-        // a price that was never confirmed by the server.
-      }
-    }
-    void checkCombo();
+    const run = () => {
+      if (active) void loadCombo();
+    };
+    run();
     // Both render points are the same purchase, so each refreshes when either
     // one completes. Without this the header button would say "Đã Mua" while the
     // row above the chapter list still offered to sell it.
-    const onPurchased = () => void checkCombo();
-    window.addEventListener(COMBO_PURCHASED_EVENT, onPurchased);
+    window.addEventListener(COMBO_PURCHASED_EVENT, run);
     return () => {
       active = false;
-      window.removeEventListener(COMBO_PURCHASED_EVENT, onPurchased);
+      window.removeEventListener(COMBO_PURCHASED_EVENT, run);
     };
-  }, [storyId]);
+  }, [loadCombo]);
 
   /**
    * Why the combo cannot be bought right now, or "" when it can.
@@ -105,11 +125,13 @@ export function StoryComboPurchase({
     ? ""
     : completionStatus !== "COMPLETED"
       ? "Truyện chưa hoàn thành nên chưa mở bán Combo. Combo chỉ bán khi truyện đã ra trọn bộ."
-      : pricing === null
-        ? "Đang tải giá combo, vui lòng thử lại sau giây lát."
-        : !pricing.configured || actualComboXu <= 0
-          ? "Truyện này chưa có combo. Nhóm đăng truyện chưa đặt giá Combo."
-          : "";
+      : loadState === "loading"
+        ? "Đang tải giá combo, vui lòng chờ giây lát."
+        : loadState === "error"
+          ? "Không tải được giá combo của truyện này. Đây là lỗi kết nối, không phải truyện không có combo. Hãy thử lại."
+          : !pricing || !pricing.configured || actualComboXu <= 0
+            ? "Truyện này chưa có combo. Nhóm đăng truyện chưa đặt giá Combo."
+            : "";
 
   async function handleBuyCombo() {
     setBusy(true);
@@ -151,7 +173,11 @@ export function StoryComboPurchase({
             : unavailableReason
               // Without this the row advertised "Mở toàn bộ chương với 0 Xu",
               // which reads as a free offer rather than as no offer at all.
-              ? "Truyện chưa mở bán combo."
+              ? loadState === "loading"
+                ? "Đang tải giá combo…"
+                : loadState === "error"
+                  ? "Chưa tải được giá combo — bấm để thử lại."
+                  : "Truyện chưa mở bán combo."
               : hasDiscount
                 // "tiết kiệm 30%" rather than "-30%": a bare minus sign next to
                 // two prices reads as a subtraction, not as a saving.
@@ -240,7 +266,12 @@ export function StoryComboPurchase({
               {notice}
             </p>
             <button
-              onClick={() => setNotice("")}
+              onClick={() => {
+                // Chỉ trường hợp tải hỏng mới có gì để thử lại; hai trường hợp
+                // còn lại - đang tải, và truyện không có combo - thì chỉ đóng.
+                if (loadState === "error") void loadCombo();
+                setNotice("");
+              }}
               style={{
                 background: "var(--accent, #0f6bff)", border: 0, borderRadius: ".5rem",
                 color: "#fff", cursor: "pointer", fontWeight: 800,
@@ -248,7 +279,7 @@ export function StoryComboPurchase({
               }}
               type="button"
             >
-              Đã hiểu
+              {loadState === "error" ? "Thử lại" : "Đã hiểu"}
             </button>
           </div>
         </div>

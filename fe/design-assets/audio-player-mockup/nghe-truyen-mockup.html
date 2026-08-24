@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="vi"><head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="file:///C:/Users/ASUS/OneDrive/Desktop/WebProduction/Gioitruyen.com/GioiTruyen/fe/apps/web/src/pages/globals.css">
+<style>
+/* ── Bản dựng thử: giao diện nghe truyện kiểu trình phát nhạc ──────────── */
+body { background: var(--surface-page, #f4f8fd); margin: 0; }
+
+.mockShell { margin: 0 auto; max-width: 68rem; padding: 1.25rem max(1rem, 3vw) 3rem; }
+
+/* ── Khối phát: nền lấy tông từ ảnh bìa, nội dung nổi lên trên ───────── */
+.apHero {
+  background: linear-gradient(135deg, #2b2160 0%, #4c2a7a 45%, #7b2f6b 100%);
+  border-radius: 1.15rem;
+  box-shadow: 0 1.4rem 3rem rgb(24 18 60 / 28%);
+  color: #fff;
+  display: grid;
+  gap: 1.6rem;
+  grid-template-columns: 15rem minmax(0, 1fr);
+  padding: 1.6rem;
+  position: relative;
+  overflow: hidden;
+}
+.apHero::after {
+  background: radial-gradient(circle at 78% 12%, rgb(255 255 255 / 16%), transparent 58%);
+  content: ""; inset: 0; position: absolute; pointer-events: none;
+}
+.apHero > * { position: relative; z-index: 1; }
+
+.apCover {
+  aspect-ratio: 1; border-radius: .9rem; overflow: hidden;
+  box-shadow: 0 1rem 2.2rem rgb(0 0 0 / 38%);
+  width: 100%;
+}
+.apCover img { display: block; height: 100%; object-fit: cover; width: 100%; }
+
+.apBody { display: flex; flex-direction: column; gap: .75rem; min-width: 0; }
+
+.apEyebrow {
+  align-items: center; display: flex; gap: .45rem;
+  font-size: .68rem; font-weight: 800; letter-spacing: .14em;
+  text-transform: uppercase; color: rgb(255 255 255 / 72%);
+}
+.apEyebrow .apDot { background: #4ade80; border-radius: 50%; height: .45rem; width: .45rem; }
+
+.apStory { font-size: 1.62rem; font-weight: 850; letter-spacing: -.02em; line-height: 1.15; margin: 0; }
+.apChapter { color: rgb(255 255 255 / 82%); font-size: .95rem; font-weight: 650; margin: 0; }
+.apTeam { color: rgb(255 255 255 / 62%); font-size: .8rem; margin: 0; }
+
+/* ── Thanh chạy ───────────────────────────────────────────────────────── */
+.apSeek { display: grid; gap: .3rem; margin-top: .35rem; }
+.apTrack {
+  background: rgb(255 255 255 / 22%); border-radius: 999rem; height: .35rem; position: relative;
+}
+.apPlayed { background: #fff; border-radius: 999rem; height: 100%; width: 38%; }
+.apKnob {
+  background: #fff; border-radius: 50%; height: .8rem; width: .8rem;
+  box-shadow: 0 .2rem .5rem rgb(0 0 0 / 35%);
+  position: absolute; top: 50%; left: 38%; transform: translate(-50%, -50%);
+}
+.apTimes {
+  color: rgb(255 255 255 / 70%); display: flex; font-size: .72rem;
+  font-variant-numeric: tabular-nums; justify-content: space-between;
+}
+
+/* ── Nút điều khiển ───────────────────────────────────────────────────── */
+.apControls { align-items: center; display: flex; gap: .55rem; margin-top: .15rem; }
+.apBtn {
+  align-items: center; background: rgb(255 255 255 / 12%); border: 0;
+  border-radius: 50%; color: #fff; cursor: pointer; display: inline-flex;
+  height: 2.7rem; justify-content: center; width: 2.7rem;
+}
+.apBtn.isPlay {
+  background: #fff; color: #3b1f6e; height: 3.5rem; width: 3.5rem;
+  box-shadow: 0 .5rem 1.2rem rgb(0 0 0 / 32%);
+}
+.apSpacer { flex: 1; }
+.apChip {
+  align-items: center; background: rgb(255 255 255 / 12%); border: 0;
+  border-radius: 999rem; color: #fff; cursor: pointer; display: inline-flex;
+  font-size: .76rem; font-weight: 750; gap: .35rem; padding: .45rem .8rem;
+}
+.apChip.isOn { background: #fff; color: #3b1f6e; }
+
+/* ── Mô tả ────────────────────────────────────────────────────────────── */
+.apSection { margin-top: 1.5rem; }
+.apSectionHead {
+  align-items: baseline; display: flex; gap: .75rem; justify-content: space-between;
+  margin-bottom: .7rem;
+}
+.apSectionHead h2 {
+  color: var(--text-primary); font-size: .95rem; font-weight: 850;
+  letter-spacing: .04em; margin: 0; text-transform: uppercase;
+}
+.apSectionHead span { color: var(--text-muted); font-size: .8rem; }
+
+.apCard {
+  background: var(--surface-card, #fff); border: 1px solid var(--line, #e2e8f0);
+  border-radius: .85rem; padding: 1.1rem 1.25rem;
+}
+.apDesc { color: var(--text-secondary); font-size: .9rem; line-height: 1.75; margin: 0; }
+.apMeta { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .9rem; }
+.apMeta span {
+  background: var(--surface-sunken, #f1f5f9); border-radius: 999rem;
+  color: var(--text-secondary); font-size: .76rem; font-weight: 650; padding: .25rem .7rem;
+}
+
+/* ── Danh sách chương kiểu playlist ───────────────────────────────────── */
+.apList { display: grid; gap: .15rem; }
+.apRow {
+  align-items: center; background: transparent; border: 0; border-radius: .6rem;
+  cursor: pointer; display: grid; gap: .85rem; padding: .6rem .7rem; text-align: left;
+  grid-template-columns: 2rem minmax(0, 1fr) auto auto;
+  width: 100%;
+}
+.apRow:hover { background: var(--surface-sunken, #f1f5f9); }
+.apRow.isPlaying { background: color-mix(in srgb, #7b2f6b 10%, transparent); }
+.apNum {
+  color: var(--text-muted); font-size: .82rem; font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.apRow.isPlaying .apNum { color: #7b2f6b; }
+.apRowTitle { display: grid; gap: .15rem; min-width: 0; }
+.apRowTitle strong {
+  color: var(--text-primary); font-size: .9rem; font-weight: 700;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.apRow.isPlaying .apRowTitle strong { color: #7b2f6b; }
+.apRowTitle small { color: var(--text-muted); font-size: .74rem; }
+.apDur { color: var(--text-muted); font-size: .78rem; font-variant-numeric: tabular-nums; }
+.apState { color: var(--text-muted); display: inline-flex; }
+.apBars { align-items: flex-end; display: inline-flex; gap: .12rem; height: .8rem; }
+.apBars i { background: #7b2f6b; border-radius: 1px; display: block; width: .16rem; }
+.apLock {
+  background: #fef3c7; border-radius: 999rem; color: #b45309;
+  font-size: .68rem; font-weight: 800; padding: .15rem .5rem;
+}
+
+/* ── Khổ điện thoại ───────────────────────────────────────────────────── */
+@media (max-width: 46rem) {
+  .apHero { grid-template-columns: minmax(0, 1fr); gap: 1.1rem; padding: 1.1rem; text-align: center; }
+  .apCover { margin: 0 auto; max-width: 13rem; }
+  .apBody { align-items: center; }
+  .apEyebrow { justify-content: center; }
+  .apSeek { width: 100%; }
+  .apControls { justify-content: center; width: 100%; }
+  .apSpacer { display: none; }
+  .apChipRow { display: flex; gap: .4rem; flex-wrap: wrap; justify-content: center; margin-top: .5rem; }
+  .apStory { font-size: 1.3rem; }
+  .apRow { grid-template-columns: 1.6rem minmax(0, 1fr) auto; }
+  .apDur { display: none; }
+}
+.apChipRow { display: contents; }
+@media (max-width: 46rem) { .apChipRow { display: flex; } }
+</style>
+</head>
+<body>
+<div class="mockShell">
+
+  <!-- ── Trình phát ────────────────────────────────────────────────── -->
+  <section class="apHero">
+    <div class="apCover">
+      <img alt="" src="data:image/svg+xml;utf8,&lt;svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'&gt;&lt;defs&gt;&lt;linearGradient id='g' x1='0' y1='0' x2='1' y2='1'&gt;&lt;stop offset='0' stop-color='%23f472b6'/&gt;&lt;stop offset='1' stop-color='%236366f1'/&gt;&lt;/linearGradient&gt;&lt;/defs&gt;&lt;rect width='400' height='400' fill='url(%23g)'/&gt;&lt;circle cx='200' cy='170' r='70' fill='%23ffffff' opacity='.28'/&gt;&lt;rect x='90' y='280' width='220' height='16' rx='8' fill='%23ffffff' opacity='.45'/&gt;&lt;rect x='130' y='312' width='140' height='12' rx='6' fill='%23ffffff' opacity='.3'/&gt;&lt;/svg&gt;">
+    </div>
+
+    <div class="apBody">
+      <p class="apEyebrow"><span class="apDot"></span> Đang phát</p>
+      <h1 class="apStory">Tôi Làm NPC Trong Game Kinh Dị</h1>
+      <p class="apChapter">Chương 12 · Cánh cửa thứ bảy</p>
+      <p class="apTeam">Lạc Giữa Ngân Hà · giọng đọc Nữ miền Bắc</p>
+
+      <div class="apSeek">
+        <div class="apTrack"><div class="apPlayed"></div><span class="apKnob"></span></div>
+        <div class="apTimes"><span>08:14</span><span>21:36</span></div>
+      </div>
+
+      <div class="apControls">
+        <button class="apBtn" title="Chương trước">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm12 0v12l-9-6z"/></svg>
+        </button>
+        <button class="apBtn" title="Lùi 15 giây">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 8 7 12l4 4"/><path d="M7 12h6a5 5 0 1 1-5 5"/></svg>
+        </button>
+        <button class="apBtn isPlay" title="Tạm dừng">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+        </button>
+        <button class="apBtn" title="Tiến 15 giây">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m13 8 4 4-4 4"/><path d="M17 12h-6a5 5 0 1 0 5 5"/></svg>
+        </button>
+        <button class="apBtn" title="Chương sau">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM6 6l9 6-9 6z"/></svg>
+        </button>
+
+        <span class="apSpacer"></span>
+
+        <span class="apChipRow">
+          <button class="apChip">1.0×</button>
+          <button class="apChip isOn" title="Tự chuyển chương">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg>
+            Tự chuyển
+          </button>
+          <button class="apChip">Bản chữ</button>
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Mô tả ─────────────────────────────────────────────────────── -->
+  <section class="apSection">
+    <div class="apSectionHead"><h2>Giới thiệu</h2></div>
+    <div class="apCard">
+      <p class="apDesc">
+        Một lập trình viên tỉnh dậy trong chính tựa game kinh dị mình từng viết,
+        mang thân phận một NPC vô danh đứng canh cánh cửa không ai được mở. Mỗi
+        người chơi bước qua là một vòng lặp mới, và anh dần nhận ra kịch bản đang
+        tự viết lại chính nó.
+      </p>
+      <div class="apMeta">
+        <span>Kinh dị</span><span>Hệ thống</span><span>Xuyên không</span>
+        <span>128 chương</span><span>Đã hoàn</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Danh sách chương ──────────────────────────────────────────── -->
+  <section class="apSection">
+    <div class="apSectionHead"><h2>Danh sách chương</h2><span>128 chương</span></div>
+    <div class="apCard">
+      <div class="apList">
+        <button class="apRow">
+          <span class="apNum">10</span>
+          <span class="apRowTitle"><strong>Người chơi thứ ba mươi</strong><small>Đã nghe xong</small></span>
+          <span class="apDur">19:02</span>
+          <span class="apState">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.4" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg>
+          </span>
+        </button>
+        <button class="apRow">
+          <span class="apNum">11</span>
+          <span class="apRowTitle"><strong>Bản ghi âm bị xoá</strong><small>Nghe dở · còn 6 phút</small></span>
+          <span class="apDur">22:41</span>
+          <span class="apState"></span>
+        </button>
+        <button class="apRow isPlaying">
+          <span class="apNum">12</span>
+          <span class="apRowTitle"><strong>Cánh cửa thứ bảy</strong><small>Đang phát · 08:14 / 21:36</small></span>
+          <span class="apDur">21:36</span>
+          <span class="apState">
+            <span class="apBars"><i style="height:40%"></i><i style="height:95%"></i><i style="height:62%"></i><i style="height:80%"></i></span>
+          </span>
+        </button>
+        <button class="apRow">
+          <span class="apNum">13</span>
+          <span class="apRowTitle"><strong>Kẻ đứng ngoài vòng lặp</strong><small>Chưa nghe</small></span>
+          <span class="apDur">20:18</span>
+          <span class="apState"></span>
+        </button>
+        <button class="apRow">
+          <span class="apNum">14</span>
+          <span class="apRowTitle"><strong>Đêm thứ chín</strong><small>Cần mở khoá · 10 Xu</small></span>
+          <span class="apDur">23:55</span>
+          <span class="apState"><span class="apLock">KHOÁ</span></span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+</div>
+</body></html>

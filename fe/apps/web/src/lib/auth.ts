@@ -42,6 +42,49 @@ export function getUserRolesFromToken(token = getAccessToken()): string[] {
   }
 }
 
+/** Giây còn lại của access token, hoặc 0 khi không đọc được hạn. */
+function secondsUntilExpiry(token = getAccessToken()): number {
+  if (!token) return 0;
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) return 0;
+    const base64 = parts[1]!.replace(/-/g, "+").replace(/_/g, "/");
+    const parsed = JSON.parse(atob(base64)) as { exp?: unknown };
+    if (typeof parsed.exp !== "number") return 0;
+    return Math.max(0, parsed.exp - Math.floor(Date.now() / 1000));
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Bao lâu thì kiểm lại vai trò một lần.
+ *
+ * Access token sống 30 phút và mang sẵn vai trò trong chữ ký, nên một người
+ * vừa bị hạ quyền vẫn cầm token nói mình là ADMIN cho đến khi nó hết hạn. Gọi
+ * gia hạn sớm hơn thế khiến máy chủ đọc lại vai trò hiện tại từ CSDL.
+ */
+const ROLE_RECHECK_AFTER_S = 5 * 60;
+
+/**
+ * Xác nhận lại phiên và vai trò, trả về true nếu phiên còn sống.
+ *
+ * <p>Gọi khi cửa sổ được focus. Nếu quản trị viên vừa đổi vai trò hoặc khoá
+ * tài khoản, máy chủ đã thu hồi refresh token: lần gia hạn này thất bại, phiên
+ * bị dọn, và giao diện trở về đúng trạng thái của một người chưa đăng nhập.
+ */
+export async function revalidateSession(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  if (!getAccessToken()) return false;
+
+  const remaining = secondsUntilExpiry();
+  // Token còn mới thì không gọi: mỗi lần focus mà đi một lần gọi mạng là phí.
+  if (remaining > 30 * 60 - ROLE_RECHECK_AFTER_S) return true;
+
+  const renewed = await refreshAccessToken();
+  return renewed !== null;
+}
+
 /** Same-site absolute paths only, so a crafted returnTo cannot bounce off-site. */
 export function safeReturnPath(value: string | null | undefined): string | null {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {

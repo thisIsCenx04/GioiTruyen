@@ -28,7 +28,16 @@ public class MonetizationFlowService {
     private static final org.slf4j.Logger log =
             org.slf4j.LoggerFactory.getLogger(MonetizationFlowService.class);
 
-    private static final BigDecimal DEFAULT_PURCHASE_FEE_RATE = new BigDecimal("0.20");
+    /**
+     * Phí nền tảng giữ lại trên mỗi lượt mua truyện, chia theo độc quyền hay không.
+     *
+     * <p>Truyện độc quyền giữ 10%, truyện thường giữ 30%. Trước đây mọi truyện
+     * đều ăn chung một mức 20%, nên nhóm giữ truyện độc quyền bị thu thừa còn
+     * nhóm giữ truyện thường bị thu thiếu - một combo 90.000 xu trả về 72.000 cho
+     * cả hai loại, thay vì 81.000 và 63.000.
+     */
+    private static final BigDecimal EXCLUSIVE_PURCHASE_FEE_RATE = new BigDecimal("0.10");
+    private static final BigDecimal STANDARD_PURCHASE_FEE_RATE = new BigDecimal("0.30");
     private static final BigDecimal DEFAULT_DONATION_FEE_RATE = new BigDecimal("0.10");
 
     private final NamedParameterJdbcTemplate jdbc;
@@ -241,6 +250,17 @@ public class MonetizationFlowService {
             return existing.get();
         }
         ChapterPrice chapter = chapter(chapterId);
+        // Mua combo là đã mua cả truyện, nhưng combo không sinh ra dòng
+        // chapter_unlocks nào - quyền đọc được cấp ở tầng đọc truyện. Thiếu chốt
+        // chặn này thì người đã mua combo gọi thẳng endpoint mở chương sẽ bị trừ
+        // tiền lần nữa, và không ràng buộc CSDL nào chặn được vì chưa có dòng
+        // nào để đụng UNIQUE. Giao diện có che, nhưng chốt chặn tiền không được
+        // nằm ở giao diện.
+        if (hasPurchasedStoryCombo(userId, chapter.storyId())) {
+            createFreeUnlock(userId, chapter);
+            return new ChapterUnlockResponse(chapter.id(), chapter.storyId(), 0,
+                    currentCoinBalance(userId), true);
+        }
         if (chapter.coinPrice() == 0) {
             createFreeUnlock(userId, chapter);
             return new ChapterUnlockResponse(chapter.id(), chapter.storyId(), 0, currentCoinBalance(userId), false);
@@ -258,7 +278,7 @@ public class MonetizationFlowService {
         UUID transactionId = UUID.randomUUID();
         UUID ledgerId = UUID.randomUUID();
         Instant now = Instant.now();
-        long platformFee = fee(chapter.coinPrice(), DEFAULT_PURCHASE_FEE_RATE, "chapter_unlock");
+        long platformFee = purchaseFee(chapter.coinPrice(), chapter.storyType());
         long teamNet = chapter.coinPrice() - platformFee;
 
         jdbc.update(
@@ -293,9 +313,17 @@ public class MonetizationFlowService {
                         .addValue("coinPaid", chapter.coinPrice())
                         .addValue("createdAt", now)
         );
-        insertWalletTransaction(transactionId, userId, "PURCHASE", -chapter.coinPrice(), newBalance, "PURCHASE_ORDER", orderId, "Unlock chapter", now);
+        // Mô tả nói rõ mua gì. "Unlock chapter" trơ trụi thì một tháng sau không ai
+        // đối chiếu được dòng tiền với truyện nào.
+        insertWalletTransaction(transactionId, userId, "PURCHASE", -chapter.coinPrice(), newBalance,
+                "PURCHASE_ORDER", orderId,
+                "Mở chương %d — %s".formatted(chapter.chapterNumber(), storyLabel(chapter.storyTitle())), now);
         insertTeamLedger(ledgerId, chapter.teamId(), "STORY_PURCHASE", chapter.coinPrice(), platformFee, teamNet, "CHAPTER_UNLOCK", unlockId, now);
-        incrementTeamRevenue(chapter.teamId(), teamNet);
+        incrementTeamRevenue(chapter.teamId(), teamNet,
+                "Bán chương %d — %s (%s xu, phí %s)".formatted(
+                        chapter.chapterNumber(), storyLabel(chapter.storyTitle()),
+                        xu(chapter.coinPrice()), feeLabel(chapter.storyType())),
+                "CHAPTER_UNLOCK", unlockId);
         notifyTeamOfPurchase(chapter.teamId(), chapter.storyId(), teamNet);
         return new ChapterUnlockResponse(chapter.id(), chapter.storyId(), chapter.coinPrice(), newBalance, false);
     }
@@ -352,7 +380,8 @@ public class MonetizationFlowService {
         }
     }
 
-    private record StoryComboInfo(UUID storyId, UUID teamId, long comboPriceXu) {}
+    private record StoryComboInfo(UUID storyId, UUID teamId, long comboPriceXu,
+                                  String storyType, String storyTitle) {}
 
     /**
      * What a combo costs and whether that is actually a discount.
@@ -427,11 +456,13 @@ public class MonetizationFlowService {
         }
 
         StoryComboInfo storyInfo = jdbc.getJdbcTemplate().query(
-                "SELECT id, team_id, combo_price_xu FROM stories WHERE id = ?",
+                "SELECT id, team_id, combo_price_xu, story_type, title FROM stories WHERE id = ?",
                 (rs, rowNum) -> new StoryComboInfo(
                         UUID.fromString(rs.getString("id")),
                         rs.getString("team_id") != null ? UUID.fromString(rs.getString("team_id")) : null,
-                        rs.getObject("combo_price_xu") != null ? rs.getLong("combo_price_xu") : 0L
+                        rs.getObject("combo_price_xu") != null ? rs.getLong("combo_price_xu") : 0L,
+                        rs.getString("story_type"),
+                        rs.getString("title")
                 ),
                 storyId.toString()
         ).stream().findFirst().orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "story.not_found", "Story not found", "Story does not exist"));
@@ -461,7 +492,7 @@ public class MonetizationFlowService {
         UUID ledgerId = UUID.randomUUID();
         Instant now = Instant.now();
 
-        long platformFee = fee(comboPrice, DEFAULT_PURCHASE_FEE_RATE, "story_combo");
+        long platformFee = purchaseFee(comboPrice, storyInfo.storyType());
         long teamNet = comboPrice - platformFee;
 
         jdbc.update(
@@ -495,10 +526,15 @@ public class MonetizationFlowService {
                         .addValue("createdAt", now)
         );
 
-        insertWalletTransaction(transactionId, userId, "PURCHASE", -comboPrice, newBalance, "PURCHASE_ORDER", orderId, "Buy story full combo", now);
+        insertWalletTransaction(transactionId, userId, "PURCHASE", -comboPrice, newBalance,
+                "PURCHASE_ORDER", orderId,
+                "Mua combo trọn bộ — %s".formatted(storyLabel(storyInfo.storyTitle())), now);
         if (storyInfo.teamId() != null) {
             insertTeamLedger(ledgerId, storyInfo.teamId(), "STORY_PURCHASE", comboPrice, platformFee, teamNet, "STORY_COMBO", comboPurchaseId, now);
-            incrementTeamRevenue(storyInfo.teamId(), teamNet);
+            incrementTeamRevenue(storyInfo.teamId(), teamNet,
+                    "Bán combo trọn bộ — %s (%s xu, phí %s)".formatted(
+                            storyLabel(storyInfo.storyTitle()), xu(comboPrice), feeLabel(storyInfo.storyType())),
+                    "STORY_COMBO", comboPurchaseId);
         }
 
         return new ComboPurchaseResponse(storyId, comboPrice, newBalance, true);
@@ -547,7 +583,9 @@ public class MonetizationFlowService {
         );
         insertWalletTransaction(transactionId, userId, "DONATION", -request.coinAmount(), newBalance, "DONATION", donationId, "Donate to team", now);
         insertTeamLedger(ledgerId, teamId, "DONATION", request.coinAmount(), platformFee, teamNet, "DONATION", donationId, now);
-        incrementTeamRevenue(teamId, teamNet);
+        incrementTeamRevenue(teamId, teamNet,
+                "Ủng hộ từ độc giả (%s xu, phí 10%%)".formatted(xu(request.coinAmount())),
+                "DONATION", donationId);
         return new DonationResponse(donationId, teamId, request.storyId(), request.coinAmount(), platformFee, teamNet, newBalance);
     }
 
@@ -592,7 +630,8 @@ public class MonetizationFlowService {
     private ChapterPrice chapter(UUID chapterId) {
         return jdbc.query(
                         """
-                                SELECT c.id, c.story_id, c.coin_price, s.team_id
+                                SELECT c.id, c.story_id, c.coin_price, c.chapter_number,
+                                       s.team_id, s.story_type, s.title
                                 FROM chapters c
                                 JOIN stories s ON s.id = c.story_id
                                 WHERE c.id = :chapterId AND c.status = 'PUBLISHED'
@@ -603,7 +642,10 @@ public class MonetizationFlowService {
                                 UUID.fromString(rs.getString("id")),
                                 UUID.fromString(rs.getString("story_id")),
                                 UUID.fromString(rs.getString("team_id")),
-                                rs.getLong("coin_price")
+                                rs.getLong("coin_price"),
+                                rs.getString("story_type"),
+                                rs.getInt("chapter_number"),
+                                rs.getString("title")
                         )
                 ).stream()
                 .findFirst()
@@ -693,7 +735,8 @@ public class MonetizationFlowService {
      * team's statistics while the owner's balance never moved, so nothing could
      * actually be withdrawn or spent.
      */
-    private void incrementTeamRevenue(UUID teamId, long netCoin) {
+    private void incrementTeamRevenue(UUID teamId, long netCoin, String description,
+                                      String referenceType, UUID referenceId) {
         jdbc.update(
                 "UPDATE teams SET revenue_coin_cache = revenue_coin_cache + :netCoin, updated_at = :updatedAt WHERE id = :teamId",
                 new MapSqlParameterSource()
@@ -760,14 +803,21 @@ public class MonetizationFlowService {
                             (id, user_id, currency, type, amount, balance_after,
                              reference_type, reference_id, description, created_at)
                         VALUES (:id, :userId, 'COIN', 'EARNING', :amount, :balanceAfter,
-                                'TEAM_EARNING', :teamId, 'Doanh thu nhóm', NOW())
+                                :referenceType, :referenceId, :description, NOW())
                         """,
                 new MapSqlParameterSource()
                         .addValue("id", UUID.randomUUID().toString())
                         .addValue("userId", ownerId)
                         .addValue("amount", netCoin)
                         .addValue("balanceAfter", balance == null ? netCoin : balance)
-                        .addValue("teamId", teamId.toString())
+                        // Trước đây mọi khoản thu đều trỏ về teamId và mang đúng bốn chữ
+                        // "Doanh thu nhóm", nên nhìn sổ ví không biết 72.000 xu ấy đến từ
+                        // truyện nào, bán lẻ hay bán combo. Giờ mỗi dòng trỏ thẳng về lần mua
+                        // sinh ra nó.
+                        .addValue("referenceType", referenceType == null ? "TEAM_EARNING" : referenceType)
+                        .addValue("referenceId", referenceId == null ? teamId.toString() : referenceId.toString())
+                        .addValue("description", description == null || description.isBlank()
+                                ? "Doanh thu nhóm" : description)
         );
     }
 
@@ -782,6 +832,57 @@ public class MonetizationFlowService {
         if (count == null || count == 0) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "donation.story_team_mismatch", "Story does not belong to team", "Story does not belong to team");
         }
+    }
+
+    /**
+     * Truyện này có độc quyền không.
+     *
+     * <p>{@code EXCLUSIVE} và {@code ORIGINAL} đều hưởng mức 10%: truyện sáng tác
+     * là của chính người đăng nên mặc nhiên chỉ phát hành ở đây. {@code TEXT} và
+     * {@code AUDIO} là truyện đăng lại, tính 30%.
+     */
+    private static boolean isExclusive(String storyType) {
+        return "EXCLUSIVE".equals(storyType) || "ORIGINAL".equals(storyType);
+    }
+
+    /**
+     * Phí nền tảng cho một lượt mua truyện.
+     *
+     * <p>Hai khoá cấu hình tách riêng để có thể chỉnh từng mức mà không đụng mức
+     * kia; không cấu hình thì dùng 10% / 30% theo quy định.
+     */
+    private long purchaseFee(long gross, String storyType) {
+        return isExclusive(storyType)
+                ? fee(gross, EXCLUSIVE_PURCHASE_FEE_RATE, "story_purchase_exclusive")
+                : fee(gross, STANDARD_PURCHASE_FEE_RATE, "story_purchase_standard");
+    }
+
+    /** Mức phí theo quy định, trước khi xét cấu hình ghi đè trong site_settings. */
+    public static BigDecimal purchaseFeeRateFor(String storyType) {
+        return isExclusive(storyType) ? EXCLUSIVE_PURCHASE_FEE_RATE : STANDARD_PURCHASE_FEE_RATE;
+    }
+
+    /**
+     * Số xu nhóm nhận về từ một lượt mua, theo mức phí quy định.
+     *
+     * <p>Phí làm tròn xuống, nên phần lẻ luôn rơi về phía nhóm chứ không về nền tảng.
+     */
+    public static long teamNetFor(long gross, String storyType) {
+        long platformFee = purchaseFeeRateFor(storyType)
+                .multiply(BigDecimal.valueOf(gross))
+                .setScale(0, RoundingMode.DOWN)
+                .longValueExact();
+        return gross - platformFee;
+    }
+
+    /** "10%" hay "30%" - để viết vào mô tả giao dịch cho nhóm đối chiếu. */
+    private static String feeLabel(String storyType) {
+        return isExclusive(storyType) ? "10%" : "30%";
+    }
+
+    /** Tên truyện trong ngoặc kép, hoặc chỗ trống khi không đọc được tên. */
+    private static String storyLabel(String title) {
+        return title == null || title.isBlank() ? "truyện" : "“" + title.trim() + "”";
     }
 
     private long fee(long gross, BigDecimal fallbackRate, String key) {
@@ -1294,6 +1395,11 @@ public class MonetizationFlowService {
     private record WalletBalance(long coinBalance, long gemBalance) {
     }
 
-    private record ChapterPrice(UUID id, UUID storyId, UUID teamId, long coinPrice) {
+    /**
+     * @param storyType quyết định mức phí nền tảng
+     * @param chapterNumber và {@code storyTitle} chỉ dùng để viết mô tả giao dịch
+     */
+    private record ChapterPrice(UUID id, UUID storyId, UUID teamId, long coinPrice,
+                                String storyType, int chapterNumber, String storyTitle) {
     }
 }

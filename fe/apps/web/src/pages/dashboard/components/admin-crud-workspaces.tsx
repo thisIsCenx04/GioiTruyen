@@ -745,10 +745,14 @@ function ChapterImportWorkspace({
           <label>
             <Paperclip aria-hidden="true" size={16} /> Thêm file
             <input accept=".txt,.md,.docx,.odt,.epub,.html,.htm,.rtf" multiple onChange={async (event) => {
-              const files = Array.from(event.currentTarget.files ?? []);
+              // Ô nhập được giữ lại trước await. React xóa `currentTarget` ngay khi
+              // handler trả về, nên đọc nó sau await là đọc null - và dòng dọn ô
+              // file bên dưới ném TypeError mỗi lần thêm file thành công.
+              const input = event.currentTarget;
+              const files = Array.from(input.files ?? []);
               if (files.length === 0) return;
               await importFiles(files);
-              event.currentTarget.value = "";
+              input.value = "";
             }} type="file" />
           </label>
         </div>

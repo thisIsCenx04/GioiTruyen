@@ -1482,6 +1482,14 @@ main { min-height: 100vh; }
   .walletBalanceRow { grid-template-columns: 1fr; }
   .topupHistory li { grid-template-columns: 1fr 1fr; }
   .walletLedgerList li { grid-template-columns: 1fr 1fr; }
+
+  /* Mô tả giờ nói rõ bán truyện nào, bán lẻ hay combo, phí bao nhiêu - nên
+     nó cần cả bề ngang. Nhét vào nửa cột thì tên truyện bị bóp thành vài chữ
+     một dòng, đọc không ra. */
+  .walletLedgerList li > span:last-child {
+    grid-column: 1 / -1;
+    overflow-wrap: anywhere;
+  }
 }
 
 /* Guest preview banner and the sign-in prompt shown when they try to claim. */
@@ -3953,33 +3961,171 @@ main { min-height: 100vh; }
   color: var(--text-on-accent);
 }
 
+/* ── Trình phát ──────────────────────────────────────────────
+   Dải xanh của web, đậm ở góc trái rồi nhạt dần sang phải. Chữ trắng nằm
+   ở nửa đậm nên vẫn đủ tương phản; phần nhạt chỉ làm nền cho ảnh bìa. */
 .audioPlayerPanel {
-  background: var(--white);
-  border: 1px solid #d9e8f7;
-  border-radius: .75rem;
-  box-shadow: 0 .8rem 1.8rem rgb(24 47 100 / 8%);
+  background: linear-gradient(135deg, #0b3fa8 0%, var(--accent, #0f5fff) 48%, #5b9bff 100%);
+  border: 0;
+  border-radius: 1.1rem;
+  box-shadow: 0 1.2rem 2.6rem rgb(11 40 110 / 26%);
+  color: var(--text-on-accent, #fff);
+  overflow: hidden;
   padding: clamp(1.1rem, 3vw, 1.5rem);
+  position: relative;
 }
 
-.audioPlayerPanel header {
+.audioPlayerPanel::after {
+  background: radial-gradient(circle at 82% 8%, rgb(255 255 255 / 18%), transparent 58%);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.audioPlayerPanel > * { position: relative; z-index: 1; }
+
+/* Ảnh bìa và văn án, ngay trong trình phát. */
+.audioNowPlaying {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: 11rem minmax(0, 1fr);
+}
+
+.audioNowCover {
+  aspect-ratio: 1;
+  background: rgb(255 255 255 / 14%);
+  border-radius: .85rem;
+  box-shadow: 0 .9rem 2rem rgb(0 0 0 / 32%);
+  overflow: hidden;
+  width: 100%;
+}
+
+.audioNowCover img { display: block; height: 100%; object-fit: cover; width: 100%; }
+
+.audioNowCover > span {
   align-items: center;
+  color: rgb(255 255 255 / 70%);
   display: flex;
-  gap: .75rem;
+  height: 100%;
+  justify-content: center;
 }
 
-.audioPlayerPanel header > svg {
-  background: linear-gradient(135deg, var(--blue), var(--cyan));
-  border-radius: .65rem;
-  color: var(--text-on-accent);
-  height: 2.7rem;
-  padding: .65rem;
-  width: 2.7rem;
+.audioNowCover > span svg { height: 2.4rem; width: 2.4rem; }
+
+.audioNowBody { display: flex; flex-direction: column; gap: .4rem; min-width: 0; }
+
+.audioNowStatus {
+  align-items: center;
+  color: rgb(255 255 255 / 74%);
+  display: flex;
+  font-size: .68rem;
+  font-weight: 800;
+  gap: .45rem;
+  letter-spacing: .14em;
+  margin: 0;
+  text-transform: uppercase;
 }
+
+/* Chấm xanh khi đang đọc, xám khi dừng — trạng thái thấy được từ xa. */
+.audioNowDot {
+  background: rgb(255 255 255 / 45%);
+  border-radius: 50%;
+  height: .45rem;
+  width: .45rem;
+}
+
+.audioNowDot[data-live="on"] { background: #4ade80; }
 
 .audioPlayerPanel h2 {
+  color: var(--text-on-accent, #fff);
+  font-size: clamp(1.25rem, 2.4vw, 1.55rem);
+  font-weight: 850;
+  letter-spacing: -.02em;
+  line-height: 1.15;
+  margin: 0;
+}
+
+.audioNowChapter {
+  color: rgb(255 255 255 / 88%);
+  font-size: .92rem;
+  font-weight: 650;
+  margin: 0;
+}
+
+.audioNowSynopsis {
+  color: rgb(255 255 255 / 76%);
+  font-size: .86rem;
+  line-height: 1.65;
+  margin: .35rem 0 0;
+  /* Bốn dòng là đủ để biết truyện gì; văn án đầy đủ nằm ở khối bên dưới. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+}
+
+@media (max-width: 46rem) {
+  .audioNowPlaying { gap: 1rem; grid-template-columns: minmax(0, 1fr); text-align: center; }
+  .audioNowCover { margin: 0 auto; max-width: 11rem; }
+  .audioNowBody { align-items: center; }
+  .audioNowSynopsis { -webkit-line-clamp: 3; text-align: left; }
+}
+
+/* ── Thông tin truyện, giữa trình phát và danh sách chương ─────────── */
+.audioStoryDetail {
+  background: var(--surface-card, #fff);
+  border: 1px solid var(--line, #d9e8f7);
+  border-radius: .85rem;
+  display: grid;
+  gap: .45rem;
+  margin-top: 1rem;
+  padding: clamp(1rem, 2.5vw, 1.35rem);
+}
+
+.audioStoryDetail h2 {
   color: var(--text-primary);
-  font-size: 1.1rem;
-  margin: .2rem 0 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -.015em;
+  margin: 0;
+}
+
+.audioStorySynopsis {
+  color: var(--text-secondary);
+  font-size: .92rem;
+  line-height: 1.75;
+  margin: 0;
+}
+
+.audioStoryDetail .detailHeroStats { margin-top: .5rem; }
+
+/* ── Chữ nằm trên nền xanh ────────────────────────────────────
+   Mấy dòng dưới đây vốn được vẽ cho một tấm thẻ trắng: chúng lấy màu từ
+   --muted và --text-secondary, tức là xám đậm. Đổi nền thành dải xanh mà không
+   đổi chúng thì chữ xám nằm trên nền xanh — đọc không ra. */
+.audioPlayerPanel .audioNowMeta,
+.audioPlayerPanel .audioPlayerHint,
+.audioPlayerPanel .audioProgressLine {
+  color: rgb(255 255 255 / 76%);
+}
+
+.audioPlayerPanel .audioProgressLine strong,
+.audioPlayerPanel .audioProgressLine span {
+  color: var(--text-on-accent, #fff);
+}
+
+/* Nút "nghe tiếp" trước đây là xanh nhạt trên trắng; trên nền xanh nó gần
+   như biến mất. Đổi sang kính mờ trắng để vẫn nổi mà không tranh chỗ với nút
+   phát. */
+.audioPlayerPanel .audioResumeBar {
+  background: rgb(255 255 255 / 16%);
+  border: 1px dashed rgb(255 255 255 / 55%);
+  color: var(--text-on-accent, #fff);
+}
+
+.audioPlayerPanel .audioResumeBar:hover {
+  background: rgb(255 255 255 / 26%);
 }
 
 .audioControlSurface {
@@ -8110,15 +8256,39 @@ button {
 
 .topupConfirm button:disabled { cursor: not-allowed; opacity: .6; }
 
+.topupConfirmActions { display: grid; gap: .45rem; }
+
 .topupPendingNote {
   background: #eef6ff;
   border-radius: .6rem;
   color: #1d4d91;
+  display: grid;
   font-size: .76rem;
+  gap: .55rem;
   line-height: 1.5;
   margin-top: .9rem;
   padding: .75rem .85rem;
 }
+
+.topupPendingNote p { margin: 0; }
+
+/* Huỷ là lối thoát, không phải việc ta mời người dùng làm: viền mờ, nền
+   trong, đủ thấy nhưng không tranh chỗ với nút xác nhận chuyển khoản. */
+.topupConfirm .topupCancelBtn,
+.topupPendingNote .topupCancelBtn {
+  background: transparent;
+  border: 1px solid var(--border-strong, #c9d4e5);
+  border-radius: .5rem;
+  color: var(--text-secondary, #52618a);
+  cursor: pointer;
+  font-size: .76rem;
+  font-weight: 700;
+  justify-self: start;
+  padding: .5rem .9rem;
+}
+
+.topupConfirm .topupCancelBtn:disabled,
+.topupPendingNote .topupCancelBtn:disabled { cursor: not-allowed; opacity: .6; }
 
 /* ── Locked chapters ───────────────────────────────────────────────────
    A paid chapter the reader has not bought is a button, not a link: the
@@ -10042,6 +10212,53 @@ button {
   .pubTabPromote { margin-left: 0; }
 }
 
+/* ── Cam kết độc quyền ───────────────────────────────────────
+   Hiện ngay dưới ô phân loại khi người đăng chọn diện độc quyền. Viền vàng
+   thay vì đỏ: đây là lời nhắc cần đọc, không phải lỗi cần sửa. */
+.pubExclusive {
+  background: color-mix(in srgb, #f59e0b 8%, var(--surface-card, #fff));
+  border: 1px solid color-mix(in srgb, #f59e0b 40%, transparent);
+  border-radius: .6rem;
+  display: grid;
+  gap: .5rem;
+  padding: .85rem .95rem;
+}
+
+.pubExclusive strong { font-size: .88rem; }
+.pubExclusive p { font-size: .82rem; line-height: 1.55; margin: 0; }
+
+.pubExclusive ul {
+  display: grid;
+  gap: .25rem;
+  font-size: .8rem;
+  line-height: 1.5;
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+/* Ô tick là thứ phải bấm trúng bằng ngón tay, nên nền riêng và đệm rộng hơn
+   phần chữ xung quanh. */
+.pubExclusiveTick {
+  align-items: flex-start;
+  background: var(--surface-card, #fff);
+  border: 1px solid color-mix(in srgb, #f59e0b 45%, transparent);
+  border-radius: .5rem;
+  cursor: pointer;
+  display: flex;
+  font-size: .82rem;
+  font-weight: 650;
+  gap: .55rem;
+  line-height: 1.5;
+  padding: .6rem .7rem;
+}
+
+.pubExclusiveTick input {
+  flex: none;
+  height: 1.05rem;
+  margin-top: .1rem;
+  width: 1.05rem;
+}
+
 .pubHint { color: #64748b; font-size: .78rem; font-weight: 500; line-height: 1.45; }
 
 /* Chapter file attachment, mirroring the admin workspace's upload affordance. */
@@ -10397,11 +10614,41 @@ button {
   border-radius: 12px;
   display: grid;
   gap: 1rem;
-  grid-template-columns: 4.5rem minmax(0, 1fr);
+  /* Cột thứ ba cho nút ủng hộ; `auto` nên nó chỉ chiếm đúng chỗ cần. */
+  grid-template-columns: 4.5rem minmax(0, 1fr) auto;
   padding: 1.25rem;
 }
 
 .teamAvatarLarge { font-size: 1.6rem; }
+
+/* Nút ủng hộ ở góc phải của thẻ nhóm. Xuống hàng riêng ở khổ điện thoại,
+   vì chen cạnh tên nhóm thì cả hai cùng bị bóp. */
+.teamProfileDonate {
+  align-items: flex-end;
+  display: grid;
+  gap: .3rem;
+  justify-items: end;
+  text-align: right;
+}
+
+.teamProfileDonate small {
+  color: var(--text-muted);
+  font-size: .72rem;
+  line-height: 1.4;
+  max-width: 13rem;
+}
+
+@media (max-width: 40rem) {
+  .teamProfileHead { grid-template-columns: 3.2rem minmax(0, 1fr); }
+
+  .teamProfileDonate {
+    grid-column: 1 / -1;
+    justify-items: stretch;
+    text-align: left;
+  }
+
+  .teamProfileDonate small { max-width: none; }
+}
 
 .teamProfileHead h1 {
   color: var(--text-primary);
@@ -10515,6 +10762,37 @@ button {
 }
 
 .headerSearch { flex: 1 1 0; }
+
+/* Đo ở 360px: `.brandLink` dừng ở 136px còn `.headerActions` vẽ nội dung từ
+   122px - cụm nút tràn 26px sang trái và đè lên đuôi logo, đúng chỗ nút
+   Facebook nằm trong ảnh chụp người dùng gửi.
+
+   Nguyên nhân: `.headerActions { min-width: 0 }` ở trên cho ô lưới của cụm
+   nút hẹp hơn nội dung, mà `justify-content: flex-end` thì ghim mép phải -
+   nên phần thừa trào ngược sang trái thay vì bị cắt bên phải.
+
+   Sửa theo hai hướng để không phụ thuộc vào một phép tính vừa khít:
+   thu cụm nút lại cho đủ chỗ (khoảng cách và cỡ nút), và cấm ô lưới của nó
+   hẹp hơn nội dung. Khi màn còn quá hẹp thì logo co lại - logo nhỏ vẫn đọc
+   được, nút đè lên logo thì không. */
+@media (max-width: 34rem) {
+  /* Không bao giờ hẹp hơn nội dung, nên không còn gì để trào sang logo. */
+  .siteHeaderTop .headerActions {
+    gap: .3rem;
+    min-width: fit-content;
+  }
+
+  /* Logo là thứ nhường chỗ, vì nó co được mà vẫn đọc ra tên. */
+  .siteHeaderTop .brandLink { min-width: 5.5rem; }
+
+  .siteHeaderTop .socialLinks.isCompact { gap: .2rem; }
+  .siteHeaderTop .socialLinks.isCompact a { padding: .3rem; }
+
+  .siteHeader .headerIcon {
+    height: 2.4rem;
+    width: 2.4rem;
+  }
+}
 
 @media (max-width: 26rem) {
   /* The search keeps the row's full width by dropping onto its own line;
@@ -11697,6 +11975,51 @@ button {
 .prShots img { border: 1px solid var(--line); border-radius: .35rem; height: 5rem; object-fit: cover; width: 5rem; }
 
 .prClaimActions { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .6rem; }
+
+/* Danh sách người đang giữ suất, ngay trên thẻ nhiệm vụ. */
+.prClaimants {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem .6rem;
+  margin-top: .6rem;
+}
+
+.prClaimants > span {
+  color: var(--text-muted);
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.prClaimants ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.prClaimants li {
+  align-items: baseline;
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  border-radius: 999rem;
+  display: inline-flex;
+  font-size: .78rem;
+  font-weight: 650;
+  gap: .35rem;
+  padding: .15rem .6rem;
+}
+
+.prClaimants em {
+  color: var(--text-muted);
+  font-size: .7rem;
+  font-style: normal;
+  font-weight: 600;
+}
 .prPaid { color: #15803d; font-size: .82rem; font-weight: 700; }
 
 .prHelp { margin-top: 1.5rem; }

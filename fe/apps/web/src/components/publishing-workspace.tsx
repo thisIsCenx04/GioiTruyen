@@ -276,6 +276,17 @@ const EMPTY_FORM: FormState = {
   comboPriceXu: "",
 };
 
+/**
+ * Hai loại này được hưởng mức phí 10% thay vì 30%, nên trước khi chọn phải
+ * đọc và xác nhận cam kết. Danh sách này phải khớp với
+ * {@code MonetizationFlowService.isExclusive} bên máy chủ.
+ */
+const EXCLUSIVE_STORY_TYPES: ReadonlyArray<FormState["storyType"]> = ["EXCLUSIVE", "ORIGINAL"];
+
+function isExclusiveType(storyType: FormState["storyType"]): boolean {
+  return EXCLUSIVE_STORY_TYPES.includes(storyType);
+}
+
 const STATUS_LABELS: Readonly<Record<string, string>> = {
   DRAFT: "Bản nháp",
   PENDING_REVIEW: "Chờ duyệt",
@@ -395,6 +406,14 @@ export function PublishingWorkspace({ teamId }: Readonly<{ teamId: string }>) {
   const [existingChapters, setExistingChapters] = useState<ChapterRow[]>([]);
   const [access, setAccess] = useState<TeamAccess | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
+  /**
+   * Đã tick vào cam kết độc quyền hay chưa.
+   *
+   * <p>Không lưu xuống máy chủ - đây là lời nhắc trước khi chọn, không phải
+   * hợp đồng. Truyện đã ở diện độc quyền sẵn thì coi như đã xác nhận, không
+   * bắt ký lại mỗi lần sửa tiêu đề.
+   */
+  const [exclusiveSigned, setExclusiveSigned] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importSummary, setImportSummary] = useState("");
   const [state, setState] = useState<"loading" | "ready" | "forbidden" | "error">("loading");
@@ -575,6 +594,9 @@ export function PublishingWorkspace({ teamId }: Readonly<{ teamId: string }>) {
       tags: (story.tags ?? []).join(", "),
       comboPriceXu: story.comboPriceXu ? String(story.comboPriceXu) : "",
     });
+    // Truyện đã ở diện độc quyền thì cam kết đã có từ lần đăng đầu; bắt ký
+    // lại mỗi lần sửa một dấu phẩy trong tiêu đề chỉ là phiền.
+    setExclusiveSigned(isExclusiveType((story.storyType as FormState["storyType"]) ?? "TEXT"));
     const res = await authedFetch(
       `${API_BASE_URL}/teams/${encodeURIComponent(teamId)}/stories/${encodeURIComponent(story.id)}/chapters`,
     );
@@ -1182,6 +1204,19 @@ export function PublishingWorkspace({ teamId }: Readonly<{ teamId: string }>) {
       return;
     }
 
+    if (isExclusiveType(form.storyType) && !exclusiveSigned) {
+      setOutcome({
+        details: [
+            "Bạn đang đặt truyện ở diện độc quyền, mức ăn chia 90% thay vì 70%.",
+            "Hãy đọc và tick vào cam kết độc quyền ở ngay dưới ô phân loại truyện.",
+        ],
+        hint: "Nếu truyện có đăng ở nơi khác, hãy chọn “Truyện chữ” hoặc “Truyện audio”.",
+        kind: "error",
+        title: "Chưa xác nhận cam kết độc quyền",
+      });
+      return;
+    }
+
     setSaving(true);
     setNotice(null);
     try {
@@ -1702,6 +1737,24 @@ export function PublishingWorkspace({ teamId }: Readonly<{ teamId: string }>) {
 
               <div className="pubFieldRow">
                 <label className="pubField">
+                  <span>Phân loại truyện</span>
+                  <select
+                    onChange={(e) => {
+                      const storyType = e.target.value as FormState["storyType"];
+                      setForm({ ...form, storyType });
+                      // Đổi sang diện độc quyền thì phải đọc lại cam kết; đổi ra
+                      // khỏi diện đó thì chữ ký cũ không còn ý nghĩa.
+                      if (!isExclusiveType(storyType)) setExclusiveSigned(false);
+                    }}
+                    value={form.storyType}
+                  >
+                    <option value="TEXT">Truyện chữ (đăng lại)</option>
+                    <option value="AUDIO">Truyện audio (đăng lại)</option>
+                    <option value="EXCLUSIVE">Truyện độc quyền</option>
+                    <option value="ORIGINAL">Truyện sáng tác</option>
+                  </select>
+                </label>
+                <label className="pubField">
                   <span>Dạng truyện</span>
                   <select
                     onChange={(e) => setForm({ ...form, storyFormat: e.target.value as FormState["storyFormat"] })}
@@ -1738,6 +1791,40 @@ export function PublishingWorkspace({ teamId }: Readonly<{ teamId: string }>) {
                   </select>
                 </label>
               </div>
+
+              {/* Chỉ hiện khi người đăng thực sự chọn diện độc quyền. Đây là lời
+                  nhắc trước khi chọn, không phải hợp đồng - nhưng phải nói thật rõ
+                  được gì và phải giữ điều gì, vì mức ăn chia thay đổi theo lựa chọn
+                  này. */}
+              {isExclusiveType(form.storyType) ? (
+                <div className="pubExclusive">
+                  <strong>Cam kết độc quyền</strong>
+                  <p>
+                    Truyện ở diện <b>độc quyền</b> hay <b>sáng tác</b> được hưởng{" "}
+                    <b>90% doanh thu</b> (nền tảng giữ 10%), thay vì 70% như truyện đăng lại.
+                    Đổi lại, truyện chỉ được phát hành tại Giới Truyện.
+                  </p>
+                  <ul>
+                    <li>Truyện do nhóm bạn sáng tác hoặc có quyền phát hành hợp lệ.</li>
+                    <li>Không đăng cùng nội dung này ở nền tảng đọc truyện khác.</li>
+                    <li>
+                      Nếu truyện đã có ở nơi khác, hãy chọn “Truyện chữ” hoặc
+                      “Truyện audio” — vẫn đăng được bình thường, chỉ khác mức ăn chia.
+                    </li>
+                  </ul>
+                  <label className="pubExclusiveTick">
+                    <input
+                      checked={exclusiveSigned}
+                      onChange={(e) => setExclusiveSigned(e.target.checked)}
+                      type="checkbox"
+                    />
+                    <span>
+                      Tôi xác nhận truyện này chỉ phát hành tại Giới Truyện và chịu trách
+                      nhiệm về cam kết này.
+                    </span>
+                  </label>
+                </div>
+              ) : null}
 
               <label className="pubField">
                 <span>Tags (cách nhau bằng dấu phẩy)</span>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { CatalogStoryCard } from "@/components/catalog-story-card";
+import { DonationJourney } from "@/components/donation-journey";
 import { API_BASE_URL, authedFetch } from "@/lib/api-base";
 
 /**
@@ -129,6 +130,19 @@ export function TeamProfile({ teamId }: Readonly<{ teamId: string }>) {
             <h1>{team.name}</h1>
             <p className="teamProfileMeta">{number.format(team.storyCount)} truyện đã đăng</p>
             {team.description ? <p className="teamProfileDesc">{team.description}</p> : null}
+          </div>
+
+          {/* Ủng hộ thẳng cho nhóm, không qua truyện nào.
+              Lệnh gọi chỉ mang teamId nên khoản này không tính vào thứ hạng của
+              bất kỳ truyện nào — đúng nghĩa tiếp sức cho đội ngũ. */}
+          <div className="teamProfileDonate">
+            <DonationJourney
+              context="team"
+              storyTitle={team.name}
+              teamId={team.id}
+              variant="action"
+            />
+            <small>Ủng hộ cả nhóm bằng Xu.</small>
           </div>
         </header>
 

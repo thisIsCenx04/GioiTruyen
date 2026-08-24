@@ -262,6 +262,60 @@ public class TopupService {
     }
 
     /**
+     * Người nạp tự huỷ yêu cầu của chính mình.
+     *
+     * <p>Trước đây một yêu cầu lỡ - bấm nhầm gói, đổi ý, hay trót báo đã chuyển
+     * khoản khi chưa chuyển - chỉ có hai lối thoát: chờ hai tiếng cho
+     * {@link #expireStaleTopups()} dọn, hoặc phiền quản trị viên. Cả hai đều để
+     * một dòng "đang chờ duyệt" nằm lại trước mắt người dùng lẫn trong hàng đợi.
+     *
+     * <p>Chỉ DRAFT và PENDING huỷ được. Đơn nạp chưa cộng xu vào ví ở hai
+     * trạng thái này, nên huỷ không đụng gì tới số dư. Đơn đã PAID thì tiền đã
+     * vào - đó là chuyện hoàn tiền, không phải huỷ - nên bị từ chối ở đây.
+     */
+    @Transactional
+    public TopupInstruction cancelTopup(UUID userId, String paymentId) {
+        String status = jdbc.sql("SELECT status FROM payments WHERE id = ? AND user_id = ?")
+                .params(paymentId, userId.toString())
+                .query(String.class)
+                .optional()
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "topup.not_found",
+                        "Top-up not found", "Không tìm thấy yêu cầu nạp này."));
+
+        if ("CANCELLED".equals(status)) {
+            // Bấm hai lần không phải lỗi; đơn đã ở đúng trạng thái mong muốn.
+            return getTopup(userId, paymentId);
+        }
+        if (!"DRAFT".equals(status) && !"PENDING".equals(status)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "topup.not_cancellable",
+                    "Top-up not cancellable",
+                    "Yêu cầu nạp này đã được xử lý nên không huỷ được nữa. "
+                            + "Nếu bạn đã chuyển tiền nhầm, hãy liên hệ hỗ trợ.");
+        }
+
+        // Điều kiện trạng thái nằm ngay trong câu UPDATE: giữa lúc đọc và lúc ghi,
+        // quản trị viên có thể vừa duyệt xong đơn này. Huỷ đè lên một đơn đã
+        // PAID sẽ để xu đã cộng nằm trên một đơn mang nhãn "đã huỷ".
+        int updated = jdbc.sql("""
+                        UPDATE payments
+                        SET status = 'CANCELLED',
+                            admin_note = 'Người dùng tự huỷ yêu cầu nạp'
+                        WHERE id = ? AND user_id = ? AND status IN ('DRAFT', 'PENDING')
+                        """)
+                .params(paymentId, userId.toString())
+                .update();
+
+        if (updated == 0) {
+            throw new ApiException(HttpStatus.CONFLICT, "topup.not_cancellable",
+                    "Top-up not cancellable",
+                    "Yêu cầu nạp này vừa được xử lý nên không huỷ được nữa. "
+                            + "Hãy tải lại trang để xem trạng thái mới nhất.");
+        }
+
+        return getTopup(userId, paymentId);
+    }
+
+    /**
      * Drops drafts and unconfirmed requests that nobody acted on, so the admin
      * queue and the reader's history stay meaningful.
      */

@@ -105,6 +105,22 @@ export async function submitTopup(paymentId: string): Promise<TopupInstruction> 
   return (await response.json()) as TopupInstruction;
 }
 
+/**
+ * Huỷ yêu cầu nạp của chính mình.
+ *
+ * Đơn nạp chưa cộng xu khi còn ở DRAFT hoặc PENDING, nên huỷ không đụng gì
+ * tới số dư ví - khác hẳn việc huỷ một đơn đã được duyệt, là chuyện hoàn tiền
+ * và máy chủ từ chối.
+ */
+export async function cancelTopup(paymentId: string): Promise<TopupInstruction> {
+  const response = await authed(`/topups/${paymentId}/cancel`, { method: "POST" });
+  if (!response.ok) {
+    const problem = (await response.json().catch(() => null)) as { detail?: string } | null;
+    throw new Error(problem?.detail ?? "Không huỷ được yêu cầu nạp. Vui lòng thử lại.");
+  }
+  return (await response.json()) as TopupInstruction;
+}
+
 /** Polled while the reader waits for an admin to confirm the transfer. */
 export async function loadTopup(paymentId: string): Promise<TopupInstruction | null> {
   const response = await authed(`/topups/${paymentId}`);

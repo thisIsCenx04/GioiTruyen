@@ -267,13 +267,9 @@ public class ReadingSessionController {
         }
     }
 
-    /** Behind nginx every request comes from localhost, so the forwarded chain wins. */
+    /** Xem {@link com.storyplatform.shared.api.ClientIp} về chỗ tiêu đề bị giả. */
     private static String clientIp(jakarta.servlet.http.HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
+        return com.storyplatform.shared.api.ClientIp.of(request);
     }
 
     private static String requireUser(Jwt jwt) {

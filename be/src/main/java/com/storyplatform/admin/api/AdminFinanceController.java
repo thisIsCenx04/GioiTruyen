@@ -132,7 +132,11 @@ public class AdminFinanceController {
      * is rejected before the ledger row is written.
      */
     private long applyToWallet(UUID userId, long amount) {
-        long current = jdbc.sql("SELECT COALESCE(coin_balance, 0) FROM wallets WHERE user_id = ?")
+        // FOR UPDATE: dưới đây là đọc số dư rồi ghi đè một giá trị tuyệt đối. Không
+        // khoá dòng thì một lượt mua chương xen vào giữa hai bước sẽ bị xóa sạch -
+        // độc giả mất chương đã trả tiền, hoặc điều chỉnh của quản trị viên biến
+        // mất. Các luồng tiền khác đều khoá trước khi đọc theo đúng cách này.
+        long current = jdbc.sql("SELECT COALESCE(coin_balance, 0) FROM wallets WHERE user_id = ? FOR UPDATE")
                 .param(userId.toString())
                 .query(Long.class)
                 .optional()

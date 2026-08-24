@@ -25,6 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PrQuestService {
 
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(PrQuestService.class);
+
     /**
      * The only fee. Taken at publish and never returned, even if nobody claims.
      *
@@ -225,14 +228,16 @@ public class PrQuestService {
     @Transactional
     public String claim(String questId, UUID userId) {
         var quest = jdbc.sql("""
-                        SELECT team_id, quest_kind, submit_window_days, title, status
+                        SELECT team_id, quest_kind, submit_window_days, title, status,
+                               created_by, slot_count, claimed_count
                         FROM pr_quests WHERE id = ?
                         """)
                 .param(questId)
                 .query((rs, n) -> new Object[] {
                         rs.getString("team_id"), rs.getString("quest_kind"),
                         rs.getInt("submit_window_days"), rs.getString("title"),
-                        rs.getString("status") })
+                        rs.getString("status"), rs.getString("created_by"),
+                        rs.getInt("slot_count"), rs.getInt("claimed_count") })
                 .optional()
                 .orElseThrow(() -> notFound("Không tìm thấy nhiệm vụ."));
 
@@ -249,6 +254,12 @@ public class PrQuestService {
             // An application holds no slot. The owner approving it is what takes
             // one, so a popular quest can gather more applicants than slots.
             insertClaim(claimId, questId, userId, "PENDING", null);
+            // Đơn đăng ký nằm chờ cho đến khi chủ nhiệm vụ chọn người. Trước đây
+            // không ai báo cho họ biết, nên con số "1 đơn chờ chọn" chỉ hiện ra nếu
+            // họ tự mở tab Chiến dịch PR — người đăng ký thì ngồi đợi vô thời hạn.
+            notifyOwnerOfClaim(quest, "Có người đăng ký nhận nhiệm vụ PR",
+                    "Nhiệm vụ “%s” có đơn đăng ký mới đang chờ bạn chọn người."
+                            .formatted(quest[3]));
             return claimId;
         }
 
@@ -265,7 +276,29 @@ public class PrQuestService {
         insertClaim(claimId, questId, userId, "CLAIMED", due);
         takeSlot(questId);
         markFullIfNeeded(questId);
+        // Báo sau khi suất đã được giữ chắc: takeSlot có thể ném lỗi "đã đủ người",
+        // và một thông báo về suất không hề được nhận là thông báo sai.
+        notifyOwnerOfClaim(quest, "Có người nhận nhiệm vụ PR",
+                "Nhiệm vụ “%s” vừa được nhận một suất (%d/%d). "
+                        .formatted(quest[3], (Integer) quest[7] + 1, quest[6])
+                        + "Người nhận có %d ngày để gửi kết quả.".formatted(quest[2]));
         return claimId;
+    }
+
+    /**
+     * Báo cho chủ nhiệm vụ biết có người vừa nhận hoặc đăng ký.
+     *
+     * <p>Nuốt lỗi: suất đã được giữ xong rồi, mất một thông báo không được phép
+     * huỷ lần nhận của người dùng.
+     */
+    private void notifyOwnerOfClaim(Object[] quest, String title, String message) {
+        String owner = (String) quest[5];
+        if (owner == null || owner.isBlank()) return;
+        try {
+            notify(owner, title, message);
+        } catch (Exception failure) {
+            log.warn("Không gửi được thông báo nhận nhiệm vụ PR tới {}", owner, failure);
+        }
     }
 
     /**
@@ -383,7 +416,7 @@ public class PrQuestService {
 
         if (!"CLAIMED".equals(row[0]) && !"REJECTED".equals(row[0])) {
             throw bad("pr.not_submittable",
-                    "Nhiệm vụ này không ở trạng thái có thể nộp bài.");
+                    "Nhiệm vụ này không ở trạng thái có thể gửi kết quả.");
         }
 
         int reviewDays = (Integer) row[2];
@@ -435,6 +468,24 @@ public class PrQuestService {
         long reward = jdbc.sql("SELECT reward_xu FROM pr_quests WHERE id = ?")
                 .param(questId).query(Long.class).single();
 
+        // Giành lấy quyền trả trước khi động vào tiền: chỉ một lần gọi đổi được
+        // claim từ SUBMITTED sang APPROVED. Trước đây câu UPDATE này chỉ có
+        // `WHERE id = ?` và nằm sau lệnh trả tiền, nên bộ quét tự duyệt chạy đúng
+        // lúc nhóm bấm duyệt tay là trả thưởng hai lần cho cùng một bài.
+        int claimed = jdbc.sql("""
+                        UPDATE pr_quest_claims
+                           SET status = 'APPROVED', reviewed_at = NOW(3), auto_approved = ?,
+                               paid_xu = ?, paid_at = NOW(3)
+                         WHERE id = ? AND status = 'SUBMITTED'
+                        """)
+                .params(automatic, reward, claimId)
+                .update();
+        if (claimed == 0) {
+            throw new ApiException(HttpStatus.CONFLICT, "pr.claim_not_submitted",
+                    "Claim already handled",
+                    "Bài này vừa được xử lý nên không duyệt lại được. Hãy tải lại danh sách.");
+        }
+
         int rows = jdbc.sql("""
                         UPDATE pr_quests
                            SET escrow_xu = escrow_xu - ?,
@@ -449,15 +500,6 @@ public class PrQuestService {
                     "Escrow empty",
                     "Ký quỹ của nhiệm vụ không đủ để trả. Hãy liên hệ quản trị viên.");
         }
-
-        jdbc.sql("""
-                        UPDATE pr_quest_claims
-                           SET status = 'APPROVED', reviewed_at = NOW(3), auto_approved = ?,
-                               paid_xu = ?, paid_at = NOW(3)
-                         WHERE id = ?
-                        """)
-                .params(automatic, reward, claimId)
-                .update();
 
         creditWallet(userId, reward, questId, "Thưởng nhiệm vụ PR");
         notify(userId, "Nhiệm vụ PR đã được duyệt",
@@ -532,13 +574,22 @@ public class PrQuestService {
         long committed = Math.max(0, outstanding) * (Long) row[3];
         long refund = Math.max(0, (Long) row[0] - committed);
 
-        jdbc.sql("""
+        // Điều kiện trạng thái nằm ngay trong câu UPDATE. Kiểm trên kết quả SELECT
+        // ở trên là chưa đủ: bộ quét đóng nhiệm vụ hết hạn có thể chạy cùng lúc
+        // nhóm bấm đóng tay, hai bên cùng đọc thấy "chưa đóng" rồi cùng hoàn
+        // ký quỹ - tiền ra hai lần và escrow_xu thành số âm.
+        int closedRows = jdbc.sql("""
                         UPDATE pr_quests
                            SET status = ?, closed_at = NOW(3), escrow_xu = escrow_xu - ?
                          WHERE id = ? AND team_id = ?
+                           AND status NOT IN ('CLOSED', 'CANCELLED')
                         """)
                 .params(status, refund, questId, teamId.toString())
                 .update();
+        if (closedRows == 0) {
+            // Một lần gọi khác vừa đóng xong và đã hoàn phần ký quỹ này.
+            return 0L;
+        }
 
         if (refund > 0) {
             creditWallet((String) row[4], refund, questId,
@@ -609,8 +660,8 @@ public class PrQuestService {
                              WHERE id = ?
                             """)
                     .param((String) row[1]).update();
-            notify((String) row[2], "Nhiệm vụ PR đã quá hạn nộp",
-                    "Bạn không nộp bài trong hạn nên suất đã được trả lại cho người khác.");
+            notify((String) row[2], "Nhiệm vụ PR đã quá hạn gửi kết quả",
+                    "Bạn không gửi kết quả trong hạn nên suất đã được trả lại cho người khác.");
         }
         return stale.size();
     }

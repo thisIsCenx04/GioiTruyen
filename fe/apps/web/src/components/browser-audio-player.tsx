@@ -2,7 +2,7 @@
 
 import type { ChapterPage, PublicChapter, PublishedChapterDetail } from "@gioitruyen/api-client";
 import { Info, Lock, Pause, RotateCcw, Volume2 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 import { TtsControls, TtsNotice, TtsOptions } from "@/components/tts-controls";
@@ -52,16 +52,25 @@ function readBookmark(storyId: string): Bookmark | null {
 }
 
 export function BrowserAudioPlayer({
+  coverUrl,
+  detail,
   initial,
   storyId,
   storyIdOrSlug,
   storySlug,
+  storySynopsis,
   storyTitle,
 }: Readonly<{
+  /** Ảnh bìa hiện ngay trong trình phát; bỏ trống thì chỗ ấy là một ô trơn. */
+  coverUrl?: string | null;
+  /** Khối thông tin truyện, chèn giữa trình phát và danh sách chương. */
+  detail?: ReactNode;
   initial: ChapterPage;
   storyId: string;
   storyIdOrSlug: string;
   storySlug: string;
+  /** Văn án rút gọn, để người nghe biết mình đang mở truyện gì. */
+  storySynopsis?: string | null;
   storyTitle: string;
 }>) {
   const size = Math.max(initial.size, 1);
@@ -270,15 +279,28 @@ export function BrowserAudioPlayer({
   return (
     <>
       <section className="audioPlayerPanel" aria-labelledby="audio-player-title">
-        <header>
-          <Volume2 aria-hidden="true" />
-          <div>
-            <p className="detailEyebrow">
+        {/* Bìa và văn án nằm ngay trong trình phát: người nghe không phải cuộn
+            đi đâu để nhớ ra mình đang mở truyện gì. */}
+        <div className="audioNowPlaying">
+          <div className="audioNowCover">
+            {coverUrl ? (
+              <img alt={`Bìa ${storyTitle}`} decoding="async" loading="eager" src={coverUrl} />
+            ) : (
+              <span aria-hidden="true"><Volume2 /></span>
+            )}
+          </div>
+
+          <div className="audioNowBody">
+            <p className="audioNowStatus">
+              <span className="audioNowDot" data-live={reading ? "on" : "off"} aria-hidden="true" />
               {loadingChapter ? "Đang tải chương" : STATUS_LABELS[state.status]}
             </p>
-            <h2 id="audio-player-title">
-              {activeChapter?.title ?? `${storyTitle} — chưa có chương nào`}
-            </h2>
+            <h2 id="audio-player-title">{storyTitle}</h2>
+            <p className="audioNowChapter">
+              {activeChapter
+                ? `Chương ${activeChapter.number} · ${activeChapter.title}`
+                : "Chưa có chương nào"}
+            </p>
             {activeChapter ? (
               <p className="audioNowMeta">
                 Chương {activeChapter.number} / {total}
@@ -286,8 +308,9 @@ export function BrowserAudioPlayer({
                 {` · giọng ${state.voice === "male" ? "nam" : "nữ"}`}
               </p>
             ) : null}
+            {storySynopsis ? <p className="audioNowSynopsis">{storySynopsis}</p> : null}
           </div>
-        </header>
+        </div>
 
         {/* Nghe tiếp từ lần trước. Một bộ truyện dài hàng trăm chương thì việc
             nhớ hộ vị trí quan trọng ngang cái nút phát. */}
@@ -363,6 +386,8 @@ export function BrowserAudioPlayer({
           ))}
         </section>
       ) : null}
+
+      {detail}
 
       <section className="chapterList audioEpisodeList" aria-labelledby="audio-episodes-title">
         <header>

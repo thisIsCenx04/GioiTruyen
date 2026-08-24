@@ -114,9 +114,11 @@ public class AdminUserController {
         if (request.displayName() != null && !request.displayName().isBlank()) {
             user.setDisplayName(request.displayName().trim());
         }
+        UserRole previousRole = user.getRole();
         if (request.roles() != null && !request.roles().isEmpty()) {
             user.setRole(resolveRole(request.roles()));
         }
+        UserStatus previousStatus = user.getStatus();
         if (request.state() != null && !request.state().isBlank()) {
             user.setStatus(AdminStoryController.parseEnum(UserStatus.class, request.state(), UserStatus.ACTIVE));
         }
@@ -124,7 +126,31 @@ public class AdminUserController {
 
         User saved = userRepository.save(user);
         upsertProfile(saved.getId(), request.bio());
+
+        // Đổi vai trò hay khoá tài khoản thì phiên đang mở phải đăng nhập lại.
+        //
+        // Vai trò nằm trong access token đã ký, sống 30 phút. Hạ một người từ
+        // ADMIN xuống READER mà không thu hồi gì thì trong suốt 30 phút đó họ vẫn
+        // cầm một token nói rằng mình là ADMIN - mục "Bảng quản trị" vẫn hiện và
+        // Spring Security vẫn cho qua, vì nó xét chữ ký chứ không hỏi lại CSDL.
+        //
+        // Thu hồi refresh token làm lần gia hạn kế tiếp thất bại, trình duyệt đẩy họ
+        // ra màn đăng nhập, và lần đăng nhập mới nhận đúng vai trò hiện tại.
+        if (saved.getRole() != previousRole || saved.getStatus() != previousStatus) {
+            revokeSessions(saved.getId());
+        }
         return toRow(saved, request.bio());
+    }
+
+    /** Thu hồi mọi refresh token còn sống của một tài khoản. */
+    private void revokeSessions(UUID userId) {
+        jdbc.sql("""
+                        UPDATE refresh_tokens
+                           SET revoked_at = NOW()
+                         WHERE user_id = ? AND revoked_at IS NULL
+                        """)
+                .param(userId.toString())
+                .update();
     }
 
     /**
@@ -138,6 +164,9 @@ public class AdminUserController {
         user.setStatus(UserStatus.BANNED);
         user.setUpdatedAt(Instant.now());
         userRepository.save(user);
+        // Cấm một tài khoản mà để phiên cũ chạy tiếp thì lệnh cấm chỉ có hiệu lực
+        // sau khi họ tự đăng xuất.
+        revokeSessions(user.getId());
     }
 
     /**

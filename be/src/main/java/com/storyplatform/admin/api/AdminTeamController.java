@@ -27,6 +27,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/admin/content/teams")
 public class AdminTeamController {
 
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(AdminTeamController.class);
+
     private static final String LIST_SQL = """
             SELECT t.id, t.slug, t.name, t.description, t.status, t.created_at, t.updated_at, t.created_by,
                    u.display_name AS owner_name,
@@ -160,7 +163,32 @@ public class AdminTeamController {
         jdbc.sql("DELETE FROM teams WHERE id = ?").param(id.toString()).update();
     }
 
+    /**
+     * Đặt một người làm chủ nhóm, và chỉ một người.
+     *
+     * <p>Trước đây hàm này chỉ nâng người mới lên OWNER mà không hạ người cũ
+     * xuống, nên mỗi lần chuyển quyền sở hữu lại đẻ thêm một chủ nhóm nữa.
+     *
+     * <p>Đó không chỉ là cái nhãn hiện sai trên sổ thành viên. Doanh thu nhóm chảy
+     * về ví của chủ nhóm, mà chỗ chọn chủ nhóm lại lấy {@code ORDER BY joined_at
+     * LIMIT 1} — tức là người vào trước. Sau một lần chuyển quyền, tiền vẫn chạy về
+     * ví chủ cũ chứ không về chủ mới.
+     *
+     * <p>Chủ cũ được hạ xuống QUẢN LÝ chứ không bị gỡ khỏi nhóm: họ vẫn đang làm
+     * việc ở đó, chuyển quyền sở hữu không phải là đuổi người.
+     */
     private void ensureOwnerMembership(UUID teamId, UUID ownerId) {
+        int demoted = jdbc.sql("""
+                        UPDATE team_members
+                           SET member_role = 'MANAGER'
+                         WHERE team_id = ? AND user_id <> ? AND member_role = 'OWNER'
+                        """)
+                .params(teamId.toString(), ownerId.toString())
+                .update();
+        if (demoted > 0) {
+            log.info("Chuyển quyền sở hữu nhóm {}: hạ {} chủ nhóm cũ xuống quản lý", teamId, demoted);
+        }
+
         long existing = jdbc.sql("SELECT COUNT(*) FROM team_members WHERE team_id = ? AND user_id = ?")
                 .params(teamId.toString(), ownerId.toString())
                 .query(Long.class).optional().orElse(0L);

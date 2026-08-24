@@ -83,16 +83,16 @@ public final class RateLimitingFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+    /**
+     * Địa chỉ dùng làm khoá hạn mức.
+     *
+     * <p>Bản cũ đọc thẳng phần tử đầu của X-Forwarded-For, mà phần đó do chính
+     * người gọi viết ra. Đổi một dòng tiêu đề mỗi lần gọi là mỗi lần được cấp một
+     * ô đếm mới, nên toàn bộ bộ giới hạn này coi như không tồn tại. Xem
+     * {@link ClientIp} để biết vì sao phải lấy đầu bên kia.
+     */
     private String extractClientIp(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        String xRealIp = request.getHeader("X-Real-IP");
-        if (xRealIp != null && !xRealIp.isBlank()) {
-            return xRealIp.trim();
-        }
-        return request.getRemoteAddr();
+        return ClientIp.of(request);
     }
 
     private void sendTooManyRequestsResponse(HttpServletResponse response, long retryAfterSeconds)

@@ -132,7 +132,10 @@ export default function AdminPrDisputesPage() {
   }
 
   return (
-    <>
+    // Bọc trong .adminDashboard như các trang dashboard khác. Không có lớp này
+    // thì nội dung dính sát hai mép màn điện thoại, và dải tiêu đề sticky
+    // không có lề nào để triệt tiêu.
+    <section className="adminDashboard">
       {outcome ? <OperationDialog onClose={() => setOutcome(null)} outcome={outcome} /> : null}
       <FormDialog onClose={() => setAsk(null)} request={ask} />
 
@@ -232,6 +235,6 @@ export default function AdminPrDisputesPage() {
           </article>
         ))}
       </div>
-    </>
+    </section>
   );
 }
