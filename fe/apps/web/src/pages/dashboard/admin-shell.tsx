@@ -274,14 +274,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         <div className="adminBrand">
           <div className="adminBrandLogo">
             <img
-              src="/logo-full.png"
-              onError={(e) => {
-                const img = e.currentTarget;
-                if (!img.dataset.fallback) {
-                  img.dataset.fallback = "true";
-                  img.src = "/logo-icon.png";
-                }
-              }}
+              src="/logo-icon.png"
               alt="Giới Truyện logo"
               className="adminLogoImg"
               style={{ height: "36px", objectFit: "contain" }}

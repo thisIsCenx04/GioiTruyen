@@ -758,10 +758,13 @@ export function PublishingWorkspace({ teamId }: Readonly<{ teamId: string }>) {
     setImportSummary("");
     setNotice(null);
     try {
-      const wordsPerChapter = form.storyFormat === "ONESHOT"
-        ? WORDS_PER_CHAPTER_ZHIHU
-        : WORDS_PER_CHAPTER;
-      const imported = await parseStoryDocument(file, wordsPerChapter);
+      const isZhihu = form.storyFormat === "ONESHOT";
+      const wordsPerChapter = isZhihu ? WORDS_PER_CHAPTER_ZHIHU : WORDS_PER_CHAPTER;
+      // Zhihu giữ nguyên cách xuống dòng của file. Truyện dài về đúng định dạng
+      // là nhờ đi qua nhánh cắt theo tiêu đề chương; Zhihu không có tiêu đề nên
+      // đi qua nhánh cắt theo số từ, và nhánh đó vốn dồn mỗi dòng thành một
+      // đoạn - đó là lý do riêng Zhihu bị rớt hàng sai.
+      const imported = await parseStoryDocument(file, wordsPerChapter, isZhihu);
 
       // A file the parser can read but that is structurally wrong - chapters
       // back to front, say - is refused here rather than loaded. Loading it
@@ -977,6 +980,8 @@ export function PublishingWorkspace({ teamId }: Readonly<{ teamId: string }>) {
       files,
       lastChapterNumber(chapters) + 1,
       form.storyFormat === "ONESHOT" ? WORDS_PER_CHAPTER_ZHIHU : WORDS_PER_CHAPTER,
+      // Xem ghi chú ở importStoryFile: chỉ Zhihu cần giữ nguyên xuống dòng.
+      form.storyFormat === "ONESHOT",
     );
     const added: ChapterDraft[] = read.chapters.map((chapter) => ({
       title: chapter.title,

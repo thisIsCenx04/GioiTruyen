@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,7 +33,8 @@ public class AdminTeamController {
             org.slf4j.LoggerFactory.getLogger(AdminTeamController.class);
 
     private static final String LIST_SQL = """
-            SELECT t.id, t.slug, t.name, t.description, t.status, t.created_at, t.updated_at, t.created_by,
+            SELECT t.id, t.slug, t.name, t.description, t.status, t.verified_at,
+                   t.created_at, t.updated_at, t.created_by,
                    u.display_name AS owner_name,
                    (SELECT COUNT(*) FROM team_members m
                      WHERE m.team_id = t.id AND m.status = 'ACTIVE') AS member_count
@@ -61,6 +64,8 @@ public class AdminTeamController {
                         AdminCategoryController.nullToEmpty(rs.getString("description")),
                         rs.getString("status"),
                         rs.getLong("member_count"),
+                        rs.getTimestamp("verified_at") != null,
+                        timestamp(rs, "verified_at"),
                         timestamp(rs, "updated_at"),
                         timestamp(rs, "created_at")
                 ))
@@ -124,6 +129,57 @@ public class AdminTeamController {
         team.setUpdatedAt(Instant.now());
         return toRow(teamRepository.save(team));
     }
+
+    /**
+     * Bật/tắt dấu tích xanh của một nhóm.
+     *
+     * <p>Là một lệnh riêng chứ không phải một ô trong form sửa nhóm, vì hai lý
+     * do. Thứ nhất, xác nhận là một quyết định của ban quản trị chứ không phải
+     * một trường hồ sơ: gộp vào form nghĩa là mỗi lần sửa mô tả nhóm lại gửi
+     * kèm trạng thái xác minh, và một form nạp thiếu là đủ để gỡ tích xanh của
+     * một nhóm mà không ai bấm gì. Thứ hai, nó ghi lại người bấm - thứ một
+     * lệnh lưu chung không nói được.
+     *
+     * <p>Trạng thái hoạt động không bị đụng tới: tạm khoá rồi mở lại một nhóm
+     * đã xác minh vẫn giữ nguyên tích xanh.
+     */
+    @PostMapping("/{id}/verification")
+    @Transactional
+    public AdminTeamRow setVerification(@PathVariable UUID id,
+                                        @RequestBody VerificationRequest request,
+                                        @AuthenticationPrincipal Jwt jwt) {
+        Team team = find(id);
+        boolean verified = request != null && Boolean.TRUE.equals(request.verified());
+
+        if (verified) {
+            // Xác nhận lại một nhóm đã xác nhận thì giữ nguyên mốc cũ. Bấm nhầm
+            // hai lần không được phép làm mới ngày xác minh.
+            if (!team.isVerified()) {
+                team.setVerifiedAt(Instant.now());
+                team.setVerifiedBy(adminUserId(jwt));
+            }
+        } else {
+            team.setVerifiedAt(null);
+            team.setVerifiedBy(null);
+        }
+        team.setUpdatedAt(Instant.now());
+        log.info("{} tích xanh nhóm {}", verified ? "Bật" : "Gỡ", id);
+        return toRow(teamRepository.save(team));
+    }
+
+    /** Quản trị viên đang bấm, hoặc null khi token không mang id hợp lệ. */
+    private static UUID adminUserId(Jwt jwt) {
+        if (jwt == null || jwt.getSubject() == null) {
+            return null;
+        }
+        try {
+            return UUID.fromString(jwt.getSubject());
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
+    }
+
+    public record VerificationRequest(Boolean verified) {}
 
     /**
      * Teams own stories with ON DELETE RESTRICT, so archiving disables the team
@@ -247,6 +303,8 @@ public class AdminTeamController {
                 AdminCategoryController.nullToEmpty(team.getDescription()),
                 team.getStatus().name(),
                 memberCount,
+                team.isVerified(),
+                team.getVerifiedAt() == null ? null : team.getVerifiedAt().toString(),
                 team.getUpdatedAt() == null ? null : team.getUpdatedAt().toString(),
                 team.getCreatedAt() == null ? null : team.getCreatedAt().toString()
         );

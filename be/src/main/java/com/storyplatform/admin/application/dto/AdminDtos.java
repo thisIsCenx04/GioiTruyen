@@ -85,7 +85,20 @@ public final class AdminDtos {
             List<String> categoryIds,
             List<String> categoryNames,
             String coverUrl,
+            /**
+             * Bản teaser 500 ký tự (stories.short_description), dùng cho cột
+             * xem nhanh trong bảng.
+             */
             String synopsis,
+            /**
+             * Văn án đầy đủ (stories.description).
+             *
+             * <p>Form sửa truyện phải nạp cột này chứ không phải {@link
+             * #synopsis()}: nạp teaser rồi lưu lại chính là thứ đã cắt cụt văn
+             * án của mọi truyện xuống còn 500 ký tự ngay lần sửa đầu tiên, và
+             * phần mất đi là mất hẳn.
+             */
+            String description,
             List<String> tags,
             String storyFormat,
             String storyType,
@@ -138,6 +151,14 @@ public final class AdminDtos {
             String description,
             String state,
             long memberCount,
+            /**
+             * True khi nhóm đã được ban quản trị xác nhận - dấu tích xanh.
+             * Tách khỏi {@link #state()} vì tạm khoá rồi mở lại không được làm
+             * mất dấu xác minh.
+             */
+            boolean verified,
+            /** Mốc xác nhận, hoặc null khi chưa xác nhận. */
+            String verifiedAt,
             String updatedAt,
             String createdAt
     ) {}

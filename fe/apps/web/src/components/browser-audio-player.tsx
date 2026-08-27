@@ -51,6 +51,13 @@ function readBookmark(storyId: string): Bookmark | null {
   }
 }
 
+function pageWindow(currentPage: number, totalPages: number) {
+  const pages = new Set([1, totalPages, currentPage - 1, currentPage, currentPage + 1]);
+  return [...pages]
+    .filter((page) => page >= 1 && page <= totalPages)
+    .sort((left, right) => left - right);
+}
+
 export function BrowserAudioPlayer({
   coverUrl,
   detail,
@@ -73,9 +80,9 @@ export function BrowserAudioPlayer({
   storySynopsis?: string | null;
   storyTitle: string;
 }>) {
-  const size = Math.max(initial.size, 1);
+  const size = 20;
   const total = initial.total;
-  const totalPages = initial.totalPages;
+  const totalPages = Math.max(1, Math.ceil(total / size));
 
   const [pages, setPages] = useState<Record<number, PublicChapter[]>>({ 1: initial.items });
   const [activeIndex, setActiveIndex] = useState(0);
@@ -131,10 +138,16 @@ export function BrowserAudioPlayer({
       if (!response?.ok) return undefined;
       const loaded = (await response.json()) as ChapterPage;
       pagesRef.current = { ...pagesRef.current, [page]: loaded.items };
-      setPages(pagesRef.current);
+      setPages({ ...pagesRef.current });
     }
     return pagesRef.current[page]?.[index % size];
   }, [size, storyIdOrSlug, totalPages]);
+
+  const goToPage = useCallback(async (page: number) => {
+    if (page < 1 || page > totalPages) return;
+    setListPage(page);
+    await ensurePage((page - 1) * size);
+  }, [ensurePage, size, totalPages]);
 
   /**
    * Mở một chương: tải chữ, giao cho bộ máy đọc, và phát nếu được yêu cầu.
@@ -446,33 +459,39 @@ export function BrowserAudioPlayer({
             {listItems == null ? <p className="emptyCatalog">Đang tải danh sách chương…</p> : null}
 
             {totalPages > 1 ? (
-              <div className="audioListPager">
-                <button
-                  disabled={listPage === 1}
-                  onClick={() => {
-                    const page = listPage - 1;
-                    setListPage(page);
-                    void ensurePage((page - 1) * size);
-                  }}
-                  type="button"
-                >
-                  Trang trước
-                </button>
-                <span>
-                  Chương {(listPage - 1) * size + 1}–{Math.min(listPage * size, total)}
-                </span>
-                <button
-                  disabled={listPage >= totalPages}
-                  onClick={() => {
-                    const page = listPage + 1;
-                    setListPage(page);
-                    void ensurePage((page - 1) * size);
-                  }}
-                  type="button"
-                >
-                  Trang sau
-                </button>
-              </div>
+              <nav className="chapterPagination audioChapterPagination" aria-label="Phân trang chương audio">
+                {listPage > 1 && (
+                  <button
+                    className="audioPagerBtn"
+                    onClick={() => void goToPage(listPage - 1)}
+                    type="button"
+                  >
+                    Trước
+                  </button>
+                )}
+                {pageWindow(listPage, totalPages).map((page, index, arr) => (
+                  <span className="chapterPageGroup" key={page}>
+                    {index > 0 && page - (arr[index - 1] ?? page) > 1 && <em>...</em>}
+                    <button
+                      aria-current={page === listPage ? "page" : undefined}
+                      className="audioPagerBtn"
+                      onClick={() => void goToPage(page)}
+                      type="button"
+                    >
+                      {page}
+                    </button>
+                  </span>
+                ))}
+                {listPage < totalPages && (
+                  <button
+                    className="audioPagerBtn"
+                    onClick={() => void goToPage(listPage + 1)}
+                    type="button"
+                  >
+                    Sau
+                  </button>
+                )}
+              </nav>
             ) : null}
           </>
         )}

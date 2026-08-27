@@ -6,6 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { API_BASE_URL, authedFetch } from "@/lib/api-base";
 import { isLoggedIn } from "@/lib/auth";
+import { parseServerInstant, siteTimeParts } from "@/lib/datetime";
 
 type NotificationItem = {
   id: string;
@@ -30,17 +31,22 @@ const POLL_INTERVAL_MS = 30_000;
 /** How long a toast for a new message stays on screen. */
 const TOAST_DURATION_MS = 6_000;
 
+/**
+ * Mốc thời gian của một thông báo, đọc theo giờ Việt Nam.
+ *
+ * <p>Luật đọc/hiển thị nằm ở {@link parseServerInstant} và {@link
+ * siteTimeParts}: chuỗi không mang múi giờ là UTC, và mọi thứ hiện ra màn hình
+ * theo giờ Việt Nam. Trước đây chỗ này tự gọi `new Date()` rồi `getHours()`,
+ * nên một thông báo vừa gửi xong ở Việt Nam hiện thành 01:13 kèm dòng "7 giờ
+ * trước".
+ */
 export function timeAgoFormatted(value: string) {
-  const date = new Date(value);
+  const date = parseServerInstant(value);
+  if (!date) return { relative: "vừa xong", exact: "" };
   const then = date.getTime();
-  if (Number.isNaN(then)) return { relative: "vừa xong", exact: "" };
 
-  const hours = date.getHours().toString().padStart(2, "0");
-  const mins = date.getMinutes().toString().padStart(2, "0");
-  const day = date.getDate().toString().padStart(2, "0");
-  const month = (date.getMonth() + 1).toString().padStart(2, "0");
-  const year = date.getFullYear();
-  const exact = `${hours}:${mins} - ${day}/${month}/${year}`;
+  const { day, hour, minute, month, year } = siteTimeParts(date);
+  const exact = `${hour}:${minute} - ${day}/${month}/${year}`;
 
   const seconds = Math.max(0, Math.floor((Date.now() - then) / 1000));
   if (seconds < 60) return { relative: "vừa xong", exact };

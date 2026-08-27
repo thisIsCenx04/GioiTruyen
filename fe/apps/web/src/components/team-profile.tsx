@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import { CatalogStoryCard } from "@/components/catalog-story-card";
 import { DonationJourney } from "@/components/donation-journey";
 import { API_BASE_URL, authedFetch } from "@/lib/api-base";
+import { VerifiedBadge } from "./verified-badge";
 
 /**
  * A team's public profile.
@@ -22,6 +23,8 @@ type Team = {
   name: string;
   description: string | null;
   avatarUrl: string | null;
+  /** Nhom da duoc ban quan tri xac nhan - dau tich xanh canh ten. */
+  verified?: boolean;
   storyCount: number;
 };
 
@@ -127,7 +130,15 @@ export function TeamProfile({ teamId }: Readonly<{ teamId: string }>) {
             )}
           </span>
           <div>
-            <h1>{team.name}</h1>
+            <h1>
+              {team.name}
+              {team.verified ? <> <VerifiedBadge size="0.72em" /></> : null}
+            </h1>
+            {team.verified ? (
+              <p className="teamProfileVerified">
+                <VerifiedBadge size="0.95em" /> Nhóm đã được Giới Truyện xác nhận
+              </p>
+            ) : null}
             <p className="teamProfileMeta">{number.format(team.storyCount)} truyện đã đăng</p>
             {team.description ? <p className="teamProfileDesc">{team.description}</p> : null}
           </div>

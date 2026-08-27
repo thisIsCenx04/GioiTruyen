@@ -25,11 +25,8 @@ const loadAudioStory = cache(async (identifier: string) => {
   try {
     const [story, chapters, home] = await Promise.all([
       catalog.story(identifier),
-      // Trang một, một trăm chương - kích cỡ tối đa máy chủ cho phép. Chỗ này
-      // từng viết catalog.chapters(identifier, 80), mà tham số thứ hai là SỐ
-      // TRANG chứ không phải cỡ trang: mọi truyện đều bị hỏi trang 80 và trả về
-      // rỗng, nên danh sách chương của trang nghe luôn trống.
-      catalog.chapters(identifier, 1, 100),
+      // Nạp trang đầu tiên với 20 chương/trang cho danh sách nghe audio.
+      catalog.chapters(identifier, 1, 20),
       loadHome(),
     ]);
     const rankingStories = [

@@ -1,6 +1,9 @@
 package com.storyplatform.system.api;
 
 import com.storyplatform.shared.api.ApiException;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -76,7 +79,7 @@ public class NotificationController {
                         ORDER BY created_at DESC, id DESC
                         LIMIT ?
                         """)
-                .params(userId, cursor, cursor, size + 1)
+                .params(userId, cursorTimestamp(cursor), cursorTimestamp(cursor), size + 1)
                 .query((rs, rowNum) -> new NotificationItem(
                         rs.getString("id"),
                         rs.getString("type"),
@@ -84,8 +87,8 @@ public class NotificationController {
                         rs.getString("message"),
                         data(rs.getString("target_type"), rs.getString("target_id"),
                                 rs.getString("target_url")),
-                        rs.getBoolean("is_read") ? String.valueOf(rs.getTimestamp("created_at")) : null,
-                        String.valueOf(rs.getTimestamp("created_at"))))
+                        rs.getBoolean("is_read") ? instantText(rs.getTimestamp("created_at")) : null,
+                        instantText(rs.getTimestamp("created_at"))))
                 .list();
 
         boolean hasMore = rows.size() > size;
@@ -128,8 +131,39 @@ public class NotificationController {
         jdbc.sql("UPDATE notifications SET is_read = TRUE WHERE user_id = ? AND is_read = FALSE")
                 .param(userId)
                 .update();
-        String now = jdbc.sql("SELECT NOW()").query(String.class).single();
-        return new ReadAllResult(now, unreadCount(userId));
+        return new ReadAllResult(Instant.now().toString(), unreadCount(userId));
+    }
+
+    /**
+     * Mốc thời gian ở dạng ISO-8601 UTC, ví dụ {@code 2026-08-26T01:13:44Z}.
+     *
+     * <p>Trước đây chỗ này trả về {@code String.valueOf(Timestamp)}, tức là
+     * {@code "2026-08-26 01:13:44.0"} - một chuỗi không mang múi giờ. Trình
+     * duyệt đọc chuỗi đó là giờ địa phương, nên một thông báo vừa gửi xong ở
+     * Việt Nam hiện thành 01:13 kèm dòng "7 giờ trước". Có chữ Z thì cùng một
+     * mốc đọc đúng ở mọi máy.
+     */
+    private static String instantText(Timestamp timestamp) {
+        return timestamp == null ? null : timestamp.toInstant().toString();
+    }
+
+    /**
+     * Con trỏ phân trang chuyển về {@link Timestamp} để MySQL so sánh được với
+     * cột {@code created_at}.
+     *
+     * <p>Nhận cả dạng ISO mới lẫn dạng {@code "yyyy-MM-dd HH:mm:ss.S"} cũ, vì
+     * một tab đang mở khi bản mới lên vẫn còn cầm con trỏ kiểu cũ; từ chối nó
+     * sẽ làm cuộn tiếp hộp thư báo lỗi.
+     */
+    private static Object cursorTimestamp(String cursor) {
+        if (cursor == null || cursor.isBlank()) {
+            return null;
+        }
+        try {
+            return Timestamp.from(Instant.parse(cursor.trim()));
+        } catch (DateTimeParseException ignored) {
+            return cursor;
+        }
     }
 
     private long unreadCount(String userId) {

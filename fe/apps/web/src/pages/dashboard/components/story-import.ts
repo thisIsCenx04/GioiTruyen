@@ -707,12 +707,13 @@ export function lastChapterNumber(rows: readonly { title?: string }[]): number {
 export async function readChaptersInFile(
   file: File,
   wordsPerChapter: number = WORDS_PER_CHAPTER,
+  preserveLineBreaks = false,
 ): Promise<{ chapters: ImportedChapter[]; warnings: string[] }> {
   // Chapter markers are found exactly the way they are when a story is first
   // created - same headings, same "Chương N" lines, same guard against a stray
   // number pretending to be a heading - so the two flows never disagree about
   // where a chapter begins. Only the story's own metadata is ignored here.
-  const parsed = await parseStoryDocument(file, wordsPerChapter);
+  const parsed = await parseStoryDocument(file, wordsPerChapter, preserveLineBreaks);
   if (!parsed.autoSplit && parsed.chapters.length > 0) {
     return {
       chapters: parsed.chapters.filter((chapter) => chapter.content.trim().length > 0),
@@ -765,6 +766,7 @@ export async function readChapterDraftsFromFiles(
   picked: readonly File[],
   startNumber: number,
   wordsPerChapter: number = WORDS_PER_CHAPTER,
+  preserveLineBreaks = false,
 ): Promise<ChapterUploadResult> {
   const files = sortChapterFiles(picked);
   const chapters: UploadedChapter[] = [];
@@ -779,7 +781,7 @@ export async function readChapterDraftsFromFiles(
 
   for (const [index, file] of files.entries()) {
     try {
-      const read = await readChaptersInFile(file, wordsPerChapter);
+      const read = await readChaptersInFile(file, wordsPerChapter, preserveLineBreaks);
       warnings.push(...read.warnings.map((entry) => `${file.name}: ${entry}`));
       if (read.chapters.length === 0) {
         failed.push(`${file.name} (không có nội dung)`);
@@ -917,11 +919,106 @@ function readCompletionStatus(lines: readonly DocumentLine[]): {
 }
 
 /**
+ * Bao nhieu phan tram ngan sach tu duoc phep vuot de cho mot dong trong.
+ *
+ * <p>Chi dung cho Zhihu. Cat dung o tu thu 1400 gan nhu luon roi vao giua mot
+ * doan; cho toi dong trong gan nhat thi chuong ket thuc o cho tac gia da ngat.
+ * Neu trong khoang noi them nay van khong gap dong trong nao thi cat o ranh
+ * gioi dong, de mot van ban viet lien mot mach khong don thanh mot chuong
+ * khong lo.
+ */
+const PARAGRAPH_CUT_OVERSHOOT = 1.25;
+
+/** Gop ba dau xuong dong tro len thanh mot dong trong - luat cua truyen dai. */
+function normaliseBlankLines(text: string): string {
+  return text.replace(/\n{3,}/gu, "\n\n").trim();
+}
+
+/**
+ * Cat theo ngan sach tu nhung giu nguyen cach xuong dong cua ban goc.
+ *
+ * <p>Day la diem khac biet voi {@link splitByWordCount} thuong, va la ly do
+ * truyen Zhihu ve sai dinh dang con truyen dai thi khong. Ban thuong bo het
+ * dong trong roi noi lai moi dong bang hai dau xuong dong, nghia la:
+ *
+ * <ul>
+ *   <li>Dong trong tac gia dung de ngat canh bien mat.</li>
+ *   <li>Moi dong cua mot doan bi be dong cung (rat pho bien khi dan tu Word hay
+ *       .txt) thanh mot doan rieng - van ban ve "rot hang" lung tung.</li>
+ * </ul>
+ *
+ * <p>Truyen dai di qua {@code buildChapterBlocks}, noi cac dong duoc noi bang
+ * mot dau xuong dong va chi gop dong trong thua - nen no giu dung ban goc. Ham
+ * nay ap dung dung luat do cho Zhihu.
+ */
+function splitPreservingLineBreaks(lines: string[], wordsPerChapter: number): ImportedChapter[] {
+  // Chi cat khoang trang cuoi dong: thut dau dong la mot lua chon trinh bay cua
+  // tac gia, khong phai rac.
+  const body = lines.map((line) => line.replace(/\s+$/u, ""));
+  while (body.length > 0 && !body[0]!.trim()) body.shift();
+  while (body.length > 0 && !body.at(-1)!.trim()) body.pop();
+  if (body.length === 0) return [];
+
+  const ceiling = Math.ceil(wordsPerChapter * PARAGRAPH_CUT_OVERSHOOT);
+  const chapters: ImportedChapter[] = [];
+  let current: string[] = [];
+  let words = 0;
+
+  const flush = () => {
+    const content = normaliseBlankLines(current.join("\n"));
+    current = [];
+    words = 0;
+    if (content) chapters.push({ content, title: `Chuong ${chapters.length + 1}` });
+  };
+
+  for (const line of body) {
+    const blank = !line.trim();
+    // Dong trong ngay sau khi da du chu chinh la cho ngat tac gia da danh dau.
+    // Ban than no la dau phan cach nen khong di kem chuong nao.
+    if (blank && words >= wordsPerChapter && current.length > 0) {
+      flush();
+      continue;
+    }
+    // Khong chuong nao mo dau bang dong trong.
+    if (blank && current.length === 0) continue;
+    current.push(line);
+    words += line.split(/\s+/u).filter(Boolean).length;
+    // Van ban khong co dong trong nao thi van phai cat, chi la cat o ranh gioi
+    // dong chu khong bao gio o giua dong.
+    if (words >= ceiling) flush();
+  }
+
+  if (current.length > 0) {
+    const tail = normaliseBlankLines(current.join("\n"));
+    const previous = chapters.at(-1);
+    // Phan duoi qua ngan thi nhap vao chuong truoc thay vi dung rieng thanh mot
+    // chuong cut - cung luat voi ban thuong.
+    if (previous && words < wordsPerChapter / 4) {
+      previous.content = `${previous.content}\n\n${tail}`;
+    } else if (tail) {
+      chapters.push({ content: tail, title: `Chuong ${chapters.length + 1}` });
+    }
+  }
+
+  return chapters;
+}
+
+/**
  * Splits continuous prose into fixed-size chapters when the document carries no
  * chapter headings. Paragraphs are kept whole: a chapter ends at the first
  * paragraph boundary at or past the word budget, so no sentence is cut in half.
+ *
+ * @param preserveLineBreaks giu nguyen cach xuong dong cua ban goc thay vi don
+ *        moi dong thanh mot doan. Bat cho truyen Zhihu; truyen dai khong di qua
+ *        nhanh nay nen hanh vi cua no khong doi.
  */
-export function splitByWordCount(lines: string[], wordsPerChapter = WORDS_PER_CHAPTER): ImportedChapter[] {
+export function splitByWordCount(
+  lines: string[],
+  wordsPerChapter = WORDS_PER_CHAPTER,
+  preserveLineBreaks = false,
+): ImportedChapter[] {
+  if (preserveLineBreaks) return splitPreservingLineBreaks(lines, wordsPerChapter);
+
   const paragraphs = lines.map((line) => line.trim()).filter(Boolean);
   if (paragraphs.length === 0) return [];
 
@@ -991,6 +1088,7 @@ const METADATA_LABELS: Record<string, "authorName" | "categories" | "synopsis" |
 export async function parseStoryDocument(
   file: File,
   wordsPerChapter: number = WORDS_PER_CHAPTER,
+  preserveLineBreaks = false,
 ): Promise<ImportedStory> {
   // One reader for every format; it decides from the bytes what it is holding.
   const rawLines = await readDocumentLines(file);
@@ -1133,7 +1231,7 @@ export async function parseStoryDocument(
   // no headings at all and cut by word count, which is what it needed.
   const chapters: ImportedChapter[] = headingsPartitionDocument(headingChapters, wordsPerChapter)
     ? headingChapters
-    : splitByWordCount(bodyLines.map((line) => line.text), wordsPerChapter);
+    : splitByWordCount(bodyLines.map((line) => line.text), wordsPerChapter, preserveLineBreaks);
 
   // Counted rather than assumed. Every earlier bug in this parser lost text
   // quietly - a heading rule that fired mid-chapter, a header block that

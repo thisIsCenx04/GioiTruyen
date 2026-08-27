@@ -50,7 +50,12 @@ public class AdminStoryController {
      * duplicate story rows and break only_full_group_by.
      */
     private static final String LIST_SQL = """
-            SELECT s.id, s.slug, s.title, s.original_author, s.short_description, s.cover_url,
+            SELECT s.id, s.slug, s.title, s.original_author,
+                   -- Cả teaser 500 ký tự lẫn văn án đầy đủ. Bảng hiển thị
+                   -- teaser, còn form sửa truyện phải nạp bản đầy đủ: nạp
+                   -- teaser rồi lưu lại là thứ đã cắt cụt văn án của mọi truyện
+                   -- xuống 500 ký tự ngay lần sửa đầu tiên.
+                   s.short_description, s.description, s.cover_url,
                    s.story_format, s.story_type, s.status, s.progress_status,
                    s.combo_price_xu,
                    s.created_at, s.updated_at, s.team_id,
@@ -133,6 +138,7 @@ public class AdminStoryController {
                         splitTags(rs.getString("genre_names")),
                         rs.getString("cover_url"),
                         rs.getString("short_description"),
+                        rs.getString("description"),
                         splitTags(rs.getString("tag_labels")),
                         rs.getString("story_format"),
                         rs.getString("story_type"),
@@ -581,6 +587,7 @@ public class AdminStoryController {
                 categoryNames,
                 story.getCoverUrl(),
                 story.getShortDescription(),
+                story.getDescription(),
                 tags == null ? List.of() : tags,
                 (story.getStoryFormat() == null ? StoryFormat.SERIAL : story.getStoryFormat()).name(),
                 (story.getStoryType() == null ? StoryType.TEXT : story.getStoryType()).name(),
@@ -880,10 +887,24 @@ public class AdminStoryController {
     public static boolean isTeaserOverwrite(String existingDescription,
                                             String existingShortDescription,
                                             String incomingDescription) {
-        return existingDescription != null
-                && incomingDescription != null
-                && existingDescription.length() > incomingDescription.length()
-                && incomingDescription.equals(existingShortDescription);
+        if (existingDescription == null || incomingDescription == null
+                || existingDescription.length() <= incomingDescription.length()) {
+            return false;
+        }
+        if (incomingDescription.equals(existingShortDescription)) {
+            return true;
+        }
+        // Bản clip cắt đúng ở mốc 500 ký tự cũng là teaser, kể cả khi
+        // short_description trong CSDL đã lệch đi (truyện cũ, hoặc teaser được
+        // sinh lại sau một lần sửa khác). Dấu hiệu: bản gửi lên là tiền tố
+        // nguyên vẹn của bản đang lưu và dừng ngay tại mốc cắt.
+        //
+        // Điều kiện "tiền tố nguyên vẹn" là thứ giữ cho việc rút gọn văn án
+        // thật sự vẫn chạy: người viết lại văn án ngắn hơn gần như không bao
+        // giờ gõ ra đúng từng ký tự phần đầu của bản cũ rồi dừng ở ký tự thứ
+        // 500.
+        return incomingDescription.length() == SHORT_DESCRIPTION_LIMIT
+                && existingDescription.startsWith(incomingDescription);
     }
 
     /**

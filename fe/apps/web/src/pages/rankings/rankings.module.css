@@ -36,7 +36,7 @@
 
 .pageHeading {
   align-items: center;
-  border-bottom: 1px solid #eef2f6;
+  border-bottom: 1px solid var(--line);
   display: flex;
   gap: .75rem;
   justify-content: space-between;
@@ -44,6 +44,7 @@
 }
 
 .pageHeading h1 {
+  color: var(--text-primary);
   font-size: 1.5rem;
   font-weight: 850;
   letter-spacing: -.01em;
@@ -52,7 +53,7 @@
 }
 
 .pageHeading span {
-  color: var(--text-secondary);
+  color: var(--text-muted);
   flex-shrink: 0;
   font-size: .85rem;
   font-weight: 600;
@@ -67,7 +68,7 @@
 
 /* Underline tabs, the same control used by the ranking side panel. */
 .tabs {
-  border-bottom: 1px solid #eef2f6;
+  border-bottom: 1px solid var(--line);
   display: flex;
   gap: .25rem;
 }
@@ -82,10 +83,11 @@
   font-weight: 700;
   margin-bottom: -1px;
   padding: .45rem .6rem;
+  transition: color 150ms ease;
 }
 
 .tabs button:hover {
-  color: #0f172a;
+  color: var(--text-primary);
 }
 
 .tabs button.isActive {
@@ -114,14 +116,14 @@
 }
 
 .boardHeader {
-  border-bottom: 1px solid #eef2f6;
+  border-bottom: 1px solid var(--line);
   margin-bottom: .35rem;
   padding-bottom: .7rem;
 }
 
 .boardHeader h2 {
   align-items: center;
-  color: #0f172a;
+  color: var(--text-primary);
   display: flex;
   font-size: 1.05rem;
   font-weight: 800;
@@ -142,7 +144,7 @@
 
 .boardList li {
   align-items: center;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--line);
   display: grid;
   gap: .65rem;
   grid-template-columns: 1.5rem 3rem minmax(0, 1fr);
@@ -154,7 +156,7 @@
 }
 
 .boardList li > b {
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 1.05rem;
   font-weight: 700;
   text-align: center;
@@ -167,7 +169,7 @@
 
 .thumb {
   aspect-ratio: 3 / 4;
-  background: #f1f5f9;
+  background: var(--surface-sunken);
   border-radius: 4px;
   display: block;
   overflow: hidden;
@@ -186,7 +188,7 @@
 
 .thumb :global(.coverPlaceholder) {
   align-items: center;
-  color: #94a3b8;
+  color: var(--text-muted);
   display: flex;
   height: 100%;
   justify-content: center;
@@ -206,7 +208,7 @@
 }
 
 .rowTitle {
-  color: #0f172a;
+  color: var(--text-primary);
   display: -webkit-box;
   font-size: .92rem;
   font-weight: 700;
@@ -215,6 +217,7 @@
   text-decoration: none;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  transition: color 150ms ease;
 }
 
 .rowTitle:hover {
@@ -222,7 +225,7 @@
 }
 
 .rowMeta {
-  color: var(--text-secondary);
+  color: var(--text-muted);
   display: block;
   font-size: .8rem;
   margin-top: .15rem;
@@ -241,7 +244,7 @@
 }
 
 .emptyRow > span {
-  color: #cbd5e1;
+  color: var(--text-muted);
   font-size: .85rem;
   grid-column: 2 / -1;
 }
@@ -269,7 +272,7 @@
 }
 
 .ctaCard h2 {
-  color: #0f172a;
+  color: var(--text-primary);
   font-size: 1.05rem;
   font-weight: 800;
   margin: 0 0 .35rem;
@@ -283,7 +286,7 @@
 }
 
 .ctaSteps {
-  color: #334155;
+  color: var(--text-secondary);
   display: grid;
   font-size: .9rem;
   gap: .4rem;
@@ -315,8 +318,9 @@
 }
 
 .ctaSecondary {
-  border: 1px solid #dbe3ec;
-  color: #334155;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
 }
 
 @media (max-width: 40rem) {

@@ -1,6 +1,7 @@
 package com.storyplatform.engagement.api;
 
 import com.storyplatform.shared.api.ApiException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -25,12 +26,58 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class ReadingSessionController {
 
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(ReadingSessionController.class);
+
     /** Stories per page of reading history. */
     private static final int HISTORY_PAGE_SIZE = 20;
 
     private final NamedParameterJdbcTemplate jdbc;
     private final com.storyplatform.engagement.application.StoryViewRecorder viewRecorder;
+    /**
+     * Phiên đọc đang mở, giữ trong bộ nhớ tiến trình.
+     *
+     * <p>Bản đồ này chỉ co lại khi ai đó gọi {@code /complete}. Kẻ tấn công thì
+     * không bao giờ gọi, mà {@code POST /reading-sessions} lại mở công khai — nên
+     * nó từng là một đường làm cạn bộ nhớ: mỗi lần gọi thêm một dòng, không
+     * gì dọn, máy chủ cứ thế phình cho đến khi hết bộ nhớ.
+     */
     private final Map<String, SessionRecord> activeSessions = new ConcurrentHashMap<>();
+
+    /** Phiên cũ hơn mức này coi như người đọc đã đi, dù không ai báo kết thúc. */
+    private static final Duration SESSION_TTL = Duration.ofHours(3);
+
+    /** Trần cứng, phòng khi quét theo tuổi vẫn không kịp. */
+    private static final int MAX_ACTIVE_SESSIONS = 50_000;
+
+    /** Khoảng cách tối thiểu giữa hai lần quét, để không quét trên mọi lần gọi. */
+    private static final long SWEEP_INTERVAL_MS = 60_000L;
+
+    private volatile long lastSweepAt = System.currentTimeMillis();
+
+    /**
+     * Dọn phiên quá hạn. Gọi từ chỗ tạo phiên, không cần bộ hẹn giờ riêng:
+     * bản đồ chỉ lớn lên ở đúng chỗ đó.
+     */
+    private void sweepStaleSessions() {
+        long now = System.currentTimeMillis();
+        boolean overCap = activeSessions.size() >= MAX_ACTIVE_SESSIONS;
+        if (!overCap && now - lastSweepAt < SWEEP_INTERVAL_MS) {
+            return;
+        }
+        lastSweepAt = now;
+        Instant cutoff = Instant.now().minus(SESSION_TTL);
+        activeSessions.values().removeIf(session -> session.createdAt().isBefore(cutoff));
+
+        // Vẫn chạm trần sau khi dọn theo tuổi: bỏ hết để máy chủ sống, thay vì
+        // giữ một đống phiên giả rồi chết vì hết bộ nhớ. Mất phiên chỉ làm
+        // nhịp tim mất hiệu lực, không mất dữ liệu nào đã ghi xuống CSDL.
+        if (activeSessions.size() >= MAX_ACTIVE_SESSIONS) {
+            log.warn("Phiên đọc chạm trần {} sau khi dọn theo tuổi — xóa toàn bộ",
+                    MAX_ACTIVE_SESSIONS);
+            activeSessions.clear();
+        }
+    }
 
     public ReadingSessionController(
             NamedParameterJdbcTemplate jdbc,
@@ -58,6 +105,8 @@ public class ReadingSessionController {
             @AuthenticationPrincipal Jwt jwt,
             jakarta.servlet.http.HttpServletRequest httpRequest
     ) {
+        sweepStaleSessions();
+
         String sessionId = UUID.randomUUID().toString();
         String sessionToken = UUID.randomUUID().toString();
         
@@ -108,7 +157,7 @@ public class ReadingSessionController {
             }
         }
 
-        SessionRecord current = activeSessions.get(sessionId);
+        SessionRecord current = requireSession(sessionId, sessionToken);
         if (current != null) {
             activeSessions.put(sessionId, new SessionRecord(
                     current.sessionId(),
@@ -129,8 +178,33 @@ public class ReadingSessionController {
             @RequestHeader(value = "X-Session-Token", required = false) String sessionToken,
             @RequestBody CompleteRequest request
     ) {
+        requireSession(sessionId, sessionToken);
         activeSessions.remove(sessionId);
         return new StatusResponse("COMPLETED");
+    }
+
+    /**
+     * Phiên này có đúng là của người đang gọi không.
+     *
+     * <p>{@code X-Session-Token} được cấp lúc mở phiên và trình duyệt vẫn gửi
+     * kèm — nhưng máy chủ trước đây đọc rồi bỏ, nên bất kỳ ai đoán đúng
+     * sessionId đều đóng được phiên của người khác. Một tham số sinh ra để
+     * chứng thực mà không ai kiểm thì chỉ là trấn an.
+     *
+     * <p>Phiên không còn trong bộ nhớ (hết hạn, hoặc máy chủ vừa khởi động lại)
+     * thì trả về null chứ không ném lỗi: nhịp tim muộn không phải là tấn công, và
+     * làm vỡ trang đọc vì chuyện đó là vô lý.
+     */
+    private SessionRecord requireSession(String sessionId, String sessionToken) {
+        SessionRecord current = activeSessions.get(sessionId);
+        if (current == null) {
+            return null;
+        }
+        if (sessionToken == null || !current.sessionToken().equals(sessionToken)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "reading_session.forbidden",
+                    "Session token mismatch", "Phiên đọc này không thuộc về bạn.");
+        }
+        return current;
     }
 
     /**

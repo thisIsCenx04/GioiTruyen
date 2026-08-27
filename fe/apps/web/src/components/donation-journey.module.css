@@ -31,7 +31,7 @@
   background: var(--surface-card);
   border: 0.08rem solid var(--line);
   border-radius: 0 2rem 0 0;
-  box-shadow: 0.65rem 0.65rem 0 #e0e5f5;
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.25);
   margin-top: 1.8rem;
   max-width: 36rem;
   overflow: hidden;
@@ -47,8 +47,10 @@
  * vh keeps counting the hidden part, which cut the confirm button off.
  */
 .actionPanel {
+  background: var(--surface-card);
+  border: 1px solid var(--line);
   border-radius: .75rem;
-  box-shadow: 0 1.5rem 4rem rgb(15 45 90 / 24%);
+  box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.35);
   left: 50%;
   margin: 0 !important;
   max-height: min(88dvh, calc(100dvh - 2rem));
@@ -62,7 +64,7 @@
 
 /* Dims the page behind the dialog and catches clicks meant to dismiss it. */
 .actionBackdrop {
-  background: rgb(8 15 28 / 55%);
+  background: var(--surface-scrim, rgba(8, 15, 28, 0.65));
   inset: 0;
   position: fixed;
   z-index: 149;
@@ -70,38 +72,46 @@
 
 .heading {
   align-items: start;
-  background: var(--ink);
-  color: white;
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--line);
+  color: var(--text-primary);
   display: flex;
   justify-content: space-between;
   padding: 1.5rem;
 }
 
 .heading span {
-  color: #aebeff;
+  color: var(--blue);
   font: 800 0.65rem/1 var(--utility);
   letter-spacing: 0.09em;
   text-transform: uppercase;
 }
 
 .heading h2 {
+  color: var(--text-primary);
   font: 600 clamp(1.7rem, 3.2vw, 2.6rem)/0.96 var(--serif);
   letter-spacing: -0.04em;
   margin: 0.65rem 0 0;
 }
 
-.heading h2 em { color: #aebeff; font-weight: 500; }
+.heading h2 em { color: var(--blue); font-weight: 500; }
 
 .close {
   background: transparent;
-  border: 0.08rem solid rgb(255 255 255 / 30%);
+  border: 0.08rem solid var(--line);
   border-radius: 50%;
-  color: white;
+  color: var(--text-primary);
   cursor: pointer;
   font-size: 1.2rem;
   height: 2rem;
   line-height: 1;
   width: 2rem;
+  transition: all 150ms ease;
+}
+
+.close:hover {
+  background: var(--accent-soft);
+  color: var(--blue);
 }
 
 .balanceLine {
@@ -114,7 +124,7 @@
 
 .balanceLine span,
 .note > span {
-  color: var(--muted);
+  color: var(--text-muted);
   font: 800 0.65rem/1 var(--utility);
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -132,29 +142,38 @@
 }
 
 .amounts legend {
+  color: var(--text-primary);
   font: 600 1.15rem/1 var(--serif);
   padding-top: 1.5rem;
 }
 
 .amounts button {
-  background: var(--paper);
+  background: var(--surface-sunken);
   border: 0.08rem solid var(--line);
-  color: var(--ink);
+  border-radius: 0.35rem;
+  color: var(--text-primary);
   cursor: pointer;
   font-weight: 800;
   padding: 0.7rem 0.25rem;
+  transition: all 150ms ease;
+}
+
+.amounts button:hover {
+  border-color: var(--blue);
+  color: var(--blue);
 }
 
 .amounts button[aria-pressed="true"] {
   background: var(--blue);
   border-color: var(--blue);
-  color: white;
+  color: #fff;
 }
 
 /* The free-entry box. Its own row under the presets, labelled above the
    field rather than beside it, so the input gets the full width instead of
    the sliver that was left over next to the caption. */
 .customAmount {
+  background: var(--surface-sunken);
   border: 0.08rem solid var(--line);
   border-radius: 0.35rem;
   display: grid;
@@ -165,7 +184,7 @@
 }
 
 .customAmount span {
-  color: var(--muted);
+  color: var(--text-muted);
   font-size: 0.72rem;
   font-weight: 750;
   grid-column: 1 / -1;
@@ -174,7 +193,7 @@
 
 .customAmount em {
   align-self: center;
-  color: var(--muted);
+  color: var(--text-muted);
   font-size: 0.78rem;
   font-style: normal;
   font-weight: 800;
@@ -188,7 +207,7 @@
 .amounts input {
   background: none;
   border: 0;
-  color: var(--ink);
+  color: var(--text-primary);
   font-size: 1rem;
   font-weight: 800;
   min-width: 0;
@@ -202,7 +221,7 @@
    broken feature rather than as an empty wallet. */
 .blocked {
   align-items: baseline;
-  color: var(--muted);
+  color: var(--text-muted);
   display: flex;
   flex-wrap: wrap;
   font-size: 0.78rem;
@@ -223,31 +242,40 @@
 }
 
 .note textarea {
+  background: var(--surface-sunken);
   border: 0.08rem solid var(--line);
-  color: var(--ink);
+  border-radius: 0.35rem;
+  color: var(--text-primary);
   line-height: 1.5;
   margin-top: 0.6rem;
   padding: 0.8rem 0.8rem 1.6rem;
   resize: vertical;
 }
 
+.note textarea:focus {
+  border-color: var(--blue);
+  outline: none;
+}
+
 .note small {
   bottom: 0.45rem;
-  color: var(--muted);
+  color: var(--text-muted);
   font-size: 0.62rem;
   position: absolute;
   right: 0.55rem;
 }
 
 .continue {
-  background: var(--vermilion);
+  background: #ff4057;
   border: 0;
+  border-radius: 0.35rem;
   color: white;
   cursor: pointer;
   font-weight: 800;
   margin: 1rem 1.5rem 1.5rem;
   padding: 0.9rem;
   width: calc(100% - 3rem);
+  transition: opacity 150ms ease;
 }
 
 .continue:disabled,
@@ -257,19 +285,21 @@
 }
 
 .confirm {
-  background: #fff4e8;
-  border-top: 0.08rem solid #edcfae;
+  background: var(--warning-soft);
+  border-top: 0.08rem solid var(--warning);
+  border-radius: 0 0 0.75rem 0.75rem;
   margin-top: 1.2rem;
   padding: 1rem 1.5rem 1.5rem;
 }
 
-.confirm p { color: #59483c; font-size: 0.82rem; line-height: 1.55; }
+.confirm p { color: var(--text-primary); font-size: 0.82rem; line-height: 1.55; }
 .confirm > div { display: flex; gap: 0.6rem; justify-content: flex-end; }
 
 .confirm button {
   background: transparent;
-  border: 0.08rem solid #c9aa8a;
-  color: #59483c;
+  border: 0.08rem solid var(--line);
+  border-radius: 0.35rem;
+  color: var(--text-primary);
   cursor: pointer;
   font-weight: 800;
   padding: 0.7rem 0.9rem;
@@ -283,8 +313,10 @@
 
 .error {
   align-items: center;
-  background: #fff0ee;
-  color: #8b2d27;
+  background: var(--danger-soft);
+  border: 1px solid var(--danger);
+  border-radius: 0.35rem;
+  color: var(--danger);
   display: flex;
   font-size: 0.76rem;
   justify-content: space-between;
@@ -296,6 +328,7 @@
 
 .success {
   align-items: center;
+  background: var(--surface-card);
   display: grid;
   gap: 1.2rem;
   grid-template-columns: auto 1fr;
@@ -314,8 +347,8 @@
   width: 4rem;
 }
 
-.success strong { color: var(--ink); font: 600 1.45rem/1 var(--serif); }
-.success p { color: var(--muted); line-height: 1.5; margin: 0.5rem 0; }
+.success strong { color: var(--text-primary); font: 600 1.45rem/1 var(--serif); }
+.success p { color: var(--text-muted); line-height: 1.5; margin: 0.5rem 0; }
 .success small { color: var(--blue); font-weight: 800; text-transform: uppercase; }
 
 @media (max-width: 34rem) {

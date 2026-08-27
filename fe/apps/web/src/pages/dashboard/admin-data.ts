@@ -70,7 +70,14 @@ export type AdminStoryRow = {
   categoryIds?: string[];
   categoryNames?: string[];
   coverUrl?: string;
+  /** Teaser 500 ky tu, dung cho cot xem nhanh trong bang. */
   synopsis: string | null;
+  /**
+   * Van an day du. Form sua truyen phai nap cot nay chu khong phai `synopsis`:
+   * nap teaser roi luu lai chinh la thu da cat cut van an xuong con 500 ky tu
+   * ngay lan sua dau tien.
+   */
+  description?: string | null;
   tags?: string[];
   /** SERIAL or ONESHOT; absent on rows saved before the format was introduced. */
   storyFormat?: string;
@@ -108,6 +115,10 @@ export type AdminTeamRow = {
   description: string;
   state: string;
   memberCount: number;
+  /** Nhom da duoc ban quan tri xac nhan - dau tich xanh. */
+  verified?: boolean;
+  /** Moc xac nhan, hoac null khi chua xac nhan. */
+  verifiedAt?: string | null;
   updatedAt: string | null;
   createdAt: string | null;
 };

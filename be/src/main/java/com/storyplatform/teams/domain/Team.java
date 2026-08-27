@@ -15,6 +15,15 @@ public class Team {
     private String coverUrl;
     private String description;
     private TeamStatus status;
+    /**
+     * Khi ban quản trị xác nhận nhóm, hoặc null khi chưa xác nhận.
+     *
+     * <p>Tách khỏi {@link #status}: tạm khoá một nhóm rồi mở lại không được phép
+     * làm mất dấu xác minh, nên hai thứ này là hai cột.
+     */
+    private Instant verifiedAt;
+    /** Quản trị viên đã bấm xác nhận, để còn truy được khi có khiếu nại. */
+    private UUID verifiedBy;
     private UUID createdBy;
     private Instant createdAt;
     private Instant updatedAt;
@@ -41,6 +50,15 @@ public class Team {
 
     public TeamStatus getStatus() { return status; }
     public void setStatus(TeamStatus status) { this.status = status; }
+
+    public Instant getVerifiedAt() { return verifiedAt; }
+    public void setVerifiedAt(Instant verifiedAt) { this.verifiedAt = verifiedAt; }
+
+    public UUID getVerifiedBy() { return verifiedBy; }
+    public void setVerifiedBy(UUID verifiedBy) { this.verifiedBy = verifiedBy; }
+
+    /** True khi nhóm đã được xác nhận - thứ dấu tích xanh hiển thị. */
+    public boolean isVerified() { return verifiedAt != null; }
 
     public UUID getCreatedBy() { return createdBy; }
     public void setCreatedBy(UUID createdBy) { this.createdBy = createdBy; }

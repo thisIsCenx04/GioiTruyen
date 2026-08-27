@@ -146,7 +146,7 @@ export const publishingRulesContent: LegalPageContent = {
           items: [
             "Truyện ngắn, zhihu tự bật quảng cáo để được thanh toán lợi nhuận; nếu không bật sẽ không có lợi nhuận.",
             "Thanh toán theo số lần độc giả click vào link affiliate, quảng cáo.",
-            "Lợi nhuận từ 2đ đến 15đ.",
+            "Lợi nhuận từ 2đ đến 10đ.",
           ],
           type: "list",
         },

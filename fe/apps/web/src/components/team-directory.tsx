@@ -5,6 +5,8 @@ import { Link } from "react-router-dom";
 
 import { API_BASE_URL, authedFetch } from "@/lib/api-base";
 
+import { VerifiedBadge } from "./verified-badge";
+
 /**
  * Publishing teams, listed plainly.
  *
@@ -20,6 +22,8 @@ type Team = {
   name: string;
   description: string | null;
   avatarUrl: string | null;
+  /** Nhom da duoc ban quan tri xac nhan - dau tich xanh canh ten. */
+  verified?: boolean;
   storyCount: number;
   totalViews: number;
   totalFavorites: number;
@@ -91,7 +95,10 @@ function TeamRankingBoard({ teams }: { teams: Team[] }) {
                       <span>{index + 1}</span>
                       {team ? (
                         <>
-                          <Link to={`/teams/${team.slug || team.id}`}>{team.name}</Link>
+                          <Link to={`/teams/${team.slug || team.id}`}>
+                            {team.name}
+                            {team.verified ? <> <VerifiedBadge size="0.9em" /></> : null}
+                          </Link>
                           <b>{number.format(column.value(team))}</b>
                         </>
                       ) : (
@@ -126,7 +133,10 @@ function TeamCards({ teams }: { teams: Team[] }) {
               )}
             </span>
             <span className="teamCardBody">
-              <strong>{team.name}</strong>
+              <strong>
+                {team.name}
+                {team.verified ? <> <VerifiedBadge size="0.95em" /></> : null}
+              </strong>
               <small>{number.format(team.storyCount)} truyện đã đăng</small>
               {team.description ? <p>{team.description}</p> : null}
             </span>

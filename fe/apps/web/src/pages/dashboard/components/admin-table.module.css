@@ -69,6 +69,81 @@
   white-space: nowrap;
 }
 
+/* Vi tri goc cho tay nam keo o mep phai tieu de. */
+.table th { position: relative; }
+
+/*
+  Bang da do be rong cot.
+
+  Truoc buoc do, trinh duyet tu dan cot theo noi dung (`width: max-content`),
+  va mot o dai bat thuong - dong gioi thieu cua nhom chang han - gian ra om
+  tron dong do roi day moi cot con lai ra khoi vung cuon: bang chi con thay
+  dung mot cot. Sau khi do xong, be rong la co dinh nen o dai bi cat bot va
+  hien dau ba cham, con nguoi dung tu keo rong ra khi can doc ca dong.
+*/
+/*
+  min-width giu bang lap day khung khi tong be rong cac cot hep hon man hinh:
+  khong co no, mot bang it cot se thanh mot dai hep nam lech ben trai.
+*/
+.tableSized {
+  min-width: 100%;
+  table-layout: fixed;
+  width: auto;
+}
+
+/*
+  Cat noi dung tran ra ngoai cot. Phai noi ro tung cap: `text-overflow` chi an
+  tren chinh phan tu dang tran, ma cac o o day thuong long mot lop <div> boc
+  <strong> voi <span>.
+*/
+.tableSized td { overflow: hidden; text-overflow: ellipsis; }
+
+.tableSized td > *,
+.tableSized td > * > * {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Cot thao tac la cac nut, khong phai chu - cat no chi lam mat nut. */
+.tableSized td.actions,
+.tableSized td.actions * { overflow: visible; }
+
+/*
+  Tay nam keo.
+
+  Rong 10px chu khong phai 1px: keo dung mot duong ke la viec kho voi chuot va
+  bat kha thi tren man hinh cam ung. Duong ke nhin thay duoc ve bang ::after o
+  giua, nen no van mong nhu mot duong phan cach.
+*/
+.resizer {
+  bottom: 0;
+  cursor: col-resize;
+  position: absolute;
+  right: -5px;
+  top: 0;
+  touch-action: none;
+  user-select: none;
+  width: 10px;
+  z-index: 2;
+}
+
+.resizer::after {
+  background: transparent;
+  bottom: 25%;
+  content: "";
+  left: 4px;
+  position: absolute;
+  top: 25%;
+  transition: background .12s ease;
+  width: 2px;
+}
+
+.resizer:hover::after { background: var(--blue, #1d4ed8); }
+
+/* Cot cuoi khong co gi ben phai de day sang, nen tay nam nam han ben trong. */
+.table th:last-child .resizer { right: 0; }
+
 .table thead th {
   background: var(--surface-sunken);
   color: var(--text-secondary);

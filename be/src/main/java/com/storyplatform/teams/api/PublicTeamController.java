@@ -44,6 +44,7 @@ public class PublicTeamController {
 
     private static final String TEAM_SELECT = """
             SELECT t.id, t.slug, t.name, t.description, t.status, t.avatar_url,
+                   t.verified_at,
                    COALESCE(agg.story_count, 0)     AS story_count,
                    COALESCE(agg.total_views, 0)     AS total_views,
                    COALESCE(agg.total_favorites, 0) AS total_favorites,
@@ -60,6 +61,7 @@ public class PublicTeamController {
                 rs.getString("status"),
                 1,
                 rs.getString("avatar_url"),
+                rs.getTimestamp("verified_at") != null,
                 rs.getInt("story_count"),
                 rs.getLong("total_views"),
                 rs.getLong("total_favorites"),
@@ -110,6 +112,12 @@ public class PublicTeamController {
             int version,
             /** Team picture, or null when the team has not set one. */
             String avatarUrl,
+            /**
+             * True khi ban quản trị đã xác nhận nhóm - dấu tích xanh cạnh tên.
+             * Độc lập với {@link #state()}: nhóm bị tạm khoá rồi mở lại vẫn giữ
+             * dấu xác minh.
+             */
+            boolean verified,
             /** Published stories, so the directory can rank and label teams. */
             int storyCount,
             /** Reads across every published story of the team. */

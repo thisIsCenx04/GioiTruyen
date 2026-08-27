@@ -1,4 +1,4 @@
-import { Eye, ImagePlus, Paperclip, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
+import { BadgeCheck, Eye, ImagePlus, Paperclip, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -20,7 +20,9 @@ import { getAccessToken, refreshAccessToken } from "../../../lib/auth";
 import { ChapterEditorPager, chapterPageCount, chapterPageSlice } from "@/components/chapter-editor-pager";
 import { MissingChaptersNotice } from "@/components/missing-chapters-notice";
 import { OperationDialog, type OperationOutcome } from "@/components/operation-dialog";
-import { mergeImportedChapters } from "@/components/publishing-workspace";
+import { mergeImportedChapters, SYNOPSIS_MAX_LENGTH } from "@/components/publishing-workspace";
+import { formatSiteDate, formatSiteDateTime } from "@/lib/datetime";
+import { VerifiedBadge } from "@/components/verified-badge";
 import { formatXu } from "@/lib/format";
 import { AdminTable, StatBar, type Column, type Stat } from "./admin-table";
 import {
@@ -66,14 +68,16 @@ interface SortState<K extends string> {
 
 const numberFormatter = new Intl.NumberFormat("vi-VN");
 
+/**
+ * Ngay `dd/mm/yy` theo gio Viet Nam.
+ *
+ * <p>Truoc day ham nay doc moc thoi gian bang `getDate()`/`getMonth()`, tuc la
+ * theo gio cua may nguoi xem, va coi mot chuoi khong mang mui gio la gio dia
+ * phuong. Ca hai deu sai theo cung mot kieu, nen luat nay gio nam o mot cho:
+ * xem {@link formatSiteDate}.
+ */
 export function formatShortDate(value: string | null | undefined) {
-  if (!value) return "—";
-  const parsed = new Date(value.includes("T") ? value : value.replace(" ", "T"));
-  if (Number.isNaN(parsed.getTime())) return value;
-  const day = String(parsed.getDate()).padStart(2, "0");
-  const month = String(parsed.getMonth() + 1).padStart(2, "0");
-  const year = String(parsed.getFullYear()).slice(-2);
-  return `${day}/${month}/${year}`;
+  return formatSiteDate(value);
 }
 
 /**
@@ -1300,11 +1304,18 @@ function OneshotContentEditor({
 
 function StoryDocumentImport({
   busy,
+  isOneshot,
   onImported,
   onOutcome,
   wordsPerChapter,
 }: Readonly<{
   busy: boolean;
+  /**
+   * Truyen Zhihu. Chi dinh dang nay moi giu nguyen cach xuong dong cua file:
+   * no khong co tieu de chuong nen phai cat theo so tu, va nhanh cat theo so tu
+   * von don moi dong thanh mot doan rieng.
+   */
+  isOneshot: boolean;
   onImported: (imported: ImportedStory) => void;
   /** Reports the read in full, the same way the publisher form does. */
   onOutcome: (outcome: OperationOutcome) => void;
@@ -1320,7 +1331,7 @@ function StoryDocumentImport({
     setError("");
     setSummary("");
     try {
-      const imported = await parseStoryDocument(file, wordsPerChapter);
+      const imported = await parseStoryDocument(file, wordsPerChapter, isOneshot);
 
       // A file that reads but is structurally wrong - chapters back to front -
       // is refused rather than loaded, the same as on the publisher side.
@@ -1582,6 +1593,9 @@ export function StoryCrudWorkspace({
   const [storySlug, setStorySlug] = useState("");
   const [storyAuthor, setStoryAuthor] = useState("");
   const [storySynopsis, setStorySynopsis] = useState("");
+  // Van an dung nhu luc mo form ra. Mot lan luu chi gui gioi thieu khi con so
+  // nay khac voi o nhap - xem ghi chu o cho lap payload.
+  const [loadedSynopsis, setLoadedSynopsis] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
   // SERIAL keeps the chapter workspace; ONESHOT collapses it to one body of text.
   const [storyFormat, setStoryFormat] = useState<"ONESHOT" | "SERIAL">("SERIAL");
@@ -1638,7 +1652,16 @@ export function StoryCrudWorkspace({
     setStoryTitle(selected?.title ?? "");
     setStorySlug(selected?.slug ?? "");
     setStoryAuthor(selected?.authorName ?? "");
-    setStorySynopsis(selected?.synopsis ?? "");
+    // Van an day du, khong phai teaser 500 ky tu.
+    //
+    // Truoc day cho nay nap `synopsis` - thu API tra ve tu cot
+    // stories.short_description, da bi cat con 500 ky tu. Mo truyen ra sua thi
+    // o gioi thieu chi con mot doan cut giua chung, va bam Luu la ghi doan cut
+    // do de len van an that. Rieng truyen Zhihu de lo nhat vi van an cua no
+    // thuong dai hon 500 ky tu.
+    const synopsis = selected?.description ?? selected?.synopsis ?? "";
+    setStorySynopsis(synopsis);
+    setLoadedSynopsis(synopsis);
     setStoryFormat(selected?.storyFormat === "ONESHOT" ? "ONESHOT" : "SERIAL");
     setOneshotContent("");
     setCompletionStatus(selected?.completionStatus === "COMPLETED" ? "COMPLETED" : "ONGOING");
@@ -1715,6 +1738,12 @@ export function StoryCrudWorkspace({
           return;
         }
 
+        // Truyen moi thi luon gui; truyen dang sua thi chi gui khi van an doi.
+        const typedSynopsis = nullableValue(form, "synopsis");
+        const sendSynopsis = !selected || (typedSynopsis ?? "") !== loadedSynopsis
+          ? typedSynopsis
+          : null;
+
         const payload = {
           authorName: nullableValue(form, "authorName"),
           // The first genre keeps older readers of this API working.
@@ -1735,8 +1764,19 @@ export function StoryCrudWorkspace({
           slug: value(form, "slug"),
           storyFormat,
           storyType: value(form, "storyType"),
-          synopsis: nullableValue(form, "synopsis"),
-          summary: nullableValue(form, "synopsis"),
+          // Chi gui gioi thieu khi no that su doi.
+          //
+          // Sua chuong, doi gia combo hay bat tat mot the loai deu khong lien
+          // quan gi den van an, nen chung khong duoc phep dung vao no. Truoc
+          // day moi lan luu deu gui kem o giới thiệu, nen bat cu ly do gi khien
+          // form nap thieu hoac nap nham ban rut gon cung tro thanh mot lan ghi
+          // de len van an that - va van an cu thi mat han.
+          //
+          // Bo trong o giới thiệu roi luu van la mot lenh hop le: may chu hieu
+          // chuoi rong la "khong doi", nen muon xoa van an thi xoa o trang sua
+          // truyen chu khong phai bang mot lan luu bo sot.
+          synopsis: sendSynopsis,
+          summary: sendSynopsis,
           tags: storyTags,
           teamId: value(form, "teamId"),
           title: value(form, "title"),
@@ -1747,7 +1787,7 @@ export function StoryCrudWorkspace({
         // 1400-word cut an uploaded Zhihu file gets. Keeping it whole is what
         // produced a single unreadable chapter no matter how long the paste was.
         const loadedChapters: StoryChapterDraft[] = isOneshot && chapterDrafts.length === 0
-          ? splitByWordCount(oneshotContent.split(/\r?\n/u), WORDS_PER_CHAPTER_ZHIHU)
+          ? splitByWordCount(oneshotContent.split(/\r?\n/u), WORDS_PER_CHAPTER_ZHIHU, true)
             .map((chapter, index) => ({
               content: chapter.content,
               id: `oneshot-${index}`,
@@ -1857,19 +1897,11 @@ export function StoryCrudWorkspace({
     }
   }
 
-function formatShortDate(value: string | null | undefined) {
-  if (!value) return "—";
-  const parsed = new Date(value.includes("T") ? value : value.replace(" ", "T"));
-  if (Number.isNaN(parsed.getTime())) return value;
-  const day = String(parsed.getDate()).padStart(2, "0");
-  const month = String(parsed.getMonth() + 1).padStart(2, "0");
-  const year = String(parsed.getFullYear()).slice(-2);
-  return `${day}/${month}/${year}`;
-}
 
   const storyColumns: Array<Column<AdminStoryRow, string>> = [
     {
       key: "coverUrl",
+      width: 72,
       label: "Bìa",
       render: (story) => {
         const url = story.coverUrl ? coverUrl(story.coverUrl) : "";
@@ -1888,6 +1920,8 @@ function formatShortDate(value: string | null | undefined) {
     },
     {
       key: "title",
+      // Ten truyen kem dong tac gia/nhom ben duoi - phan tran ra bi cat kem dau ba cham.
+      width: 380,
       label: "Tên truyện",
       render: (story) => (
         <div>
@@ -1903,6 +1937,7 @@ function formatShortDate(value: string | null | undefined) {
     },
     {
       key: "storyFormat",
+      width: 150,
       label: "Định dạng",
       render: (story) => {
         const isOne = story.storyFormat === "ONESHOT";
@@ -1929,12 +1964,14 @@ function formatShortDate(value: string | null | undefined) {
     },
     {
       key: "storyType",
+      width: 150,
       label: "Loại truyện",
       render: (story) => STORY_TYPE_LABELS[story.storyType ?? "TEXT"] ?? story.storyType ?? "Truyện chữ",
       sortValue: (story) => story.storyType ?? "TEXT",
     },
     {
       key: "chapterCount",
+      width: 110,
       label: "Số chương",
       render: (story) => {
         const count = story.chapterCount ?? (story as any).chapter_count ?? (story as any).chaptersCount ?? 0;
@@ -1948,18 +1985,21 @@ function formatShortDate(value: string | null | undefined) {
     },
     {
       key: "updatedAt",
+      width: 130,
       label: "Ngày",
       render: (story) => <span style={{ fontSize: "0.82rem", color: "#475569" }}>{formatShortDate(story.updatedAt || story.createdAt)}</span>,
       sortValue: (story) => story.updatedAt ?? story.createdAt,
     },
     {
       key: "completionStatus",
+      width: 150,
       label: "Tiến độ",
       render: (story) => COMPLETION_LABELS[story.completionStatus] ?? story.completionStatus,
       sortValue: (story) => story.completionStatus,
     },
     {
       key: "workflowStatus",
+      width: 150,
       label: "Trạng thái",
       render: (story) => {
         const label = translateStatus(story.workflowStatus);
@@ -2120,6 +2160,7 @@ function formatShortDate(value: string | null | undefined) {
                     <StoryFormatPicker onChange={setStoryFormat} value={storyFormat} />
                     <StoryDocumentImport
                       busy={busy}
+                      isOneshot={isOneshot}
                       wordsPerChapter={isOneshot ? WORDS_PER_CHAPTER_ZHIHU : WORDS_PER_CHAPTER}
                       onOutcome={setOutcome}
                       onImported={(imported) => {
@@ -2208,12 +2249,20 @@ function formatShortDate(value: string | null | undefined) {
                         value={storyAuthor}
                       />
                     </Field>
-                    <Field label="Giới thiệu">
+                    <Field
+                      hint={storySynopsis.length > 0
+                        ? `${storySynopsis.length.toLocaleString("vi-VN")} / ${SYNOPSIS_MAX_LENGTH.toLocaleString("vi-VN")} ký tự.`
+                        : "Văn án đầy đủ của truyện. Bản rút gọn hiển thị ngoài trang chủ được tạo tự động."}
+                      label="Giới thiệu"
+                    >
                       <textarea
-                        maxLength={10000}
+                        // Khop voi gioi han cua may chu. Con so 10.000 cu o day
+                        // am tham cat bot mot van an dai vua dan vao, va nguoi
+                        // dan khong nhan duoc thong bao nao.
+                        maxLength={SYNOPSIS_MAX_LENGTH}
                         name="synopsis"
                         onChange={(event) => setStorySynopsis(event.currentTarget.value)}
-                        rows={6}
+                        rows={8}
                         value={storySynopsis}
                       />
                     </Field>
@@ -2451,6 +2500,7 @@ export function CategoryCrudWorkspace({ categories: initialCategories }: Readonl
     {
       key: "name",
       label: "Tên thể loại",
+      width: 280,
       render: (cat) => (
         <div>
           <strong style={{ fontSize: "0.88rem", color: "#0f172a", display: "block" }}>{cat.name}</strong>
@@ -2461,6 +2511,7 @@ export function CategoryCrudWorkspace({ categories: initialCategories }: Readonl
     },
     {
       key: "slug",
+      width: 220,
       label: "Slug (đường dẫn)",
       render: (cat) => (
         <code style={{ fontSize: "0.78rem", background: "#f1f5f9", padding: "0.2rem 0.45rem", borderRadius: "4px", color: "#0f5fff" }}>
@@ -2473,6 +2524,7 @@ export function CategoryCrudWorkspace({ categories: initialCategories }: Readonl
       // Replaces the old "Thứ tự" column, which the API never populated - it
       // sent 0 for every genre, so the column showed a column of zeroes.
       key: "storyCount",
+      width: 120,
       label: "Số truyện",
       numeric: true,
       render: (cat) => (
@@ -2493,12 +2545,14 @@ export function CategoryCrudWorkspace({ categories: initialCategories }: Readonl
     },
     {
       key: "updatedAt",
+      width: 130,
       label: "Cập nhật",
       render: (cat) => formatShortDate(cat.updatedAt || cat.createdAt),
       sortValue: (cat) => cat.updatedAt || cat.createdAt,
     },
     {
       key: "active",
+      width: 140,
       label: "Trạng thái",
       render: (cat) => (
         <span
@@ -2604,6 +2658,8 @@ export function TeamCrudWorkspace({ teams: initialTeams, users: initialUsers }: 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  // Nhom dang cho may chu tra loi, de nut khong bam duoc hai lan.
+  const [verifying, setVerifying] = useState<string | null>(null);
   const selected = drawer?.team;
 
   useEffect(() => {
@@ -2625,6 +2681,36 @@ export function TeamCrudWorkspace({ teams: initialTeams, users: initialUsers }: 
   }, []);
 
   const { sortedList, sortState, toggleSort } = useSortableList<AdminTeamRow, keyof AdminTeamRow>(teams, "updatedAt", "desc");
+
+  /**
+   * Bat/tat tich xanh cua mot nhom.
+   *
+   * <p>Goi rieng chu khong phai mot o trong form sua nhom: xac nhan la quyet
+   * dinh cua ban quan tri, khong phai mot truong ho so. Gop vao form nghia la
+   * moi lan sua mo ta nhom lai gui kem trang thai xac minh, va mot form nap
+   * thieu la du de go tich xanh cua mot nhom ma khong ai bam gi.
+   */
+  async function toggleVerification(team: AdminTeamRow) {
+    const next = !team.verified;
+    if (!window.confirm(next
+      ? `Xác nhận nhóm "${team.name}"? Dấu tích xanh sẽ hiện cạnh tên nhóm với người đọc.`
+      : `Gỡ tích xanh của nhóm "${team.name}"?`)) {
+      return;
+    }
+    setVerifying(team.id);
+    setError("");
+    try {
+      await adminMutation(`content/teams/${team.id}/verification`, "POST", { verified: next });
+      // Cap nhat ngay tai cho roi moi tai lai, de dau tich doi ngay khi bam
+      // thay vi doi mot vong goi mang.
+      setTeams((rows) => rows.map((row) => (row.id === team.id ? { ...row, verified: next } : row)));
+      await refreshData();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Không thể đổi trạng thái xác nhận.");
+    } finally {
+      setVerifying(null);
+    }
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -2648,9 +2734,19 @@ export function TeamCrudWorkspace({ teams: initialTeams, users: initialUsers }: 
     {
       key: "name",
       label: "Tên team",
+      // O nay chua ca ten nhom lan dong gioi thieu ben duoi. Gioi thieu cua
+      // mot nhom co the dai vai tram ky tu, nen no bi cat kem dau ba cham
+      // thay vi keo cot gian ra day cac cot con lai ra khoi man hinh.
+      width: 500,
       render: (team) => (
         <div>
-          <strong style={{ fontSize: "0.88rem", color: "#0f172a", display: "block" }}>{team.name}</strong>
+          <strong style={{ fontSize: "0.88rem", color: "#0f172a", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+            {team.name}
+            {/* Cung mot hinh voi trang nhom va danh ba nhom: doc gia nhan ra
+                dau xac minh bang hinh dang cua no, nen hai hinh khac nhau la
+                hai dau khac nhau. */}
+            {team.verified ? <VerifiedBadge size="0.95em" /> : null}
+          </strong>
           <span style={{ fontSize: "0.75rem", color: "#64748b" }}>{team.description}</span>
         </div>
       ),
@@ -2658,12 +2754,14 @@ export function TeamCrudWorkspace({ teams: initialTeams, users: initialUsers }: 
     },
     {
       key: "ownerName",
+      width: 200,
       label: "Chủ sở hữu",
       render: (team) => team.ownerName || "Chưa phân công",
       sortValue: (team) => team.ownerName || "",
     },
     {
       key: "memberCount",
+      width: 130,
       label: "Số thành viên",
       numeric: true,
       render: (team) => team.memberCount,
@@ -2671,6 +2769,7 @@ export function TeamCrudWorkspace({ teams: initialTeams, users: initialUsers }: 
     },
     {
       key: "state",
+      width: 150,
       label: "Trạng thái",
       render: (team) => {
         const isLive = team.state === "ACTIVE";
@@ -2694,6 +2793,7 @@ export function TeamCrudWorkspace({ teams: initialTeams, users: initialUsers }: 
     },
     {
       key: "updatedAt",
+      width: 130,
       label: "Cập nhật",
       render: (team) => formatShortDate(team.updatedAt || team.createdAt),
       sortValue: (team) => team.updatedAt || team.createdAt,
@@ -2703,6 +2803,7 @@ export function TeamCrudWorkspace({ teams: initialTeams, users: initialUsers }: 
   const teamStats = [
     { label: "Tổng số team", value: teams.length },
     { label: "Đang hoạt động", value: teams.filter((t) => t.state === "ACTIVE").length },
+    { label: "Đã xác nhận", value: teams.filter((t) => t.verified).length },
     { label: "Chờ xét duyệt", value: teams.filter((t) => t.state === "PENDING_REVIEW").length },
     { label: "Tạm khóa", value: teams.filter((t) => t.state === "SUSPENDED").length },
     { label: "Tổng thành viên", value: teams.reduce((acc, t) => acc + (t.memberCount || 0), 0) },
@@ -2726,6 +2827,18 @@ export function TeamCrudWorkspace({ teams: initialTeams, users: initialUsers }: 
               type="button"
             >
               <Pencil style={{ width: "0.85rem", height: "0.85rem" }} />
+            </button>
+            <button
+              className={tableStyles.iconBtn}
+              disabled={verifying === team.id}
+              onClick={() => void toggleVerification(team)}
+              style={team.verified ? { color: "#1d4ed8", borderColor: "#bfdbfe", background: "#eff6ff" } : undefined}
+              title={team.verified
+                ? `Gỡ tích xanh của "${team.name}"`
+                : `Xác nhận "${team.name}" (tích xanh)`}
+              type="button"
+            >
+              <BadgeCheck style={{ width: "0.85rem", height: "0.85rem" }} />
             </button>
             <button
               className={tableStyles.iconBtn}
@@ -2812,6 +2925,7 @@ export function UserCrudWorkspace({ users: initialUsers }: Readonly<{ users: Adm
   const userColumns: Array<Column<AdminUserRow, string>> = [
     {
       key: "displayName",
+      width: 260,
       label: "Tên / Email",
       render: (user) => (
         <div>
@@ -2823,6 +2937,7 @@ export function UserCrudWorkspace({ users: initialUsers }: Readonly<{ users: Adm
     },
     {
       key: "availableXu",
+      width: 140,
       label: "Số dư Xu",
       numeric: true,
       render: (user) => `${numberFormatter.format(user.availableXu)} xu`,
@@ -2830,6 +2945,7 @@ export function UserCrudWorkspace({ users: initialUsers }: Readonly<{ users: Adm
     },
     {
       key: "roles",
+      width: 180,
       label: "Vai trò",
       render: (user) => {
         const isAdmin = user.roles?.toUpperCase().includes("ADMIN");
@@ -2874,6 +2990,7 @@ export function UserCrudWorkspace({ users: initialUsers }: Readonly<{ users: Adm
     },
     {
       key: "createdAt",
+      width: 130,
       label: "Ngày tham gia",
       render: (user) => formatShortDate(user.createdAt),
       sortValue: (user) => user.createdAt,
@@ -2980,6 +3097,7 @@ export function CashFlowCrudWorkspace({ entries: initialEntries, users: initialU
   const cashFlowColumns: Array<Column<AdminCashFlowRow, string>> = [
     {
       key: "entryType",
+      width: 260,
       label: "Giao dịch",
       render: (entry) => (
         <div>
@@ -2993,6 +3111,7 @@ export function CashFlowCrudWorkspace({ entries: initialEntries, users: initialU
     },
     {
       key: "amountXu",
+      width: 140,
       label: "Số Xu",
       numeric: true,
       render: (entry) => (
@@ -3004,20 +3123,32 @@ export function CashFlowCrudWorkspace({ entries: initialEntries, users: initialU
     },
     {
       key: "userEmail",
+      width: 240,
       label: "Tài khoản",
       render: (entry) => entry.userEmail || "—",
       sortValue: (entry) => entry.userEmail || "",
     },
     {
       key: "referenceType",
+      width: 180,
       label: "Tham chiếu",
       render: (entry) => REFERENCE_LABELS[entry.referenceType] ?? entry.referenceType,
       sortValue: (entry) => entry.referenceType,
     },
     {
       key: "createdAt",
-      label: "Thời gian",
-      render: (entry) => formatShortDate(entry.createdAt),
+      label: "Thời gian (GMT+7)",
+      // Rong hon cac cot ngay khac vi o nay hien ca gio phut giay.
+      width: 190,
+      // Du gio phut giay, khong phai moi ngay. So cai xu duoc doi chieu voi sao
+      // ke ngan hang va voi log may chu, ma hai but toan cua cung mot lan nap
+      // co the cach nhau vai giay - chi hien ngay thi hai dong do trong y het
+      // nhau va khong doi chieu duoc voi bat cu thu gi.
+      render: (entry) => (
+        <span style={{ fontSize: "0.8rem", color: "#334155", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+          {formatSiteDateTime(entry.createdAt)}
+        </span>
+      ),
       sortValue: (entry) => entry.createdAt,
     },
   ];
